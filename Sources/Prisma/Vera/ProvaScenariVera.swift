@@ -418,10 +418,51 @@ final class ServerFintoScenari: URLProtocol {
         String(data: (try? JSONSerialization.data(withJSONObject: o)) ?? Data(), encoding: .utf8) ?? ""
     }
 
+    /// Una risposta preparata fatta di chiamate a strumenti (come le manda Ollama con «tools»): da passare a `prepara`.
+    static func strumenti(_ chiamate: [(String, [String: Any])], testo: String = "") -> String {
+        prefissoStrumenti + json(["testo": testo, "chiamate": chiamate.map { ["function": ["name": $0.0, "arguments": $0.1] as [String: Any]] }])
+    }
+
+    private static let prefissoStrumenti = "§STRUMENTI§"
+
+    /// Un vettore finto per /api/embed: le parole del testo (con RicercaVera.parole) sparse su 64 dimensioni, normalizzato.
+    /// Testi con parole in comune si somigliano: basta per provare la ricerca senza il modello vero.
+    static func vettoreFinto(_ testo: String) -> [Double] {
+        var v = [Double](repeating: 0, count: 64)
+        for p in RicercaVera.parole(testo.replacingOccurrences(of: RicercaVera.istruzione, with: "")) {
+            let h = p.unicodeScalars.reduce(5381) { ($0 &* 33 &+ Int($1.value)) & 0x7fffffff }
+            v[h % 64] += 1
+        }
+        let n = sqrt(v.reduce(0) { $0 + $1 * $1 })
+        return n > 0 ? v.map { $0 / n } : v
+    }
+
+    private static let blocchoEmbed = NSLock()
+    private static var _chiamateEmbed = 0
+    static var chiamateEmbed: Int { blocchoEmbed.lock(); defer { blocchoEmbed.unlock() }; return _chiamateEmbed }
+
     override func startLoading() {
-        let risposta = Self.prossima(Self.corpo(request))
-        // La risposta in pezzi da 9 caratteri, una riga NDJSON per pezzo, poi la riga finale
+        if request.url?.path.hasSuffix("api/embed") == true {
+            let corpo = Self.corpo(request)
+            let testi = corpo["input"] as? [String] ?? []
+            Self.blocchoEmbed.lock(); Self._chiamateEmbed += 1; Self.blocchoEmbed.unlock()
+            let dati = (try? JSONSerialization.data(withJSONObject: ["model": corpo["model"] ?? "", "embeddings": testi.map(Self.vettoreFinto)])) ?? Data()
+            let r = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: "HTTP/1.1", headerFields: ["Content-Type": "application/json"])!
+            client?.urlProtocol(self, didReceive: r, cacheStoragePolicy: .notAllowed)
+            client?.urlProtocol(self, didLoad: dati)
+            client?.urlProtocolDidFinishLoading(self)
+            return
+        }
+        var risposta = Self.prossima(Self.corpo(request))
         var righe: [String] = []
+        // Le chiamate a strumenti arrivano in una riga sola, con il contenuto vuoto (come da Ollama)
+        if risposta.hasPrefix(Self.prefissoStrumenti),
+           let d = risposta.dropFirst(Self.prefissoStrumenti.count).data(using: .utf8),
+           let j = try? JSONSerialization.jsonObject(with: d) as? [String: Any] {
+            righe.append(Self.json(["message": ["role": "assistant", "content": "", "tool_calls": j["chiamate"] ?? []] as [String: Any], "done": false]))
+            risposta = j["testo"] as? String ?? ""
+        }
+        // La risposta in pezzi da 9 caratteri, una riga NDJSON per pezzo, poi la riga finale
         var resto = Substring(risposta)
         while !resto.isEmpty {
             let pezzo = resto.prefix(9)

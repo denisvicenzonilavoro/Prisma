@@ -237,7 +237,8 @@ extension StatoShell {
         if let elenco = d.prossimi { return elenco }
         let inizio = Calendar.current.startOfDay(for: Date())
         let elenco = appuntamenti
-            .filter { $0.inizio >= inizio && $0.stato == .pianificato }
+            // I blocchi «Non disponibile» (Vera, «liberami…») non sono incontri con un cliente
+            .filter { $0.inizio >= inizio && $0.stato == .pianificato && $0.tipo != .nonDisponibile }
             .sorted { $0.inizio < $1.inizio }
         d.prossimi = elenco
         return elenco

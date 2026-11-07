@@ -8,10 +8,48 @@ import Foundation
 
 /// Un messaggio per il modello.
 struct MessaggioModello: Equatable {
-    enum Ruolo: String { case sistema = "system", utente = "user", assistente = "assistant" }
+    /// `strumento`: il risultato di uno strumento chiesto dal modello (Ollama: «tool»).
+    enum Ruolo: String { case sistema = "system", utente = "user", assistente = "assistant", strumento = "tool" }
 
     var ruolo: Ruolo
     var testo: String
+    /// Le chiamate a strumenti chieste dal modello in questo messaggio (solo per l'assistente).
+    var chiamate: [ChiamataStrumento] = []
+    /// Lo strumento di cui questo messaggio porta il risultato (solo per il ruolo `strumento`).
+    var nomeStrumento: String?
+
+    init(ruolo: Ruolo, testo: String, chiamate: [ChiamataStrumento] = [], nomeStrumento: String? = nil) {
+        self.ruolo = ruolo
+        self.testo = testo
+        self.chiamate = chiamate
+        self.nomeStrumento = nomeStrumento
+    }
+
+    static func == (a: MessaggioModello, b: MessaggioModello) -> Bool {
+        a.ruolo == b.ruolo && a.testo == b.testo && a.nomeStrumento == b.nomeStrumento && a.chiamate == b.chiamate
+    }
+
+    /// La forma di Ollama: l'assistente con «tool_calls» (argomenti come oggetto), il risultato con «tool_name».
+    var jsonOllama: [String: Any] {
+        var m: [String: Any] = ["role": ruolo.rawValue, "content": testo]
+        if !chiamate.isEmpty {
+            m["tool_calls"] = chiamate.map { ["function": ["name": $0.nome, "arguments": $0.argomenti] as [String: Any]] }
+        }
+        if let n = nomeStrumento { m["tool_name"] = n }
+        return m
+    }
+
+    /// La forma delle API di OpenAI: argomenti come stringa JSON e un id per legare il risultato alla chiamata.
+    var jsonOpenAI: [String: Any] {
+        var m: [String: Any] = ["role": ruolo.rawValue, "content": testo]
+        if !chiamate.isEmpty {
+            m["tool_calls"] = chiamate.enumerated().map { i, c in
+                ["id": "chiamata-\(i)", "type": "function", "function": ["name": c.nome, "arguments": c.argomentiJSON] as [String: Any]] as [String: Any]
+            }
+        }
+        if let n = nomeStrumento { m["name"] = n; m["tool_call_id"] = n }
+        return m
+    }
 }
 
 /// Uno strumento che il modello può chiedere di usare (fase c: apri_sezione, cerca_clienti…).
@@ -41,12 +79,25 @@ struct OpzioniModello {
     /// Lo schema JSON a cui la risposta deve attenersi (estrazione dei parametri degli scenari, Vera/Schemi):
     /// Ollama lo vuole in «format», i server compatibili OpenAI in «response_format». nil = testo libero.
     var formato: [String: Any]?
+    /// Le lezioni del consulente («Impara dalle correzioni») in fondo alle istruzioni: no per le estrazioni a righe fisse.
+    var conLezioni = true
 }
 
 /// Una chiamata a uno strumento chiesta dal modello.
-struct ChiamataStrumento {
+struct ChiamataStrumento: Equatable {
     var nome: String
     var argomenti: [String: Any]
+
+    /// Gli argomenti in JSON con le chiavi in ordine (servono al confronto e alle API di OpenAI).
+    var argomentiJSON: String {
+        guard JSONSerialization.isValidJSONObject(argomenti),
+              let d = try? JSONSerialization.data(withJSONObject: argomenti, options: [.sortedKeys]) else { return "{}" }
+        return String(data: d, encoding: .utf8) ?? "{}"
+    }
+
+    static func == (a: ChiamataStrumento, b: ChiamataStrumento) -> Bool {
+        a.nome == b.nome && a.argomentiJSON == b.argomentiJSON
+    }
 }
 
 /// I numeri di una risposta, quando il fornitore li dà (servono al confronto tra modelli).

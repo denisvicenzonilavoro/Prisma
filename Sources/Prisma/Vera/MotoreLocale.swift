@@ -69,6 +69,9 @@ struct MotoreLocale: MotoreVera, MotoreGenerativo {
     /// Una risposta intera, per commenti e spiegazioni (modalità lavoro, senza ragionamento).
     func genera(istruzioni: String, richiesta: String) async throws -> String {
         var opzioni = OpzioniModello()
+        // La stessa finestra di tutte le chiamate (Ollama non ricarica il modello); niente lezioni nelle estrazioni a righe fisse
+        opzioni.contesto = NucleoVera.finestra
+        opzioni.conLezioni = false
         opzioni.restaInMemoria = restaInMemoria
         return try await scrivi([MessaggioModello(ruolo: .sistema, testo: istruzioni), MessaggioModello(ruolo: .utente, testo: richiesta)],
                                 opzioni: opzioni).testo
@@ -89,6 +92,28 @@ struct MotoreLocale: MotoreVera, MotoreGenerativo {
     /// una volta ogni `intervalloAggiornamenti`, così l'interfaccia non ridisegna a ogni parola.
     func scrivi(_ messaggi: [MessaggioModello], opzioni: OpzioniModello,
                 aggiorna: ((ParzialeVera) -> Void)? = nil) async throws -> (testo: String, statistiche: StatisticheModello?) {
+        let r = try await raccogli(messaggi, opzioni: opzioni, aggiorna: aggiorna)
+        guard !r.testo.isEmpty else {
+            throw ErroreVera(messaggio: "Il modello non ha prodotto una risposta. Riprova con una domanda più precisa.")
+        }
+        return (r.testo, r.statistiche)
+    }
+
+    /// Una risposta con gli strumenti (OpzioniModello.strumenti): il testo, se c'è, e le chiamate chieste dal modello.
+    /// Un turno di sole chiamate è valido; senza testo né chiamate il modello non ha risposto.
+    func chiediConStrumenti(_ messaggi: [MessaggioModello], opzioni: OpzioniModello) async throws -> RispostaConStrumenti {
+        let r = try await raccogli(messaggi, opzioni: opzioni, aggiorna: nil)
+        guard !r.testo.isEmpty || !r.chiamate.isEmpty else {
+            throw ErroreVera(messaggio: "Il modello non ha prodotto una risposta. Riprova con una richiesta più precisa.")
+        }
+        return r
+    }
+
+    private func raccogli(_ messaggi: [MessaggioModello], opzioni: OpzioniModello,
+                          aggiorna: ((ParzialeVera) -> Void)?) async throws -> RispostaConStrumenti {
+        // «Impara dalle correzioni»: le lezioni del consulente in fondo alle istruzioni di ogni risposta a testo libero
+        let messaggi = LezioniVera.applica(messaggi, opzioni: opzioni)
+        var chiamate: [ChiamataStrumento] = []
         var filtro = FiltroPensiero()
         var testo = "", pensiero = ""
         var statistiche: StatisticheModello?
@@ -102,9 +127,9 @@ struct MotoreLocale: MotoreVera, MotoreGenerativo {
                 pensiero += f.ragionamento
             case .ragionamento(let t):
                 pensiero += t
-            case .strumento:
-                // Fase c: le azioni con tool calling. Per ora non si chiedono strumenti.
-                break
+            case .strumento(let c):
+                // «Fallo tu»: le azioni chieste dal modello (RegistroStrumenti); Prisma le esegue solo dopo «Conferma»
+                chiamate.append(c)
             case .fine(let s):
                 statistiche = s
             }
@@ -119,13 +144,17 @@ struct MotoreLocale: MotoreVera, MotoreGenerativo {
         testo += filtro.svuota()
         let finale = NucleoVera.pulisci(testo)
         aggiorna?(ParzialeVera(testo: finale, pensa: !pensiero.isEmpty))
-        guard !finale.isEmpty else {
-            throw ErroreVera(messaggio: "Il modello non ha prodotto una risposta. Riprova con una domanda più precisa.")
-        }
-        return (finale, statistiche)
+        return RispostaConStrumenti(testo: finale, chiamate: chiamate, statistiche: statistiche)
     }
 
     static let intervalloAggiornamenti: TimeInterval = 0.06
+}
+
+/// Una risposta del modello con gli strumenti: il testo visibile e le chiamate chieste.
+struct RispostaConStrumenti {
+    var testo: String
+    var chiamate: [ChiamataStrumento]
+    var statistiche: StatisticheModello?
 }
 
 /// Il testo di una risposta mentre arriva.

@@ -28,6 +28,11 @@ extension StatoShell {
             comando = InterpreteComandi.interpreta(testo, clienti: noti, attivo: veraPortafoglio ? nil : clienteAttivoId, oggi: oggi)
         }
         guard var comando else { return false }
+        // «Apri una pratica per Marco»: non è aprire un'app o un dossier, è un'azione per «Fallo tu»
+        switch comando {
+        case .apri, .cliente: if FalloTuVera.eUnaRichiesta(testo) { return false }
+        default: break
+        }
         if inModoCliente {
             let nome = clienteAttivo?.nome ?? "questo cliente"
             if let altro = Self.clienteDel(comando), altro != clienteAttivoId {
@@ -39,8 +44,8 @@ extension StatoShell {
         // Passando a un altro cliente, la conversazione continua nel suo dossier
         var chiave = chiaveConversazione
         if case .cliente(let id) = comando, !inModoCliente { chiave = id }
-        let (risposta, azione) = esegui(comando, oggi: oggi)
-        rispondiComando(testo, risposta, chiave: chiave, azione: azione)
+        let (risposta, azione, scheda) = esegui(comando, richiesta: testo, oggi: oggi)
+        rispondiComando(testo, risposta, chiave: chiave, azione: azione, conferma: scheda)
         return true
     }
 
@@ -60,12 +65,42 @@ extension StatoShell {
 
     var chiaveConversazione: String { veraPortafoglio ? VeraPortafoglio.chiave : clienteAttivoId }
 
-    private func rispondiComando(_ domanda: String, _ risposta: String, chiave: String, azione: AzioneVera? = nil) {
+    private func rispondiComando(_ domanda: String, _ risposta: String, chiave: String, azione: AzioneVera? = nil, conferma: SchedaConfermaVera? = nil) {
         aggiungiMessaggio(MessaggioVera(autore: .utente, testo: domanda), cliente: chiave)
         domandaVera = ""
         var m = MessaggioVera(autore: .vera, testo: risposta, motore: Self.motoreAzioni)
         m.azione = azione
+        m.conferma = conferma
         aggiungiMessaggio(m, cliente: chiave)
+    }
+
+    /// Le azioni che cambiano qualcosa (appuntamenti, promemoria, note) passano dalla scheda di conferma (Vera/BRIEF.md,
+    /// regola 2): il comando diventa la stessa chiamata a uno strumento che sceglierebbe Qwen.
+    private func esegui(_ comando: ComandoVera, richiesta: String, oggi: Date) -> (String, AzioneVera?, SchedaConfermaVera?) {
+        let chiamata: ChiamataStrumento
+        switch comando {
+        case .appuntamento(let b):
+            guard let id = b.cliente, cliente(id) != nil, b.giorno != nil, let inizio = b.inizio() else {
+                let (r, a) = esegui(comando, oggi: oggi)
+                return (r, a, nil)
+            }
+            var argomenti: [String: Any] = ["cliente": id, "giorno": Formati.formato("yyyy-MM-dd").string(from: inizio),
+                                            "ora": Formati.ora.string(from: inizio), "tipo": b.tipo.rawValue]
+            if b.tipo == .telefonata { argomenti["durata_minuti"] = 20 }
+            chiamata = ChiamataStrumento(nome: RegistroStrumenti.agendaNuovo, argomenti: argomenti)
+        case .attivita(let id?, let titolo, let scadenza) where cliente(id) != nil:
+            chiamata = ChiamataStrumento(nome: RegistroStrumenti.attivitaNuova,
+                                         argomenti: ["cliente": id, "titolo": titolo, "scadenza": Formati.formato("yyyy-MM-dd").string(from: scadenza)])
+        case .nota(let id?, let testo) where cliente(id) != nil:
+            chiamata = ChiamataStrumento(nome: RegistroStrumenti.notaNuova, argomenti: ["cliente": id, "testo": testo])
+        default:
+            let (r, a) = esegui(comando, oggi: oggi)
+            return (r, a, nil)
+        }
+        var x = contestoStrumenti
+        x.oggi = oggi
+        let e = FalloTuVera.esito([RegistroStrumenti.prepara(chiamata, contesto: x)], richiesta: richiesta, origine: .regole)
+        return (e.testo, nil, e.scheda)
     }
 
     private func esegui(_ comando: ComandoVera, oggi: Date) -> (String, AzioneVera?) {

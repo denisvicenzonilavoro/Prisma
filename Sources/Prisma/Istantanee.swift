@@ -1619,6 +1619,8 @@ enum Istantanee {
         tutteLeScene += sceneVeraScrivania
         tutteLeScene += sceneVeraApple
         tutteLeScene += sceneScenariVera
+        tutteLeScene += sceneFalloTu
+        tutteLeScene += sceneFaseDueVera
         tutteLeScene += scenePosizioniApple
         tutteLeScene += sceneDossierApple
         tutteLeScene += sceneSimulatoriApple

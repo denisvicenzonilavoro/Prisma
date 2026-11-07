@@ -217,6 +217,17 @@ extension StatoShell {
                                       tipo: .salvaScenario(m.id), primaria: !s.salvata),
                         AzioneMiniVera(titolo: s.simulazione == nil ? "Apri in Analisi 360" : "Apri in Simulazioni", simbolo: "arrow.up.forward",
                                       tipo: .apriScenario(m.id))]
+        } else if let s = m.conferma, s.stato == .daConfermare {
+            // «Fallo tu»: le azioni della scheda nel testo, «Conferma» qui o tutto nell'app Vera
+            c = CifreMiniVera()
+            c.azioni = [AzioneMiniVera(titolo: s.origine == .clientela ? "Crea le attività" : "Conferma", simbolo: "checkmark", tipo: .confermaVera(m.id), primaria: true),
+                        AzioneMiniVera(titolo: "Rivedi in Vera", simbolo: "arrow.up.forward", tipo: .rivediInVera)]
+            let righe = s.attive.prefix(Tema.Apple.ConfermaVera.righeVisibili).map { "• \($0.titolo): \($0.dettaglio)" }
+            mini.rispondi(testo: ([NucleoVera.pulisci(m.testo)] + righe).joined(separator: "\n"), titolo: m.titolo, cifre: c, inArrivo: false)
+            return true
+        } else if m.clientela != nil {
+            c = CifreMiniVera()
+            c.azioni = [AzioneMiniVera(titolo: "Rivedi in Vera", simbolo: "arrow.up.forward", tipo: .rivediInVera, primaria: true)]
         } else if let a = m.azione {
             // Vera ha fatto qualcosa (un appuntamento, un promemoria): il pulsante lo apre
             c = CifreMiniVera()
@@ -298,6 +309,18 @@ extension StatoShell {
         case .apriScenario(let messaggio):
             if let s = schedaScenario(messaggio: messaggio, chiave: miniVera.chiave) { apriScenarioVera(s) }
             commiato = a.titolo.hasSuffix("Simulazioni") ? "Ti porto nel simulatore con lo scenario" : "Ti porto in Analisi 360"
+        case .confermaVera(let messaggio):
+            let esiti = confermaSchedaVera(messaggio: messaggio) ?? []
+            if !esiti.isEmpty, esiti.allSatisfy(\.fatta) {
+                commiato = "Fatto: lo trovi nelle app di Prisma"
+            } else if esiti.contains(where: \.fatta) {
+                commiato = "Fatto in parte: guarda in Vera cosa non è riuscito"
+            } else {
+                commiato = "Non sono riuscita a farlo: guarda in Vera"
+            }
+        case .rivediInVera:
+            apriInVeraDaMiniVera()
+            return
         }
         chiudiMiniVera()
         // Il commiato (.toast del template): Vera si ritira verso la sua sfera e dice dove ti ha portato

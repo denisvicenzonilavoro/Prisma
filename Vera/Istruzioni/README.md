@@ -24,5 +24,15 @@ L'assistente si chiama Vera (prima si chiamava Ruby, e prima ancora Eve). Le ist
 
 - `palestra.md`: istruzioni della palestra della trattativa (Studio › Palestra): Vera recita un cliente, con la scheda che Prisma prepara (`PalestraVera.scheda`: chi è, timori, obiettivo e le cifre dei motori), un'obiezione alla volta, e risponde in JSON con lo schema fisso `Vera/Schemi/palestra.json` (giudizio, motivo, replica, convinzione, prossima obiezione, tre risposte suggerite, strumento di Prisma). La difficoltà (Facile, Realistica, Difficile) arriva nell'ultimo messaggio. Una replica o un'obiezione con una cifra che non è nella scheda si scarta e si richiede una volta; una suggerita con una cifra inventata si toglie; sul giudizio vincono le regole di Prisma (pressione, promesse di rendimento, critiche: sempre «debole»). Gli esempi in `Vera/Esempi/palestra.json` sono frasi anonime di prova, da far approvare all'utente.
 
+- `fallo-tu.md`: istruzioni di «Fallo tu» (Vera/BRIEF.md, funzione 1): con la chiamata di strumenti di Ollama («tools») Qwen sceglie le azioni del registro (`RegistroStrumenti`: agenda, attività, note, clienti, messaggi, posizioni, simulatore; Pratiche e i chilometri di Studio sono registrati ma «in attesa»). Prisma risolve gli argomenti e mostra la scheda di conferma: niente si esegue prima di «Conferma».
+
+- `clientela.md`: istruzioni di «Chiedi alla tua clientela» (funzione 2): la domanda su tutti i clienti diventa filtri JSON con lo schema fisso `Vera/Schemi/clientela.json` (in «format» di Ollama). A Qwen va solo la domanda; le regole di Prisma rileggono numeri e mesi della frase e vincono, la ricerca la fa `ClientelaVera` sui dati.
+
+- `filo.md`: il riassunto progressivo di «Il filo lungo» (funzione 24): le battute uscite dalla finestra si riassumono in poche righe, che tornano a Qwen come «IL FILO DELLA CONVERSAZIONE». Senza Qwen resta il riassunto di Prisma (le battute accorciate, prima l'inizio).
+
+- `trenta.md`: «Il cliente in 30 secondi» (funzione 6): Qwen rende scorrevoli le cinque sezioni preparate da Prisma (JSON, schema in `TrentaSecondiVera`); una cifra cambiata o aggiunta fa restare il testo di Prisma.
+
+- `norme.md`: «Il codice in tasca» (funzione 13): risposte solo dagli articoli trovati nella biblioteca delle norme, in JSON con gli id degli articoli; senza articolo o con una cifra che non è nell'articolo la risposta si scarta e Vera dice che la norma non risponde.
+
 Modificare qui il testo cambia il comportamento di Vera alla build successiva, senza toccare il codice.
 Tenere il testo ragionevolmente corto: la finestra di Qwen sul Mac è di 8.192 token per istruzioni, scheda, storia e risposta.

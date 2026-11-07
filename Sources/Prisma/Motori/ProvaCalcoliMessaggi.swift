@@ -334,8 +334,9 @@ enum ProvaCalcoliMessaggi {
     private static func modelliFissi(_ verifica: VerificaCalcoli) {
         let (x, occasioni) = campionario()
         let tipi = Set(occasioni.map(\.tipo))
+        // Le bozze di «Fallo tu» (`.richiestaVera`) non nascono da un'occasione: le scrive Vera su richiesta (FalloTuShell)
         verifica.vero("M9 Modelli: il campionario ha tutti i tipi tranne (forse) l'occasione dell'Agenda (\(tipi.count) tipi)",
-                      tipi.isSuperset(of: Set(TipoOccasioneMessaggio.allCases).subtracting([.occasioneAgenda])))
+                      tipi.isSuperset(of: Set(TipoOccasioneMessaggio.allCases).subtracting([.occasioneAgenda, .richiestaVera])))
         var sbagliati: [String] = []
         for o in occasioni {
             guard let c = x.clienti.first(where: { $0.id == o.clienteId }) else { sbagliati.append("cliente di \(o.id)"); continue }

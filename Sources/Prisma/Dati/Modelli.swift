@@ -346,6 +346,8 @@ struct Consensi: Codable, Hashable {
 /// Tipo di appuntamento: aiuta a capire a che punto è la relazione con il cliente.
 enum TipoAppuntamento: String, Codable, CaseIterable, Identifiable {
     case primoIncontro, analisi, proposta, firma, revisione, telefonata, altro
+    /// Un pezzo di giornata bloccato, senza cliente («liberami venerdì pomeriggio», Vera «Fallo tu»).
+    case nonDisponibile
 
     var id: String { rawValue }
 
@@ -358,6 +360,7 @@ enum TipoAppuntamento: String, Codable, CaseIterable, Identifiable {
         case .revisione: return "Revisione periodica"
         case .telefonata: return "Telefonata"
         case .altro: return "Altro"
+        case .nonDisponibile: return "Non disponibile"
         }
     }
 }
@@ -428,7 +431,7 @@ struct Appuntamento: Identifiable, Codable, Hashable {
         luogo = try c.decodeIfPresent(String.self, forKey: .luogo) ?? ""
         note = try c.decodeIfPresent(String.self, forKey: .note) ?? ""
         stato = try c.decodeIfPresent(Stato.self, forKey: .stato) ?? .pianificato
-        tipo = try c.decodeIfPresent(TipoAppuntamento.self, forKey: .tipo) ?? .altro
+        tipo = (try? c.decodeIfPresent(TipoAppuntamento.self, forKey: .tipo)) ?? .altro
         canale = try c.decodeIfPresent(Canale.self, forKey: .canale)
         posizioneId = try c.decodeIfPresent(String.self, forKey: .posizioneId)
     }

@@ -334,7 +334,7 @@ private struct CorpoWidgetAgenda: View, Equatable {
                     }
                     ForEach(eventi) { e in
                         RigaIncontro(evento: e, cliente: stato.cliente(e.clienteId)) {
-                            stato.clienteAttivoId = e.clienteId
+                            if !e.clienteId.isEmpty { stato.clienteAttivoId = e.clienteId }
                             stato.mostraInAgenda(e)
                         }
                     }

@@ -13,7 +13,8 @@ struct ModuloAppuntamento: View {
     @State var confermaEliminazione = false
 
     private var valido: Bool {
-        !bozza.titolo.trimmingCharacters(in: .whitespaces).isEmpty && stato.cliente(bozza.clienteId) != nil
+        !bozza.titolo.trimmingCharacters(in: .whitespaces).isEmpty
+            && (bozza.tipo == .nonDisponibile || stato.cliente(bozza.clienteId) != nil)
     }
 
     var body: some View {
@@ -62,7 +63,7 @@ struct ModuloAppuntamento: View {
                         }
                     }
                     CampoModulo(etichetta: "Durata") {
-                        Stepper(value: $bozza.durataMinuti, in: 5...480, step: 5) {
+                        Stepper(value: $bozza.durataMinuti, in: 5...720, step: 5) {
                             Text("\(bozza.durataMinuti) minuti").font(Tipo.campoValore).foregroundColor(Colori.Rubrica.testo)
                         }
                     }

@@ -12,6 +12,8 @@ enum TipoOccasioneMessaggio: String, Codable, CaseIterable, Identifiable {
     case riepilogoIncontro, scadenzaPosizione, compleanno, consenso, riesame, occasioneAgenda, parcella, avvisoMercato
     /// Dopo la prova del fuoco di Posizioni (giro 4): uno scenario avverso e il suo effetto sull'obiettivo del cliente.
     case provaFuoco
+    /// Chiesto a Vera a parole («sposta l'incontro e avvisala»: «Fallo tu»): una bozza, mai un invio.
+    case richiestaVera
     /// Il sollecito di una pratica ferma o in attesa (Pratiche › Dopo la firma, «Luce» giro 3): il passo che manca.
     case pratica
     /// Un traguardo da festeggiare (I traguardi festeggiati, «Luce» giro 5, MotoreTraguardi): mai commerciale. Un Prisma
@@ -31,6 +33,7 @@ enum TipoOccasioneMessaggio: String, Codable, CaseIterable, Identifiable {
         case .parcella: return "Parcella"
         case .avvisoMercato: return "Avviso di mercato"
         case .provaFuoco: return "Prova del fuoco"
+        case .richiestaVera: return "Chiesto a Vera"
         case .pratica: return "Pratica"
         case .traguardo: return "Traguardo"
         }
@@ -40,7 +43,7 @@ enum TipoOccasioneMessaggio: String, Codable, CaseIterable, Identifiable {
     var commerciale: Bool {
         switch self {
         case .riesame, .occasioneAgenda, .avvisoMercato, .provaFuoco: return true
-        case .riepilogoIncontro, .scadenzaPosizione, .compleanno, .consenso, .parcella, .pratica, .traguardo: return false
+        case .riepilogoIncontro, .scadenzaPosizione, .compleanno, .consenso, .parcella, .richiestaVera, .pratica, .traguardo: return false
         }
     }
 

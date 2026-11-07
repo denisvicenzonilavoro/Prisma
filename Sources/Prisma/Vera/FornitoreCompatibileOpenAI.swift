@@ -26,7 +26,7 @@ struct FornitoreCompatibileOpenAI: FornitoreModello {
     static func corpo(modello: String, messaggi: [MessaggioModello], opzioni: OpzioniModello) -> [String: Any] {
         var c: [String: Any] = [
             "model": modello,
-            "messages": messaggi.map { ["role": $0.ruolo.rawValue, "content": $0.testo] },
+            "messages": messaggi.map(\.jsonOpenAI),
             "stream": true,
             "stream_options": ["include_usage": true],
             "temperature": opzioni.temperatura,

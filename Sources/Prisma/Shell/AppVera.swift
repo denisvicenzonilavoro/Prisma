@@ -45,6 +45,9 @@ struct AppVera: View {
             .frame(width: geo.size.width, height: geo.size.height)
         }
         .altreAppApple()
+        // «Lascia cadere qui» e la pagina della memoria di Vera (fase 2, RilascioVera.swift)
+        .rilascioDocumentiVera()
+        .paginaMemoriaVera(stato.memoriaVera)
         // Parte sia alla nascita della vista (Vera era chiusa o ridotta) sia a ogni nuova richiesta
         .task(id: stato.richiestaDettatura) { await accendiDettatura() }
         // Il FocusState resta in pari con makeFirstResponder(nil), altrimenti il prossimo «true» non cambia niente
@@ -778,7 +781,8 @@ struct NuvolaVera: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.bottom, b.sottoIntestazione)
             }
-            TestoProgressivo(testo: messaggio.testo, anima: nuova, staffetta: nuova ? .riceve : .nessuna,
+            // «Mai a caso»: il rimando alla fonte dopo ogni cifra («20.800 €¹»)
+            TestoProgressivo(testo: messaggio.fonti.map { FontiVera.conRimandi(messaggio.testo, fonti: $0) } ?? messaggio.testo, anima: nuova, staffetta: nuova ? .riceve : .nessuna,
                              avanza: avanza, finito: { testoScritto = true })
                 .carattereApple(b.messaggio)
                 .foregroundColor(b.testo)
@@ -792,6 +796,26 @@ struct NuvolaVera: View {
                     // Lo scenario «E se…?»: la tabella prima/dopo di Prisma con «Salva nel dossier» e «Apri in Simulazioni»
                     if let s = messaggio.scenario {
                         SchedaScenarioVeraVista(scheda: s, messaggio: messaggio.id, entra: false)
+                    }
+                    // «Chiedi alla tua clientela»: i filtri capiti e la tabella dei clienti
+                    if let r = messaggio.clientela {
+                        TabellaClientelaVista(risultato: r)
+                    }
+                    // «Fallo tu»: la scheda di conferma, niente si esegue prima di «Conferma»
+                    if let c = messaggio.conferma {
+                        SchedaConfermaVeraVista(scheda: c, messaggio: messaggio.id)
+                            .padding(.top, b.sopraScheda)
+                    }
+                    // «Mai a caso»: la fonte di ogni cifra
+                    if let f = messaggio.fonti, !f.isEmpty {
+                        FontiVeraVista(fonti: f)
+                    }
+                    // Fase 2: «Il cliente in 30 secondi» e gli articoli della biblioteca delle norme
+                    if let t = messaggio.trenta {
+                        TrentaSecondiVista(scheda: t)
+                    }
+                    if let n = messaggio.norme {
+                        NormeVeraVista(risposta: n)
                     }
                     if let proposte = messaggio.proposte, !proposte.isEmpty {
                         elencoProposte(proposte)
@@ -864,14 +888,21 @@ struct NuvolaVera: View {
                 }
             }
         } else {
+            VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: b.spazioAzioni) {
-                if azioniCliente && messaggio.motore != StatoShell.motoreAzioni {
+                if azioniCliente && messaggio.motore != StatoShell.motoreAzioni && messaggio.conferma == nil {
                     azione("✓ Crea attività", creaAttivita)
                     azione("＋ Nota del cliente", aggiungiNota)
                 }
                 azione("Copia") {
                     Appunti.copia((messaggio.titolo.map { $0 + "\n\n" } ?? "") + messaggio.testo)
                 }
+            }
+            // «Impara dalle correzioni»: 👍 e 👎 sotto le risposte scritte da Qwen
+            if messaggio.motore != StatoShell.motoreAzioni, messaggio.motore != MotoriVera.sintesi.nome, messaggio.titolo != "Vera non ha potuto rispondere" {
+                PolliciVera(messaggio: messaggio)
+                    .padding(.top, b.spazioAzioni)
+            }
             }
         }
     }
