@@ -80,9 +80,9 @@ extension Tema.Apple {
         static let scorciatoia = Carattere(dimensione: 11, peso: .medium)
         /// Data e ora al centro: «lun 2 nov 23:09».
         static let spazioOrologio: CGFloat = 4
-        /// Gli strumenti: tasti tondi da 28; la sfera di Ruby dentro è da 24.
+        /// Gli strumenti: tasti tondi da 28; la sfera di Vera dentro è da 24.
         static let tasto: CGFloat = 28
-        static let sferaRuby: CGFloat = 24
+        static let sferaVera: CGFloat = 24
         /// I simboli dentro i tasti (campanella, lucchetto, guida, modalità cliente).
         static let simbolo = Carattere(dimensione: 13, peso: .medium)
         /// Badge della campanella: `#FF3B30`, 9 bold, padding 1×4, a −3 dall'alto e −4 da destra.

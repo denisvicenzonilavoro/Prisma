@@ -7,7 +7,7 @@ import SwiftUI
 
 /// Un testo dell'archivio che si scrive qui e passa allo stato poco dopo l'ultimo tasto (come le Note,
 /// dopo `AppNote.attesaNota`): ogni lettera ridisegna solo il campo, non tutta Prisma. Cambiato da fuori
-/// (Ruby, un ripristino) mentre non si scrive, vale l'archivio. Chi lo usa gli dà un `.id` per oggetto
+/// (Vera, un ripristino) mentre non si scrive, vale l'archivio. Chi lo usa gli dà un `.id` per oggetto
 /// (cliente, incontro, documento): cambiando oggetto la bozza riparte da quello nuovo e la scrittura in
 /// attesa va a quello vecchio. Le azioni che leggono subito il testo dall'archivio chiamano prima
 /// `TestiRinviati.scriviOra()`.

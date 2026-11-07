@@ -5,11 +5,11 @@ import SwiftUI
 //   ┌─ DA MANDARE OGGI ─────────────┐  ┌──────────────── il messaggio (PannelloMessaggio) ────────────────┐
 //   │ ◉ Giulia Rossi       Alleanza │  │ ◉ A: Giulia Rossi · giulia.rossi@example.com   [Perché adesso: …] │
 //   │   Il riepilogo dell'incontro… │  │   Il riepilogo dell'incontro di ieri                              │
-//   │   Incontro di ieri alle 17:30 │  │ [Cordiale·Formale·Breve] [Mail·Messaggi]      ◎ Ruby scrive con …  │
+//   │   Incontro di ieri alle 17:30 │  │ [Cordiale·Formale·Breve] [Mail·Messaggi]      ◎ Vera scrive con …  │
 //   │ QUESTA SETTIMANA              │  │ Oggetto: …                                                        │
 //   │ ◉ Sofia Romano                │  │ Ciao Giulia, …                                                    │
 //   │ ┌───────────────────────────┐ │  │ [cifre] · Le cifre vengono da Prisma                              │
-//   │ │ Ruby scrive, tu spedisci…  │ │  │ [Apri in Mail] [Salva nel dossier] [↻ Riscrivi]  Lo spedisci tu  │
+//   │ │ Vera scrive, tu spedisci…  │ │  │ [Apri in Mail] [Salva nel dossier] [↻ Riscrivi]  Lo spedisci tu  │
 //   └─┴───────────────────────────┴─┘  └───────────────────────────────────────────────────────────────────┘
 //
 // - Le occasioni vengono da MotoreOccasioniMessaggi (in cache nello stato), con in testa quelle chieste dalle altre app
@@ -26,8 +26,8 @@ import SwiftUI
 
 /// Che cosa una scena delle istantanee chiede a Messaggi (Prisma --istantanee e le istantanee di iPhone e iPad):
 /// l'occasione (tipo e cliente), il tono, il canale e chi ha scritto il testo. Il testo è quello del modello fisso di
-/// Prisma con le cifre dei motori: con `ruby` si mostra come scritto da Ruby (lo stato finale di Ruby, senza Qwen), senza
-/// `ruby` con l'avviso «Ruby non è pronta». Vale solo per lo stato della scena (riferimento debole).
+/// Prisma con le cifre dei motori: con `vera` si mostra come scritto da Vera (lo stato finale di Vera, senza Qwen), senza
+/// `vera` con l'avviso «Vera non è pronta». Vale solo per lo stato della scena (riferimento debole).
 final class RichiestaIstantaneaMessaggi {
     nonisolated(unsafe) private static var attuale: RichiestaIstantaneaMessaggi?
 
@@ -36,23 +36,23 @@ final class RichiestaIstantaneaMessaggi {
     let clienteId: String?
     let tono: TonoMessaggio
     let canale: CanaleMessaggio
-    let ruby: Bool
+    let vera: Bool
     let motivoNonPronta: String?
 
     private init(stato: StatoShell, tipo: TipoOccasioneMessaggio?, clienteId: String?, tono: TonoMessaggio,
-                 canale: CanaleMessaggio, ruby: Bool, motivoNonPronta: String?) {
+                 canale: CanaleMessaggio, vera: Bool, motivoNonPronta: String?) {
         self.stato = stato
         self.tipo = tipo
         self.clienteId = clienteId
         self.tono = tono
         self.canale = canale
-        self.ruby = ruby
+        self.vera = vera
         self.motivoNonPronta = motivoNonPronta
     }
 
     static func chiedi(_ s: StatoShell, tipo: TipoOccasioneMessaggio? = nil, cliente: String? = nil, tono: TonoMessaggio = .cordiale,
-                       canale: CanaleMessaggio = .mail, ruby: Bool = true, motivoNonPronta: String? = nil) {
-        attuale = RichiestaIstantaneaMessaggi(stato: s, tipo: tipo, clienteId: cliente, tono: tono, canale: canale, ruby: ruby,
+                       canale: CanaleMessaggio = .mail, vera: Bool = true, motivoNonPronta: String? = nil) {
+        attuale = RichiestaIstantaneaMessaggi(stato: s, tipo: tipo, clienteId: cliente, tono: tono, canale: canale, vera: vera,
                                               motivoNonPronta: motivoNonPronta)
     }
 
@@ -69,19 +69,19 @@ final class RichiestaIstantaneaMessaggi {
 
     /// Il testo della scena: il modello fisso compilato con le cifre dell'occasione.
     func scritto(_ o: OccasioneMessaggio, cliente: Cliente, stato s: StatoShell) -> TestoScrittoMessaggio {
-        Self.testo(o, cliente: cliente, stato: s, tono: tono, canale: canale, ruby: ruby, motivo: motivoNonPronta)
+        Self.testo(o, cliente: cliente, stato: s, tono: tono, canale: canale, vera: vera, motivo: motivoNonPronta)
     }
 
-    /// Il modello fisso di Prisma per un'istantanea: come scritto da Ruby (`ruby`) o con l'avviso «Ruby non è pronta».
-    /// Vale anche per le scene che aprono Messaggi senza chiedere niente (Ruby non è pronta, come nelle istantanee).
+    /// Il modello fisso di Prisma per un'istantanea: come scritto da Vera (`vera`) o con l'avviso «Vera non è pronta».
+    /// Vale anche per le scene che aprono Messaggi senza chiedere niente (Vera non è pronta, come nelle istantanee).
     static func testo(_ o: OccasioneMessaggio, cliente: Cliente, stato s: StatoShell, tono: TonoMessaggio, canale: CanaleMessaggio,
-                      ruby: Bool, motivo: String?) -> TestoScrittoMessaggio {
+                      vera: Bool, motivo: String?) -> TestoScrittoMessaggio {
         let bozza = ModelliMessaggi.testo(o, tono: tono, canale: canale, cliente: cliente, firma: s.firmaMessaggio(o.canale, tono: tono))
-        if ruby {
-            return TestoScrittoMessaggio(oggetto: bozza.oggetto, testo: bozza.completo, autore: .ruby,
+        if vera {
+            return TestoScrittoMessaggio(oggetto: bozza.oggetto, testo: bozza.completo, autore: .vera,
                                          modello: MotoreLocale.modelloPredefinito, avviso: nil)
         }
-        return MessaggiRuby.fisso(bozza, avviso: MessaggiRuby.avvisoNonPronta(motivo))
+        return MessaggiVera.fisso(bozza, avviso: MessaggiVera.avvisoNonPronta(motivo))
     }
 }
 
@@ -140,7 +140,7 @@ struct AppMessaggi: View {
                               primoIndice: cambiato ? 0 : voci,
                               scrittoIstantanea: scatto ? (richiesta?.scritto(o, cliente: c, stato: stato)
                                   ?? RichiestaIstantaneaMessaggi.testo(o, cliente: c, stato: stato, tono: sessione.tono,
-                                                                       canale: sessione.canale, ruby: false,
+                                                                       canale: sessione.canale, vera: false,
                                                                        motivo: stato.disponibilitaLocale.motivo)) : nil)
                 .id(o.id)
                 .opacity(esce ? 0 : 1)
@@ -190,7 +190,7 @@ struct AppMessaggi: View {
 // MARK: - La colonna delle occasioni
 
 /// La colonna `.side`: «Da mandare oggi» (in testa le occasioni chieste dalle altre app e un messaggio riaperto dal
-/// dossier) e «Questa settimana», le voci con cliente, canale, titolo e perché; in fondo la scheda «Ruby scrive, tu
+/// dossier) e «Questa settimana», le voci con cliente, canale, titolo e perché; in fondo la scheda «Vera scrive, tu
 /// spedisci».
 @MainActor
 struct ColonnaOccasioniMessaggi: View {

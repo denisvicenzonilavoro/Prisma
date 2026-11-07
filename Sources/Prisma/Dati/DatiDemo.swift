@@ -640,7 +640,7 @@ enum DatiDemo {
                 // Rendimento complessivo 4,5% = 0,4 × 3,0 + 0,6 × 5,5: lo stesso numero nel modulo e nel dettaglio.
                 // Costo annuo 2,3%: le commissioni del contratto senza il trattenuto, che con le due parti valgono per
                 // la parte in fondi (i costi dei fondi non sono indicati a parte). Così cambiare il costo annuo
-                // cambia i costi di Marco, come si aspetta la prova di Ruby sulle analisi del dossier.
+                // cambia i costi di Marco, come si aspetta la prova di Vera sulle analisi del dossier.
                 $0.rendimentoAtteso = 4.5; $0.costoAnnuo = 2.3; $0.aliquotaFiscale = 24; $0.sri = 3
                 $0.quotaAzionaria = 35
                 // Multiramo a due parti: 40% in gestione separata al 3,0% lordo (trattenuto 1,3, consolidata),

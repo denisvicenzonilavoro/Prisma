@@ -8,7 +8,7 @@ private typealias DT = Misure.Documento.TFR
 // «TFR in azienda o nel fondo» su carta (giro 6, specifica 11 §7.6): il prospetto per il consulente (A4 verticale,
 // 2 pagine) e il report per il cliente (A4 orizzontale, con il tu). Carta bianca e colori fissi della tavolozza:
 // azienda `premio`, fondo `area(.previdenza)`, fondo con i contributi `intermedio`, differenze `positivo`/`negativo`.
-// Non è un `SceltaProspetto` (toccherebbe Ruby): si costruisce da `StatoShell.documentoTFR(report:)`.
+// Non è un `SceltaProspetto` (toccherebbe Vera): si costruisce da `StatoShell.documentoTFR(report:)`.
 
 extension DocumentoStampabile {
     /// Il prospetto (A4 verticale, 2 pagine) o il report per il cliente (A4 orizzontale) del TFR.

@@ -1,14 +1,14 @@
 import Foundation
 
-/// Ruby fa le cose: esegue i comandi riconosciuti nella frase e risponde come un'assistente
+/// Vera fa le cose: esegue i comandi riconosciuti nella frase e risponde come un'assistente
 /// («Va bene, te lo preparo»). Quello che crea (appuntamenti, promemoria, note) si apre o si annulla
 /// dalla risposta. In modalità cliente non esce dal dossier del cliente davanti a te.
 extension StatoShell {
-    /// Se la frase è un comando, Ruby lo esegue e risponde nella conversazione; true se l'ha gestita.
-    func eseguiComandoRuby(_ testo: String, oggi: Date = Date()) -> Bool {
-        // Anche in modalità cliente Ruby riconosce tutti i nomi, per non scambiare un altro cliente con quello davanti a te
+    /// Se la frase è un comando, Vera lo esegue e risponde nella conversazione; true se l'ha gestita.
+    func eseguiComandoVera(_ testo: String, oggi: Date = Date()) -> Bool {
+        // Anche in modalità cliente Vera riconosce tutti i nomi, per non scambiare un altro cliente con quello davanti a te
         let noti = dati.clienti.map { ClienteNoto(id: $0.id, nome: $0.nome) }
-        var comando: ComandoRuby?
+        var comando: ComandoVera?
         if var b = appuntamentoInSospeso {
             appuntamentoInSospeso = nil
             if DateItaliane.cerca(#"^(?:no|niente|lascia (?:stare|perdere)|annulla|non importa|lascia)\b"#, InterpreteComandi.pulisci(testo)) != nil {
@@ -25,7 +25,7 @@ extension StatoShell {
             }
         }
         if comando == nil {
-            comando = InterpreteComandi.interpreta(testo, clienti: noti, attivo: rubyPortafoglio ? nil : clienteAttivoId, oggi: oggi)
+            comando = InterpreteComandi.interpreta(testo, clienti: noti, attivo: veraPortafoglio ? nil : clienteAttivoId, oggi: oggi)
         }
         guard var comando else { return false }
         if inModoCliente {
@@ -45,7 +45,7 @@ extension StatoShell {
     }
 
     /// Il cliente a cui si riferisce un comando (nil se non riguarda un cliente preciso).
-    static func clienteDel(_ c: ComandoRuby) -> String? {
+    static func clienteDel(_ c: ComandoVera) -> String? {
         switch c {
         case .cliente(let id): return id
         case .documento(_, let id): return id
@@ -55,20 +55,20 @@ extension StatoShell {
         }
     }
 
-    /// L'etichetta delle risposte in cui Ruby ha fatto qualcosa (non è un motore che scrive).
+    /// L'etichetta delle risposte in cui Vera ha fatto qualcosa (non è un motore che scrive).
     static let motoreAzioni = "Azione"
 
-    var chiaveConversazione: String { rubyPortafoglio ? RubyPortafoglio.chiave : clienteAttivoId }
+    var chiaveConversazione: String { veraPortafoglio ? VeraPortafoglio.chiave : clienteAttivoId }
 
-    private func rispondiComando(_ domanda: String, _ risposta: String, chiave: String, azione: AzioneRuby? = nil) {
-        aggiungiMessaggio(MessaggioRuby(autore: .utente, testo: domanda), cliente: chiave)
-        domandaRuby = ""
-        var m = MessaggioRuby(autore: .ruby, testo: risposta, motore: Self.motoreAzioni)
+    private func rispondiComando(_ domanda: String, _ risposta: String, chiave: String, azione: AzioneVera? = nil) {
+        aggiungiMessaggio(MessaggioVera(autore: .utente, testo: domanda), cliente: chiave)
+        domandaVera = ""
+        var m = MessaggioVera(autore: .vera, testo: risposta, motore: Self.motoreAzioni)
         m.azione = azione
         aggiungiMessaggio(m, cliente: chiave)
     }
 
-    private func esegui(_ comando: ComandoRuby, oggi: Date) -> (String, AzioneRuby?) {
+    private func esegui(_ comando: ComandoVera, oggi: Date) -> (String, AzioneVera?) {
         switch comando {
         case .chiedi(let domanda):
             return (domanda, nil)
@@ -89,7 +89,7 @@ extension StatoShell {
                 return ("In modalità cliente resto sul dossier di \(clienteAttivo?.nome ?? "questo cliente").", nil)
             }
             clienteAttivoId = id
-            rubyPortafoglio = false
+            veraPortafoglio = false
             return ("Ok, parliamo di \(c.nome). Cosa ti preparo?", nil)
 
         case .documento(let scelta, let clienteId):
@@ -131,7 +131,7 @@ extension StatoShell {
             a.titolo = Self.titoloAppuntamento(b.tipo, cliente: c.nome)
             a.durataMinuti = b.tipo == .telefonata ? 20 : 60
             if b.tipo == .telefonata { a.luogo = "Telefonata" }
-            a.note = "Fissato con Ruby."
+            a.note = "Fissato con Vera."
             let fine = inizio.addingTimeInterval(TimeInterval(a.durataMinuti * 60))
             let sovrapposto = dati.appuntamenti.first {
                 $0.stato == .pianificato && $0.inizio < fine && $0.inizio.addingTimeInterval(TimeInterval($0.durataMinuti * 60)) > inizio
@@ -142,23 +142,23 @@ extension StatoShell {
             if let s = sovrapposto {
                 risposta += " Attenzione: a quell'ora c'è già «\(s.titolo)»\(cliente(s.clienteId).map { " con \($0.nome)" } ?? "")."
             }
-            return (risposta, AzioneRuby(tipo: .appuntamento, id: a.id))
+            return (risposta, AzioneVera(tipo: .appuntamento, id: a.id))
 
         case .attivita(let id, let titolo, let scadenza):
             guard let id, let c = cliente(id) else { return ("Per quale cliente lo segno?", nil) }
             var t = Attivita.nuova(clienteId: id, scadenza: scadenza)
             t.titolo = titolo
-            t.note = "Chiesta a Ruby."
+            t.note = "Chiesta a Vera."
             dati.attivita.append(t)
             return ("Va bene, te lo ricordo \(DateItaliane.descrivi(scadenza, conOra: false, oggi: oggi)): «\(titolo)», tra le attività di \(c.nome).",
-                    AzioneRuby(tipo: .attivita, id: t.id))
+                    AzioneVera(tipo: .attivita, id: t.id))
 
         case .nota(let id, let testo):
             guard let id, let c = cliente(id) else { return ("Per quale cliente prendo nota?", nil) }
             let titolo = String(testo.split(separator: " ").prefix(8).joined(separator: " ").prefix(Nota.limiteTitolo))
             let n = Nota(clienteId: id, titolo: titolo, testo: testo)
             dati.note.append(n)
-            return ("Annotato nelle note di \(c.nome).", AzioneRuby(tipo: .nota, id: n.id))
+            return ("Annotato nelle note di \(c.nome).", AzioneVera(tipo: .nota, id: n.id))
 
         case .agenda(let giorno):
             return (riepilogoAgenda(giorno, oggi: oggi), nil)
@@ -192,7 +192,7 @@ extension StatoShell {
 
     // MARK: - Dalla risposta: apri o annulla
 
-    func apriAzioneRuby(_ a: AzioneRuby) {
+    func apriAzioneVera(_ a: AzioneVera) {
         switch a.tipo {
         case .appuntamento:
             if let x = appuntamento(a.id) { mostraInAgenda(x) }
@@ -205,17 +205,17 @@ extension StatoShell {
         }
     }
 
-    func annullaAzioneRuby(_ a: AzioneRuby, messaggio: String) {
+    func annullaAzioneVera(_ a: AzioneVera, messaggio: String) {
         switch a.tipo {
         case .appuntamento: eliminaAppuntamento(a.id)
         case .attivita: eliminaAttivita(a.id)
         case .nota: dati.note.removeAll { $0.id == a.id }
         }
         let chiave = chiaveConversazione
-        func segna(_ elenco: inout [MessaggioRuby]) {
+        func segna(_ elenco: inout [MessaggioVera]) {
             if let i = elenco.firstIndex(where: { $0.id == messaggio }) { elenco[i].azione?.annullata = true }
         }
-        if dati.impostazioni.ruby.conservaConversazioni {
+        if dati.impostazioni.vera.conservaConversazioni {
             var elenco = dati.conversazioni[chiave] ?? []
             segna(&elenco)
             dati.conversazioni[chiave] = elenco

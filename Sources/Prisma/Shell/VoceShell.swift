@@ -5,10 +5,10 @@ import UIKit
 #endif
 import Foundation
 
-/// Parlare con Ruby: il microfono, la risposta a voce e la conversazione che continua finché non le dici «basta».
+/// Parlare con Vera: il microfono, la risposta a voce e la conversazione che continua finché non le dici «basta».
 /// L'ascolto e la voce lavorano sul Mac; il testo segue la stessa strada delle domande scritte.
 extension StatoShell {
-    /// Il pulsante del microfono (e ⌥⌘E): se Ruby ascolta, chiude la frase e la manda; se parla, la ferma e
+    /// Il pulsante del microfono (e ⌥⌘E): se Vera ascolta, chiude la frase e la manda; se parla, la ferma e
     /// ascolta; altrimenti inizia ad ascoltare. Dal menu, a conversazione a voce aperta, la chiude.
     func alternaAscolto(daMenu: Bool = false) {
         guard persistente, !bloccato, presentazione == nil else { return }
@@ -17,51 +17,51 @@ extension StatoShell {
             mandaDettatura()
             return
         }
-        if ascoltoRuby.ascolta {
-            ascoltoRuby.ferma(invia: true)
+        if ascoltoVera.ascolta {
+            ascoltoVera.ferma(invia: true)
             return
         }
         if daMenu, conversazioneAVoce {
             fermaVoce()
             return
         }
-        if !aperta(.ruby) || appAttiva != .ruby { apri(.ruby) }
+        if !aperta(.vera) || appAttiva != .vera { apri(.vera) }
         ascolta()
     }
 
-    /// Ruby si mette in ascolto (smettendo di parlare).
+    /// Vera si mette in ascolto (smettendo di parlare).
     func ascolta() {
-        guard persistente, !rubyInCorso else { return }
-        voceRuby.zitta()
-        let ruby = dati.impostazioni.ruby
-        let automatico = ruby.riconoscimento == .automatico
-        if ruby.riconoscimento == .dettatura || (automatico && usaDettatura) {
+        guard persistente, !veraInCorso else { return }
+        voceVera.zitta()
+        let vera = dati.impostazioni.vera
+        let automatico = vera.riconoscimento == .automatico
+        if vera.riconoscimento == .dettatura || (automatico && usaDettatura) {
             avviaDettatura()
             return
         }
-        let scelta = automatico ? (ripiegoAscolto ?? SceltaRiconoscimento.catenaAutomatica.first ?? .classico) : ruby.riconoscimento
-        ascoltoRuby.azzera()
-        ascoltoRuby.concluso = { [weak self] frase in self?.fraseDetta(frase) }
-        ascoltoRuby.problema = { [weak self] motivo in self?.problemaAscolto(motivo) }
-        ascoltoRuby.avvia(scelta)
+        let scelta = automatico ? (ripiegoAscolto ?? SceltaRiconoscimento.catenaAutomatica.first ?? .classico) : vera.riconoscimento
+        ascoltoVera.azzera()
+        ascoltoVera.concluso = { [weak self] frase in self?.fraseDetta(frase) }
+        ascoltoVera.problema = { [weak self] motivo in self?.problemaAscolto(motivo) }
+        ascoltoVera.avvia(scelta)
     }
 
-    /// Ruby non ha potuto ascoltare o capire. In automatico prova il riconoscimento successivo
+    /// Vera non ha potuto ascoltare o capire. In automatico prova il riconoscimento successivo
     /// (nuovo → dettatura di sistema → classica → dettatura di macOS); altrimenti lo scrive e lo dice.
     func problemaAscolto(_ motivo: String) {
         conversazioneAVoce = false
         rispostaAVoce = false
-        let ruby = dati.impostazioni.ruby
+        let vera = dati.impostazioni.vera
         DiagnosticaVoce.annota("Problema d'ascolto: \(motivo)")
         let ripiegabile: Bool = {
-            switch ascoltoRuby.fallimento {
+            switch ascoltoVera.fallimento {
             case .nonPartito, .nonPronto, .senzaParole, .errore: return true
             default: return false   // microfono muto o non acceso: un altro riconoscimento non aiuta
             }
         }()
-        if persistente, ruby.riconoscimento == .automatico, ripiegabile, !usaDettatura {
+        if persistente, vera.riconoscimento == .automatico, ripiegabile, !usaDettatura {
             if ripieghiRimasti == nil { ripieghiRimasti = Array(SceltaRiconoscimento.catenaAutomatica.dropFirst()) }
-            let perche = ascoltoRuby.fallimento == .nonPronto ? "Il riconoscimento non è stato pronto in tempo" : "Il riconoscimento non mi ha dato parole"
+            let perche = ascoltoVera.fallimento == .nonPronto ? "Il riconoscimento non è stato pronto in tempo" : "Il riconoscimento non mi ha dato parole"
             if let prossimo = ripieghiRimasti?.first {
                 ripieghiRimasti?.removeFirst()
                 ripiegoAscolto = prossimo
@@ -81,13 +81,13 @@ extension StatoShell {
         avvisoVoce(motivo, titolo: "Non riesco ad ascoltarti", breve: "Scusa, non sono riuscita a capirti. Ti ho scritto il motivo.", poi: nil)
     }
 
-    /// Un avviso della voce, scritto e detto in breve; `poi` parte quando Ruby ha finito di dirlo (subito, se non parla).
+    /// Un avviso della voce, scritto e detto in breve; `poi` parte quando Vera ha finito di dirlo (subito, se non parla).
     func avvisoVoce(_ testo: String, titolo: String, breve: String, poi: (() -> Void)?) {
-        let ruby = dati.impostazioni.ruby
-        aggiungiMessaggio(MessaggioRuby(autore: .ruby, testo: testo, titolo: titolo, motore: "Voce"), cliente: chiaveConversazione, parla: false)
-        if persistente, ruby.risposteAVoce != .mai {
-            voceRuby.finito = poi
-            voceRuby.di(breve, voce: ruby.voce, velocita: ruby.velocitaVoce)
+        let vera = dati.impostazioni.vera
+        aggiungiMessaggio(MessaggioVera(autore: .vera, testo: testo, titolo: titolo, motore: "Voce"), cliente: chiaveConversazione, parla: false)
+        if persistente, vera.risposteAVoce != .mai {
+            voceVera.finito = poi
+            voceVera.di(breve, voce: vera.voce, velocita: vera.velocitaVoce)
         } else {
             poi?()
         }
@@ -98,20 +98,20 @@ extension StatoShell {
         usaDettatura = false
         ripiegoAscolto = nil
         ripieghiRimasti = nil
-        ascoltoRuby.azzera()
+        ascoltoVera.azzera()
     }
 
     // MARK: - Dettatura di macOS
 
-    /// Avvia la dettatura di macOS nel campo di Ruby (la vista mette il campo in primo piano e la accende).
+    /// Avvia la dettatura di macOS nel campo di Vera (la vista mette il campo in primo piano e la accende).
     func avviaDettatura() {
-        guard persistente, !rubyInCorso else { return }
-        ascoltoRuby.azzera()   // via l'errore rosso del riconoscimento di Prisma
-        if !aperta(.ruby) || appAttiva != .ruby { apri(.ruby) }
+        guard persistente, !veraInCorso else { return }
+        ascoltoVera.azzera()   // via l'errore rosso del riconoscimento di Prisma
+        if !aperta(.vera) || appAttiva != .vera { apri(.vera) }
         lavoroDettatura?.cancel()
         dettaturaAttiva = true
         dettaturaHaScritto = false
-        domandaRuby = ""
+        domandaVera = ""
         richiestaDettatura += 1
         DiagnosticaVoce.annota("Dettatura di macOS: avvio (richiesta \(richiestaDettatura))")
         attendiParole()
@@ -121,7 +121,7 @@ extension StatoShell {
     func attendiParole() {
         lavoroDettatura?.cancel()
         let attesa = DispatchWorkItem { [weak self] in
-            guard let self, self.dettaturaAttiva, self.domandaRuby.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+            guard let self, self.dettaturaAttiva, self.domandaVera.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
             DiagnosticaVoce.annota("Dettatura di macOS: nessuna parola in 15 s")
             self.chiudiDettatura()
             self.avvisoVoce("In 15 secondi la dettatura del Mac non ha scritto niente nel mio campo. Se accanto al cursore non è comparso il microfono di macOS, la dettatura non è partita: controlla Impostazioni di Sistema › Tastiera › Dettatura, oppure premi il tasto microfono (fn) con il cursore nel campo. Altrimenti premi di nuovo il microfono e parla.",
@@ -134,7 +134,7 @@ extension StatoShell {
     /// Il campo cambia mentre detti: alla pausa la frase parte da sola; se torna vuoto, riparte l'attesa.
     func dettaturaCambiata() {
         lavoroDettatura?.cancel()
-        guard !domandaRuby.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { attendiParole(); return }
+        guard !domandaVera.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { attendiParole(); return }
         if !dettaturaHaScritto {
             dettaturaHaScritto = true
             DiagnosticaVoce.annota("Dettatura di macOS: prime parole nel campo")
@@ -146,14 +146,14 @@ extension StatoShell {
 
     /// Manda come frase detta quello che la dettatura ha scritto.
     func mandaDettatura() {
-        let frase = domandaRuby.trimmingCharacters(in: .whitespacesAndNewlines)
+        let frase = domandaVera.trimmingCharacters(in: .whitespacesAndNewlines)
         DiagnosticaVoce.annota("Dettatura di macOS: mando \(frase.count) caratteri")
         chiudiDettatura()
         guard !frase.isEmpty else { return }
         fraseDetta(frase)
     }
 
-    /// Spegne la dettatura: il campo perde il fuoco e macOS smette di scrivere (così non trascrive la voce di Ruby).
+    /// Spegne la dettatura: il campo perde il fuoco e macOS smette di scrivere (così non trascrive la voce di Vera).
     func chiudiDettatura() {
         lavoroDettatura?.cancel()
         lavoroDettatura = nil
@@ -173,16 +173,16 @@ extension StatoShell {
         DiagnosticaVoce.annota("Dettatura di macOS: nessun campo di testo pronto")
         chiudiDettatura()
         usaDettatura = false
-        avvisoVoce("La dettatura del Mac non è partita: il mio campo non ha preso il cursore. Clicca nel campo e premi il tasto microfono (fn) della tastiera, oppure scegli un altro riconoscimento in Impostazioni › Parlare con Ruby.",
+        avvisoVoce("La dettatura del Mac non è partita: il mio campo non ha preso il cursore. Clicca nel campo e premi il tasto microfono (fn) della tastiera, oppure scegli un altro riconoscimento in Impostazioni › Parlare con Vera.",
                    titolo: "La dettatura del Mac non è partita", breve: "La dettatura del Mac non è partita. Ti ho scritto cosa fare.", poi: nil)
     }
 
-    /// Ruby chiusa o ridotta: dettatura e ascolto non restano accesi nel vuoto.
+    /// Vera chiusa o ridotta: dettatura e ascolto non restano accesi nel vuoto.
     /// L'orecchio si tocca solo se è già nato (niente microfono creato per spegnerlo).
-    func spegniVoceSeRubySparisce() {
+    func spegniVoceSeVeraSparisce() {
         guard persistente else { return }
         if dettaturaAttiva { chiudiDettatura() }
-        if let ascolto = ascoltoRubySeNato, ascolto.ascolta { ascolto.ferma(invia: false) }
+        if let ascolto = ascoltoVeraSeNato, ascolto.ascolta { ascolto.ferma(invia: false) }
     }
 
     // MARK: - Prove e diagnostica
@@ -211,12 +211,12 @@ extension StatoShell {
     func provaMicrofono() {
         guard persistente, esitoProvaMicrofono != "In prova… parla per tre secondi" else { return }
         esitoProvaMicrofono = "In prova… parla per tre secondi"
-        ascoltoRuby.provaMicrofono { [weak self] in self?.esitoProvaMicrofono = $0 }
+        ascoltoVera.provaMicrofono { [weak self] in self?.esitoProvaMicrofono = $0 }
     }
 
     /// Copia la diagnostica: ambiente, impostazioni, passaggi e prove (niente audio né frasi dette).
     func copiaDiagnosticaVoce() {
-        var testo = DiagnosticaVoce.riepilogo(dati.impostazioni.ruby) + "\n\n" + DiagnosticaVoce.testo
+        var testo = DiagnosticaVoce.riepilogo(dati.impostazioni.vera) + "\n\n" + DiagnosticaVoce.testo
         if let m = esitoProvaMicrofono { testo += "\n\nProva del microfono: " + m }
         if let r = esitoProvaRiconoscimento { testo += "\n\nProva del riconoscimento:\n" + r }
         Appunti.copia(testo)
@@ -225,7 +225,7 @@ extension StatoShell {
 
     // MARK: - Frasi e risposte
 
-    /// Chiude la conversazione a voce: Ruby smette di ascoltare e di parlare.
+    /// Chiude la conversazione a voce: Vera smette di ascoltare e di parlare.
     /// Tocca voce e orecchio solo se sono già nati, e lo stato solo se cambia: bloccare la scrivania
     /// non crea il microfono né ridisegna le app aperte.
     func fermaVoce() {
@@ -233,58 +233,58 @@ extension StatoShell {
         rispostaAVoce = false
         guard persistente else { return }
         if dettaturaAttiva { chiudiDettatura() }
-        ascoltoRubySeNato?.ferma(invia: false)
-        voceRubySeNata?.zitta()
+        ascoltoVeraSeNato?.ferma(invia: false)
+        voceVeraSeNata?.zitta()
     }
 
-    /// Una frase detta a Ruby: diventa una domanda come quelle scritte, con la risposta anche a voce.
+    /// Una frase detta a Vera: diventa una domanda come quelle scritte, con la risposta anche a voce.
     func fraseDetta(_ frase: String) {
-        let ruby = dati.impostazioni.ruby
+        let vera = dati.impostazioni.vera
         DiagnosticaVoce.annota("Frase detta: \(frase.count) caratteri")
-        if CongedoRuby.e(frase) {
+        if CongedoVera.e(frase) {
             conversazioneAVoce = false
             rispostaAVoce = false
-            if persistente, ruby.risposteAVoce != .mai {
-                voceRuby.finito = nil
-                voceRuby.di("Va bene. Sono qui quando ti servo.", voce: ruby.voce, velocita: ruby.velocitaVoce)
+            if persistente, vera.risposteAVoce != .mai {
+                voceVera.finito = nil
+                voceVera.di("Va bene. Sono qui quando ti servo.", voce: vera.voce, velocita: vera.velocitaVoce)
             }
             return
         }
-        rispostaAVoce = ruby.risposteAVoce != .mai
-        conversazioneAVoce = ruby.conversazioneContinua && ruby.risposteAVoce != .mai
-        let partita = rubyPortafoglio ? chiediRubyPortafoglio(frase) : chiediRuby(frase)
-        // Se la domanda non è partita (Ruby era già al lavoro, nessun cliente), niente attesa a vuoto
+        rispostaAVoce = vera.risposteAVoce != .mai
+        conversazioneAVoce = vera.conversazioneContinua && vera.risposteAVoce != .mai
+        let partita = veraPortafoglio ? chiediVeraPortafoglio(frase) : chiediVera(frase)
+        // Se la domanda non è partita (Vera era già al lavoro, nessun cliente), niente attesa a vuoto
         if !partita {
             rispostaAVoce = false
             conversazioneAVoce = false
         }
     }
 
-    /// Dice a voce una risposta di Ruby, se la domanda è arrivata a voce o se le risposte a voce sono sempre attive.
-    /// A conversazione aperta, finita la risposta Ruby torna ad ascoltare.
-    func parlaRisposta(_ m: MessaggioRuby) {
-        // La dettatura del Mac non deve trascrivere la voce di Ruby
+    /// Dice a voce una risposta di Vera, se la domanda è arrivata a voce o se le risposte a voce sono sempre attive.
+    /// A conversazione aperta, finita la risposta Vera torna ad ascoltare.
+    func parlaRisposta(_ m: MessaggioVera) {
+        // La dettatura del Mac non deve trascrivere la voce di Vera
         if dettaturaAttiva { chiudiDettatura() }
-        let ruby = dati.impostazioni.ruby
-        let aVoce = ruby.risposteAVoce == .sempre || (rispostaAVoce && ruby.risposteAVoce != .mai)
+        let vera = dati.impostazioni.vera
+        let aVoce = vera.risposteAVoce == .sempre || (rispostaAVoce && vera.risposteAVoce != .mai)
         rispostaAVoce = false
         guard persistente, aVoce else {
             conversazioneAVoce = false
             return
         }
-        voceRuby.finito = { [weak self] in
+        voceVera.finito = { [weak self] in
             guard let self, self.conversazioneAVoce, !self.bloccato, self.presentazione == nil else { return }
             self.ascolta()
         }
-        voceRuby.di(TestoParlato.da(titolo: m.titolo, testo: m.testo, completo: ruby.leggiTutto), voce: ruby.voce, velocita: ruby.velocitaVoce)
+        voceVera.di(TestoParlato.da(titolo: m.titolo, testo: m.testo, completo: vera.leggiTutto), voce: vera.voce, velocita: vera.velocitaVoce)
     }
 
     /// Fa ascoltare la voce scelta (dalle impostazioni).
     func provaVoce() {
         guard persistente else { return }
         if dettaturaAttiva { chiudiDettatura() }
-        let ruby = dati.impostazioni.ruby
-        voceRuby.finito = nil
-        voceRuby.di("Ciao \(nomeUtente), sono Ruby. Dimmi pure: ti preparo quello che serve.", voce: ruby.voce, velocita: ruby.velocitaVoce)
+        let vera = dati.impostazioni.vera
+        voceVera.finito = nil
+        voceVera.di("Ciao \(nomeUtente), sono Vera. Dimmi pure: ti preparo quello che serve.", voce: vera.voce, velocita: vera.velocitaVoce)
     }
 }

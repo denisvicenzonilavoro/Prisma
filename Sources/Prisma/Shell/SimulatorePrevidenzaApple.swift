@@ -12,7 +12,7 @@ import SwiftUI
 //   ╰────╯   ───────●──────────────   oggi 150 € al mese · 150 € in più
 //            Rendita in più al mese   Capitale a 67 anni   Risparmio fiscale l'anno
 //   Ipotesi: …
-//   [Salva come proposta] [Chiedi a Ruby di spiegarlo]                    [Alleanza|Indipendente] (canale)
+//   [Salva come proposta] [Chiedi a Vera di spiegarlo]                    [Alleanza|Indipendente] (canale)
 //
 // - Le cifre vengono da MotoreSimulatoriAnalisi (stessa proiezione di MotoreAnalisi.previdenza) e dalla
 //   deducibilità di DeducibilitaPrevidenza con l'IRPEF per scaglioni: nessuna formula del template.
@@ -205,9 +205,9 @@ private struct CorpoSimulatorePrevidenzaApple: View {
                 .help(salvabile
                       ? "Crea in Posizioni una proposta di \(Formati.euro(delta)) al mese in più, sul canale scelto"
                       : "Sposta il cursore oltre il versamento di oggi per salvare una proposta")
-            Button("Chiedi a Ruby di spiegarlo", action: chiediRuby)
+            Button("Chiedi a Vera di spiegarlo", action: chiediVera)
                 .buttonStyle(.appleGrande)
-                .disabled(stato.rubyInCorso)
+                .disabled(stato.veraInCorso)
             Spacer(minLength: s.spazioPiede)
             CanaleSimulatoreApple(canale: $canale)
         }
@@ -239,13 +239,13 @@ private struct CorpoSimulatorePrevidenzaApple: View {
         }
     }
 
-    /// Chiude subito il dettaglio, apre Ruby e manda la domanda sulla pensione dopo 0,7 s.
-    private func chiediRuby() {
+    /// Chiude subito il dettaglio, apre Vera e manda la domanda sulla pensione dopo 0,7 s.
+    private func chiediVera() {
         let s = stato
         dettaglio?.chiudi(subito: true)
-        s.apri(.ruby)
-        DispatchQueue.main.asyncAfter(deadline: .now() + Tema.Apple.SimulatoriAnalisi.ritardoDomandaRuby) {
-            s.chiediRuby(SpuntoRuby.pensione.domanda, spunto: .pensione)
+        s.apri(.vera)
+        DispatchQueue.main.asyncAfter(deadline: .now() + Tema.Apple.SimulatoriAnalisi.ritardoDomandaVera) {
+            s.chiediVera(SpuntoVera.pensione.domanda, spunto: .pensione)
         }
     }
 }

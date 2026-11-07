@@ -37,9 +37,9 @@ struct FinestraInterna: View {
         .clipShape(forma)
         .vetro(.finestra(attiva: attiva), forma: forma)
         #if os(macOS)
-        // La finestra in primo piano è quella che Ruby legge mentre pensa e che si illumina quando risponde
+        // La finestra in primo piano è quella che Vera legge mentre pensa e che si illumina quando risponde
         .overlay {
-            if attiva { LetturaRubyFinestra(mini: stato.miniRuby, forma: forma) }
+            if attiva { LetturaVeraFinestra(mini: stato.miniVera, forma: forma) }
         }
         #endif
         .overlay(alignment: .bottomTrailing) {

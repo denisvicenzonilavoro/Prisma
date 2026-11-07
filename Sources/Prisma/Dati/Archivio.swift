@@ -5,7 +5,7 @@ import Foundation
 /// Contenuto della cartella:
 /// - archivio.json: clienti, agenda, posizioni, impostazioni
 /// - Documenti/: documenti dei clienti
-/// - Ruby/: impostazioni e memoria di Ruby (fino al cambio di nome «Eve/»: si sposta da sola, `spostaCartellaVecchia`)
+/// - Vera/: impostazioni e memoria di Vera (fino al cambio di nome «Eve/»: si sposta da sola, `spostaCartellaVecchia`)
 enum Archivio {
     static var supportoApplicazioni: URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -14,17 +14,23 @@ enum Archivio {
     static var cartella: URL { supportoApplicazioni.appendingPathComponent("Prisma", isDirectory: true) }
     static var file: URL { cartella.appendingPathComponent("archivio.json") }
     static var cartellaDocumenti: URL { cartella.appendingPathComponent("Documenti", isDirectory: true) }
-    static var cartellaRuby: URL { cartella.appendingPathComponent("Ruby", isDirectory: true) }
-    /// Compatibilità: il nome della cartella di Ruby negli archivi e nei backup di prima (col vecchio nome).
+    static var cartellaVera: URL { cartella.appendingPathComponent("Vera", isDirectory: true) }
+    /// Compatibilità: il nome della cartella di Vera negli archivi e nei backup di prima del primo cambio di nome.
     static let nomeCartellaVecchia = "Eve"
+    /// Tutti i nomi di prima della cartella di Vera: «Ruby» (fino al 7 novembre 2026) ed «Eve» (fino al 5 novembre).
+    static let nomiCartelleVecchie = ["Ruby", nomeCartellaVecchia]
 
-    /// Sposta la cartella di Ruby col vecchio nome («Eve/») in «Ruby/» dentro `base` (la cartella dell'archivio o
-    /// quella estratta da un backup). Se ci sono già tutte e due, i file della vecchia che mancano nella nuova si
-    /// spostano e la vecchia si toglie solo se resta vuota: nessun file si perde né si sovrascrive.
+    /// Sposta le cartelle di Vera con i nomi di prima («Ruby/», «Eve/») in «Vera/» dentro `base` (la cartella
+    /// dell'archivio o quella estratta da un backup). Se ci sono già tutte e due, i file della vecchia che mancano nella
+    /// nuova si spostano e la vecchia si toglie solo se resta vuota: nessun file si perde né si sovrascrive.
     static func spostaCartellaVecchia(in base: URL) {
+        for nome in nomiCartelleVecchie { spostaCartella(nome, in: base) }
+    }
+
+    private static func spostaCartella(_ nomeVecchio: String, in base: URL) {
         let fm = FileManager.default
-        let vecchia = base.appendingPathComponent(nomeCartellaVecchia, isDirectory: true)
-        let nuova = base.appendingPathComponent("Ruby", isDirectory: true)
+        let vecchia = base.appendingPathComponent(nomeVecchio, isDirectory: true)
+        let nuova = base.appendingPathComponent("Vera", isDirectory: true)
         var cartella: ObjCBool = false
         guard fm.fileExists(atPath: vecchia.path, isDirectory: &cartella), cartella.boolValue else { return }
         guard fm.fileExists(atPath: nuova.path) else {
@@ -46,7 +52,7 @@ enum Archivio {
     static func preparaCartelle() throws {
         let fm = FileManager.default
         spostaCartellaVecchia(in: cartella)
-        for c in [cartella, cartellaDocumenti, cartellaRuby] {
+        for c in [cartella, cartellaDocumenti, cartellaVera] {
             try fm.createDirectory(at: c, withIntermediateDirectories: true)
         }
         #if os(macOS)

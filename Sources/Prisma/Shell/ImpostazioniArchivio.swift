@@ -150,7 +150,7 @@ extension AppImpostazioni {
                 .buttonStyle(StilePulsanteRigaImpostazioni(principale: true, grande: true))
                 .fixedSize()
                 .disabled(stato.backupInCorso)
-                .help("Copia completa di clienti, agenda, posizioni, documenti e impostazioni di Ruby")
+                .help("Copia completa di clienti, agenda, posizioni, documenti e impostazioni di Vera")
         }
         .padding(k.padding)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -172,7 +172,7 @@ extension AppImpostazioni {
         let b = stato.dati.impostazioni.backup
         if let e = b.ultimoErrore, !stato.backupInCorso { return e }
         if b.ultimo == nil && !stato.backupInCorso { return "Il primo backup protegge tutto il lavoro fatto finora." }
-        let contenuto = "Clienti, agenda, posizioni, documenti e impostazioni di Ruby"
+        let contenuto = "Clienti, agenda, posizioni, documenti e impostazioni di Vera"
         return b.cifrato ? contenuto + " · cifrato" : contenuto
     }
 

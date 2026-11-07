@@ -116,7 +116,7 @@ extension StatoShell {
             nuova(app, da: origine)
         }
         if app == .impostazioni { aggiornaElencoBackup() }
-        if app == .ruby || app == .impostazioni { verificaMotoreLocale() }
+        if app == .vera || app == .impostazioni { verificaMotoreLocale() }
     }
 
     // MARK: Il volo dall'icona del dock (template-apple-specifica.md §3.5)
@@ -301,7 +301,7 @@ extension StatoShell {
                 aggiornaCoperte(dopo: m.durataChiusura)
             }
         }
-        if app == .ruby { spegniVoceSeRubySparisce() }
+        if app == .vera { spegniVoceSeVeraSparisce() }
     }
 
     /// La finestra rientra nella sua icona del dock; resta nell'elenco finché il volo non finisce (`rientrano`:
@@ -353,7 +353,7 @@ extension StatoShell {
                 finestre[i].ridotta = true
                 sistema.spente.insert(app)
             }
-            if app == .ruby { spegniVoceSeRubySparisce() }
+            if app == .vera { spegniVoceSeVeraSparisce() }
             return
         }
         _ = conIstantanea
@@ -362,7 +362,7 @@ extension StatoShell {
             // Il campo con il cursore resta nella finestra ridotta: i tasti non devono finirci
             NSApp.keyWindow?.makeFirstResponder(nil)
             #endif
-            if app == .ruby { spegniVoceSeRubySparisce() }
+            if app == .vera { spegniVoceSeVeraSparisce() }
         }
         let calmo = Movimenti.calmo
         #if os(macOS)
@@ -479,7 +479,7 @@ extension StatoShell {
                 fermaVoce()
                 if modoCliente != nil { modoCliente = nil }
                 // Allo sblocco si torna alla scrivania con i widget
-                if sistema.paginaRuby != 0 || sistema.gestoRuby.spostamento != 0 { nascondiRubyScrivania(animato: false) }
+                if sistema.paginaVera != 0 || sistema.gestoVera.spostamento != 0 { nascondiVeraScrivania(animato: false) }
                 sistema.bloccatoStabile = true
             }
             return
@@ -490,8 +490,8 @@ extension StatoShell {
             guard let self else { return }
             if self.modoCliente != nil { self.modoCliente = nil }
             // Sotto la schermata: allo sblocco si torna alla scrivania con i widget
-            if self.bloccato, self.sistema.paginaRuby != 0 || self.sistema.gestoRuby.spostamento != 0 {
-                self.nascondiRubyScrivania(animato: false)
+            if self.bloccato, self.sistema.paginaVera != 0 || self.sistema.gestoVera.spostamento != 0 {
+                self.nascondiVeraScrivania(animato: false)
             }
             if self.sistema.giroBlocco == giro && self.bloccato { self.sistema.bloccatoStabile = true }
         }
@@ -523,8 +523,8 @@ extension StatoShell {
 
     /// Riduce tutte le finestre e mostra la scrivania: una ogni 50 ms, dalla finestra in alto (tema showDesk).
     func mostraScrivania() {
-        // «Scrivania» nel dock riporta sempre ai widget, anche dalla Ruby della scrivania (RubyScrivania.swift)
-        if sistema.paginaRuby != 0 || sistema.gestoRuby.spostamento != 0 { nascondiRubyScrivania() }
+        // «Scrivania» nel dock riporta sempre ai widget, anche dalla Vera della scrivania (VeraScrivania.swift)
+        if sistema.paginaVera != 0 || sistema.gestoVera.spostamento != 0 { nascondiVeraScrivania() }
         let davanti = finestreVisibili.reversed().map(\.app)
         guard !davanti.isEmpty else { return }
         guard persistente else {

@@ -9,8 +9,8 @@ import SwiftUI
 // schede ancora da mandare al Mac. Non si salva: le sessioni con pezzi e schede stanno in `DatiPrisma.sessioniCopilota`
 // (Shell/StatoCopilota.swift), dove entrano solo passando dalla guardia del consenso.
 //
-// L'ascolto usa AscoltoRuby e TrascrizioneRuby, solo sul dispositivo (`requiresOnDeviceRecognition` e i riconoscimenti di
-// macOS 26): AscoltoRuby sente una frase alla volta, quindi qui riparte da solo dopo ogni frase finché il consulente non
+// L'ascolto usa AscoltoVera e TrascrizioneVera, solo sul dispositivo (`requiresOnDeviceRecognition` e i riconoscimenti di
+// macOS 26): AscoltoVera sente una frase alla volta, quindi qui riparte da solo dopo ogni frase finché il consulente non
 // preme «Termina». L'audio non si salva e non lascia mai il dispositivo; sul ponte cifrato verso il Mac viaggia solo il
 // testo. Si ferma da solo con il blocco di Prisma (anche il Mac a riposo) e quando la schermata scompare.
 
@@ -38,7 +38,7 @@ enum TestiCopilota {
     static let vuotoTrascrizione = "Avvia il copilota: le parole compaiono qui, solo come testo."
     static let ascoltoSenzaParole = "Parla pure: le parole compaiono qui."
     static let vuotoSchede = "Le schede compaiono qui, mentre Prisma capisce."
-    static let rubyNonPronta = "Ruby non è pronta: Prisma riconosce con le sue regole."
+    static let veraNonPronta = "Vera non è pronta: Prisma riconosce con le sue regole."
     static let comeFunziona = "Mentre parlate, Prisma riconosce obiettivi, polizze, timori ed eventi. Alla fine conferma tu cosa entra nel dossier."
     static let nessunIncontro = "Nessun incontro in agenda oggi."
     static let senzaAppuntamento = "Ascolta un incontro senza appuntamento"
@@ -50,7 +50,7 @@ enum TestiCopilota {
     static let nienteNelDossier = "Niente da aggiungere."
     static let nienteRiconosciuto = "Prisma non ha riconosciuto obiettivi, polizze, timori o eventi."
     static let nessunaAttivita = "Nessuna attività."
-    static let firmaRuby = "Scritto da Ruby con Qwen, con le cifre delle schede"
+    static let firmaVera = "Scritto da Vera con Qwen, con le cifre delle schede"
     static let firmaPrisma = "Composto da Prisma dalle schede"
     static let conservaTrascrizione = "Conserva la trascrizione"
 
@@ -108,12 +108,12 @@ enum TestiCopilota {
     }
 }
 
-/// I permessi del microfono e del riconoscimento per il copilota: sul Mac quelli di Ruby; sull'iPad si chiedono qui (Ruby
+/// I permessi del microfono e del riconoscimento per il copilota: sul Mac quelli di Vera; sull'iPad si chiedono qui (Vera
 /// sull'iPad non ascolta ancora) e si prepara la sessione audio per la sola registrazione.
 enum PermessiCopilota {
     static func chiedi(_ esito: @escaping (String?) -> Void) {
         #if os(macOS)
-        AscoltoRuby.permessi(esito)
+        AscoltoVera.permessi(esito)
         #elseif os(iOS)
         SFSpeechRecognizer.requestAuthorization { parlato in
             guard parlato == .authorized else {
@@ -193,10 +193,10 @@ final class StatoCopilotaIncontro: ObservableObject {
     @Published var conservaTrascrizione = false
     /// Le voci del verbale da confermare (nil = tutte le proposte).
     @Published var scelteVerbale: Set<String>?
-    /// Il verbale riformulato da Ruby con Qwen (le cifre controllate), per la sessione `verbaleRubyPer`.
-    @Published private(set) var verbaleRuby: String?
-    @Published private(set) var verbaleRubyInCorso = false
-    private var verbaleRubyPer: String?
+    /// Il verbale riformulato da Vera con Qwen (le cifre controllate), per la sessione `verbaleVeraPer`.
+    @Published private(set) var verbaleVera: String?
+    @Published private(set) var verbaleVeraInCorso = false
+    private var verbaleVeraPer: String?
     /// La riga da cui nasce la scheda toccata.
     @Published var indicata: String?
     /// iPad: le schede non ancora arrivate al Mac e perché.
@@ -208,7 +208,7 @@ final class StatoCopilotaIncontro: ObservableObject {
     /// Il dettaglio del verbale (già aperto nelle istantanee che lo mostrano).
     private(set) var dettaglio = StatoDettaglio()
 
-    private var ascolto: AscoltoRuby?
+    private var ascolto: AscoltoVera?
     private var abbonamenti = Set<AnyCancellable>()
     private var bloccoOsservato = false
     private var scelta = SceltaRiconoscimento.classico
@@ -258,8 +258,8 @@ final class StatoCopilotaIncontro: ObservableObject {
         osservaBlocco(stato)
         if sid != sessioneId {
             secondiPrima = 0
-            verbaleRuby = nil
-            verbaleRubyPer = nil
+            verbaleVera = nil
+            verbaleVeraPer = nil
             scelteVerbale = nil
         }
         sessioneId = sid
@@ -269,7 +269,7 @@ final class StatoCopilotaIncontro: ObservableObject {
         silenziDiFila = 0
         erroriDiFila = 0
         ultimaInArrivo = false
-        let r = stato.dati.impostazioni.ruby.riconoscimento
+        let r = stato.dati.impostazioni.vera.riconoscimento
         // La dettatura di macOS scrive in un campo: qui vale l'automatico
         ripieghi = (r == .automatico || r == .dettatura) ? SceltaRiconoscimento.catenaAutomatica : [r]
         scelta = ripieghi.isEmpty ? .classico : ripieghi.removeFirst()
@@ -319,9 +319,9 @@ final class StatoCopilotaIncontro: ObservableObject {
         livelli = []
         rigaInCorso = ""
         scelteVerbale = nil
-        verbaleRuby = nil
-        verbaleRubyPer = nil
-        verbaleRubyInCorso = false
+        verbaleVera = nil
+        verbaleVeraPer = nil
+        verbaleVeraInCorso = false
         conservaTrascrizione = false
         indicata = nil
     }
@@ -332,9 +332,9 @@ final class StatoCopilotaIncontro: ObservableObject {
         livelli = []
     }
 
-    private func motore() -> AscoltoRuby {
+    private func motore() -> AscoltoVera {
         if let a = ascolto { return a }
-        let a = AscoltoRuby(permessi: PermessiCopilota.chiedi)
+        let a = AscoltoVera(permessi: PermessiCopilota.chiedi)
         // Un incontro ha lunghi silenzi: la frase si chiude alla pausa, ma senza voce si aspetta di più prima di ripartire
         a.tempi.attesaMassima = 45
         a.$stato
@@ -379,7 +379,7 @@ final class StatoCopilotaIncontro: ObservableObject {
         }
     }
 
-    private func cambio(_ s: AscoltoRuby.Stato) {
+    private func cambio(_ s: AscoltoVera.Stato) {
         // La prima volta che il microfono si accende parte il contatore; le riprese fra una frase e l'altra no
         if s == .ascolta, fase == .prepara {
             fase = .ascolto
@@ -494,34 +494,34 @@ final class StatoCopilotaIncontro: ObservableObject {
         scelteVerbale = nil
     }
 
-    /// Ruby riformula i punti del verbale con Qwen (se è pronto); si tiene solo un testo con le stesse cifre.
-    func scriviVerbaleConRuby(_ stato: StatoShell, sessione s: SessioneCopilota, punti: [String], cliente: String) {
+    /// Vera riformula i punti del verbale con Qwen (se è pronto); si tiene solo un testo con le stesse cifre.
+    func scriviVerbaleConVera(_ stato: StatoShell, sessione s: SessioneCopilota, punti: [String], cliente: String) {
         // Una richiesta per sessione e numero di punti: una frase arrivata dopo «Termina» ne fa scrivere un'altra
         let chiave = "\(s.id)#\(punti.count)"
-        guard scena == nil, stato.disponibilitaLocale.pronto, !punti.isEmpty, !verbaleRubyInCorso,
-              verbaleRubyPer != chiave else { return }
-        verbaleRubyPer = chiave
-        verbaleRuby = nil
-        verbaleRubyInCorso = true
+        guard scena == nil, stato.disponibilitaLocale.pronto, !punti.isEmpty, !verbaleVeraInCorso,
+              verbaleVeraPer != chiave else { return }
+        verbaleVeraPer = chiave
+        verbaleVera = nil
+        verbaleVeraInCorso = true
         let bozza = punti.joined(separator: "\n")
         let messaggi = [MessaggioModello(ruolo: .sistema, testo: IstruzioniVerbaleCopilota.testo),
                         MessaggioModello(ruolo: .utente, testo: "Cliente: \(cliente)\n\nPUNTI DEL VERBALE\n" + bozza)]
         var o = OpzioniModello()
         o.temperatura = 0.2
         o.pensa = false
-        o.contesto = NucleoRuby.finestra
+        o.contesto = NucleoVera.finestra
         o.massimoToken = 400
-        o.restaInMemoria = stato.dati.impostazioni.ruby.restaInMemoria
+        o.restaInMemoria = stato.dati.impostazioni.vera.restaInMemoria
         // Una costante per il Task: una `var` catturata in un codice che gira in concorrenza non compila
         let opzioni = o
         let motore = stato.qwen
         Task { @MainActor [weak self] in
             let r = try? await motore.scrivi(messaggi, opzioni: opzioni)
-            guard let self, self.verbaleRubyPer == chiave else { return }
-            self.verbaleRubyInCorso = false
+            guard let self, self.verbaleVeraPer == chiave else { return }
+            self.verbaleVeraInCorso = false
             let t = (r?.testo ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             // Una cifra che i punti non dicono: si tiene il verbale di Prisma
-            if !t.isEmpty, CommentoRuby.numeriConservati(bozza: bozza, testo: t) { self.verbaleRuby = t }
+            if !t.isEmpty, CommentoVera.numeriConservati(bozza: bozza, testo: t) { self.verbaleVera = t }
         }
     }
 
@@ -553,13 +553,13 @@ final class StatoCopilotaIncontro: ObservableObject {
             return
         }
         invioInCorso = true
-        let daMandare = Array(schede.prefix(PonteRuby.massimoSchede))
-        let righe = Array(pezzi.suffix(PonteRuby.massimoPezzi))
+        let daMandare = Array(schede.prefix(PonteVera.massimoSchede))
+        let righe = Array(pezzi.suffix(PonteVera.massimoPezzi))
         let messaggio = SchedeCopilotaPonte(clienteId: s.clienteId, dispositivo: TestiCopilota.nomeDispositivo,
                                             pezzi: righe, schede: daMandare)
-        let ruby = stato.dati.impostazioni.ruby
+        let vera = stato.dati.impostazioni.vera
         Task { @MainActor [weak self] in
-            let r = await PonteRuby.manda(.schedeCopilota(messaggio), ruby: ruby)
+            let r = await PonteVera.manda(.schedeCopilota(messaggio), vera: vera)
             guard let self else { return }
             self.invioInCorso = false
             if r.accettato {
@@ -567,7 +567,7 @@ final class StatoCopilotaIncontro: ObservableObject {
                 for p in righe { self.pezziInviati.insert(p.id) }
                 self.motivoPonte = nil
             } else {
-                self.motivoPonte = r.motivo ?? PonteRuby.macNonTrovato
+                self.motivoPonte = r.motivo ?? PonteVera.macNonTrovato
             }
             let ora = stato.sessioneCopilota(sid)?.schede ?? []
             self.inAttesaPonte = ora.filter { $0.stato != .scartata && self.schedeInviate[$0.id] != StatoCopilotaIncontro.firma($0) }.count
@@ -595,10 +595,10 @@ final class StatoCopilotaIncontro: ObservableObject {
     }
 }
 
-/// Le istruzioni del verbale riformulato da Ruby (Ruby/Istruzioni/verbale-copilota.md, con un ripiego minimo).
+/// Le istruzioni del verbale riformulato da Vera (Vera/Istruzioni/verbale-copilota.md, con un ripiego minimo).
 enum IstruzioniVerbaleCopilota {
     static var testo: String {
-        IstruzioniRuby.testo("verbale-copilota")
+        IstruzioniVera.testo("verbale-copilota")
             ?? "Riscrivi in italiano, in poche frasi chiare e cordiali, i punti del verbale di un incontro fra un consulente finanziario e il suo cliente. Usa solo le cifre dei punti, tutte e così come sono: niente cifre nuove, niente conti, niente consigli. Rispondi solo con il testo del verbale."
     }
 }

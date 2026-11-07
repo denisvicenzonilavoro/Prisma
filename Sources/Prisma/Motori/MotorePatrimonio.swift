@@ -120,7 +120,7 @@ enum MotorePatrimonio {
         }
     }
 
-    /// Le righe per Ruby e per le schede.
+    /// Le righe per Vera e per le schede.
     static func sintesi(_ p: PatrimonioNelTempo) -> [String] {
         var righe = ["Patrimonio netto oggi \(Formati.euro(p.nettoOggi)); tra 10 anni circa \(Formati.euro(p.valore(10))), tra \(p.anni) anni circa \(Formati.euro(p.valore(p.anni))) (\(Formati.euro(p.reale(p.valore(p.anni), anno: p.anni))) in euro di oggi), con i versamenti attuali di \(Formati.euro(p.versamentiAnnui)) l'anno."]
         if let d = p.differenzaProposte {

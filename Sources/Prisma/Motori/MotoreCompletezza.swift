@@ -217,7 +217,7 @@ enum MotoreCompletezza {
     static let ancoraComposizione = "dettaglio-composizione"
 
     /// Dalla fonte del cliente (riesame): l'analisi conta solo se salvata.
-    static func calcola(_ f: FonteRuby) -> CompletezzaCliente {
+    static func calcola(_ f: FonteVera) -> CompletezzaCliente {
         calcola(cliente: f.cliente, posizioni: f.posizioni, analisi: f.analisiSalvata ? f.analisi : nil, oggi: f.oggi)
     }
 

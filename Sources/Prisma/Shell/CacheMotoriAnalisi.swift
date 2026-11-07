@@ -3,7 +3,7 @@ import Foundation
 /// Le analisi più pesanti di Obiettivi, Analisi 360 e del prospetto dell'obiettivo, calcolate una volta e
 /// ricordate: la vista si ridisegna spesso, gli scenari con le probabilità e il fisco delle polizze no. Si
 /// ricalcolano solo quando cambiano l'obiettivo, le posizioni, il cliente o il giorno. Si usano solo dalle
-/// schermate e dai documenti (mai dai calcoli che legge Ruby).
+/// schermate e dai documenti (mai dai calcoli che legge Vera).
 enum CacheMotoriAnalisi {
     /// Scenari con le probabilità già calcolati, per chiave dell'obiettivo e delle sue posizioni.
     nonisolated(unsafe) private static var memoriaScenari: [Int: EsitoMonteCarlo] = [:]

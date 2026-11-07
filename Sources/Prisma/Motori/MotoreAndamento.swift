@@ -164,7 +164,7 @@ enum MotoreAndamento {
         return "\(n) \(cifra == "1,0" ? "punto" : "punti")"
     }
 
-    /// Una frase sull'andamento, per il dettaglio e per Ruby.
+    /// Una frase sull'andamento, per il dettaglio e per Vera.
     static func sintesi(_ a: AndamentoPosizione, nome: String) -> String {
         let quando = "dal \(Formati.dataEstesa.string(from: a.dal)) al \(Formati.dataEstesa.string(from: a.al))"
         let rendimento = a.rendimentoAnnuo.map { "\(CifreDoc.variazione($0)) all'anno" }

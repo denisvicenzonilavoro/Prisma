@@ -2,7 +2,7 @@ import Foundation
 
 /// L'incidenza dei costi come nel KID di ogni posizione del dossier Posizioni (la coerenza con il profilo
 /// sta in DerivatiDati, per versione dei dati). Si ricalcola solo quando cambiano le posizioni, il catalogo
-/// o il giorno: la vista si ridisegna spesso. Si usa solo dalle schermate (mai dai calcoli che legge Ruby).
+/// o il giorno: la vista si ridisegna spesso. Si usa solo dalle schermate (mai dai calcoli che legge Vera).
 enum CacheMotoriPosizioni {
     nonisolated(unsafe) private static var ultimeIncidenze: (chiave: Int, valore: [String: IncidenzaCostiKID])?
 

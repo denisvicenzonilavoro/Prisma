@@ -19,16 +19,16 @@ enum ProvaBackup {
             analisi.confermate = [.protezione]
             analisi.aggiornataIl = Date(timeIntervalSinceReferenceDate: Date().timeIntervalSinceReferenceDate.rounded(.down))
             originale.analisi[originale.clienti.first?.id ?? ""] = analisi
-            // E una conversazione con Ruby, con le sue impostazioni
+            // E una conversazione con Vera, con le sue impostazioni
             originale.conversazioni[originale.clienti.first?.id ?? ""] = [
-                MessaggioRuby(autore: .utente, testo: "Fammi un riepilogo del cliente"),
-                MessaggioRuby(autore: .ruby, testo: "Il quadro…", titolo: "Il quadro", motore: "Sintesi dai dati"),
+                MessaggioVera(autore: .utente, testo: "Fammi un riepilogo del cliente"),
+                MessaggioVera(autore: .vera, testo: "Il quadro…", titolo: "Il quadro", motore: "Sintesi dai dati"),
             ]
             // E il commento del consulente in un report
             originale.commenti = [CommentoReport(id: "checkUp·giulia", clienteId: "giulia", testo: "Gentile Giulia, …", bozzaDi: "Sintesi dai dati",
                                                  aggiornatoIl: Date(timeIntervalSinceReferenceDate: Date().timeIntervalSinceReferenceDate.rounded(.down)))]
             // E uno spazio di lavoro salvato
-            originale.spazi = [SpazioLavoro(nome: "Revisione annuale", finestre: [.sinistra(.posizioni), .destra(.ruby)])]
+            originale.spazi = [SpazioLavoro(nome: "Revisione annuale", finestre: [.sinistra(.posizioni), .destra(.vera)])]
             // «Luce» (versione 27): uno spazio con le quattro app nuove (ProvaBackupLuce.swift)
             originale.spazi.append(spazioLuceDiProva())
             // E una ricerca salvata del pannello ⌘K (nelle impostazioni)
@@ -402,7 +402,7 @@ enum ProvaBackup {
                   letto.attivita.first?.note == "", letto.attivita.first?.appuntamentoId == nil,
                   letto.simulazioni.isEmpty, letto.analisi.isEmpty, letto.conversazioni.isEmpty,
                   letto.clienti.first?.bisogni == ProfiloBisogni(), letto.incontri.isEmpty, letto.prodotti.isEmpty, letto.obiettivi.isEmpty, letto.documenti.isEmpty, letto.valutazioni.isEmpty, letto.commenti.isEmpty, letto.spazi.isEmpty, letto.note.isEmpty,
-                  letto.impostazioni.ruby == ImpostazioniRuby(), letto.impostazioni.nomeUtente == "Denis",
+                  letto.impostazioni.vera == ImpostazioniVera(), letto.impostazioni.nomeUtente == "Denis",
                   letto.impostazioni.aspetto == .automatico, letto.impostazioni.sfondoAnimato,
                   letto.impostazioni.pioggia == .leggera, letto.impostazioni.ricercheSalvate.isEmpty,
                   letto.impostazioni.orari == OrariLavoro(), letto.impostazioni.giorniSeguitoProposte == Impostazioni.giorniSeguitoPredefiniti,
@@ -519,12 +519,12 @@ enum ProvaBackup {
                 print("ERRORE: \(errore)")
                 return 1
             }
-            // Archivio e backup di prima del cambio di nome (Eve → Ruby) si aprono interi (ProvaBackupNomeVecchio.swift)
+            // Archivio e backup di prima del cambio di nome (Eve → Vera) si aprono interi (ProvaBackupNomeVecchio.swift)
             if let errore = try provaNomeVecchio(radice: radice) {
                 print("ERRORE: \(errore)")
                 return 1
             }
-            print("OK: backup, rotazione (\(elenco.count) copie), ripristino, backup protetti da password, salvataggio in background, lettore zip e archivi col vecchio nome di Ruby verificati")
+            print("OK: backup, rotazione (\(elenco.count) copie), ripristino, backup protetti da password, salvataggio in background, lettore zip e archivi col vecchio nome di Vera verificati")
             return 0
         } catch {
             print("ERRORE: \(error.localizedDescription)")

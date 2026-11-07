@@ -166,19 +166,19 @@ enum Gradienti {
         .init(color: Colori.Incontri.cartaLato, location: 0), .init(color: Colori.Incontri.carta, location: 0.02),
     ], startPoint: .leading, endPoint: .trailing)
 
-    // Ruby
-    static let linoRuby = LinearGradient.verticale(Colori.Ruby.linoAlto, Colori.Ruby.linoBasso)
-    static let testataRuby = LinearGradient.verticale(Colori.Ruby.testataAlto, Colori.Ruby.testataBasso)
-    static let avvisoRuby = LinearGradient.verticale(Colori.Ruby.avvisoAlto, Colori.Ruby.avvisoBasso)
-    static let conversazioneRuby = LinearGradient.verticale(Colori.Ruby.conversazioneAlto, Colori.Ruby.conversazioneBasso)
-    static let barraRuby = LinearGradient.verticale(Colori.Ruby.barraAlto, Colori.Ruby.barraBasso)
-    static let displayRuby = LinearGradient.verticale(Colori.Ruby.displayAlto, Colori.Ruby.displayBasso)
-    static let microfonoAcceso = LinearGradient.lucido(Colori.Ruby.microfonoAcceso, salto: (0.49, 0.50))
-    static let nuvolaRuby = LinearGradient.verticale(Colori.Ruby.nuvolaRubyAlto, Colori.Ruby.nuvolaRubyBasso)
-    static let nuvolaTua = LinearGradient.lucido(Colori.Ruby.nuvolaTuoi, salto: (0.48, 0.49))
-    static let azioneRuby = LinearGradient.verticale(Colori.Ruby.azioneAlto, Colori.Ruby.azioneBasso)
-    static let postit = LinearGradient.verticale(Colori.Ruby.postitAlto, Colori.Ruby.postitBasso)
-    static let quadroRuby = LinearGradient.verticale(Colori.Ruby.quadroAlto, Colori.Ruby.quadroBasso)
+    // Vera
+    static let linoVera = LinearGradient.verticale(Colori.Vera.linoAlto, Colori.Vera.linoBasso)
+    static let testataVera = LinearGradient.verticale(Colori.Vera.testataAlto, Colori.Vera.testataBasso)
+    static let avvisoVera = LinearGradient.verticale(Colori.Vera.avvisoAlto, Colori.Vera.avvisoBasso)
+    static let conversazioneVera = LinearGradient.verticale(Colori.Vera.conversazioneAlto, Colori.Vera.conversazioneBasso)
+    static let barraVera = LinearGradient.verticale(Colori.Vera.barraAlto, Colori.Vera.barraBasso)
+    static let displayVera = LinearGradient.verticale(Colori.Vera.displayAlto, Colori.Vera.displayBasso)
+    static let microfonoAcceso = LinearGradient.lucido(Colori.Vera.microfonoAcceso, salto: (0.49, 0.50))
+    static let nuvolaVera = LinearGradient.verticale(Colori.Vera.nuvolaVeraAlto, Colori.Vera.nuvolaVeraBasso)
+    static let nuvolaTua = LinearGradient.lucido(Colori.Vera.nuvolaTuoi, salto: (0.48, 0.49))
+    static let azioneVera = LinearGradient.verticale(Colori.Vera.azioneAlto, Colori.Vera.azioneBasso)
+    static let postit = LinearGradient.verticale(Colori.Vera.postitAlto, Colori.Vera.postitBasso)
+    static let quadroVera = LinearGradient.verticale(Colori.Vera.quadroAlto, Colori.Vera.quadroBasso)
 
     // Strumenti di analisi
     static let console = LinearGradient.verticale(Colori.Strumenti.consoleAlto, Colori.Strumenti.consoleBasso)

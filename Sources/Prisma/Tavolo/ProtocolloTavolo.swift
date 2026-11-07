@@ -10,8 +10,8 @@ import UniformTypeIdentifiers
 // Qui il protocollo, comune al Mac (TavoloMac.swift) e all'iPad (`ClienteTavolo`, senza viste):
 // - rete locale e basta: il Mac ascolta (NWListener) e si annuncia con Bonjour su «_prisma-tavolo._tcp»;
 //   l'iPad lo trova (o si collega a un indirizzo dato) e apre una connessione TCP che resta aperta;
-// - la stessa cifratura e lo stesso codice di abbinamento del ponte di Ruby (Ruby/PonteRuby.swift): ChaChaPoly con la
-//   chiave HKDF ricavata dal codice, con un sale proprio del tavolo (una busta di Ruby non vale qui, e viceversa);
+// - la stessa cifratura e lo stesso codice di abbinamento del ponte di Vera (Vera/PonteVera.swift): ChaChaPoly con la
+//   chiave HKDF ricavata dal codice, con un sale proprio del tavolo (una busta di Vera non vale qui, e viceversa);
 // - ogni messaggio è una cornice: 4 byte di lunghezza (big endian) e poi la scatola ChaChaPoly del JSON;
 // - ogni messaggio porta la versione, la sessione (scelta dall'iPad nel saluto), un numero che cresce e l'ora:
 //   un messaggio di un'altra sessione, ripetuto o vecchio chiude la connessione;
@@ -23,11 +23,11 @@ import UniformTypeIdentifiers
 enum ProtocolloTavolo {
     /// Il servizio Bonjour del Mac (anche in Info.plist: NSBonjourServices).
     static let servizio = "_prisma-tavolo._tcp"
-    /// La porta del tavolo (quella di Ruby è 47620).
+    /// La porta del tavolo (quella di Vera è 47620).
     static let porta: UInt16 = 47_621
     /// La versione dei messaggi: un contenuto che questa versione non conosce si ignora, non chiude il tavolo.
     static let versione = 1
-    /// Il sale della chiave del tavolo (il codice è lo stesso del ponte di Ruby).
+    /// Il sale della chiave del tavolo (il codice è lo stesso del ponte di Vera).
     static let sale = "Prisma · Tavolo · 1"
     /// Il messaggio più grande (un prospetto intero in PNG sta ben sotto).
     static let massimoMessaggio = 24 * 1_024 * 1_024
@@ -35,8 +35,8 @@ enum ProtocolloTavolo {
     static let massimoTratto = 2 * 1_024 * 1_024
     /// Le pagine al massimo in un solo messaggio (un prospetto lungo si manda a pagine).
     static let massimePagine = 24
-    /// Un messaggio più vecchio (o più nuovo) di così non vale, come le buste del ponte di Ruby.
-    static let tolleranzaOrologio = PonteRuby.tolleranzaOrologio
+    /// Un messaggio più vecchio (o più nuovo) di così non vale, come le buste del ponte di Vera.
+    static let tolleranzaOrologio = PonteVera.tolleranzaOrologio
     /// La scritta esatta della presa visione, sull'iPad e nel PDF.
     static let testoPresaVisione = "Presa visione del documento: non costituisce firma contrattuale"
 
@@ -52,17 +52,17 @@ enum ProtocolloTavolo {
         static let normali = Tempi()
     }
 
-    /// La chiave del tavolo dal codice di abbinamento (lo stesso di Impostazioni › Ruby), nil se il codice non vale.
+    /// La chiave del tavolo dal codice di abbinamento (lo stesso di Impostazioni › Vera), nil se il codice non vale.
     static func chiave(_ codice: String) -> SymmetricKey? {
-        PonteRuby.chiave(codice, sale: sale)
+        PonteVera.chiave(codice, sale: sale)
     }
 
     /// Una sessione nuova (la sceglie l'iPad a ogni collegamento).
     static func nuovaSessione() -> String { UUID().uuidString }
 
-    /// La cornice del messaggio: lunghezza su 4 byte e scatola cifrata con le funzioni del ponte di Ruby.
+    /// La cornice del messaggio: lunghezza su 4 byte e scatola cifrata con le funzioni del ponte di Vera.
     static func cornice(_ m: MessaggioTavolo, chiave k: SymmetricKey) throws -> Data {
-        let sigillato = try PonteRuby.sigilla(JSONEncoder().encode(m), k)
+        let sigillato = try PonteVera.sigilla(JSONEncoder().encode(m), k)
         var dati = withUnsafeBytes(of: UInt32(sigillato.count).bigEndian) { Data($0) }
         dati.append(sigillato)
         return dati
@@ -70,7 +70,7 @@ enum ProtocolloTavolo {
 
     /// Il messaggio in chiaro (JSON) da una scatola, nil con un'altra chiave o se è guastato.
     static func apri(_ sigillato: Data, chiave k: SymmetricKey) -> (messaggio: MessaggioTavolo, chiaro: Data)? {
-        guard let chiaro = PonteRuby.apri(sigillato, k),
+        guard let chiaro = PonteVera.apri(sigillato, k),
               let m = try? JSONDecoder().decode(MessaggioTavolo.self, from: chiaro) else { return nil }
         return (m, chiaro)
     }
@@ -593,7 +593,7 @@ final class CanaleTavolo: @unchecked Sendable {
 /// `collegamento` e `schermo` si leggono da qualsiasi thread.
 ///
 ///     let tavolo = ClienteTavolo(nome: "iPad di Denis")
-///     tavolo.cerca(codice: impostazioni.ruby.ponte.codice)          // Bonjour, oppure:
+///     tavolo.cerca(codice: impostazioni.vera.ponte.codice)          // Bonjour, oppure:
 ///     tavolo.collega(codice: codice, host: "192.168.1.20", porta: ProtocolloTavolo.porta)
 ///     tavolo.mandaValore(350, cursore: cursore.id)
 ///     tavolo.mandaPresaVisione(richiesta: richiesta.id, tratto: png)

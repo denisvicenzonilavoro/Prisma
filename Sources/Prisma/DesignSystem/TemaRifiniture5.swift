@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - Gettoni delle rifiniture grafiche (gruppo 5: Agenda, Attività, Ruby, Documenti, Ricerca, Incontri)
+// MARK: - Gettoni delle rifiniture grafiche (gruppo 5: Agenda, Attività, Vera, Documenti, Ricerca, Incontri)
 // Valori nuovi per le correzioni d'impaginazione che non hanno un file di gettoni del gruppo (il modulo dell'esito
 // usa `Misure.Seguito`, che sta in TemaSeguito.swift) e la sfumatura comune in fondo agli elenchi che scorrono.
 

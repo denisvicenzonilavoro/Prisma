@@ -1,7 +1,7 @@
 import SwiftUI
 
 // Proprietario: G7 (guida). La «Guida di Prisma» per chi non sa nulla di finanza né di app: l'introduzione
-// in 5 pagine, «Come si usa» di ogni app, le parole (Glossario.swift). Testi in Swift, non in Ruby/: non sono
+// in 5 pagine, «Come si usa» di ogni app, le parole (Glossario.swift). Testi in Swift, non in Vera/: non sono
 // istruzioni per il modello. Tutto locale, niente rete.
 
 /// Che cosa mostra il pannello «Guida di Prisma».
@@ -139,7 +139,7 @@ enum GuidaTesti {
                 parole: [])
         case .note:
             return AiutoApp(
-                aCosaServe: "Il taccuino: appunti liberi, collegati a una persona se vuoi. Ruby li legge per rispondere meglio.",
+                aCosaServe: "Il taccuino: appunti liberi, collegati a una persona se vuoi. Vera li legge per rispondere meglio.",
                 inBreve: "Gli appunti, collegati ai clienti",
                 passi: ["«Nuova nota».",
                         "Scrivi, e scegli il cliente se riguarda lui.",
@@ -171,10 +171,10 @@ enum GuidaTesti {
                 parole: [.canale, .inEssere])
         case .messaggi:
             return AiutoApp(
-                aCosaServe: "Prisma trova le occasioni per scrivere ai clienti (il riepilogo di un incontro, una scadenza, un compleanno, un consenso da rinnovare, un riesame) e Ruby prepara il messaggio con le cifre esatte di Prisma, sul Mac. Lo controlli, lo correggi e lo spedisci tu: niente parte da solo.",
-                inBreve: "Ruby prepara i messaggi, tu li spedisci",
+                aCosaServe: "Prisma trova le occasioni per scrivere ai clienti (il riepilogo di un incontro, una scadenza, un compleanno, un consenso da rinnovare, un riesame) e Vera prepara il messaggio con le cifre esatte di Prisma, sul Mac. Lo controlli, lo correggi e lo spedisci tu: niente parte da solo.",
+                inBreve: "Vera prepara i messaggi, tu li spedisci",
                 passi: ["A sinistra scegli un'occasione: «Da mandare oggi» o «Questa settimana», con il perché adesso.",
-                        "Scegli il tono (Cordiale, Formale, Breve) e il canale (Mail o Messaggi): Ruby scrive, tu correggi il testo se serve.",
+                        "Scegli il tono (Cordiale, Formale, Breve) e il canale (Mail o Messaggi): Vera scrive, tu correggi il testo se serve.",
                         "«Apri in Mail» o «Apri in Messaggi» lo apre già compilato; «Salva nel dossier» lo tiene nel dossier del cliente."],
                 parole: [.canale])
         case .mercato:
@@ -185,9 +185,9 @@ enum GuidaTesti {
                         "Scegli le soglie degli avvisi: «Chi è toccato oggi» mostra i clienti coinvolti e prepara il messaggio.",
                         "Cerca un ISIN per vedere la quota e in quanti portafogli si trova."],
                 parole: [.canale])
-        case .ruby:
+        case .vera:
             return AiutoApp(
-                aCosaServe: "Ruby risponde alle tue domande sui clienti, le posizioni e i documenti. Le cifre le calcola Prisma, Ruby le spiega. Funziona sul Mac, senza internet.",
+                aCosaServe: "Vera risponde alle tue domande sui clienti, le posizioni e i documenti. Le cifre le calcola Prisma, Vera le spiega. Funziona sul Mac, senza internet.",
                 inBreve: "L'assistente: domande in chat o a voce",
                 passi: ["Scegli il cliente di cui parlare.",
                         "Scrivi la domanda (o premi il microfono).",
@@ -290,10 +290,10 @@ struct PaginaIntroduzione {
             app: [.analisi360, .clienti]),
         PaginaIntroduzione(
             titolo: "Spiegarlo in modo chiaro",
-            testo: "Da **Prospetti e report** esce il documento in PDF: il *prospetto* dettagliato per te, il *report* essenziale da lasciare al cliente. **Ruby** risponde alle tue domande e spiega i documenti, con le cifre di Prisma.",
+            testo: "Da **Prospetti e report** esce il documento in PDF: il *prospetto* dettagliato per te, il *report* essenziale da lasciare al cliente. **Vera** risponde alle tue domande e spiega i documenti, con le cifre di Prisma.",
             punti: ["«Come si usa», in alto in ogni finestra: a cosa serve l'app e come si usa, in 3 passi.",
                     "Menu Aiuto › Guida di Prisma (⌘?) per rivedere tutto, quando vuoi."],
-            app: [.presentazioni, .ruby], conPercorso: true),
+            app: [.presentazioni, .vera], conPercorso: true),
     ]
 }
 

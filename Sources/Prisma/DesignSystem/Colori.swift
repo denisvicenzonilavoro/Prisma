@@ -121,12 +121,12 @@ enum Colori {
         static let dataMeseAlto = Color.clear
         static let dataMeseBasso = Color.clear
         static let dataMeseBordo = Color.clear
-        static let rubyBordo = TC.bordoChip
-        static let rubyTitolo = TC.inchiostro
-        static let rubyTesto = TC.inchiostroSecondario
-        static let rubyFreccia = TC.inchiostroTerziario
-        static let rubyIncisione = Color.clear
-        static let rubyIconaOmbra = neroAlfa(0.2)
+        static let veraBordo = TC.bordoChip
+        static let veraTitolo = TC.inchiostro
+        static let veraTesto = TC.inchiostroSecondario
+        static let veraFreccia = TC.inchiostroTerziario
+        static let veraIncisione = Color.clear
+        static let veraIconaOmbra = neroAlfa(0.2)
         // Ex pelle e cucitura: nel tema non si disegnano più
         static let pelleAlto = Color.clear
         static let pelleMezzo = Color.clear
@@ -415,9 +415,9 @@ enum Colori {
         static let promemoriaTitolo = TC.inchiostro
         static let promemoriaCerchio = TC.pozzettoScuro
         static let promemoriaSpunta = TC.accento
-        // Ruby
+        // Vera
         static let onda = [Color(hex: "#b9a6ff"), Color(hex: "#6f5bd6")]
-        static let rubyAlone = Color(hex: "#8a73ff")
+        static let veraAlone = Color(hex: "#8a73ff")
     }
 
     /// Ex lino grafite: ora il riempimento dei pannelli di vetro.
@@ -759,8 +759,8 @@ enum Colori {
         static let chipTesto = TC.inchiostroSecondario
     }
 
-    /// App Ruby: schede e bolle di vetro, le tue in accento (si cambia qui, non in AppRuby.swift).
-    enum Ruby {
+    /// App Vera: schede e bolle di vetro, le tue in accento (si cambia qui, non in AppVera.swift).
+    enum Vera {
         static let linoAlto = Color.clear
         static let linoBasso = Color.clear
         static let testataAlto = TC.laterale
@@ -788,10 +788,10 @@ enum Colori {
         static let displayBasso = TC.pozzetto
         static let displayBordo = TC.separatore
         static let displayTesto = TC.inchiostroSecondario
-        static let nuvolaRubyAlto = TC.scheda
-        static let nuvolaRubyBasso = TC.scheda
-        static let nuvolaRubyBordo = TC.bordoScheda
-        static let nuvolaRubyTesto = TC.inchiostro
+        static let nuvolaVeraAlto = TC.scheda
+        static let nuvolaVeraBasso = TC.scheda
+        static let nuvolaVeraBordo = TC.bordoScheda
+        static let nuvolaVeraTesto = TC.inchiostro
         static let nuvolaTuoi: [Color] = [TC.accento, TC.accento, TC.accento, TC.accento]
         static let nuvolaTuaBordo = Color.clear
         static let nuvolaTuaTesto = Color.white
@@ -817,7 +817,7 @@ enum Colori {
         static let quadroAlto = TC.scheda
         static let quadroBasso = TC.scheda
         static let quadroTesto = TC.inchiostroSecondario
-        // Voce: il microfono acceso è rosso pieno, la spia rossa dice che Ruby ascolta
+        // Voce: il microfono acceso è rosso pieno, la spia rossa dice che Vera ascolta
         static let microfonoAcceso: [Color] = [TC.rosso, TC.rosso, TC.rosso, TC.rosso]
         static let microfonoBordo = Color(hex: "#D70015")
         static let microfonoIncisione = Color.clear

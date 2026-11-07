@@ -240,7 +240,7 @@ struct GiornaleOvunque: Codable, Equatable {
     }
 }
 
-/// L'istantanea scritta dal Mac: l'archivio (senza documenti, conversazioni di Ruby e trascrizioni) con la generazione e
+/// L'istantanea scritta dal Mac: l'archivio (senza documenti, conversazioni di Vera e trascrizioni) con la generazione e
 /// la ricevuta «visto fino a» di ogni dispositivo.
 struct IstantaneaOvunque: Codable {
     static let formatoAttuale = 1

@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Impostazioni: le pagine Agenda e lavoro, Promemoria e occasioni, Conformità, PDF (in Proposte e PDF), Ruby e
-/// la voce di Ruby (in Strumenti, chiusa). Sottotitoli di poche parole; il testo lungo in `aiuto` (.help).
+/// Impostazioni: le pagine Agenda e lavoro, Promemoria e occasioni, Conformità, PDF (in Proposte e PDF), Vera e
+/// la voce di Vera (in Strumenti, chiusa). Sottotitoli di poche parole; il testo lungo in `aiuto` (.help).
 extension AppImpostazioni {
 
     // MARK: Agenda e lavoro
@@ -281,27 +281,27 @@ extension AppImpostazioni {
         }
     }
 
-    // MARK: Ruby
+    // MARK: Vera
 
     #if os(iOS)
-    /// Su iPhone e iPad Ruby usa Qwen del Mac abbinato, in Wi‑Fi (PonteRuby): lo stato del collegamento e il codice.
-    var paginaRuby: some View {
-        let ponte = stato.dati.impostazioni.ruby.ponte
+    /// Su iPhone e iPad Vera usa Qwen del Mac abbinato, in Wi‑Fi (PonteVera): lo stato del collegamento e il codice.
+    var paginaVera: some View {
+        let ponte = stato.dati.impostazioni.vera.ponte
         let pronta = stato.disponibilitaLocale.pronto
         return VStack(alignment: .leading, spacing: M.spazioGruppi) {
             GruppoImpostazioni {
                 RigaImpostazione(titolo: "Qwen sul Mac",
                                  sottotitolo: pronta ? stato.qwen.descrizione : (stato.disponibilitaLocale.motivo ?? "Non collegata"),
                                  stato: Pillola(testo: pronta ? "Collegata" : "Non collegata", tono: pronta ? .ok : .attenzione),
-                                 aiuto: "Ruby usa Qwen del tuo Mac: Prisma aperto sul Mac, «iPhone e iPad» attivo in Impostazioni › Ruby, stessa rete Wi‑Fi") {
+                                 aiuto: "Vera usa Qwen del tuo Mac: Prisma aperto sul Mac, «iPhone e iPad» attivo in Impostazioni › Vera, stessa rete Wi‑Fi") {
                     Button { stato.verificaMotoreLocale() } label: { Label("Verifica", systemImage: "arrow.clockwise") }
                         .buttonStyle(StilePulsanteRigaImpostazioni())
                 }
                 RigaImpostazione(titolo: "Codice del Mac",
-                                 sottotitolo: ponte.abbinato ? "Abbinato" : "Da Impostazioni › Ruby sul Mac",
-                                 aiuto: ponte.abbinato ? "Lo trovi sul Mac in Impostazioni › Ruby (arriva anche con il backup)"
-                                                       : "Scrivi il codice che compare sul Mac in Impostazioni › Ruby › iPhone e iPad") {
-                    TextField("ABCD-EFGH-JKLM", text: $stato.dati.impostazioni.ruby.ponte.codice)
+                                 sottotitolo: ponte.abbinato ? "Abbinato" : "Da Impostazioni › Vera sul Mac",
+                                 aiuto: ponte.abbinato ? "Lo trovi sul Mac in Impostazioni › Vera (arriva anche con il backup)"
+                                                       : "Scrivi il codice che compare sul Mac in Impostazioni › Vera › iPhone e iPad") {
+                    TextField("ABCD-EFGH-JKLM", text: $stato.dati.impostazioni.vera.ponte.codice)
                         .campoTesto()
                         .textInputAutocapitalization(.characters)
                         .autocorrectionDisabled()
@@ -309,54 +309,54 @@ extension AppImpostazioni {
                         .onSubmit { stato.verificaMotoreLocale() }
                 }
                 RigaImpostazione(titolo: "Ragionamento", sottotitolo: "Sulle domande difficili",
-                                 aiuto: "Automatico: Ruby ragiona sulle domande difficili o quando le dici «pensaci bene». Risponde più piano") {
-                    MenuTendina(selezione: $stato.dati.impostazioni.ruby.ragionamento,
+                                 aiuto: "Automatico: Vera ragiona sulle domande difficili o quando le dici «pensaci bene». Risponde più piano") {
+                    MenuTendina(selezione: $stato.dati.impostazioni.vera.ragionamento,
                                 opzioni: SceltaRagionamento.allCases.map { ($0, $0.nome) }, larghezza: M.menuMedio)
                 }
                 RigaImpostazione(titolo: "Conserva le conversazioni", sottotitolo: "Nel dossier, su questo dispositivo", ultima: true) {
-                    interruttore($stato.dati.impostazioni.ruby.conservaConversazioni)
+                    interruttore($stato.dati.impostazioni.vera.conservaConversazioni)
                 }
             }
             // Solo iPad: il tavolo con il Mac, con lo stesso codice (TavoloiPad.swift)
             GruppoTavoloiPad()
-            NotaImpostazioni("Ruby spiega e racconta; le cifre le calcola Prisma. Mai internet.")
+            NotaImpostazioni("Vera spiega e racconta; le cifre le calcola Prisma. Mai internet.")
         }
     }
     #else
     /// Come nel template (§4.6, PIE i07): «Motore» con lo stato reale di Qwen sul Mac (Ollama o un server compatibile
-    /// OpenAI, solo indirizzi locali), «iPhone e iPad» (il ponte cifrato) e la scorciatoia della mini Ruby; poi come
-    /// lavora Ruby (modello, ragionamento, avvio, conversazioni) e, chiuse, fornitore e indirizzo in «Avanzate».
-    var paginaRuby: some View {
-        let ruby = stato.dati.impostazioni.ruby
+    /// OpenAI, solo indirizzi locali), «iPhone e iPad» (il ponte cifrato) e la scorciatoia della mini Vera; poi come
+    /// lavora Vera (modello, ragionamento, avvio, conversazioni) e, chiuse, fornitore e indirizzo in «Avanzate».
+    var paginaVera: some View {
+        let vera = stato.dati.impostazioni.vera
         let pronta = stato.disponibilitaLocale.pronto
-        let modello: String = ruby.modello.isEmpty ? MotoreLocale.modelloPredefinito : ruby.modello
-        let motore: String = "\(stato.qwen.nome) · \(modello) con \(ruby.fornitore.nome), solo indirizzi locali."
+        let modello: String = vera.modello.isEmpty ? MotoreLocale.modelloPredefinito : vera.modello
+        let motore: String = "\(stato.qwen.nome) · \(modello) con \(vera.fornitore.nome), solo indirizzi locali."
         return VStack(alignment: .leading, spacing: M.spazioGruppi) {
             GruppoImpostazioni {
                 RigaImpostazione(titolo: "Motore",
                                  sottotitolo: motore,
                                  stato: Pillola(testo: pronta ? "Pronto" : "Non pronto", tono: pronta ? .ok : .attenzione),
                                  aiuto: pronta ? nil : stato.disponibilitaLocale.motivo,
-                                 avvertenza: pronta ? nil : "Serve l'app gratuita Ollama con \(MotoreLocale.modelloPredefinito) (circa 3,5 GB mentre risponde). Senza Qwen Ruby non risponde.") {
+                                 avvertenza: pronta ? nil : "Serve l'app gratuita Ollama con \(MotoreLocale.modelloPredefinito) (circa 3,5 GB mentre risponde). Senza Qwen Vera non risponde.") {
                     Button { stato.verificaMotoreLocale() } label: { Label("Verifica", systemImage: "arrow.clockwise") }
                         .buttonStyle(StilePulsanteRigaImpostazioni())
                         .fixedSize()
                 }
                 .cascataImpostazioni(1)
-                RigaImpostazione(titolo: "iPhone e iPad", sottotitolo: "Usano Ruby del Mac attraverso la rete di casa, cifrata. Mai internet.",
+                RigaImpostazione(titolo: "iPhone e iPad", sottotitolo: "Usano Vera del Mac attraverso la rete di casa, cifrata. Mai internet.",
                                  aiuto: "iPhone e iPad usano Qwen di questo Mac attraverso la rete di casa o dello studio, cifrato con un codice") {
-                    interruttore(Binding(get: { ruby.ponte.condividi }, set: { attivo in
-                        if attivo, !stato.dati.impostazioni.ruby.ponte.abbinato {
-                            stato.dati.impostazioni.ruby.ponte.codice = PonteRuby.nuovoCodice()
+                    interruttore(Binding(get: { vera.ponte.condividi }, set: { attivo in
+                        if attivo, !stato.dati.impostazioni.vera.ponte.abbinato {
+                            stato.dati.impostazioni.vera.ponte.codice = PonteVera.nuovoCodice()
                         }
-                        stato.dati.impostazioni.ruby.ponte.condividi = attivo
+                        stato.dati.impostazioni.vera.ponte.condividi = attivo
                     }))
                 }
                 .cascataImpostazioni(2)
-                if ruby.ponte.condividi {
-                    RigaImpostazione(titolo: "Codice \(ruby.ponte.codice)", sottotitolo: "Da scrivere su iPhone e iPad.",
-                                     aiuto: "Scrivilo in Prisma su iPhone e iPad (Impostazioni › Ruby), oppure apri lì un backup di questo Mac. Stessa rete Wi‑Fi, tutto cifrato") {
-                        Button { stato.dati.impostazioni.ruby.ponte.codice = PonteRuby.nuovoCodice() } label: {
+                if vera.ponte.condividi {
+                    RigaImpostazione(titolo: "Codice \(vera.ponte.codice)", sottotitolo: "Da scrivere su iPhone e iPad.",
+                                     aiuto: "Scrivilo in Prisma su iPhone e iPad (Impostazioni › Vera), oppure apri lì un backup di questo Mac. Stessa rete Wi‑Fi, tutto cifrato") {
+                        Button { stato.dati.impostazioni.vera.ponte.codice = PonteVera.nuovoCodice() } label: {
                             Label("Nuovo codice", systemImage: "key")
                         }
                         .buttonStyle(StilePulsanteRigaImpostazioni())
@@ -365,45 +365,45 @@ extension AppImpostazioni {
                     }
                     .cascataImpostazioni(3)
                 }
-                RigaImpostazione(titolo: "Scorciatoia", sottotitolo: "Apri la mini Ruby; tienila premuta per parlare.", ultima: true) {
+                RigaImpostazione(titolo: "Scorciatoia", sottotitolo: "Apri la mini Vera; tienila premuta per parlare.", ultima: true) {
                     TastiScorciatoia(tasti: ["⌥", "Spazio"])
                 }
                 .cascataImpostazioni(4)
             }
             GruppoImpostazioni(titolo: "Come lavora") {
                 RigaImpostazione(titolo: "Modello", sottotitolo: "Il nome in Ollama.") {
-                    TextField(ruby.fornitore == .ollama ? MotoreLocale.modelloPredefinito : "nome del modello", text: $stato.dati.impostazioni.ruby.modello)
+                    TextField(vera.fornitore == .ollama ? MotoreLocale.modelloPredefinito : "nome del modello", text: $stato.dati.impostazioni.vera.modello)
                         .campoTesto()
                         .frame(width: M.campoModello)
                         .onSubmit { stato.verificaMotoreLocale() }
                 }
                 RigaImpostazione(titolo: "Ragionamento", sottotitolo: "Sulle domande difficili.",
-                                 aiuto: "Automatico: Ruby ragiona sulle domande difficili o quando le dici «pensaci bene». Risponde più piano") {
-                    MenuTendina(selezione: $stato.dati.impostazioni.ruby.ragionamento,
+                                 aiuto: "Automatico: Vera ragiona sulle domande difficili o quando le dici «pensaci bene». Risponde più piano") {
+                    MenuTendina(selezione: $stato.dati.impostazioni.vera.ragionamento,
                                 opzioni: SceltaRagionamento.allCases.map { ($0, $0.nome) }, larghezza: M.menuMedio)
                 }
                 RigaImpostazione(titolo: "Pronta all'avvio", sottotitolo: "La prima risposta non aspetta.",
-                                 aiuto: "All'apertura di Prisma Ruby avvia Ollama e carica il modello: la prima risposta non aspetta") {
-                    interruttore($stato.dati.impostazioni.ruby.prontaAllAvvio)
+                                 aiuto: "All'apertura di Prisma Vera avvia Ollama e carica il modello: la prima risposta non aspetta") {
+                    interruttore($stato.dati.impostazioni.vera.prontaAllAvvio)
                 }
                 RigaImpostazione(titolo: "Conserva le conversazioni", sottotitolo: "Nel dossier, sul Mac e nei backup.", ultima: true) {
-                    interruttore($stato.dati.impostazioni.ruby.conservaConversazioni)
+                    interruttore($stato.dati.impostazioni.vera.conservaConversazioni)
                 }
             }
             .cascataImpostazioni(5)
             GruppoImpostazioni(titolo: "Avanzate") {
-                rigaApri("Fornitore e indirizzo", "\(ruby.fornitore.nome) · solo indirizzi del Mac",
-                         aperta: $mostraAvanzateRuby, ultima: !mostraAvanzateRuby)
-                if mostraAvanzateRuby {
+                rigaApri("Fornitore e indirizzo", "\(vera.fornitore.nome) · solo indirizzi del Mac",
+                         aperta: $mostraAvanzateVera, ultima: !mostraAvanzateVera)
+                if mostraAvanzateVera {
                     RigaImpostazione(titolo: "Fornitore del modello", sottotitolo: "Ollama o compatibile OpenAI",
                                      aiuto: "Ollama, oppure un server compatibile OpenAI (MLX, llama.cpp, LM Studio). Solo indirizzi del Mac (127.0.0.1)") {
-                        MenuTendina(selezione: $stato.dati.impostazioni.ruby.fornitore,
+                        MenuTendina(selezione: $stato.dati.impostazioni.vera.fornitore,
                                     opzioni: TipoFornitore.allCases.map { ($0, $0.nome) }, larghezza: M.menuMedio)
-                            .onChange(of: stato.dati.impostazioni.ruby.fornitore) { _ in stato.verificaMotoreLocale() }
+                            .onChange(of: stato.dati.impostazioni.vera.fornitore) { _ in stato.verificaMotoreLocale() }
                     }
                     RigaImpostazione(titolo: "Indirizzo", sottotitolo: "Solo 127.0.0.1", ultima: true) {
-                        TextField(ruby.fornitore == .ollama ? FornitoreOllama.indirizzoPredefinito : FornitoreCompatibileOpenAI.indirizzoPredefinito,
-                                  text: $stato.dati.impostazioni.ruby.indirizzo)
+                        TextField(vera.fornitore == .ollama ? FornitoreOllama.indirizzoPredefinito : FornitoreCompatibileOpenAI.indirizzoPredefinito,
+                                  text: $stato.dati.impostazioni.vera.indirizzo)
                             .campoTesto()
                             .frame(width: M.campoIndirizzo)
                             .onSubmit { stato.verificaMotoreLocale() }
@@ -411,20 +411,20 @@ extension AppImpostazioni {
                 }
             }
             .cascataImpostazioni(6)
-            NotaImpostazioni("Ruby spiega e racconta; le cifre le calcola Prisma. I dati non lasciano il Mac.")
+            NotaImpostazioni("Vera spiega e racconta; le cifre le calcola Prisma. I dati non lasciano il Mac.")
                 .cascataImpostazioni(7)
         }
     }
 
-    /// Strumenti › Ruby: le stesse domande di prova a ogni modello, risposte e tempi affiancati.
+    /// Strumenti › Vera: le stesse domande di prova a ogni modello, risposte e tempi affiancati.
     var rigaConfrontaModelli: some View {
         RigaImpostazione(titolo: "Confronta i modelli",
                          sottotitolo: stato.avanzamentoConfronto ?? "Le stesse domande a ogni modello",
-                         icona: IconaVetroImpostazioni(.app(.ruby)),
+                         icona: IconaVetroImpostazioni(.app(.vera)),
                          aiuto: "Le stesse domande di prova (sui clienti fittizi) a ogni modello, uno alla volta: risposte e tempi affiancati in una pagina",
                          ultima: true) {
             HStack(spacing: 8) {
-                TextField(ConfrontoModelli.predefiniti, text: $stato.dati.impostazioni.ruby.modelliConfronto)
+                TextField(ConfrontoModelli.predefiniti, text: $stato.dati.impostazioni.vera.modelliConfronto)
                     .campoTesto()
                     .frame(width: M.campoConfronto)
                 Button { stato.confrontaModelli() } label: { Label("Confronta", systemImage: "square.split.2x1") }
@@ -435,41 +435,41 @@ extension AppImpostazioni {
     }
     #endif
 
-    // MARK: Voce di Ruby (in Strumenti, chiusa: per ora Ruby non parla)
+    // MARK: Voce di Vera (in Strumenti, chiusa: per ora Vera non parla)
 
-    /// La voce di Ruby e la conversazione a voce: tutto sul Mac (sintesi e dettatura di macOS). Il codice resta
-    /// pronto per quando Ruby avrà la voce.
+    /// La voce di Vera e la conversazione a voce: tutto sul Mac (sintesi e dettatura di macOS). Il codice resta
+    /// pronto per quando Vera avrà la voce.
     @ViewBuilder var righeVoce: some View {
-        let voci = VoceRuby.vociItaliane()
-        let scelta: String = VoceRuby.voce(stato.dati.impostazioni.ruby.voce).map { "Ora " + VoceRuby.nome($0) } ?? "La migliore voce italiana installata"
-        RigaImpostazione(titolo: "Voce di Ruby", sottotitolo: scelta,
-                         aiuto: VoceRuby.soloVociStandard
+        let voci = VoceVera.vociItaliane()
+        let scelta: String = VoceVera.voce(stato.dati.impostazioni.vera.voce).map { "Ora " + VoceVera.nome($0) } ?? "La migliore voce italiana installata"
+        RigaImpostazione(titolo: "Voce di Vera", sottotitolo: scelta,
+                         aiuto: VoceVera.soloVociStandard
                             ? "Per una voce più naturale scarica «Federica (Premium)» in Impostazioni di Sistema › Accessibilità › Contenuti letti ad alta voce › Voce di sistema › Gestisci voci › Italiano"
                             : nil) {
             HStack(spacing: 8) {
-                MenuTendina(selezione: $stato.dati.impostazioni.ruby.voce,
-                            opzioni: [(String?.none, "Automatica")] + voci.map { (String?.some($0.identifier), VoceRuby.nome($0)) },
+                MenuTendina(selezione: $stato.dati.impostazioni.vera.voce,
+                            opzioni: [(String?.none, "Automatica")] + voci.map { (String?.some($0.identifier), VoceVera.nome($0)) },
                             larghezza: M.menuLargo)
                 Button { stato.provaVoce() } label: { Label("Ascolta", systemImage: "speaker.wave.2") }
                     .buttonStyle(StilePulsanteRigaImpostazioni())
             }
         }
         RigaImpostazione(titolo: "Velocità della voce", sottotitolo: "Al centro il ritmo naturale") {
-            Slider(value: $stato.dati.impostazioni.ruby.velocitaVoce, in: 0.7...1.4)
+            Slider(value: $stato.dati.impostazioni.vera.velocitaVoce, in: 0.7...1.4)
                 .frame(width: M.menuMedio)
         }
         RigaImpostazione(titolo: "Risposte a voce", sottotitolo: "Il testo resta scritto") {
-            MenuTendina(selezione: $stato.dati.impostazioni.ruby.risposteAVoce,
-                        opzioni: ImpostazioniRuby.RisposteAVoce.allCases.map { ($0, $0.nome) }, larghezza: M.menuMedio)
+            MenuTendina(selezione: $stato.dati.impostazioni.vera.risposteAVoce,
+                        opzioni: ImpostazioniVera.RisposteAVoce.allCases.map { ($0, $0.nome) }, larghezza: M.menuMedio)
         }
         RigaImpostazione(titolo: "Leggi tutta la risposta", sottotitolo: "Altrimenti solo l'inizio") {
-            interruttore($stato.dati.impostazioni.ruby.leggiTutto)
+            interruttore($stato.dati.impostazioni.vera.leggiTutto)
         }
         RigaImpostazione(titolo: "Riconoscimento della voce", sottotitolo: "Sempre sul Mac",
                          aiuto: "Automatico: quello nuovo di Apple su macOS 26 e successivi, altrimenti la dettatura classica") {
-            MenuTendina(selezione: $stato.dati.impostazioni.ruby.riconoscimento,
+            MenuTendina(selezione: $stato.dati.impostazioni.vera.riconoscimento,
                         opzioni: SceltaRiconoscimento.allCases.map { ($0, $0.nome) }, larghezza: M.menuLargo)
-            .onChange(of: stato.dati.impostazioni.ruby.riconoscimento) { _ in stato.azzeraRipieghiAscolto() }
+            .onChange(of: stato.dati.impostazioni.vera.riconoscimento) { _ in stato.azzeraRipieghiAscolto() }
         }
         RigaImpostazione(titolo: "Prova il microfono",
                          sottotitolo: stato.esitoProvaMicrofono ?? "Tre secondi di ascolto",
@@ -480,7 +480,7 @@ extension AppImpostazioni {
         }
         RigaImpostazione(titolo: "Prova il riconoscimento",
                          sottotitolo: stato.esitoProvaRiconoscimento ?? "Senza microfono, con ogni riconoscimento",
-                         aiuto: "Ruby dice una frase e la fa capire a ogni riconoscimento (nuovo, dettatura di sistema, classico). Poi «Copia» per mandare il risultato") {
+                         aiuto: "Vera dice una frase e la fa capire a ogni riconoscimento (nuovo, dettatura di sistema, classico). Poi «Copia» per mandare il risultato") {
             HStack(spacing: 8) {
                 Button { stato.provaRiconoscimento() } label: { Label("Prova", systemImage: "waveform") }
                     .buttonStyle(StilePulsanteRigaImpostazioni())
@@ -489,14 +489,14 @@ extension AppImpostazioni {
                     .buttonStyle(StilePulsanteRigaImpostazioni())
             }
         }
-        RigaImpostazione(titolo: "Mostra i passaggi dell'ascolto", sottotitolo: "Sotto il campo di Ruby",
-                         aiuto: "Sotto il campo di Ruby compare l'ultimo passaggio (preparazione, microfono, risultati, voce, dettatura): si vede dove si ferma") {
-            interruttore($stato.dati.impostazioni.ruby.mostraPassaggiVoce)
+        RigaImpostazione(titolo: "Mostra i passaggi dell'ascolto", sottotitolo: "Sotto il campo di Vera",
+                         aiuto: "Sotto il campo di Vera compare l'ultimo passaggio (preparazione, microfono, risultati, voce, dettatura): si vede dove si ferma") {
+            interruttore($stato.dati.impostazioni.vera.mostraPassaggiVoce)
         }
-        RigaImpostazione(titolo: "Conversazione continua", sottotitolo: "Ruby torna ad ascoltarti",
-                         aiuto: "Dopo aver risposto Ruby torna ad ascoltarti, finché non le dici «basta così» · ⌥⌘E per parlarle",
+        RigaImpostazione(titolo: "Conversazione continua", sottotitolo: "Vera torna ad ascoltarti",
+                         aiuto: "Dopo aver risposto Vera torna ad ascoltarti, finché non le dici «basta così» · ⌥⌘E per parlarle",
                          ultima: true) {
-            interruttore($stato.dati.impostazioni.ruby.conversazioneContinua)
+            interruttore($stato.dati.impostazioni.vera.conversazioneContinua)
         }
     }
 }

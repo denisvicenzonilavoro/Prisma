@@ -25,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      # L'ascolto di Ruby usa SpeechAnalyzer, che si compila solo con l'SDK di macOS 26:
+      # L'ascolto di Vera usa SpeechAnalyzer, che si compila solo con l'SDK di macOS 26:
       # si sceglie l'Xcode 26 più recente installato sul runner (il predefinito è il 16).
       - name: Seleziona Xcode 26
         run: |
@@ -35,7 +35,7 @@ jobs:
             echo "DEVELOPER_DIR=$XC/Contents/Developer" >> "$GITHUB_ENV"
             echo "Uso $XC"
           else
-            echo "Xcode 26 non trovato: Ruby verrà compilata senza il modello Apple"
+            echo "Xcode 26 non trovato: Vera verrà compilata senza il modello Apple"
           fi
 
       - name: Strumenti disponibili
@@ -71,7 +71,7 @@ jobs:
           mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
           cp "$BIN_DIR/Prisma" "$APP/Contents/MacOS/Prisma"
           cp Info.plist "$APP/Contents/Info.plist"
-          # Il commit nella diagnostica di Ruby: si sa quale versione gira sul Mac
+          # Il commit nella diagnostica di Vera: si sa quale versione gira sul Mac
           /usr/libexec/PlistBuddy -c "Add :PrismaCommit string ${GITHUB_SHA::7}" "$APP/Contents/Info.plist"
           if [ -f AppIcon.icns ]; then
             cp AppIcon.icns "$APP/Contents/Resources/"
@@ -84,16 +84,16 @@ jobs:
             echo "Copio $(basename "$b")"
             ditto "$b" "$APP/Contents/Resources/$(basename "$b")"
           done
-          # Istruzioni di Ruby: vivono in Ruby/Istruzioni e si leggono dal pacchetto
-          if [ -d Ruby/Istruzioni ]; then
-            mkdir -p "$APP/Contents/Resources/Ruby"
-            ditto Ruby/Istruzioni "$APP/Contents/Resources/Ruby/Istruzioni"
+          # Istruzioni di Vera: vivono in Vera/Istruzioni e si leggono dal pacchetto
+          if [ -d Vera/Istruzioni ]; then
+            mkdir -p "$APP/Contents/Resources/Vera"
+            ditto Vera/Istruzioni "$APP/Contents/Resources/Vera/Istruzioni"
           fi
-          # Schemi dei dati da estrarre (scenari «E se…?») ed esempi per le prove di Ruby
+          # Schemi dei dati da estrarre (scenari «E se…?») ed esempi per le prove di Vera
           for cartella in Schemi Esempi; do
-            if [ -d "Ruby/$cartella" ]; then
-              mkdir -p "$APP/Contents/Resources/Ruby"
-              ditto "Ruby/$cartella" "$APP/Contents/Resources/Ruby/$cartella"
+            if [ -d "Vera/$cartella" ]; then
+              mkdir -p "$APP/Contents/Resources/Vera"
+              ditto "Vera/$cartella" "$APP/Contents/Resources/Vera/$cartella"
             fi
           done
           codesign --force --deep --sign - "$APP"
@@ -127,20 +127,20 @@ jobs:
           "$APP/Contents/MacOS/Prisma" --prova-backup
           # Prova dei motori di calcolo contro risultati calcolati a parte
           "$APP/Contents/MacOS/Prisma" --prova-calcoli
-          # Prova di Ruby: istruzioni, scheda del cliente, sintesi dai dati
-          test -f "$APP/Contents/Resources/Ruby/Istruzioni/chat.md"
-          test -f "$APP/Contents/Resources/Ruby/Istruzioni/commento.md"
-          test -f "$APP/Contents/Resources/Ruby/Istruzioni/conversazione.md"
-          test -f "$APP/Contents/Resources/Ruby/Istruzioni/mini.md"
-          test -f "$APP/Contents/Resources/Ruby/Istruzioni/scenari.md"
-          test -f "$APP/Contents/Resources/Ruby/Istruzioni/messaggi.md"
-          test -f "$APP/Contents/Resources/Ruby/Schemi/scenario.json"
-          test -f "$APP/Contents/Resources/Ruby/Esempi/scenari.json"
-          test -f "$APP/Contents/Resources/Ruby/Istruzioni/copilota.md"
-          test -f "$APP/Contents/Resources/Ruby/Schemi/copilota.json"
-          test -f "$APP/Contents/Resources/Ruby/Esempi/copilota.json"
-          test -f "$APP/Contents/Resources/Ruby/Istruzioni/verbale-copilota.md"
-          "$APP/Contents/MacOS/Prisma" --prova-ruby
+          # Prova di Vera: istruzioni, scheda del cliente, sintesi dai dati
+          test -f "$APP/Contents/Resources/Vera/Istruzioni/chat.md"
+          test -f "$APP/Contents/Resources/Vera/Istruzioni/commento.md"
+          test -f "$APP/Contents/Resources/Vera/Istruzioni/conversazione.md"
+          test -f "$APP/Contents/Resources/Vera/Istruzioni/mini.md"
+          test -f "$APP/Contents/Resources/Vera/Istruzioni/scenari.md"
+          test -f "$APP/Contents/Resources/Vera/Istruzioni/messaggi.md"
+          test -f "$APP/Contents/Resources/Vera/Schemi/scenario.json"
+          test -f "$APP/Contents/Resources/Vera/Esempi/scenari.json"
+          test -f "$APP/Contents/Resources/Vera/Istruzioni/copilota.md"
+          test -f "$APP/Contents/Resources/Vera/Schemi/copilota.json"
+          test -f "$APP/Contents/Resources/Vera/Esempi/copilota.json"
+          test -f "$APP/Contents/Resources/Vera/Istruzioni/verbale-copilota.md"
+          "$APP/Contents/MacOS/Prisma" --prova-vera
           # Prova del tavolo con l'iPad: Mac e iPad nello stesso processo su 127.0.0.1 (abbinamento, pagine, cursore,
           # presa visione nel PDF, caduta della connessione con la schermata neutra)
           "$APP/Contents/MacOS/Prisma" --prova-tavolo

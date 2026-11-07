@@ -4,7 +4,7 @@ import Foundation
 /// ricavato dai motori di Prisma. Com'è andata ogni posizione rispetto all'atteso, cosa scade, gli
 /// obiettivi, le aree del check-up da rivedere, le proposte rimaste aperte, i dati da aggiornare;
 /// da qui l'ordine del giorno dell'incontro e le domande da fare. Dalla Shell arrivano anche le scadenze
-/// di conformità («In regola») e le occasioni dei prossimi 12 mesi; Ruby chiama il calcolo senza.
+/// di conformità («In regola») e le occasioni dei prossimi 12 mesi; Vera chiama il calcolo senza.
 struct Riesame {
     enum Tema: Int, CaseIterable {
         // I casi nuovi vanno in fondo: l'ordine dei temi esistenti non cambia
@@ -73,9 +73,9 @@ struct Riesame {
     let fineAnno: FineAnno
     let punti: [Punto]
     let domande: [String]
-    /// Le scadenze di conformità del cliente (nil quando il calcolo non le riceve, come per Ruby).
+    /// Le scadenze di conformità del cliente (nil quando il calcolo non le riceve, come per Vera).
     var conformita: EsitoConformita? = nil
-    /// Le occasioni ricevute dal calcolo (vuote per Ruby); il prospetto ne mostra quelle dei prossimi 12 mesi.
+    /// Le occasioni ricevute dal calcolo (vuote per Vera); il prospetto ne mostra quelle dei prossimi 12 mesi.
     var occasioni: [Occasione] = []
 
     /// Mesi dall'ultimo contatto (nil se non ce ne sono).
@@ -133,9 +133,9 @@ enum MotoreRiesame {
     /// Una scadenza così vicina va affrontata subito.
     static let mesiScadenzaVicina = 6
 
-    /// Il riesame di oggi. Senza `conformita` e `occasioni` (come lo chiama Ruby) è identico a quello di sempre;
+    /// Il riesame di oggi. Senza `conformita` e `occasioni` (come lo chiama Vera) è identico a quello di sempre;
     /// la Shell passa l'esito «In regola» del cliente e le sue occasioni dei prossimi 12 mesi.
-    static func calcola(_ f: FonteRuby, conformita: EsitoConformita? = nil, occasioni: [Occasione]? = nil) -> Riesame {
+    static func calcola(_ f: FonteVera, conformita: EsitoConformita? = nil, occasioni: [Occasione]? = nil) -> Riesame {
         let cal = Calendar.current
         let oggi = f.oggi
         let inizio = cal.startOfDay(for: oggi)

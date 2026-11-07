@@ -25,8 +25,8 @@ struct ShellView: View {
     var body: some View {
         CorpoShell(sistema: stato.sistema)
             .environmentObject(stato.sistema)
-            // Due dita sul trackpad ed Esc per la Ruby della scrivania (solo Mac, mai nelle istantanee)
-            .gestoRubyScrivania()
+            // Due dita sul trackpad ed Esc per la Vera della scrivania (solo Mac, mai nelle istantanee)
+            .gestoVeraScrivania()
             // «Riduci movimento» di Prisma (in OR con quello del Mac) e «Dimensione del testo» del tema Apple per tutto
             // l'albero delle viste; `Movimenti.calmo` lo legge anche chi anima fuori dalle viste (finestre, blocco)
             .prismaCalmo(stato.dati.impostazioni.riduciMovimento)
@@ -87,7 +87,7 @@ struct CorpoShell: View {
                 Materiale.SfondoScrivania(animato: stato.dati.impostazioni.sfondoAnimato && !stato.dati.impostazioni.riduciMovimento
                                               && !stato.scrivaniaCoperta && !modoIstantanea,
                                           intensita: stato.dati.impostazioni.pioggia.forza)
-                // «L'acqua risponde»: notifiche, Ruby che parla e sblocco toccano l'acqua (non disegna niente)
+                // «L'acqua risponde»: notifiche, Vera che parla e sblocco toccano l'acqua (non disegna niente)
                 OsservatoreAcqua(sistema: sistema)
 
                 // Con la schermata di benvenuto la scrivania si nasconde senza sparire: le app restano come sono.
@@ -145,7 +145,7 @@ struct CorpoShell: View {
 
                 if let testo = stato.avviso {
                     let posto = postoAvviso(misura: geo.size, area: area)
-                    VistaAvviso(testo: testo, sfera: stato.avvisoDiRuby)
+                    VistaAvviso(testo: testo, sfera: stato.avvisoDiVera)
                         .padding(.horizontal, Misure.Avvisi.margineLato)
                         .frame(width: posto.width, height: posto.height, alignment: .bottom)
                         .offset(x: posto.minX, y: posto.minY)
@@ -239,8 +239,8 @@ struct CorpoShell: View {
         // Durante un genio il dock si vede sempre (come macOS con il dock nascosto): la finestra va nella sua icona
         let dockGiu = dockNascosto && !dockRichiamato && sistema.dockPerEffetti.isEmpty
         return ZStack(alignment: .topLeading) {
-            // La scrivania con i widget e, scorrendo a sinistra, Ruby (RubyScrivania.swift): sotto le finestre e il dock
-            PagineScrivania(sistema: sistema, gesto: sistema.gestoRuby, misura: misura)
+            // La scrivania con i widget e, scorrendo a sinistra, Vera (VeraScrivania.swift): sotto le finestre e il dock
+            PagineScrivania(sistema: sistema, gesto: sistema.gestoVera, misura: misura)
                 .frame(width: misura.width, height: misura.height, alignment: .topLeading)
 
             livelloFinestre(area: area, misura: misura)

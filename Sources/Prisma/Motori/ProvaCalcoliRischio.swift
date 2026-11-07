@@ -95,7 +95,7 @@ enum ProvaCalcoliRischio {
             verifica.vero("K3 Profilo prudente: 9,95% oltre il 5% (e oltre il margine del 6,25%)",
                           MotoreResistenza.crisi(tutte, profilo: profilo).allSatisfy { $0.giudizio == .oltre })
             verifica.vero("K3 Senza propensione nessun giudizio", MotoreResistenza.crisi(tutte, profilo: nil).allSatisfy { $0.giudizio == nil })
-            verifica.vero("K3 La sintesi per Ruby chiude con le crisi del passato",
+            verifica.vero("K3 La sintesi per Vera chiude con le crisi del passato",
                           MotoreResistenza.sintesi(r).last?.hasPrefix("Se tornassero le crisi del passato") == true)
             verifica.vero("K3 Il giudizio della prova resta quello dei mercati", r.giudizio == .dentro)
             verifica.vero("K3 Metodo delle crisi: una riga per crisi più le ipotesi", MotoreResistenza.metodoCrisi.count == 4)

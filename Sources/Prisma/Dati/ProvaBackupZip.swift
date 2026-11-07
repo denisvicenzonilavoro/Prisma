@@ -171,11 +171,11 @@ extension ProvaBackup {
         let fm = FileManager.default
         try? fm.removeItem(at: cartella)
         let documenti = cartella.appendingPathComponent("Documenti", isDirectory: true)
-        let ruby = cartella.appendingPathComponent("Ruby", isDirectory: true)
+        let vera = cartella.appendingPathComponent("Vera", isDirectory: true)
         try fm.createDirectory(at: documenti, withIntermediateDirectories: true)
-        try fm.createDirectory(at: ruby, withIntermediateDirectories: true)
+        try fm.createDirectory(at: vera, withIntermediateDirectories: true)
         try Archivio.codificatore.encode(DatiPrisma.demo()).write(to: cartella.appendingPathComponent("archivio.json"))
-        try Data(#"{"prova":true}"#.utf8).write(to: ruby.appendingPathComponent("memoria.json"))
+        try Data(#"{"prova":true}"#.utf8).write(to: vera.appendingPathComponent("memoria.json"))
         try Data("Nota di prova con gli accenti: è, à, ü.".utf8).write(to: documenti.appendingPathComponent("Nota città è ü.txt"))
         try Data().write(to: documenti.appendingPathComponent("vuoto.txt"))
         let riga = "Posizione di prova · Alleanza e indipendente · 12.345,67 €\n"

@@ -35,9 +35,9 @@ struct PrismaAppMobile: App {
         if argomenti.contains("--prova-ovunque") {
             EsitoProva.esci("prova-ovunque", codice: ProvaOvunque.esegui())
         }
-        // «--prova-eve» è il sinonimo di prima del cambio di nome (l'esito porta il nome usato nel lancio)
-        if argomenti.contains("--prova-ruby") || argomenti.contains("--prova-eve") {
-            EsitoProva.esci(argomenti.contains("--prova-ruby") ? "prova-ruby" : "prova-eve", codice: ProvaRuby.esegui())
+        // «--prova-ruby» e «--prova-eve» sono i sinonimi di prima dei cambi di nome (l'esito porta il nome usato nel lancio)
+        if argomenti.contains("--prova-vera") || argomenti.contains("--prova-ruby") || argomenti.contains("--prova-eve") {
+            EsitoProva.esci(argomenti.contains("--prova-vera") ? "prova-vera" : argomenti.contains("--prova-ruby") ? "prova-ruby" : "prova-eve", codice: ProvaVera.esegui())
         }
         if argomenti.contains("--prova-dock") {
             EsitoProva.esci("prova-dock", codice: ProvaDockMobile.esegui())
@@ -104,7 +104,7 @@ struct RadiceMobile: View {
         ZStack {
             // Sotto il foglio del tavolo (fondo opaco della sala) l'acqua si ferma, come sotto la sala del Mac
             AcquaMobile(coperta: mobile.acquaCoperta)
-            // «L'acqua risponde»: notifiche, Ruby che parla e sblocco toccano l'acqua (non disegna niente)
+            // «L'acqua risponde»: notifiche, Vera che parla e sblocco toccano l'acqua (non disegna niente)
             OsservatoreAcqua(sistema: mobile.stato.sistema)
             Group {
                 if mobile.alTavolo {

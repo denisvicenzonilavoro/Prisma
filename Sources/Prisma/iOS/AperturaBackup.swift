@@ -85,7 +85,7 @@ struct AperturaBackup: View {
             Text("AL TAVOLO CON IL MAC")
                 .font(Tipo.Mobile.sezione)
                 .foregroundColor(Tema.Colore.inchiostroSecondario)
-            Text("Questo iPad può restare davanti al cliente e mostrare solo ciò che sceglie il Mac: scrivi il codice di Impostazioni › Ruby del Mac. Si esce dal tavolo solo dal Mac.")
+            Text("Questo iPad può restare davanti al cliente e mostrare solo ciò che sceglie il Mac: scrivi il codice di Impostazioni › Vera del Mac. Si esce dal tavolo solo dal Mac.")
                 .font(Tipo.Mobile.corpo)
                 .foregroundColor(Tema.Colore.inchiostro)
                 .fixedSize(horizontal: false, vertical: true)

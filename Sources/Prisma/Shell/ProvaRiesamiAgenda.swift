@@ -151,7 +151,7 @@ enum ProvaRiesamiAgenda {
             }
         }
 
-        // S8 La bozza di Portafoglio e Prospetti: gli stessi controlli di --prova-ruby
+        // S8 La bozza di Portafoglio e Prospetti: gli stessi controlli di --prova-vera
         do {
             let s = nuovo()
             if let a = s.bozzaRiesame("giulia") {

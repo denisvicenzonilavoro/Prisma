@@ -1,7 +1,7 @@
 import SwiftUI
 
 // Il verbale finale del copilota (Design/template-novita-specifica.md §8.1.4, §8.2.4, §8.4): il dettaglio 940×520 che
-// nasce dal pulsante della testata. A sinistra il verbale (riformulato da Ruby con Qwen se è pronto, con le stesse cifre,
+// nasce dal pulsante della testata. A sinistra il verbale (riformulato da Vera con Qwen se è pronto, con le stesse cifre,
 // altrimenti composto da Prisma dalle schede) e le attività; a destra «Cosa entra nel dossier». Si conferma tutto
 // insieme o voce per voce (un clic sulla riga la toglie o la rimette); le voci già confermate durante l'ascolto sono
 // già spuntate. «Conserva la trascrizione» è spento di base: alla conferma il testo del cliente si dimentica e resta
@@ -82,8 +82,8 @@ struct VerbaleCopilotaVista: View {
                 .padding(.top, V.sopraPulsanti)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .onAppear { scriviConRuby(sessione, punti: punti, nome: nome) }
-        .onChange(of: punti) { p in scriviConRuby(sessione, punti: p, nome: nome) }
+        .onAppear { scriviConVera(sessione, punti: punti, nome: nome) }
+        .onChange(of: punti) { p in scriviConVera(sessione, punti: p, nome: nome) }
     }
 
     // MARK: Parti
@@ -106,7 +106,7 @@ struct VerbaleCopilotaVista: View {
         if punti.isEmpty {
             vuoto(TestiCopilota.nienteRiconosciuto)
         } else {
-            Text(copilota.verbaleRuby ?? punti.joined(separator: "\n"))
+            Text(copilota.verbaleVera ?? punti.joined(separator: "\n"))
                 .carattereApple(V.testo)
                 .foregroundColor(V.coloreTesto)
                 .fixedSize(horizontal: false, vertical: true)
@@ -117,9 +117,9 @@ struct VerbaleCopilotaVista: View {
     @ViewBuilder private func firma(punti: [String]) -> some View {
         if !punti.isEmpty {
             let testo: String = {
-                if copilota.verbaleRuby != nil { return TestiCopilota.firmaRuby }
-                if copilota.verbaleRubyInCorso { return TestiCopilota.firmaPrisma + " · Ruby lo sta riscrivendo con Qwen…" }
-                if !copilota.qwenPronto(stato) { return TestiCopilota.firmaPrisma + " · " + TestiCopilota.rubyNonPronta }
+                if copilota.verbaleVera != nil { return TestiCopilota.firmaVera }
+                if copilota.verbaleVeraInCorso { return TestiCopilota.firmaPrisma + " · Vera lo sta riscrivendo con Qwen…" }
+                if !copilota.qwenPronto(stato) { return TestiCopilota.firmaPrisma + " · " + TestiCopilota.veraNonPronta }
                 return TestiCopilota.firmaPrisma
             }()
             Text(testo)
@@ -195,9 +195,9 @@ struct VerbaleCopilotaVista: View {
         }
     }
 
-    private func scriviConRuby(_ s: SessioneCopilota?, punti: [String], nome: String) {
+    private func scriviConVera(_ s: SessioneCopilota?, punti: [String], nome: String) {
         guard let s else { return }
-        copilota.scriviVerbaleConRuby(stato, sessione: s, punti: punti, cliente: nome)
+        copilota.scriviVerbaleConVera(stato, sessione: s, punti: punti, cliente: nome)
     }
 }
 

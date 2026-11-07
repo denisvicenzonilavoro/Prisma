@@ -51,10 +51,10 @@ final class StatoFinestre: ObservableObject {
     var origini: [AppPrisma: CGPoint] = [:]
     /// La scrivania sta sotto una finestra ingrandita, a transizione finita: non si disegna (resta montata).
     @Published var scrivaniaNascosta = false
-    /// La pagina della scrivania (RubyScrivania.swift): 0 = i widget, 1 = Ruby. A riposo vale 0 o 1; il dito
-    /// la sposta in `gestoRuby`, che osservano solo le due pagine (seguire il gesto non ridisegna la shell).
-    @Published var paginaRuby: CGFloat = 0
-    let gestoRuby = GestoPaginaRuby()
+    /// La pagina della scrivania (VeraScrivania.swift): 0 = i widget, 1 = Vera. A riposo vale 0 o 1; il dito
+    /// la sposta in `gestoVera`, che osservano solo le due pagine (seguire il gesto non ridisegna la shell).
+    @Published var paginaVera: CGFloat = 0
+    let gestoVera = GestoPaginaVera()
     /// Il blocco a transizione finita: l'acqua non riparte né si ferma a metà dell'animazione, e la scrivania
     /// nascosta si prepara all'entrata dello sblocco.
     @Published var bloccatoStabile = false

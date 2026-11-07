@@ -34,11 +34,11 @@ extension Tema.Apple {
         static let pannello = d(bianco(0.72), bianco(0.05))
         /// Card, tile, suggerimenti (--card).
         static let card = d(bianco(0.82), bianco(0.07))
-        /// Dettaglio, pulsanti, pillola del segmentato, campo di Ruby (--cardE).
+        /// Dettaglio, pulsanti, pillola del segmentato, campo di Vera (--cardE).
         static let cardPiena = d(Color(hex: "#FFFFFF"), Color(hex: "#283642"))
         /// Binari di barre, interruttori, cursori, mesi vuoti, cerchietti (--track).
         static let binario = d(nero(0.07), bianco(0.10))
-        /// Fondo dei segmentati, ricerca, hover, bolle di Ruby, fondo dell'anteprima (--chip).
+        /// Fondo dei segmentati, ricerca, hover, bolle di Vera, fondo dell'anteprima (--chip).
         static let chip = d(nero(0.05), bianco(0.08))
         /// Riempimento del vetro `.glass` (--glass).
         static let vetro = d(bianco(0.50), Color(r: 16, g: 32, b: 44, a: 0.42))
@@ -151,7 +151,7 @@ extension Tema.Apple {
             static let alfaFondo: Double = 34.0 / 255.0
         }
 
-        /// Sfera di Ruby: radiale con centro a (34%, 28%).
+        /// Sfera di Vera: radiale con centro a (34%, 28%).
         static let centroSfera = UnitPoint(x: 0.34, y: 0.28)
         static let fermateSfera: [Gradient.Stop] = [
             .init(color: Color(hex: "#FFFFFF"), location: 0),
@@ -205,7 +205,7 @@ extension Tema.Apple {
 
 extension Tema.Apple {
     enum Raggio {
-        /// Pulsanti, chip, segmentati, interruttori, avatar, toast, campo di Ruby: usare `Capsule()`.
+        /// Pulsanti, chip, segmentati, interruttori, avatar, toast, campo di Vera: usare `Capsule()`.
         static let pillola: CGFloat = 99
         static let dettaglioAperto: CGFloat = 28
         /// Riquadri della scrivania, dock.
@@ -530,8 +530,8 @@ extension Tema.Apple {
             static let rigaImpostazione = Misura.padding(16, 20)
             static let tile = Misura.padding(14, 16)
             static let barraLaterale = Misura.padding(14, 12)
-            /// Barra laterale di Ruby: in alto 30.
-            static let barraLateraleRubyAlto: CGFloat = 30
+            /// Barra laterale di Vera: in alto 30.
+            static let barraLateraleVeraAlto: CGFloat = 30
             static let dettaglio = Misura.padding(26, 30)
             /// Piede del dettaglio: a 30 dai lati e 24 dal fondo.
             static let piedeDettaglioLati: CGFloat = 30
@@ -559,7 +559,7 @@ extension Tema.Apple {
         enum Laterale {
             static let clienti: CGFloat = 250
             static let prospetti: CGFloat = 290
-            static let ruby: CGFloat = 300
+            static let vera: CGFloat = 300
             static let impostazioni: CGFloat = 260
             static let agenda: CGFloat = 330
         }
@@ -655,19 +655,19 @@ extension Tema.Apple {
         static let nomeDossier = Carattere(dimensione: 27, peso: .bold, tracking: -0.6)
         static let valore = Carattere(dimensione: 26, peso: .bold, tracking: -0.5, tabellare: true)
         static let titoloMossa = Carattere(dimensione: 25, peso: .bold, tracking: -0.5)
-        /// Gruppi del nastro; anche «Ciao, sono Ruby.».
+        /// Gruppi del nastro; anche «Ciao, sono Vera.».
         static let titoloGruppo = Carattere(dimensione: 22, peso: .bold, tracking: -0.5, interlinea: 1.1)
         static let h2 = Carattere(dimensione: 21, peso: .bold, tracking: -0.4)
         /// Anche `.leg .n`.
         static let meseAgenda = Carattere(dimensione: 20, peso: .bold)
         /// Schede «Da fare».
         static let perche = Carattere(dimensione: 19, peso: .bold, tracking: -0.3, interlinea: 1.22)
-        static let fraseRuby = Carattere(dimensione: 19, peso: .semibold, tracking: -0.3, interlinea: 1.3)
+        static let fraseVera = Carattere(dimensione: 19, peso: .semibold, tracking: -0.3, interlinea: 1.3)
         static let titoloFinestra = Carattere(dimensione: 17, peso: .bold)
         static let delta = Carattere(dimensione: 15, peso: .semibold, tabellare: true)
         /// Titoli delle righe d'impostazione.
         static let titoloRiga = Carattere(dimensione: 15, peso: .bold)
-        /// Corpo della mossa, messaggi di Ruby, spiegazioni (interlinea 1,45-1,55).
+        /// Corpo della mossa, messaggi di Vera, spiegazioni (interlinea 1,45-1,55).
         static let corpoGrande = Carattere(dimensione: 14.5, peso: .regular, interlinea: 1.5)
         static let corpo = Carattere(dimensione: 14, peso: .regular)
         static let barraTitolo = Carattere(dimensione: 14, peso: .semibold)

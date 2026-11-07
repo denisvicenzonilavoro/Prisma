@@ -8,7 +8,7 @@ import Foundation
 /// - 582: a metà del dialogo, 4 righe e le loro schede, «Ascolto · 00:09 · solo sul Mac»; 583: le 7 righe e tutte le
 ///   schede, due già confermate («✓ Fatto»);
 /// - 584: il verbale aperto con i pallini vuoti; 585: dopo «Conferma tutto», con le spunte e l'avviso;
-/// - 586: l'ascolto con Ruby non pronta (le schede dalle regole di Prisma); 587: il microfono non permesso;
+/// - 586: l'ascolto con Vera non pronta (le schede dalle regole di Prisma); 587: il microfono non permesso;
 /// - 588: nessun incontro in agenda oggi; 589: come 582 con «Riduci movimento».
 ///
 /// DATI DI PROVA DICHIARATI: il dialogo e le schede sono quelli del template (DialogoProvaCopilota.swift), il consenso
@@ -55,7 +55,7 @@ extension Istantanee {
             s.copilota.mostraPerIstantanea(fase: .concluso, sessione: sid, secondi: 18 * 60, qwenPronto: true, verbale: true)
             s.apri(.incontri)
         }
-        coppia("586-copilota-ruby-non-pronta") { s in
+        coppia("586-copilota-vera-non-pronta") { s in
             let sid = DialogoProvaCopilota.prepara(s, righe: 4)
             s.copilota.mostraPerIstantanea(fase: .ascolto, sessione: sid, secondi: 9, qwenPronto: false)
             s.apri(.incontri)
@@ -63,7 +63,7 @@ extension Istantanee {
         coppia("587-copilota-microfono-negato") { s in
             DialogoProvaCopilota.prepara(s, righe: 0)
             s.copilota.mostraPerIstantanea(fase: .pronto, sessione: nil, secondi: 0, qwenPronto: true,
-                                           problema: "Ruby non ha il permesso di usare il microfono: concedilo in Impostazioni di Sistema › Privacy e sicurezza › Microfono.")
+                                           problema: "Vera non ha il permesso di usare il microfono: concedilo in Impostazioni di Sistema › Privacy e sicurezza › Microfono.")
             s.apri(.incontri)
         }
         coppia("588-copilota-nessun-incontro") { s in

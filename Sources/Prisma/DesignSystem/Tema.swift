@@ -249,7 +249,7 @@ enum Tema {
 
     enum Raggio {
         static let widget: CGFloat = 26
-        static let widgetRuby: CGFloat = 22
+        static let widgetVera: CGFloat = 22
         static let finestra: CGFloat = 24
         static let finestraIngrandita: CGFloat = 18
         /// Barra laterale e schede dentro le finestre.
@@ -312,7 +312,7 @@ enum Tema {
         static let widgetMargine: CGFloat = 14
         static let grigliaSpazio: CGFloat = 12
         static let testaWidget: CGFloat = 26
-        static let widgetRuby: CGFloat = 64
+        static let widgetVera: CGFloat = 64
 
         // Dock
         static let dockIcona: CGFloat = 50
@@ -530,7 +530,7 @@ enum Tema {
             case .note: return ColoriIconaApp(alto: Color(hex: "#E8D69A"), basso: Color(hex: "#C2A456"), tinta: Color(hex: "#E3CB7E"), accento: Color(hex: "#B98A2E"))
             case .documenti: return ColoriIconaApp(alto: Color(hex: "#73A9CF"), basso: Color(hex: "#376E99"), tinta: Color(hex: "#8DC0E2"))
             case .presentazioni: return ColoriIconaApp(alto: Color(hex: "#C99282"), basso: Color(hex: "#91584A"), tinta: Color(hex: "#D9A595"), accento: Color(hex: "#A65A4A"))
-            case .ruby: return ColoriIconaApp(alto: Color(hex: "#B9A3F2"), basso: Color(hex: "#6862C9"), tinta: Color(hex: "#C7B5FF"))
+            case .vera: return ColoriIconaApp(alto: Color(hex: "#B9A3F2"), basso: Color(hex: "#6862C9"), tinta: Color(hex: "#C7B5FF"))
             case .ricerca: return ColoriIconaApp(alto: Color(hex: "#6E879E"), basso: Color(hex: "#354B5F"), tinta: Color(hex: "#9DB5CB"))
             // Le tre app di «Orizzonte»: fondo c1 → c2 delle icone (Design/Icone/Studio.svg, Messaggi.svg, Mercato.svg)
             case .studio: return ColoriIconaApp(alto: Color(hex: "#7E97B3"), basso: Color(hex: "#3F5A78"), tinta: Color(hex: "#A9BDD3"))

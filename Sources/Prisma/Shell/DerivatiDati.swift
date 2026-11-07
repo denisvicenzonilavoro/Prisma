@@ -3,7 +3,7 @@ import Foundation
 // Proprietario: G3 (calcoli nei body).
 
 /// Dati ricavati dall'archivio e tenuti da parte finché non cambiano i dati dei calcoli (`versioneCalcoli`: una
-/// nota, Ruby, l'aspetto o il cliente attivo non contano), il giorno o la modalità cliente: una classe, così si
+/// nota, Vera, l'aspetto o il cliente attivo non contano), il giorno o la modalità cliente: una classe, così si
 /// aggiorna dai getter senza pubblicare StatoShell. Ogni voce si calcola alla prima richiesta dopo un
 /// cambiamento, non tutte insieme. Si usa solo dal thread principale.
 final class DerivatiDati {
@@ -14,7 +14,7 @@ final class DerivatiDati {
         let modo: String?
     }
 
-    /// Il riesame dipende anche dal confronto aperto in Prospetti e dall'orizzonte della sostituzione (fonte di Ruby).
+    /// Il riesame dipende anche dal confronto aperto in Prospetti e dall'orizzonte della sostituzione (fonte di Vera).
     struct ChiaveRiesame: Equatable {
         let prospetto: SceltaProspetto?
         let orizzonte: Int?
@@ -304,7 +304,7 @@ extension StatoShell {
         return f
     }
 
-    /// Il riesame annuale di un cliente (nil se il cliente non c'è): passa da tutta la fonte di Ruby,
+    /// Il riesame annuale di un cliente (nil se il cliente non c'è): passa da tutta la fonte di Vera,
     /// quindi si calcola una volta sola per dati, ora, confronto aperto e orizzonte della sostituzione.
     func riesameCliente(_ id: String) -> Riesame? {
         let d = derivatiValidi()
@@ -314,7 +314,7 @@ extension StatoShell {
             d.riesami = [:]
         }
         if let memorizzato = d.riesami[id] { return memorizzato }
-        let r = fonteRuby(id).map { MotoreRiesame.calcola($0, conformita: conformitaCliente(id), occasioni: occasioniRiesame(id)) }
+        let r = fonteVera(id).map { MotoreRiesame.calcola($0, conformita: conformitaCliente(id), occasioni: occasioniRiesame(id)) }
         d.riesami[id] = .some(r)
         return r
     }
@@ -425,8 +425,8 @@ struct ChiaveVista: Equatable {
 
 extension DatiPrisma {
     /// Uguali in tutto ciò che entra nei calcoli e nei documenti. Non contano le note del taccuino (hanno la loro
-    /// versione), le conversazioni con Ruby, gli spazi di lavoro, il cliente attivo (le cache sono per cliente) e
-    /// le impostazioni che cambiano solo l'aspetto, Ruby, il backup e i promemoria. Gli array e i dizionari non
+    /// versione), le conversazioni con Vera, gli spazi di lavoro, il cliente attivo (le cache sono per cliente) e
+    /// le impostazioni che cambiano solo l'aspetto, Vera, il backup e i promemoria. Gli array e i dizionari non
     /// toccati condividono la memoria con quelli di prima e si confrontano in O(1).
     func stessiCalcoli(di altro: DatiPrisma) -> Bool {
         var a = self
@@ -447,7 +447,7 @@ extension DatiPrisma {
         b.impostazioni.introduzioneVista = a.impostazioni.introduzioneVista
         b.impostazioni.backup = a.impostazioni.backup
         b.impostazioni.promemoria = a.impostazioni.promemoria
-        b.impostazioni.ruby = a.impostazioni.ruby
+        b.impostazioni.vera = a.impostazioni.vera
         // Le novità viste aprono solo il pannello «Novità»: le impostazioni di Studio invece entrano nei calcoli
         b.impostazioni.novitaViste = a.impostazioni.novitaViste
         // Le schede di adeguatezza e l'elenco dei documenti da consegnare non entrano in nessun calcolo in cache

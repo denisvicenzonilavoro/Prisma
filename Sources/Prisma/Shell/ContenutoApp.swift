@@ -18,7 +18,7 @@ struct ContenutoApp: View {
                 case .simulazioni: AppSimulazioni()
                 case .confronti: AppConfronti()
                 case .analisi360: AppAnalisi360()
-                case .ruby: AppRuby()
+                case .vera: AppVera()
                 case .incontri: AppIncontri()
                 case .prodotti: AppProdotti()
                 case .obiettivi: AppObiettivi()
@@ -63,7 +63,7 @@ extension ContenutoApp {
         case .note: Gradienti.fondoNote
         case .agenda: Colori.Agenda.fondoApp
         case .incontri: Gradienti.fondoIncontri
-        case .ruby: Gradienti.linoRuby
+        case .vera: Gradienti.linoVera
         case .attivita: Gradienti.linoAttivita
         default: Colori.IntestazioneApp.corpo
         }
@@ -75,7 +75,7 @@ extension ContenutoApp {
         case .clienti: AzioneNuovoCliente()
         case .posizioni: AzioniPosizioni()
         case .note: AzioneNuovaNota()
-        case .ruby: AzioniRuby()
+        case .vera: AzioniVera()
         // Il segmentato a pillola delle quattro schede di Studio (StudioApp.swift)
         case .studio: AzioniStudio()
         // La ricerca per ISIN e le soglie degli avvisi (AppMercato.swift)

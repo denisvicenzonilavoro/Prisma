@@ -68,10 +68,10 @@ final class StatoShell: ObservableObject {
             if !dati.stessiCalcoli(di: oldValue) { versioneCalcoli &+= 1 }
         }
     }
-    /// Cresce a ogni modifica dei dati (salvataggio, segno della cache del dossier per Ruby). Non pubblicata.
+    /// Cresce a ogni modifica dei dati (salvataggio, segno della cache del dossier per Vera). Non pubblicata.
     private(set) var versioneDati = 0
     /// Cresce quando cambia qualcosa che entra nei calcoli e nei documenti: tutto tranne le note del taccuino,
-    /// le conversazioni con Ruby, gli spazi di lavoro, il cliente attivo e le impostazioni che non toccano i
+    /// le conversazioni con Vera, gli spazi di lavoro, il cliente attivo e le impostazioni che non toccano i
     /// calcoli (DatiPrisma.stessiCalcoli). È la chiave delle cache di DerivatiDati. Non pubblicata.
     private(set) var versioneCalcoli = 0
     /// Cresce quando cambiano le note del taccuino (le leggono i documenti, per esempio il fascicolo). Non pubblicata.
@@ -86,8 +86,8 @@ final class StatoShell: ObservableObject {
     let derivati = DerivatiDati()
 
     @Published private(set) var avviso: String?
-    /// L'avviso è il commiato di Ruby (con la sfera): dopo un pulsante della mini finestra.
-    @Published private(set) var avvisoDiRuby = false
+    /// L'avviso è il commiato di Vera (con la sfera): dopo un pulsante della mini finestra.
+    @Published private(set) var avvisoDiVera = false
     @Published var schermoIntero = false
     @Published var schedaImpostazioni: SchedaImpostazioni = .panoramica
     @Published var schedaCliente: SchedaCliente = .panoramica
@@ -118,7 +118,7 @@ final class StatoShell: ObservableObject {
     /// Il documento mostrato a tutto schermo all'incontro (nil se non si presenta).
     @Published var presentazione: Presentazione?
     /// L'ultima analisi del dossier calcolata, con la versione dei dati (non pubblicata). La cache vera è in
-    /// DerivatiDati: questa resta come segno per la prova di Ruby.
+    /// DerivatiDati: questa resta come segno per la prova di Vera.
     var cacheDossier: (chiave: Int, valore: AnalisiDossier)?
     /// Posizioni mostra il portafoglio di tutti i clienti invece del dossier del cliente attivo.
     // Il portafoglio parla di tutti i clienti: in modalità cliente resta chiuso
@@ -240,8 +240,8 @@ final class StatoShell: ObservableObject {
     /// Promemoria del Mac: il permesso di macOS (nil finché non si sa, e sempre nelle istantanee e nelle prove).
     @Published var permessoPromemoria: PermessoPromemoria?
 
-    /// Ruby parla del portafoglio (tutti i clienti) invece che del cliente attivo.
-    @Published var rubyPortafoglio = false { didSet { if rubyPortafoglio && modoCliente != nil { rubyPortafoglio = false } } }
+    /// Vera parla del portafoglio (tutti i clienti) invece che del cliente attivo.
+    @Published var veraPortafoglio = false { didSet { if veraPortafoglio && modoCliente != nil { veraPortafoglio = false } } }
 
     // Ricerca (⌘K)
     @Published var testoRicerca = ""
@@ -261,52 +261,52 @@ final class StatoShell: ObservableObject {
     @Published var valutazioneInModifica: ValutazioneInvestimento?
     private var testiDocumenti = MemoriaTesti()
 
-    // Ruby
-    @Published var rubyInCorso = false
-    /// La modalità scelta nella testata dell'app Ruby («Lavoro / Conversazione»); nil = la sceglie Ruby dalla domanda.
+    // Vera
+    @Published var veraInCorso = false
+    /// La modalità scelta nella testata dell'app Vera («Lavoro / Conversazione»); nil = la sceglie Vera dalla domanda.
     /// Vale per le domande dell'app (non per la mini finestra) fino a «Nuova conversazione».
-    @Published var modalitaRubyScelta: ModalitaRuby?
-    @Published var domandaRuby = "" { didSet { if dettaturaAttiva, domandaRuby != oldValue { dettaturaCambiata() } } }
+    @Published var modalitaVeraScelta: ModalitaVera?
+    @Published var domandaVera = "" { didSet { if dettaturaAttiva, domandaVera != oldValue { dettaturaCambiata() } } }
     /// Conversazioni non conservate nell'archivio (se l'utente lo sceglie nelle impostazioni).
-    @Published var conversazioniTemporanee: [String: [MessaggioRuby]] = [:]
-    /// La voce e l'orecchio di Ruby: nascono alla prima parola (niente microfono finché non serve).
-    /// Chi vuole solo fermarli (blocco, Ruby chiusa) usa `…SeNata`/`…SeNato`, così non li fa nascere.
-    private(set) var voceRubySeNata: VoceRuby?
-    private(set) var ascoltoRubySeNato: AscoltoRuby?
-    var voceRuby: VoceRuby {
-        if let v = voceRubySeNata { return v }
-        let v = VoceRuby()
-        voceRubySeNata = v
+    @Published var conversazioniTemporanee: [String: [MessaggioVera]] = [:]
+    /// La voce e l'orecchio di Vera: nascono alla prima parola (niente microfono finché non serve).
+    /// Chi vuole solo fermarli (blocco, Vera chiusa) usa `…SeNata`/`…SeNato`, così non li fa nascere.
+    private(set) var voceVeraSeNata: VoceVera?
+    private(set) var ascoltoVeraSeNato: AscoltoVera?
+    var voceVera: VoceVera {
+        if let v = voceVeraSeNata { return v }
+        let v = VoceVera()
+        voceVeraSeNata = v
         return v
     }
-    var ascoltoRuby: AscoltoRuby {
-        if let a = ascoltoRubySeNato { return a }
-        let a = AscoltoRuby()
-        ascoltoRubySeNato = a
+    var ascoltoVera: AscoltoVera {
+        if let a = ascoltoVeraSeNato { return a }
+        let a = AscoltoVera()
+        ascoltoVeraSeNato = a
         return a
     }
-    /// La prossima risposta di Ruby si dice anche a voce (la domanda è arrivata a voce).
+    /// La prossima risposta di Vera si dice anche a voce (la domanda è arrivata a voce).
     var rispostaAVoce = false
-    /// Conversazione a voce in corso: dopo ogni risposta Ruby torna ad ascoltare, finché non le dici «basta».
+    /// Conversazione a voce in corso: dopo ogni risposta Vera torna ad ascoltare, finché non le dici «basta».
     @Published var conversazioneAVoce = false
     /// Qwen sul Mac (Ollama): pronto o perché no. Si aggiorna con `verificaMotoreLocale()`.
-    @Published var disponibilitaLocale = DisponibilitaRuby.nonDisponibile("Ollama non ancora verificato.")
-    /// La risposta di Ruby mentre arriva (osservata solo dalla bolla in arrivo).
-    let flussoRuby = FlussoRuby()
-    /// La mini finestra di Ruby (⌥ Spazio, sfera nella barra): osservata solo dal suo pannello e dalla sfera.
-    let miniRuby = StatoMiniRuby()
+    @Published var disponibilitaLocale = DisponibilitaVera.nonDisponibile("Ollama non ancora verificato.")
+    /// La risposta di Vera mentre arriva (osservata solo dalla bolla in arrivo).
+    let flussoVera = FlussoVera()
+    /// La mini finestra di Vera (⌥ Spazio, sfera nella barra): osservata solo dal suo pannello e dalla sfera.
+    let miniVera = StatoMiniVera()
     /// La risposta in corso: si interrompe con una nuova conversazione.
-    var compitoRuby: Task<Void, Never>?
-    /// Il confronto tra modelli (Impostazioni › Ruby): a che punto è, e dove sta l'ultimo rapporto.
+    var compitoVera: Task<Void, Never>?
+    /// Il confronto tra modelli (Impostazioni › Vera): a che punto è, e dove sta l'ultimo rapporto.
     @Published var avanzamentoConfronto: String?
     @Published var rapportoConfronto: URL?
-    /// Nelle istantanee e nelle prove, dove Qwen non c'è: Ruby risponde subito con i calcoli di Prisma.
+    /// Nelle istantanee e nelle prove, dove Qwen non c'è: Vera risponde subito con i calcoli di Prisma.
     var rispostePreparate = false
-    /// L'appuntamento chiesto a Ruby a cui manca ancora il giorno o l'ora: la prossima frase lo completa.
+    /// L'appuntamento chiesto a Vera a cui manca ancora il giorno o l'ora: la prossima frase lo completa.
     var appuntamentoInSospeso: Appuntamento.Bozza?
-    /// Lo scenario «E se…?» a cui manca un dato: Ruby l'ha chiesto e la prossima frase lo completa (ScenariRubyShell.swift).
-    var scenarioInSospeso: ParametriScenarioRuby?
-    /// La dettatura di macOS nel campo di Ruby: ogni richiesta la avvia; la frase parte da sola alla pausa.
+    /// Lo scenario «E se…?» a cui manca un dato: Vera l'ha chiesto e la prossima frase lo completa (ScenariVeraShell.swift).
+    var scenarioInSospeso: ParametriScenarioVera?
+    /// La dettatura di macOS nel campo di Vera: ogni richiesta la avvia; la frase parte da sola alla pausa.
     @Published var richiestaDettatura = 0
     @Published var dettaturaAttiva = false
     /// In automatico, dopo un fallimento: il riconoscimento con cui riprovare, quelli ancora da provare, poi la dettatura di macOS.
@@ -320,7 +320,7 @@ final class StatoShell: ObservableObject {
     @Published var esitoProvaRiconoscimento: String?
     @Published var esitoProvaMicrofono: String?
     var provaInCorso: ProvaRiconoscimento?
-    /// Modalità diagnostica: l'ultimo passaggio dell'ascolto o della voce, mostrato sotto il campo di Ruby.
+    /// Modalità diagnostica: l'ultimo passaggio dell'ascolto o della voce, mostrato sotto il campo di Vera.
     @Published var passaggioVoce: String?
     /// Nelle istantanee: lo stato della voce da mostrare (non c'è microfono).
     var voceIstantanea: StatoVoce?
@@ -393,7 +393,7 @@ final class StatoShell: ObservableObject {
             #elseif os(iOS)
             // Su iPhone e iPad niente backup automatico: i dati arrivano dal backup del Mac
             #endif
-            preparaRuby()
+            preparaVera()
             DiagnosticaVoce.osservatore = { [weak self] riga in self?.passaggioVoce = riga }
             aggiornaElencoBackup()
             // Promemoria del Mac: solo qui, con l'archivio sul disco (mai nelle istantanee e nelle prove)
@@ -403,14 +403,14 @@ final class StatoShell: ObservableObject {
             NSApplication.shared.appearance = StatoShell.aspettoMac(dati.impostazioni.aspetto)
             // Stop del Mac e risveglio (RipresaSistema.swift)
             avviaRipresa()
-            // La mini finestra di Ruby: ⌥ Spazio da qualsiasi app (PannelloMiniRuby.swift)
-            ControlloMiniRuby.condiviso.avvia(stato: self)
-            // Il ponte di Ruby per iPhone e iPad (ServerPonteRuby.swift): acceso solo se scelto in Impostazioni › Ruby
-            $dati.map(\.impostazioni.ruby).removeDuplicates()
-                .sink { ServerPonteRuby.condiviso.aggiorna($0) }
+            // La mini finestra di Vera: ⌥ Spazio da qualsiasi app (PannelloMiniVera.swift)
+            ControlloMiniVera.condiviso.avvia(stato: self)
+            // Il ponte di Vera per iPhone e iPad (ServerPonteVera.swift): acceso solo se scelto in Impostazioni › Vera
+            $dati.map(\.impostazioni.vera).removeDuplicates()
+                .sink { ServerPonteVera.condiviso.aggiorna($0) }
                 .store(in: &abbonamenti)
             // I messaggi nuovi del ponte (giro 5): schede del copilota dall'iPad, testi inquadrati dall'iPhone
-            ServerPonteRuby.condiviso.consegnaArrivi { [weak self] arrivo in
+            ServerPonteVera.condiviso.consegnaArrivi { [weak self] arrivo in
                 guard let stato = self else { return .rifiutata("Prisma sul Mac si sta chiudendo.") }
                 return await MainActor.run { stato.riceviDalPonte(arrivo) }
             }
@@ -513,8 +513,8 @@ final class StatoShell: ObservableObject {
             return attivo
         case .posizioni:
             return portafoglio ? delPortafoglio : attivo
-        case .ruby:
-            return rubyPortafoglio ? delPortafoglio : attivo
+        case .vera:
+            return veraPortafoglio ? delPortafoglio : attivo
         case .presentazioni:
             return sceltaProspetto.tipo == .portafoglio ? delPortafoglio : attivo
         case .agenda:
@@ -903,7 +903,7 @@ final class StatoShell: ObservableObject {
                     x.pagineOCR = esito.pagineOCR
                     x.lettura = esito.pagine.joined().trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .illeggibile : .letto
                     let categoria = MotoreDocumenti.categoriaProbabile(esito.pagine, tipo: x.tipo)
-                    // Identità e questionari restano `.altro` per Ruby; gli altri prendono il tipo dal testo
+                    // Identità e questionari restano `.altro` per Vera; gli altri prendono il tipo dal testo
                     if x.tipo == .altro, categoria != .identita, categoria != .questionario {
                         x.tipo = EstrattoreDocumento.tipoProbabile(esito.pagine)
                     }
@@ -1236,7 +1236,7 @@ final class StatoShell: ObservableObject {
     }
 
     func contenutoProspetto(_ scelta: SceltaProspetto) -> ContenutoProspetto? {
-        if case .riesame = scelta { return fonteRuby(clienteAttivoId).map { CompositoreProspetti.riesame($0, conformita: conformitaCliente(clienteAttivoId), occasioni: occasioniRiesame(clienteAttivoId), memoria: memoriaRiesame(clienteAttivoId)) } }
+        if case .riesame = scelta { return fonteVera(clienteAttivoId).map { CompositoreProspetti.riesame($0, conformita: conformitaCliente(clienteAttivoId), occasioni: occasioniRiesame(clienteAttivoId), memoria: memoriaRiesame(clienteAttivoId)) } }
         return CompositoreProspetti.componi(scelta, dati: dati, cliente: clienteAttivoId, orizzonteConfronto: orizzonteConfronto)
     }
 
@@ -1771,60 +1771,60 @@ final class StatoShell: ObservableObject {
         dati.analisi[id] = nil
     }
 
-    // MARK: - Ruby
+    // MARK: - Vera
 
     /// Messaggi conservati per cliente.
     static let massimoMessaggi = 60
 
-    /// Qwen sul Mac, pronto o no: nome, descrizione e stato per la striscia di Ruby.
-    var qwen: MotoreLocale { MotoriRuby.qwen(dati.impostazioni.ruby, locale: disponibilitaLocale) }
+    /// Qwen sul Mac, pronto o no: nome, descrizione e stato per la striscia di Vera.
+    var qwen: MotoreLocale { MotoriVera.qwen(dati.impostazioni.vera, locale: disponibilitaLocale) }
     /// Qwen se è pronto; nil se Ollama è spento o manca il modello.
-    var generativo: (MotoreRuby & MotoreGenerativo)? { MotoriRuby.generativo(dati.impostazioni.ruby, locale: disponibilitaLocale) }
+    var generativo: (MotoreVera & MotoreGenerativo)? { MotoriVera.generativo(dati.impostazioni.vera, locale: disponibilitaLocale) }
 
-    /// Ruby risponde con Qwen. Se l'ultima verifica non l'ha trovato pronto, prima chiede di nuovo a Ollama
-    /// (magari è stato appena aperto); se ancora non c'è, Ruby lo dice e non risponde.
-    func conQwen(cliente id: String, _ poi: @escaping ((MotoreRuby & MotoreGenerativo)) -> Void) {
+    /// Vera risponde con Qwen. Se l'ultima verifica non l'ha trovato pronto, prima chiede di nuovo a Ollama
+    /// (magari è stato appena aperto); se ancora non c'è, Vera lo dice e non risponde.
+    func conQwen(cliente id: String, _ poi: @escaping ((MotoreVera & MotoreGenerativo)) -> Void) {
         if let m = generativo {
             poi(m)
             return
         }
-        let ruby = dati.impostazioni.ruby
-        rubyInCorso = true
+        let vera = dati.impostazioni.vera
+        veraInCorso = true
         Task { @MainActor in
-            let d = await MotoreLocale.verificaDispositivo(ruby)
+            let d = await MotoreLocale.verificaDispositivo(vera)
             if self.disponibilitaLocale != d { self.disponibilitaLocale = d }
-            self.rubyInCorso = false
+            self.veraInCorso = false
             if let m = self.generativo { poi(m) } else { self.qwenNonPronto(cliente: id) }
         }
     }
 
-    /// Il messaggio di Ruby quando Qwen non c'è: il motivo e cosa fare.
+    /// Il messaggio di Vera quando Qwen non c'è: il motivo e cosa fare.
     func qwenNonPronto(cliente id: String) {
         let motivo = disponibilitaLocale.motivo ?? "Qwen non risponde."
-        aggiungiMessaggio(MessaggioRuby(autore: .ruby, testo: motivo + " Ruby risponde solo con Qwen: quando è pronto, rifai la domanda.",
+        aggiungiMessaggio(MessaggioVera(autore: .vera, testo: motivo + " Vera risponde solo con Qwen: quando è pronto, rifai la domanda.",
                                        titolo: "Qwen non è pronto", motore: "Prisma"), cliente: id)
     }
 
-    /// Chiede a Ollama, sul Mac, se Qwen è pronto (all'avvio, aprendo Ruby e dalle impostazioni).
+    /// Chiede a Ollama, sul Mac, se Qwen è pronto (all'avvio, aprendo Vera e dalle impostazioni).
     func verificaMotoreLocale() {
         guard persistente else { return }
-        let ruby = dati.impostazioni.ruby
+        let vera = dati.impostazioni.vera
         Task {
-            let d = await MotoreLocale.verificaDispositivo(ruby)
+            let d = await MotoreLocale.verificaDispositivo(vera)
             DispatchQueue.main.async { if self.disponibilitaLocale != d { self.disponibilitaLocale = d } }
         }
     }
 
     /// All'avvio, qualche secondo dopo la finestra: se serve apre Ollama e carica il modello (solo sul Mac).
-    func preparaRuby() {
+    func preparaVera() {
         guard persistente else { return }
         #if os(macOS)
-        guard dati.impostazioni.ruby.prontaAllAvvio else { return verificaMotoreLocale() }
-        DispatchQueue.main.asyncAfter(deadline: .now() + StatoShell.attesaPreparazioneRuby) { [weak self] in
+        guard dati.impostazioni.vera.prontaAllAvvio else { return verificaMotoreLocale() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + StatoShell.attesaPreparazioneVera) { [weak self] in
             guard let self else { return }
-            let ruby = self.dati.impostazioni.ruby
+            let vera = self.dati.impostazioni.vera
             Task.detached(priority: .utility) {
-                let d = await AvvioModello.prepara(ruby)
+                let d = await AvvioModello.prepara(vera)
                 await MainActor.run { if self.disponibilitaLocale != d { self.disponibilitaLocale = d } }
             }
         }
@@ -1833,143 +1833,143 @@ final class StatoShell: ObservableObject {
         #endif
     }
 
-    static let attesaPreparazioneRuby: TimeInterval = 3
+    static let attesaPreparazioneVera: TimeInterval = 3
 
-    /// Dove si trova il consulente: per la riga di contesto di Ruby.
-    func ambienteRuby(cliente id: String) -> AmbienteRuby {
-        AmbienteRuby(oggi: Date(), appAperte: finestre.map { $0.app.titolo }, cliente: cliente(id)?.nome)
+    /// Dove si trova il consulente: per la riga di contesto di Vera.
+    func ambienteVera(cliente id: String) -> AmbienteVera {
+        AmbienteVera(oggi: Date(), appAperte: finestre.map { $0.app.titolo }, cliente: cliente(id)?.nome)
     }
 
-    func conversazione(_ id: String) -> [MessaggioRuby] {
-        dati.impostazioni.ruby.conservaConversazioni ? (dati.conversazioni[id] ?? []) : (conversazioniTemporanee[id] ?? [])
+    func conversazione(_ id: String) -> [MessaggioVera] {
+        dati.impostazioni.vera.conservaConversazioni ? (dati.conversazioni[id] ?? []) : (conversazioniTemporanee[id] ?? [])
     }
 
-    func aggiungiMessaggio(_ m: MessaggioRuby, cliente id: String, parla: Bool = true) {
+    func aggiungiMessaggio(_ m: MessaggioVera, cliente id: String, parla: Bool = true) {
         var elenco = conversazione(id)
         elenco.append(m)
         elenco = Array(elenco.suffix(Self.massimoMessaggi))
-        if dati.impostazioni.ruby.conservaConversazioni {
+        if dati.impostazioni.vera.conservaConversazioni {
             dati.conversazioni[id] = elenco
         } else {
             conversazioniTemporanee[id] = elenco
         }
-        if m.autore == .ruby, parla { parlaRisposta(m) }
+        if m.autore == .vera, parla { parlaRisposta(m) }
     }
 
-    /// La modalità che la testata di Ruby mostra: quella scelta, altrimenti quella dell'ultima risposta (lavoro se
+    /// La modalità che la testata di Vera mostra: quella scelta, altrimenti quella dell'ultima risposta (lavoro se
     /// non ce n'è ancora). Il portafoglio parla sempre con le cifre di Prisma: lavoro.
-    var modalitaRubyMostrata: ModalitaRuby {
-        if rubyPortafoglio { return .lavoro }
-        if let m = modalitaRubyScelta { return m }
-        return conversazione(clienteAttivoId).last { $0.autore == .ruby && $0.modalita != nil }?.modalita ?? .lavoro
+    var modalitaVeraMostrata: ModalitaVera {
+        if veraPortafoglio { return .lavoro }
+        if let m = modalitaVeraScelta { return m }
+        return conversazione(clienteAttivoId).last { $0.autore == .vera && $0.modalita != nil }?.modalita ?? .lavoro
     }
 
     func nuovaConversazione() {
-        let id = rubyPortafoglio ? RubyPortafoglio.chiave : clienteAttivoId
-        modalitaRubyScelta = nil
+        let id = veraPortafoglio ? VeraPortafoglio.chiave : clienteAttivoId
+        modalitaVeraScelta = nil
         // Una risposta ancora in arrivo si ferma qui, e lo scenario lasciato a metà
         scenarioInSospeso = nil
-        compitoRuby?.cancel()
-        compitoRuby = nil
+        compitoVera?.cancel()
+        compitoVera = nil
         dati.conversazioni[id] = nil
         conversazioniTemporanee[id] = nil
     }
 
-    /// Una domanda a Ruby sul portafoglio (tutti i clienti). Le cifre sono quelle della vista Portafoglio;
+    /// Una domanda a Vera sul portafoglio (tutti i clienti). Le cifre sono quelle della vista Portafoglio;
     /// Qwen le racconta senza cambiarle (se cambia una cifra restano quelle di Prisma).
     @discardableResult
-    func chiediRubyPortafoglio(_ domanda: String, spunto: SpuntoPortafoglio? = nil, breve: Bool = false, scenari: Bool = true) -> Bool {
+    func chiediVeraPortafoglio(_ domanda: String, spunto: SpuntoPortafoglio? = nil, breve: Bool = false, scenari: Bool = true) -> Bool {
         let testo = domanda.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !testo.isEmpty, !rubyInCorso else { return false }
+        guard !testo.isEmpty, !veraInCorso else { return false }
         // La domanda parte da tastiera o da uno spunto: la dettatura del Mac si spegne (anche per i comandi)
         if dettaturaAttiva { chiudiDettatura() }
-        if spunto == nil, eseguiComandoRuby(testo) { return true }
-        // «E se Marco va in pensione a 63 anni?»: lo scenario di un cliente nominato lo calcola Prisma (ScenariRubyShell.swift)
-        if spunto == nil, scenari, chiediScenarioRuby(testo, chiave: RubyPortafoglio.chiave, breve: breve) { return true }
-        let id = RubyPortafoglio.chiave
-        aggiungiMessaggio(MessaggioRuby(autore: .utente, testo: testo), cliente: id)
-        domandaRuby = ""
+        if spunto == nil, eseguiComandoVera(testo) { return true }
+        // «E se Marco va in pensione a 63 anni?»: lo scenario di un cliente nominato lo calcola Prisma (ScenariVeraShell.swift)
+        if spunto == nil, scenari, chiediScenarioVera(testo, chiave: VeraPortafoglio.chiave, breve: breve) { return true }
+        let id = VeraPortafoglio.chiave
+        aggiungiMessaggio(MessaggioVera(autore: .utente, testo: testo), cliente: id)
+        domandaVera = ""
         let argomento = spunto ?? SpuntoPortafoglio.da(testo)
-        let bozza = RubyPortafoglio.risposta(argomento, domanda: testo, dati: dati)
+        let bozza = VeraPortafoglio.risposta(argomento, domanda: testo, dati: dati)
         if rispostePreparate {
-            aggiungiMessaggio(MessaggioRuby(autore: .ruby, testo: bozza.testo, titolo: bozza.titolo, motore: MotoriRuby.sintesi.nome), cliente: id)
+            aggiungiMessaggio(MessaggioVera(autore: .vera, testo: bozza.testo, titolo: bozza.titolo, motore: MotoriVera.sintesi.nome), cliente: id)
             return true
         }
-        let scheda = RubyPortafoglio.scheda(dati)
-        let istruzioni = (IstruzioniRuby.testo("chat") ?? "") + "\nQui parli del portafoglio del consulente (tutti i clienti), non di un singolo cliente."
-            + (breve ? "\n\n" + IstruzioniRuby.mini : "")
+        let scheda = VeraPortafoglio.scheda(dati)
+        let istruzioni = (IstruzioniVera.testo("chat") ?? "") + "\nQui parli del portafoglio del consulente (tutti i clienti), non di un singolo cliente."
+            + (breve ? "\n\n" + IstruzioniVera.mini : "")
         let richiesta = "SCHEDA DEL PORTAFOGLIO (calcolata da Prisma)\n\(scheda)\n\nBOZZA PREPARATA DA PRISMA (numeri esatti: non cambiarli e non aggiungerne)\n\(bozza.testo)\n\nDOMANDA DEL CONSULENTE: \(testo)"
         conQwen(cliente: id) { modello in
-            self.rubyInCorso = true
+            self.veraInCorso = true
             Task { @MainActor in
                 do {
                     let t = try await modello.genera(istruzioni: istruzioni, richiesta: richiesta)
                     let pulito = t.replacingOccurrences(of: "**", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
                     // Ogni cifra della risposta deve venire dalla scheda o dalla bozza: altrimenti restano le cifre di Prisma
-                    let fedele = !pulito.isEmpty && CommentoRuby.numeriConservati(bozza: scheda + "\n" + bozza.testo, testo: pulito)
-                    self.aggiungiMessaggio(MessaggioRuby(autore: .ruby, testo: fedele ? pulito : bozza.testo, titolo: bozza.titolo,
-                                                        motore: fedele ? modello.nome : MotoriRuby.sintesi.nome), cliente: id)
+                    let fedele = !pulito.isEmpty && CommentoVera.numeriConservati(bozza: scheda + "\n" + bozza.testo, testo: pulito)
+                    self.aggiungiMessaggio(MessaggioVera(autore: .vera, testo: fedele ? pulito : bozza.testo, titolo: bozza.titolo,
+                                                        motore: fedele ? modello.nome : MotoriVera.sintesi.nome), cliente: id)
                 } catch {
-                    self.aggiungiMessaggio(MessaggioRuby(autore: .ruby, testo: error.localizedDescription,
-                                                        titolo: "Ruby non ha potuto rispondere", motore: modello.nome), cliente: id)
+                    self.aggiungiMessaggio(MessaggioVera(autore: .vera, testo: error.localizedDescription,
+                                                        titolo: "Vera non ha potuto rispondere", motore: modello.nome), cliente: id)
                 }
-                self.rubyInCorso = false
+                self.veraInCorso = false
             }
         }
         return true
     }
 
-    /// Ciò che Ruby sa del cliente: dati del dossier e risultati dei motori di Prisma.
-    func fonteRuby(_ id: String) -> FonteRuby? {
+    /// Ciò che Vera sa del cliente: dati del dossier e risultati dei motori di Prisma.
+    func fonteVera(_ id: String) -> FonteVera? {
         guard let c = cliente(id) else { return nil }
-        return FonteRuby(oggi: Date(), nomeUtente: nomeUtente, cliente: c, posizioni: posizioniCliente(id),
+        return FonteVera(oggi: Date(), nomeUtente: nomeUtente, cliente: c, posizioni: posizioniCliente(id),
                         appuntamenti: appuntamentiCliente(id), attivita: attivitaCliente(id),
                         analisi: analisi360(id), analisiSalvata: analisiSalvata(id), simulazioni: simulazioniCliente(id),
                         incontri: incontriCliente(id), obiettivi: obiettiviCliente(id), prodotti: dati.prodotti, documenti: documentiCliente(id),
-                        note: noteCliente(id).filter { !$0.vuota }, confronto: confrontoRuby(id), anniConfronto: orizzonteSostituzione)
+                        note: noteCliente(id).filter { !$0.vuota }, confronto: confrontoVera(id), anniConfronto: orizzonteSostituzione)
     }
 
     /// Il confronto aperto in Prospetti e report, se riguarda questo cliente.
-    private func confrontoRuby(_ id: String) -> (attuale: String, alternativa: String)? {
+    private func confrontoVera(_ id: String) -> (attuale: String, alternativa: String)? {
         guard case .sostituzione(let a, let b, _)? = prospetto,
               posizioni.contains(where: { $0.id == a && $0.clienteId == id }) else { return nil }
         return (a, b)
     }
 
-    /// Fa spiegare a Ruby un documento del cliente: dati con la pagina, confronto con il dossier,
+    /// Fa spiegare a Vera un documento del cliente: dati con la pagina, confronto con il dossier,
     /// cosa resta da verificare. Qwen la rende discorsiva sulle stesse cifre.
-    func spiegaDocumentoConRuby(_ docId: String) {
-        guard !rubyInCorso, let d = documento(docId) else { return }
+    func spiegaDocumentoConVera(_ docId: String) {
+        guard !veraInCorso, let d = documento(docId) else { return }
         clienteAttivoId = d.clienteId
         let id = d.clienteId
-        guard let fonte = fonteRuby(id) else { return }
-        apri(.ruby)
+        guard let fonte = fonteVera(id) else { return }
+        apri(.vera)
         let domanda = "Spiegami il documento «\(d.titolo)»"
-        let bozza = MotoriRuby.sintesi.documento(d, fonte: fonte)
-        aggiungiMessaggio(MessaggioRuby(autore: .utente, testo: domanda), cliente: id)
+        let bozza = MotoriVera.sintesi.documento(d, fonte: fonte)
+        aggiungiMessaggio(MessaggioVera(autore: .utente, testo: domanda), cliente: id)
         if rispostePreparate {
-            aggiungiMessaggio(MessaggioRuby(autore: .ruby, testo: bozza.testo, titolo: bozza.titolo, motore: MotoriRuby.sintesi.nome), cliente: id)
+            aggiungiMessaggio(MessaggioVera(autore: .vera, testo: bozza.testo, titolo: bozza.titolo, motore: MotoriVera.sintesi.nome), cliente: id)
             return
         }
         // Al modello: la bozza con i dati esatti e un estratto delle prime pagine, entro la sua finestra
-        let estratto = String(testoDocumento(d).joined(separator: "\n").prefix(ContestoRuby.limiteCalcoli))
+        let estratto = String(testoDocumento(d).joined(separator: "\n").prefix(ContestoVera.limiteCalcoli))
         let richiesta = "DOMANDA DEL CONSULENTE\n\(domanda)\n\nBOZZA PREPARATA DA PRISMA (dati estratti con la pagina: non cambiarli e non aggiungerne)\n"
-            + String(bozza.testo.prefix(ContestoRuby.limiteCalcoli))
+            + String(bozza.testo.prefix(ContestoVera.limiteCalcoli))
             + "\n\nESTRATTO DEL DOCUMENTO\n\(estratto)\n\nSpiega il documento al consulente in modo ordinato, con le pagine, e segnala cosa verificare."
         conQwen(cliente: id) { modello in
-            self.rubyInCorso = true
+            self.veraInCorso = true
             Task { @MainActor in
                 do {
-                    let r = try await modello.genera(istruzioni: IstruzioniRuby.chat, richiesta: richiesta).trimmingCharacters(in: .whitespacesAndNewlines)
+                    let r = try await modello.genera(istruzioni: IstruzioniVera.chat, richiesta: richiesta).trimmingCharacters(in: .whitespacesAndNewlines)
                     // Cifre diverse da quelle del documento: restano i dati estratti da Prisma, con le pagine
-                    let fedele = !r.isEmpty && CommentoRuby.numeriConservati(bozza: bozza.testo + "\n" + estratto, testo: r)
-                    self.aggiungiMessaggio(MessaggioRuby(autore: .ruby, testo: fedele ? r : bozza.testo, titolo: bozza.titolo,
-                                                        motore: fedele ? modello.nome : MotoriRuby.sintesi.nome), cliente: id)
+                    let fedele = !r.isEmpty && CommentoVera.numeriConservati(bozza: bozza.testo + "\n" + estratto, testo: r)
+                    self.aggiungiMessaggio(MessaggioVera(autore: .vera, testo: fedele ? r : bozza.testo, titolo: bozza.titolo,
+                                                        motore: fedele ? modello.nome : MotoriVera.sintesi.nome), cliente: id)
                 } catch {
-                    self.aggiungiMessaggio(MessaggioRuby(autore: .ruby, testo: error.localizedDescription,
-                                                        titolo: "Ruby non ha potuto rispondere", motore: modello.nome), cliente: id)
+                    self.aggiungiMessaggio(MessaggioVera(autore: .vera, testo: error.localizedDescription,
+                                                        titolo: "Vera non ha potuto rispondere", motore: modello.nome), cliente: id)
                 }
-                self.rubyInCorso = false
+                self.veraInCorso = false
             }
         }
     }
@@ -1986,7 +1986,7 @@ final class StatoShell: ObservableObject {
         let pulito = testo.trimmingCharacters(in: .whitespacesAndNewlines)
         dati.commenti.removeAll { $0.id == chiave }
         guard !pulito.isEmpty else { return }
-        dati.commenti.append(CommentoReport(id: chiave, clienteId: clienteAttivoId, testo: String(pulito.prefix(CommentoRuby.limite)),
+        dati.commenti.append(CommentoReport(id: chiave, clienteId: clienteAttivoId, testo: String(pulito.prefix(CommentoVera.limite)),
                                             bozzaDi: bozzaDi, aggiornatoIl: Appuntamento.alMinuto(Date())))
     }
 
@@ -1997,48 +1997,48 @@ final class StatoShell: ObservableObject {
         switch scelta {
         case .checkUp:
             let t = testiCheckUp(id)
-            return CommentoRuby.bozza(nome: nome, apertura: "ti lascio la prima fotografia della tua situazione che abbiamo costruito insieme: cosa è in ordine e da dove conviene partire.",
+            return CommentoVera.bozza(nome: nome, apertura: "ti lascio la prima fotografia della tua situazione che abbiamo costruito insieme: cosa è in ordine e da dove conviene partire.",
                                      punti: t.sintesi, passo: t.prossimiPassi.first)
         case .resoconto:
             let t = testiResoconto(id)
-            return CommentoRuby.bozza(nome: nome, apertura: "ecco il punto sulle tue posizioni: cosa hai, come stanno andando, quanto costano e quanto incasseresti oggi al netto delle imposte.",
+            return CommentoVera.bozza(nome: nome, apertura: "ecco il punto sulle tue posizioni: cosa hai, come stanno andando, quanto costano e quanto incasseresti oggi al netto delle imposte.",
                                      punti: t.sintesi, passo: t.prossimiPassi.first)
         case .previdenza:
             let t = testiPrevidenza(id)
-            return CommentoRuby.bozza(nome: nome, apertura: "ti lascio il quadro della tua pensione: quanto potrebbe mancare, quanto aggiungono i tuoi piani e quanto ti restituisce il fisco sui versamenti.",
+            return CommentoVera.bozza(nome: nome, apertura: "ti lascio il quadro della tua pensione: quanto potrebbe mancare, quanto aggiungono i tuoi piani e quanto ti restituisce il fisco sui versamenti.",
                                      punti: t.sintesi, passo: t.prossimiPassi.first)
         case .protezione:
             let t = testiProtezione(id)
-            return CommentoRuby.bozza(nome: nome, apertura: "ti lascio il quadro della protezione della tua famiglia: cosa è già coperto e cosa ancora no.",
+            return CommentoVera.bozza(nome: nome, apertura: "ti lascio il quadro della protezione della tua famiglia: cosa è già coperto e cosa ancora no.",
                                      punti: t.sintesi, passo: t.prossimiPassi.first)
         case .patrimonio:
             let t = testiPatrimonio(id)
-            return CommentoRuby.bozza(nome: nome, apertura: "ti lascio il percorso del tuo patrimonio nei prossimi anni: dove ti porta la strada di oggi e dove potresti arrivare con le proposte che abbiamo visto.",
+            return CommentoVera.bozza(nome: nome, apertura: "ti lascio il percorso del tuo patrimonio nei prossimi anni: dove ti porta la strada di oggi e dove potresti arrivare con le proposte che abbiamo visto.",
                                      punti: t.sintesi, passo: t.prossimiPassi.first)
         case .successione:
             let t = testiSuccessione(id)
-            return CommentoRuby.bozza(nome: nome, apertura: "ti lascio il quadro di come passerebbe il tuo patrimonio alla tua famiglia: cosa arriva subito, cosa con la successione e cosa conviene sistemare oggi.",
+            return CommentoVera.bozza(nome: nome, apertura: "ti lascio il quadro di come passerebbe il tuo patrimonio alla tua famiglia: cosa arriva subito, cosa con la successione e cosa conviene sistemare oggi.",
                                      punti: t.sintesi, passo: t.prossimiPassi.first)
         case .costi:
             let t = testiCosti(id)
-            return CommentoRuby.bozza(nome: nome, apertura: "ti lascio il quadro dei costi dei tuoi investimenti: quanto paghi, quanto pesa nel tempo e cosa ricevi in cambio.",
+            return CommentoVera.bozza(nome: nome, apertura: "ti lascio il quadro dei costi dei tuoi investimenti: quanto paghi, quanto pesa nel tempo e cosa ricevi in cambio.",
                                      punti: t.sintesi, passo: t.prossimiPassi.first)
         case .resistenza:
             let t = testiResistenza(id)
-            return CommentoRuby.bozza(nome: nome, apertura: "ti lascio la prova di resistenza dei tuoi risparmi: cosa potrebbe succedere in tre anni difficili e se è una perdita che puoi sopportare.",
+            return CommentoVera.bozza(nome: nome, apertura: "ti lascio la prova di resistenza dei tuoi risparmi: cosa potrebbe succedere in tre anni difficili e se è una perdita che puoi sopportare.",
                                      punti: t.sintesi, passo: t.prossimiPassi.first)
         case .liquidita:
             let t = testiLiquidita(id)
-            return CommentoRuby.bozza(nome: nome, apertura: "ti lascio qualche idea su come far lavorare il capitale che arriva e la liquidità che hai, secondo quando ti servirà.",
+            return CommentoVera.bozza(nome: nome, apertura: "ti lascio qualche idea su come far lavorare il capitale che arriva e la liquidità che hai, secondo quando ti servirà.",
                                      punti: t.sintesi, passo: t.prossimiPassi.first)
         case .obiettivo(let oid, _):
             guard let t = testiObiettivo(oid) else { return nil }
-            return CommentoRuby.bozza(nome: nome, apertura: "ecco il punto sul tuo obiettivo «\(t.o.titolo)»: dove sei, dove arrivi e cosa serve per raggiungerlo.",
+            return CommentoVera.bozza(nome: nome, apertura: "ecco il punto sul tuo obiettivo «\(t.o.titolo)»: dove sei, dove arrivi e cosa serve per raggiungerlo.",
                                      punti: t.sintesi, passo: t.prossimiPassi.first)
         case .sostituzione(let a, let b, _):
             guard let t = testiSostituzione(a, b) else { return nil }
             let punti = [("Il verdetto", t.titoloVerdetto + "."), ("Le cifre", t.sottotitoloVerdetto)].filter { !$0.1.isEmpty }
-            return CommentoRuby.bozza(nome: nome, apertura: t.e.sostituzione ? "ti lascio il confronto tra restare in \(t.a.nome) e passare a \(t.b.nome), con quello che costa uscire e quello che rende ciascuna strada."
+            return CommentoVera.bozza(nome: nome, apertura: t.e.sostituzione ? "ti lascio il confronto tra restare in \(t.a.nome) e passare a \(t.b.nome), con quello che costa uscire e quello che rende ciascuna strada."
                                                                             : "ti lascio il confronto tra \(t.a.nome) e \(t.b.nome), al netto di costi e imposte.",
                                      punti: punti, passo: t.prossimiPassi.first)
         case .posizione, .confronto, .valutazione, .portafoglio, .riesame, .fascicolo, .annoInsieme:
@@ -2046,85 +2046,85 @@ final class StatoShell: ObservableObject {
         }
     }
 
-    /// Fa scrivere a Ruby il commento del report aperto (il consulente poi lo rilegge e lo modifica).
-    func scriviCommentoConRuby(_ scelta: SceltaProspetto) {
-        guard !rubyInCorso, let bozza = bozzaCommento(scelta) else { return }
+    /// Fa scrivere a Vera il commento del report aperto (il consulente poi lo rilegge e lo modifica).
+    func scriviCommentoConVera(_ scelta: SceltaProspetto) {
+        guard !veraInCorso, let bozza = bozzaCommento(scelta) else { return }
         let id = clienteAttivoId
         if rispostePreparate {
-            salvaCommento(scelta, testo: bozza, bozzaDi: MotoriRuby.sintesi.nome)
+            salvaCommento(scelta, testo: bozza, bozzaDi: MotoriVera.sintesi.nome)
             return
         }
         guard let modello = generativo else {
             verificaMotoreLocale()
-            mostraAvviso((disponibilitaLocale.motivo ?? "Qwen non risponde.") + " Il commento lo scrive Ruby con Qwen: quando è pronto, riprova.")
+            mostraAvviso((disponibilitaLocale.motivo ?? "Qwen non risponde.") + " Il commento lo scrive Vera con Qwen: quando è pronto, riprova.")
             return
         }
-        rubyInCorso = true
+        veraInCorso = true
         Task { @MainActor in
-            let r = await CommentoRuby.scrivi(bozza: bozza, modello: modello)
+            let r = await CommentoVera.scrivi(bozza: bozza, modello: modello)
             if self.clienteAttivoId == id { self.salvaCommento(scelta, testo: r.testo, bozzaDi: r.motore) }
-            self.rubyInCorso = false
+            self.veraInCorso = false
         }
     }
 
-    /// Fa spiegare a Ruby il documento aperto in Prospetti e report.
-    func chiediRubyDelDocumento(_ scelta: SceltaProspetto) {
-        guard let s = scelta.spuntoRuby else { return }
-        apri(.ruby)
-        chiediRuby(s.domanda, spunto: s)
+    /// Fa spiegare a Vera il documento aperto in Prospetti e report.
+    func chiediVeraDelDocumento(_ scelta: SceltaProspetto) {
+        guard let s = scelta.spuntoVera else { return }
+        apri(.vera)
+        chiediVera(s.domanda, spunto: s)
     }
 
-    /// Manda una domanda a Ruby per il cliente attivo.
+    /// Manda una domanda a Vera per il cliente attivo.
     @discardableResult
-    func chiediRuby(_ domanda: String, spunto: SpuntoRuby? = nil, breve: Bool = false, scenari: Bool = true) -> Bool {
+    func chiediVera(_ domanda: String, spunto: SpuntoVera? = nil, breve: Bool = false, scenari: Bool = true) -> Bool {
         let testo = domanda.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !testo.isEmpty, !rubyInCorso else { return false }
+        guard !testo.isEmpty, !veraInCorso else { return false }
         // La domanda parte da tastiera o da uno spunto: la dettatura del Mac si spegne (anche per i comandi)
         if dettaturaAttiva { chiudiDettatura() }
-        if spunto == nil, eseguiComandoRuby(testo) { return true }
-        // «E se Marco va in pensione a 63 anni?»: lo scenario lo calcola Prisma, Ruby lo racconta (ScenariRubyShell.swift)
-        if spunto == nil, scenari, chiediScenarioRuby(testo, chiave: clienteAttivoId, breve: breve) { return true }
+        if spunto == nil, eseguiComandoVera(testo) { return true }
+        // «E se Marco va in pensione a 63 anni?»: lo scenario lo calcola Prisma, Vera lo racconta (ScenariVeraShell.swift)
+        if spunto == nil, scenari, chiediScenarioVera(testo, chiave: clienteAttivoId, breve: breve) { return true }
         let id = clienteAttivoId
-        guard let fonte = fonteRuby(id) else { return false }
+        guard let fonte = fonteVera(id) else { return false }
         let storia = conversazione(id)
-        aggiungiMessaggio(MessaggioRuby(autore: .utente, testo: testo), cliente: id)
-        domandaRuby = ""
-        let richiesta = RichiestaRuby(domanda: testo, spunto: spunto ?? SpuntoRuby.da(testo), fonte: fonte, storia: storia)
+        aggiungiMessaggio(MessaggioVera(autore: .utente, testo: testo), cliente: id)
+        domandaVera = ""
+        let richiesta = RichiestaVera(domanda: testo, spunto: spunto ?? SpuntoVera.da(testo), fonte: fonte, storia: storia)
         if rispostePreparate {
-            let r = MotoriRuby.sintesi.componi(richiesta)
-            aggiungiMessaggio(MessaggioRuby(autore: .ruby, testo: r.testo, titolo: r.titolo, motore: MotoriRuby.sintesi.nome, proposte: r.proposte), cliente: id)
+            let r = MotoriVera.sintesi.componi(richiesta)
+            aggiungiMessaggio(MessaggioVera(autore: .vera, testo: r.testo, titolo: r.titolo, motore: MotoriVera.sintesi.nome, proposte: r.proposte), cliente: id)
             return true
         }
         // Le azioni proposte restano quelle calcolate da Prisma, anche quando il testo lo scrive Qwen
-        let proposte = richiesta.spunto == .proposte ? MotoriRuby.sintesi.componi(richiesta).proposte : nil
-        var ambiente = ambienteRuby(cliente: id)
+        let proposte = richiesta.spunto == .proposte ? MotoriVera.sintesi.componi(richiesta).proposte : nil
+        var ambiente = ambienteVera(cliente: id)
         ambiente.breve = breve
-        // La modalità scelta nella testata di Ruby (la mini finestra decide da sé, con le sue cifre)
-        if !breve { ambiente.modalita = modalitaRubyScelta }
-        let piano = NucleoRuby.piano(richiesta, impostazioni: dati.impostazioni.ruby, ambiente: ambiente)
+        // La modalità scelta nella testata di Vera (la mini finestra decide da sé, con le sue cifre)
+        if !breve { ambiente.modalita = modalitaVeraScelta }
+        let piano = NucleoVera.piano(richiesta, impostazioni: dati.impostazioni.vera, ambiente: ambiente)
         conQwen(cliente: id) { _ in
-            // La risposta arriva a pezzi e si vede mentre Ruby la scrive (FlussoRuby, bolla in arrivo)
+            // La risposta arriva a pezzi e si vede mentre Vera la scrive (FlussoVera, bolla in arrivo)
             let motore = self.qwen
-            self.rubyInCorso = true
-            let generazione = self.flussoRuby.inizia(piano.scelta, motore: motore.nome)
-            self.compitoRuby = Task { @MainActor in
+            self.veraInCorso = true
+            let generazione = self.flussoVera.inizia(piano.scelta, motore: motore.nome)
+            self.compitoVera = Task { @MainActor in
                 do {
                     // I pezzi arrivano fuori dal thread principale: la bolla si aggiorna sul principale
                     let r = try await motore.scrivi(piano) { p in
-                        DispatchQueue.main.async { self.flussoRuby.aggiorna(p, generazione: generazione) }
+                        DispatchQueue.main.async { self.flussoVera.aggiorna(p, generazione: generazione) }
                     }
-                    var m = MessaggioRuby(autore: .ruby, testo: r.testo, motore: motore.nome, proposte: proposte)
+                    var m = MessaggioVera(autore: .vera, testo: r.testo, motore: motore.nome, proposte: proposte)
                     m.modalita = piano.scelta.modalita
                     self.aggiungiMessaggio(m, cliente: id)
                 } catch is CancellationError {
                     // Nuova conversazione: la risposta interrotta non resta
                 } catch {
-                    self.aggiungiMessaggio(MessaggioRuby(autore: .ruby, testo: error.localizedDescription,
-                                                        titolo: "Ruby non ha potuto rispondere", motore: motore.nome, proposte: proposte), cliente: id)
+                    self.aggiungiMessaggio(MessaggioVera(autore: .vera, testo: error.localizedDescription,
+                                                        titolo: "Vera non ha potuto rispondere", motore: motore.nome, proposte: proposte), cliente: id)
                 }
-                self.flussoRuby.chiudi()
-                self.rubyInCorso = false
-                self.compitoRuby = nil
+                self.flussoVera.chiudi()
+                self.veraInCorso = false
+                self.compitoVera = nil
             }
         }
         return true
@@ -2132,22 +2132,22 @@ final class StatoShell: ObservableObject {
 
     // MARK: - Confronto tra modelli
 
-    /// Le stesse domande di prova ai modelli scelti in Impostazioni › Ruby, sui dati di prova: il rapporto
+    /// Le stesse domande di prova ai modelli scelti in Impostazioni › Vera, sui dati di prova: il rapporto
     /// (una pagina con le risposte e i tempi affiancati) si apre a confronto finito.
     func confrontaModelli() {
         #if os(macOS)
         guard avanzamentoConfronto == nil else { return }
-        let modelli = ConfrontoModelli.elenco(dati.impostazioni.ruby.modelliConfronto)
+        let modelli = ConfrontoModelli.elenco(dati.impostazioni.vera.modelliConfronto)
         guard !modelli.isEmpty else { return mostraAvviso("Scrivi i modelli da confrontare, separati da virgole.") }
         // I dati di prova di Prisma, mai quelli dei clienti veri
-        guard let fonte = StatoShell(persistente: false).fonteRuby(ConfrontoModelli.clienteProva) else { return }
-        let ruby = dati.impostazioni.ruby
+        guard let fonte = StatoShell(persistente: false).fonteVera(ConfrontoModelli.clienteProva) else { return }
+        let vera = dati.impostazioni.vera
         avanzamentoConfronto = "Preparo il confronto…"
         Task { @MainActor in
-            let r = await ConfrontoModelli.esegui(modelli: modelli, ruby: ruby, fonte: fonte) { passo in
+            let r = await ConfrontoModelli.esegui(modelli: modelli, vera: vera, fonte: fonte) { passo in
                 Task { @MainActor in self.avanzamentoConfronto = passo }
             }
-            let file = FileManager.default.temporaryDirectory.appendingPathComponent("Confronto modelli di Ruby.html")
+            let file = FileManager.default.temporaryDirectory.appendingPathComponent("Confronto modelli di Vera.html")
             do {
                 try ConfrontoModelli.html(r).write(to: file, atomically: true, encoding: .utf8)
                 self.rapportoConfronto = file
@@ -2162,21 +2162,21 @@ final class StatoShell: ObservableObject {
         #endif
     }
 
-    // MARK: - Proposte di Ruby
+    // MARK: - Proposte di Vera
 
-    /// Un'azione proposta da Ruby diventa un'attività del cliente (entro una settimana).
-    func attivitaDaProposta(_ p: PropostaRuby, messaggio: String) {
+    /// Un'azione proposta da Vera diventa un'attività del cliente (entro una settimana).
+    func attivitaDaProposta(_ p: PropostaVera, messaggio: String) {
         var t = Attivita.nuova(clienteId: clienteAttivoId,
                                scadenza: Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date())
         t.titolo = p.titolo
-        t.note = "Proposta da Ruby: \(p.perche)"
+        t.note = "Proposta da Vera: \(p.perche)"
         dati.attivita.append(t)
         aggiornaProposta(p.id, messaggio: messaggio) { $0.attivitaId = t.id }
         mostraAvviso("Attività aggiunta: \(t.titolo)")
     }
 
-    /// Un'azione proposta da Ruby diventa una bozza di proposta in Posizioni, da completare.
-    func posizioneDaProposta(_ p: PropostaRuby, messaggio: String) {
+    /// Un'azione proposta da Vera diventa una bozza di proposta in Posizioni, da completare.
+    func posizioneDaProposta(_ p: PropostaVera, messaggio: String) {
         if let id = p.posizioneId, let esistente = posizioni.first(where: { $0.id == id }) {
             apriPosizione(esistente)
             return
@@ -2193,20 +2193,20 @@ final class StatoShell: ObservableObject {
             nuova.frequenza = .mensile
         }
         if let i = p.importo, p.versamentoMensile == nil { nuova.versamentoIniziale = i }
-        nuova.note = "Preparata con Ruby: \(p.perche) Scegli prodotto e canale e completa i dati."
+        nuova.note = "Preparata con Vera: \(p.perche) Scegli prodotto e canale e completa i dati."
         salvaPosizione(nuova)
         aggiornaProposta(p.id, messaggio: messaggio) { $0.posizioneId = nuova.id }
         apriPosizione(nuova)
     }
 
-    private func aggiornaProposta(_ id: String, messaggio: String, _ modifica: (inout PropostaRuby) -> Void) {
+    private func aggiornaProposta(_ id: String, messaggio: String, _ modifica: (inout PropostaVera) -> Void) {
         let cliente = clienteAttivoId
-        func aggiorna(_ elenco: inout [MessaggioRuby]) {
+        func aggiorna(_ elenco: inout [MessaggioVera]) {
             guard let m = elenco.firstIndex(where: { $0.id == messaggio }),
                   let i = elenco[m].proposte?.firstIndex(where: { $0.id == id }) else { return }
             modifica(&elenco[m].proposte![i])
         }
-        if dati.impostazioni.ruby.conservaConversazioni {
+        if dati.impostazioni.vera.conservaConversazioni {
             var elenco = dati.conversazioni[cliente] ?? []
             aggiorna(&elenco)
             dati.conversazioni[cliente] = elenco
@@ -2217,8 +2217,8 @@ final class StatoShell: ObservableObject {
         }
     }
 
-    /// Trasforma una risposta di Ruby in un'attività per il cliente.
-    func attivitaDaRuby(_ m: MessaggioRuby) {
+    /// Trasforma una risposta di Vera in un'attività per il cliente.
+    func attivitaDaVera(_ m: MessaggioVera) {
         var t = Attivita.nuova(clienteId: clienteAttivoId,
                                scadenza: Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date())
         t.titolo = m.titolo ?? String(m.testo.prefix(80))
@@ -2227,8 +2227,8 @@ final class StatoShell: ObservableObject {
         mostraAvviso("Attività aggiunta: \(t.titolo)")
     }
 
-    /// Aggiunge una risposta di Ruby alla nota del cliente.
-    func notaDaRuby(_ m: MessaggioRuby) {
+    /// Aggiunge una risposta di Vera alla nota del cliente.
+    func notaDaVera(_ m: MessaggioVera) {
         guard let i = dati.clienti.firstIndex(where: { $0.id == clienteAttivoId }) else { return }
         let aggiunta = (m.titolo.map { $0 + "\n" } ?? "") + m.testo
         dati.clienti[i].nota = dati.clienti[i].nota.isEmpty ? aggiunta : dati.clienti[i].nota + "\n\n" + aggiunta
@@ -3106,9 +3106,9 @@ final class StatoShell: ObservableObject {
 
     // MARK: - Avvisi
 
-    func mostraAvviso(_ testo: String, daRuby: Bool = false) {
+    func mostraAvviso(_ testo: String, daVera: Bool = false) {
         lavoroAvviso?.cancel()
-        avvisoDiRuby = daRuby
+        avvisoDiVera = daVera
         withAnimation(Animazioni.avviso) { avviso = testo }
         let lavoro = DispatchWorkItem { [weak self] in
             withAnimation(Animazioni.avviso) { self?.avviso = nil }
@@ -3141,7 +3141,7 @@ enum SchedaImpostazioni: String, CaseIterable, Hashable, Identifiable {
     case proposte
     /// Metri di confronto dei rendimenti (dalla versione 24 dell'archivio; prima «Riferimenti»).
     case rendimenti
-    case ruby, archivio, scorciatoie
+    case vera, archivio, scorciatoie
     /// Aliquote provvigionali Alleanza e obiettivi dell'anno per Studio (dalla versione 26 dell'archivio).
     case studio
     /// Mercato (giro 7): l'interruttore «Dati di mercato», le serie, le soglie degli avvisi, i dati importati.
@@ -3162,7 +3162,7 @@ enum SchedaImpostazioni: String, CaseIterable, Hashable, Identifiable {
         case .conformita: return "Conformità"
         case .proposte: return "Proposte e PDF"
         case .rendimenti: return "Rendimenti di confronto"
-        case .ruby: return "Ruby"
+        case .vera: return "Vera"
         case .archivio: return "Archivio e backup"
         case .scorciatoie: return "Scorciatoie"
         case .studio: return "Studio"

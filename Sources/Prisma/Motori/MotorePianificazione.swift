@@ -29,7 +29,7 @@ enum MotorePianificazione {
     static let passoMinuti = 30
     /// Quanto avanti si cerca: otto settimane, poi «nessuno spazio libero».
     static let giorniRicerca = 56
-    /// Il riesame annuale dura un'ora (come la bozza di sempre: lo controlla anche --prova-ruby).
+    /// Il riesame annuale dura un'ora (come la bozza di sempre: lo controlla anche --prova-vera).
     static let durataRiesame = 60
     /// Si comincia a cercare dal giorno dopo: il tempo di preparare il prospetto del riesame e di avvisare il cliente.
     static let preavvisoGiorni = 1

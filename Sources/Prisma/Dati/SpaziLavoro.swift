@@ -1,7 +1,7 @@
 import Foundation
 
 /// Uno spazio di lavoro: un gruppo di app con la loro disposizione, da riaprire con un clic
-/// (per esempio «Incontro con il cliente»: Clienti, Posizioni e Ruby affiancate).
+/// (per esempio «Incontro con il cliente»: Clienti, Posizioni e Vera affiancate).
 struct SpazioLavoro: Identifiable, Codable, Hashable {
     var id = "spazio-\(UUID().uuidString.prefix(8).lowercased())"
     var nome: String
@@ -57,13 +57,13 @@ struct FinestraSpazio: Codable, Hashable {
 extension SpazioLavoro {
     /// Le disposizioni pronte: due app affiancate, la principale più larga e in primo piano.
     /// Non di più: le app hanno bisogno di spazio e le finestre una misura minima. Posizioni e
-    /// Prospetti non si affiancano: su uno schermo da 13″ rendono solo a schermo pieno. Ruby sta bene
+    /// Prospetti non si affiancano: su uno schermo da 13″ rendono solo a schermo pieno. Vera sta bene
     /// nella colonna stretta.
     static let predefiniti: [SpazioLavoro] = [
         SpazioLavoro(id: "pronto-incontro", nome: "Incontro con il cliente",
-                     finestre: [.destra(.ruby), .sinistra(.clienti)], predefinito: true),
-        SpazioLavoro(id: "pronto-analisi", nome: "Analisi 360 con Ruby",
-                     finestre: [.destra(.ruby), .sinistra(.analisi360)], predefinito: true),
+                     finestre: [.destra(.vera), .sinistra(.clienti)], predefinito: true),
+        SpazioLavoro(id: "pronto-analisi", nome: "Analisi 360 con Vera",
+                     finestre: [.destra(.vera), .sinistra(.analisi360)], predefinito: true),
         // Le attività ora vivono nell'Agenda (vista mese, con la colonna del giorno): accanto la scheda del cliente
         SpazioLavoro(id: "pronto-giornata", nome: "La giornata",
                      finestre: [.destra(.clienti), .sinistra(.agenda)], predefinito: true),

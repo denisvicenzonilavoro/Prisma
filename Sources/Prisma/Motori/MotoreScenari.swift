@@ -1,7 +1,7 @@
 import Foundation
 
 /// Una riga del prima e dopo di uno scenario: la voce, la cifra di oggi e quella con lo scenario.
-struct RigaScenarioRuby: Codable, Equatable, Identifiable {
+struct RigaScenarioVera: Codable, Equatable, Identifiable {
     /// Chiave stabile («pensionePubblica», «rendita», «divario»…).
     var chiave: String
     var voce: String
@@ -16,18 +16,18 @@ struct RigaScenarioRuby: Codable, Equatable, Identifiable {
 }
 
 /// La scheda prima/dopo di uno scenario «E se…?»: le cifre le calcola Prisma con le ipotesi del cliente,
-/// Ruby le racconta. Resta nella risposta di Ruby (nel dossier, con la conversazione) e si salva tra gli scenari.
-struct SchedaScenarioRuby: Codable, Equatable {
+/// Vera le racconta. Resta nella risposta di Vera (nel dossier, con la conversazione) e si salva tra gli scenari.
+struct SchedaScenarioVera: Codable, Equatable {
     /// La conversazione in cui è nata (il cliente o il portafoglio).
     var chiave: String
     var clienteId: String
     var nomeCliente: String
-    var area: AreaScenarioRuby
+    var area: AreaScenarioVera
     /// «E se… pensione a 63 anni, senza versamenti».
     var titolo: String
     var colonnaOggi: String
     var colonnaScenario: String
-    var righe: [RigaScenarioRuby]
+    var righe: [RigaScenarioVera]
     /// Cosa cambia, a parole e con le cifre («pensione a 63 anni invece che a 67»).
     var ipotesi: [String]
     /// Altre cifre che contano, fuori dalla tabella («per coprire il divario servirebbero…»).
@@ -37,14 +37,14 @@ struct SchedaScenarioRuby: Codable, Equatable {
     var racconto: String
     /// L'ipotesi per il simulatore di Analisi 360 (nil in protezione: lì si apre l'area).
     var simulazione: Simulazione?
-    var parametri: ParametriScenarioRuby
+    var parametri: ParametriScenarioVera
     /// Dopo «Salva nel dossier»: lo scenario salvato o la nota del taccuino.
     var salvataId: String?
     var notaId: String?
 
     var salvata: Bool { salvataId != nil || notaId != nil }
 
-    func riga(_ chiave: String) -> RigaScenarioRuby? { righe.first { $0.chiave == chiave } }
+    func riga(_ chiave: String) -> RigaScenarioVera? { righe.first { $0.chiave == chiave } }
 
     /// Le cifre esatte per Qwen: ipotesi, righe con la differenza, altre cifre e note.
     var bozza: String {
@@ -77,11 +77,11 @@ struct SchedaScenarioRuby: Codable, Equatable {
 /// risparmio (MotoreAnalisi, cioè MotoreProiezione), protezione (MotoreProtezioneFamiglia). Le ipotesi sono quelle
 /// del cliente (Analisi 360 e posizioni); cambia solo quello che dice lo scenario.
 enum MotoreScenari {
-    /// La scheda dello scenario; nil se manca l'area (prima va chiesta: `ScenariRuby.domandaMancante`).
-    static func calcola(_ p: ParametriScenarioRuby, fonte f: FonteRuby, chiave: String) -> SchedaScenarioRuby? {
+    /// La scheda dello scenario; nil se manca l'area (prima va chiesta: `ScenariVera.domandaMancante`).
+    static func calcola(_ p: ParametriScenarioVera, fonte f: FonteVera, chiave: String) -> SchedaScenarioVera? {
         guard let area = p.area else { return nil }
         let nome = f.cliente.nome.split(separator: " ").first.map(String.init) ?? f.cliente.nome
-        var s: SchedaScenarioRuby
+        var s: SchedaScenarioVera
         switch area {
         case .previdenza: s = previdenza(p, f, nome: nome)
         case .investimenti: s = investimenti(p, f, nome: nome)
@@ -101,7 +101,7 @@ enum MotoreScenari {
 
     // MARK: - Previdenza
 
-    private static func previdenza(_ p: ParametriScenarioRuby, _ f: FonteRuby, nome: String) -> SchedaScenarioRuby {
+    private static func previdenza(_ p: ParametriScenarioVera, _ f: FonteVera, nome: String) -> SchedaScenarioVera {
         let c = f.cliente
         let base = f.analisi.previdenza
         // Le proposte restano fuori: lo scenario parla di quello che c'è oggi e di cosa cambia
@@ -247,7 +247,7 @@ enum MotoreScenari {
         // L'avviso passa nel racconto e lascia le note: compare una volta sola
         if let i = note.firstIndex(where: { $0.contains("requisiti") || $0.contains("anticipata") }) { racconto.append(note.remove(at: i)) }
 
-        return SchedaScenarioRuby(
+        return SchedaScenarioVera(
             chiave: "", clienteId: c.id, nomeCliente: c.nome, area: .previdenza,
             titolo: "E se… " + (brevi.isEmpty ? "previdenza" : brevi.joined(separator: ", ")),
             colonnaOggi: colonne.0, colonnaScenario: colonne.1, righe: righe, ipotesi: ipotesi, altre: altre, note: note,
@@ -259,7 +259,7 @@ enum MotoreScenari {
     /// Il simulatore di Analisi 360 parte dal piano principale dello scenario: capitale e versamenti di tutti i piani,
     /// gli anni fino alla pensione dello scenario.
     private static func simulazionePrevidenza(_ elenco: [Posizione], indici: [Int], etaPensione: Int, eta: Int,
-                                              p: ParametriScenarioRuby) -> Simulazione? {
+                                              p: ParametriScenarioVera) -> Simulazione? {
         guard let principale = indici.max(by: { elenco[$0].valore < elenco[$1].valore }) else { return nil }
         var s = Simulazione(posizione: elenco[principale], orizzonteCliente: nil)
         s.capitale = indici.reduce(0.0) { $0 + elenco[$1].valore }.rounded()
@@ -271,7 +271,7 @@ enum MotoreScenari {
     }
 
     /// «va in pensione a 63 anni invece che a 67 e smette di versare nei piani».
-    private static func raccontoIpotesi(_ p: ParametriScenarioRuby, etaOggi: Int, mensileOggi: Double) -> String {
+    private static func raccontoIpotesi(_ p: ParametriScenarioVera, etaOggi: Int, mensileOggi: Double) -> String {
         var parti: [String] = []
         if let e = p.etaPensione, e != etaOggi { parti.append("va in pensione a \(e) anni invece che a \(etaOggi)") }
         if p.smetteDiVersare {
@@ -288,7 +288,7 @@ enum MotoreScenari {
 
     // MARK: - Investimenti
 
-    private static func investimenti(_ p: ParametriScenarioRuby, _ f: FonteRuby, nome: String) -> SchedaScenarioRuby {
+    private static func investimenti(_ p: ParametriScenarioVera, _ f: FonteVera, nome: String) -> SchedaScenarioVera {
         let base = f.analisi.investimenti
         var s = base
         var ipotesi: [String] = [], brevi: [String] = [], note: [String] = []
@@ -331,7 +331,7 @@ enum MotoreScenari {
         sim.costoAnnuo = s.costoAnnuo
         sim.aliquota = s.aliquota
         sim.inflazione = s.inflazione
-        return SchedaScenarioRuby(chiave: "", clienteId: f.cliente.id, nomeCliente: f.cliente.nome, area: .investimenti,
+        return SchedaScenarioVera(chiave: "", clienteId: f.cliente.id, nomeCliente: f.cliente.nome, area: .investimenti,
                                  titolo: "E se… " + (brevi.isEmpty ? "investimenti" : brevi.joined(separator: ", ")),
                                  colonnaOggi: colonne.0, colonnaScenario: colonne.1, righe: righe, ipotesi: ipotesi, altre: [],
                                  note: note, racconto: racconto, simulazione: sim, parametri: p)
@@ -339,7 +339,7 @@ enum MotoreScenari {
 
     // MARK: - Risparmio
 
-    private static func risparmio(_ p: ParametriScenarioRuby, _ f: FonteRuby, nome: String) -> SchedaScenarioRuby {
+    private static func risparmio(_ p: ParametriScenarioVera, _ f: FonteVera, nome: String) -> SchedaScenarioVera {
         let base = f.analisi.risparmio
         var s = base
         var ipotesi: [String] = [], brevi: [String] = [], note: [String] = []
@@ -389,7 +389,7 @@ enum MotoreScenari {
         sim.costoAnnuo = s.costoAnnuo
         sim.aliquota = s.aliquota
         sim.inflazione = s.inflazione
-        return SchedaScenarioRuby(chiave: "", clienteId: f.cliente.id, nomeCliente: f.cliente.nome, area: .risparmio,
+        return SchedaScenarioVera(chiave: "", clienteId: f.cliente.id, nomeCliente: f.cliente.nome, area: .risparmio,
                                  titolo: "E se… " + (brevi.isEmpty ? "risparmio" : brevi.joined(separator: ", ")),
                                  colonnaOggi: colonne.0, colonnaScenario: colonne.1, righe: righe, ipotesi: ipotesi, altre: altre,
                                  note: note, racconto: racconto, simulazione: sim, parametri: p)
@@ -397,7 +397,7 @@ enum MotoreScenari {
 
     // MARK: - Protezione
 
-    private static func protezione(_ p: ParametriScenarioRuby, _ f: FonteRuby, nome: String) -> SchedaScenarioRuby {
+    private static func protezione(_ p: ParametriScenarioVera, _ f: FonteVera, nome: String) -> SchedaScenarioVera {
         let c = f.cliente
         let base = f.analisi.protezione
         var ip = base
@@ -445,7 +445,7 @@ enum MotoreScenari {
         note.append("Fabbisogno = debiti + spese immediate + sostegno mensile per gli anni scelti − capitale già disponibile (ipotesi dell'Analisi 360); coperture caso morte in essere nelle Posizioni.")
         let colonne = p.durata.map { ("Oggi (\(anni(base.anniSostegno)))", "Scenario (\(anni($0)))") } ?? ("Oggi", "Con lo scenario")
         let racconto = "Con \(elenca(ipotesi)), la famiglia di \(nome) sarebbe coperta al \(CifreDoc.percento(copertura(b), decimali: 0)) invece che al \(CifreDoc.percento(copertura(a), decimali: 0)): il divario \(verbo(a.divario, b.divario)) da \(CifreDoc.euro(a.divario)) a \(CifreDoc.euro(b.divario))."
-        return SchedaScenarioRuby(chiave: "", clienteId: c.id, nomeCliente: c.nome, area: .protezione,
+        return SchedaScenarioVera(chiave: "", clienteId: c.id, nomeCliente: c.nome, area: .protezione,
                                  titolo: "E se… " + (brevi.isEmpty ? "protezione" : brevi.joined(separator: ", ")),
                                  colonnaOggi: colonne.0, colonnaScenario: colonne.1, righe: righe, ipotesi: ipotesi, altre: [],
                                  note: note, racconto: racconto, simulazione: nil, parametri: p)
@@ -454,7 +454,7 @@ enum MotoreScenari {
     // MARK: - Aiuti
 
     /// Il versamento al mese dello scenario (investimenti e risparmio).
-    private static func applicaVersamento(_ p: ParametriScenarioRuby, attuale: Double, a valore: inout Double,
+    private static func applicaVersamento(_ p: ParametriScenarioVera, attuale: Double, a valore: inout Double,
                                           ipotesi: inout [String], brevi: inout [String]) {
         if p.smetteDiVersare {
             valore = 0
@@ -487,28 +487,28 @@ enum MotoreScenari {
         return parti.dropLast().joined(separator: ", ") + " e " + parti[parti.count - 1]
     }
 
-    private static func rigaEuro(_ chiave: String, _ voce: String, _ a: Double, _ b: Double) -> RigaScenarioRuby {
-        RigaScenarioRuby(chiave: chiave, voce: voce, oggi: CifreDoc.euro(a), scenario: CifreDoc.euro(b), valoreOggi: a, valoreScenario: b,
+    private static func rigaEuro(_ chiave: String, _ voce: String, _ a: Double, _ b: Double) -> RigaScenarioVera {
+        RigaScenarioVera(chiave: chiave, voce: voce, oggi: CifreDoc.euro(a), scenario: CifreDoc.euro(b), valoreOggi: a, valoreScenario: b,
                         differenza: abs(b - a) >= 0.5 ? CifreDoc.euroSegno(b - a) : nil)
     }
 
-    private static func rigaMese(_ chiave: String, _ voce: String, _ a: Double, _ b: Double) -> RigaScenarioRuby {
-        RigaScenarioRuby(chiave: chiave, voce: voce, oggi: mese(a), scenario: mese(b), valoreOggi: a, valoreScenario: b,
+    private static func rigaMese(_ chiave: String, _ voce: String, _ a: Double, _ b: Double) -> RigaScenarioVera {
+        RigaScenarioVera(chiave: chiave, voce: voce, oggi: mese(a), scenario: mese(b), valoreOggi: a, valoreScenario: b,
                         differenza: abs(b - a) >= 0.5 ? CifreDoc.euroSegno(b - a) + " al mese" : nil)
     }
 
-    private static func rigaPercento(_ chiave: String, _ voce: String, _ a: Double, _ b: Double) -> RigaScenarioRuby {
+    private static func rigaPercento(_ chiave: String, _ voce: String, _ a: Double, _ b: Double) -> RigaScenarioVera {
         let punti = (b - a).rounded()
-        return RigaScenarioRuby(chiave: chiave, voce: voce, oggi: CifreDoc.percento(a, decimali: 0), scenario: CifreDoc.percento(b, decimali: 0),
+        return RigaScenarioVera(chiave: chiave, voce: voce, oggi: CifreDoc.percento(a, decimali: 0), scenario: CifreDoc.percento(b, decimali: 0),
                                valoreOggi: a, valoreScenario: b,
                                differenza: punti != 0 ? (punti > 0 ? "+" : CifreDoc.meno) + "\(Int(abs(punti))) punti" : nil)
     }
 
-    private static func rigaAnni(_ chiave: String, _ voce: String, _ a: Double, _ b: Double) -> RigaScenarioRuby {
+    private static func rigaAnni(_ chiave: String, _ voce: String, _ a: Double, _ b: Double) -> RigaScenarioVera {
         func testo(_ v: Double) -> String {
             let n = CifreDoc.percento(v, decimali: 1).replacingOccurrences(of: "%", with: "")
             return n == "1,0" ? "1 anno" : "\(n) anni"
         }
-        return RigaScenarioRuby(chiave: chiave, voce: voce, oggi: testo(a), scenario: testo(b), valoreOggi: a, valoreScenario: b, differenza: nil)
+        return RigaScenarioVera(chiave: chiave, voce: voce, oggi: testo(a), scenario: testo(b), valoreOggi: a, valoreScenario: b, differenza: nil)
     }
 }

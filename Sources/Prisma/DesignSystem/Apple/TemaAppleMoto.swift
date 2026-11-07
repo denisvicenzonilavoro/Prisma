@@ -494,9 +494,9 @@ extension Tema.Apple {
             static var spunta: Animation { Curva.molla.animazione(durataSpunta) }
         }
 
-        // MARK: Ruby
+        // MARK: Vera
 
-        /// Sfera di Ruby: gira in 6 s lineare, respira in 4 s (scala 1,045 a metà); pensa 0,90 × 2 (1 → 1,1 → 1).
+        /// Sfera di Vera: gira in 6 s lineare, respira in 4 s (scala 1,045 a metà); pensa 0,90 × 2 (1 → 1,1 → 1).
         enum Sfera {
             static let giro = 6.0
             static let respiro = 4.0
@@ -531,7 +531,7 @@ extension Tema.Apple {
             static let ritardoCalmo = 0.05
         }
 
-        /// Scheda dei calcoli di Ruby: da y +10.
+        /// Scheda dei calcoli di Vera: da y +10.
         enum SchedaCalcoli {
             static let durata = 0.50
             static let spostamento: CGFloat = 10

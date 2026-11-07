@@ -12,7 +12,7 @@ import VisionKit
 //   (`isSupported`/`isAvailable` falsi), il ripiego è la scansione documenti di sistema (`VNDocumentCameraViewController`).
 // - Poi in alto il foglio con i campi che si illuminano uno alla volta (la cascata del tema, StatoInquadra), sotto i
 //   dati riconosciuti e «Manda al Mac»: solo il testo letto, riga per riga con il riquadro, va al Mac sul ponte
-//   cifrato (`PonteRuby.manda`). L'immagine non lascia il telefono e non si salva: se ne va alla chiusura.
+//   cifrato (`PonteVera.manda`). L'immagine non lascia il telefono e non si salva: se ne va alla chiusura.
 // - L'iPhone non scrive nell'archivio (è una copia): la posizione la crea il Mac, dopo la conferma del consulente.
 // Nelle istantanee la fotocamera non c'è: il foglio è quello disegnato di prova (FoglioInquadraDiProva).
 
@@ -265,7 +265,7 @@ struct InquadraTelefono: View {
                 EtichettaCanaleApple(canale: canale, compatta: true)
             }
             if let r = inquadra.ricevuta {
-                Text(r.accettato ? "Mandato al Mac: controllalo lì e aggiungilo a Posizioni." : (r.motivo ?? PonteRuby.macNonTrovato))
+                Text(r.accettato ? "Mandato al Mac: controllalo lì e aggiungilo a Posizioni." : (r.motivo ?? PonteVera.macNonTrovato))
                     .carattereApple(M.frase)
                     .foregroundColor(M.coloreFrase)
                     .fixedSize(horizontal: false, vertical: true)
@@ -458,16 +458,16 @@ extension StatoShell {
     @MainActor
     func mandaInquadraturaAlMac() {
         guard let d = inquadra.dati, !inquadra.righe.isEmpty, !inquadra.inInvio else { return }
-        let righe = inquadra.righe.prefix(PonteRuby.massimoRighe).map {
-            RigaLetta(testo: String($0.testo.prefix(PonteRuby.massimoTestoRiga)), riquadro: $0.riquadro)
+        let righe = inquadra.righe.prefix(PonteVera.massimoRighe).map {
+            RigaLetta(testo: String($0.testo.prefix(PonteVera.massimoTestoRiga)), riquadro: $0.riquadro)
         }
         let x = InquadraturaPonte(clienteId: clienteInquadra?.id, dispositivo: UIDevice.current.name, righe: Array(righe),
-                                  campi: Array(d.campi.prefix(PonteRuby.massimoCampi)))
-        let ruby = dati.impostazioni.ruby
+                                  campi: Array(d.campi.prefix(PonteVera.massimoCampi)))
+        let vera = dati.impostazioni.vera
         inquadra.inInvio = true
         inquadra.ricevuta = nil
         Task { @MainActor [weak self] in
-            let r = await PonteRuby.manda(.inquadratura(x), ruby: ruby)
+            let r = await PonteVera.manda(.inquadratura(x), vera: vera)
             guard let self else { return }
             self.inquadra.inInvio = false
             self.inquadra.ricevuta = r

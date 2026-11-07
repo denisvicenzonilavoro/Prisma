@@ -219,7 +219,7 @@ enum GestoreBackup {
         try? fm.removeItem(at: precedente)
         try fm.createDirectory(at: cartellaDati.deletingLastPathComponent(), withIntermediateDirectories: true)
         try fm.copyItem(at: estratta, to: nuova)
-        // Un backup di prima del cambio di nome ha la cartella di Ruby col vecchio nome
+        // Un backup di prima del cambio di nome ha la cartella di Vera col vecchio nome
         Archivio.spostaCartellaVecchia(in: nuova)
         // Le copie degli archivi non leggibili restano: possono contenere gli unici dati veri
         for voce in (try? fm.contentsOfDirectory(at: cartellaDati, includingPropertiesForKeys: nil)) ?? []

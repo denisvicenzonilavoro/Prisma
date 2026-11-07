@@ -3,7 +3,7 @@ import PDFKit
 
 /// Prova di carico (`Prisma --prova-carico`), eseguita dal workflow: Prisma con molti clienti
 /// (i clienti di prova copiati più volte) deve restare veloce e leggero, pensando al MacBook Pro M1
-/// da 8 GB. Misura il salvataggio e la lettura dell'archivio, Ruby e i motori su ogni cliente, i PDF
+/// da 8 GB. Misura il salvataggio e la lettura dell'archivio, Vera e i motori su ogni cliente, i PDF
 /// e la memoria occupata.
 @MainActor
 enum ProvaCarico {
@@ -60,29 +60,29 @@ enum ProvaCarico {
         controlla(letto?.clienti.count == dati.clienti.count && letto?.posizioni.count == dati.posizioni.count, "Archivio riletto completo")
         controlla(scrittura + lettura < limiteArchivio, "Archivio salvato e riletto in \(secondi(scrittura + lettura)) (limite \(secondi(limiteArchivio)))")
 
-        // Ruby e motori su ogni cliente
+        // Vera e motori su ogni cliente
         let stato = StatoShell(persistente: false)
         stato.dati = dati
         stato.rispostePreparate = true
-        let spunti: [SpuntoRuby] = [.riepilogo, .checkUp, .proposte, .pensione, .resoconto]
+        let spunti: [SpuntoVera] = [.riepilogo, .checkUp, .proposte, .pensione, .resoconto]
         var peggiore = (nome: "", tempo: 0.0)
         // Un giro di riscaldamento: formattatori ed espressioni regolari si preparano la prima volta
-        if let primo = stato.clienti.first, let f = stato.fonteRuby(primo.id) {
-            for s in spunti { _ = MotoriRuby.sintesi.componi(RichiestaRuby(domanda: s.domanda, spunto: s, fonte: f, storia: [])) }
+        if let primo = stato.clienti.first, let f = stato.fonteVera(primo.id) {
+            for s in spunti { _ = MotoriVera.sintesi.componi(RichiestaVera(domanda: s.domanda, spunto: s, fonte: f, storia: [])) }
         }
         let totale = tempo {
             for c in stato.clienti {
                 let t = tempo {
-                    guard let f = stato.fonteRuby(c.id) else { return }
-                    _ = ContestoRuby.scheda(f)
-                    for s in spunti { _ = MotoriRuby.sintesi.componi(RichiestaRuby(domanda: s.domanda, spunto: s, fonte: f, storia: [])) }
+                    guard let f = stato.fonteVera(c.id) else { return }
+                    _ = ContestoVera.scheda(f)
+                    for s in spunti { _ = MotoriVera.sintesi.componi(RichiestaVera(domanda: s.domanda, spunto: s, fonte: f, storia: [])) }
                 }
                 if t > peggiore.tempo { peggiore = (c.nome, t) }
             }
         }
         let medio = totale / Double(max(1, stato.clienti.count))
-        print("INFO Ruby e motori: \(secondi(totale)) per \(stato.clienti.count) clienti, \(secondi(medio)) in media, il più lento \(peggiore.nome) (\(secondi(peggiore.tempo)))")
-        controlla(medio < limitePerCliente, "In media sotto \(secondi(limitePerCliente)) per cliente (scheda e \(spunti.count) spunti di Ruby)")
+        print("INFO Vera e motori: \(secondi(totale)) per \(stato.clienti.count) clienti, \(secondi(medio)) in media, il più lento \(peggiore.nome) (\(secondi(peggiore.tempo)))")
+        controlla(medio < limitePerCliente, "In media sotto \(secondi(limitePerCliente)) per cliente (scheda e \(spunti.count) spunti di Vera)")
         controlla(peggiore.tempo < limiteClientePiuLento, "Nessun cliente oltre \(secondi(limiteClientePiuLento))")
 
         // «Cerca ovunque» su tutto l'archivio, anche nel testo dei documenti

@@ -108,11 +108,11 @@ extension Tema.Apple {
             static let controlliSopra: CGFloat = 18
             static let controlliSotto: CGFloat = 14
             static let spazioControlli: CGFloat = 10
-            /// La nota di Ruby a destra: sfera 20 e `.k`.
+            /// La nota di Vera a destra: sfera 20 e `.k`.
             static let sfera: CGFloat = 20
             static let spazioSfera: CGFloat = 6
-            static let notaRuby = Carattere.secondario
-            static let coloreNotaRuby = Colore.inchiostro2
+            static let notaVera = Carattere.secondario
+            static let coloreNotaVera = Colore.inchiostro2
             /// Riga dell'oggetto: 14, `padding:10px 0`, filetto basso `separatore`.
             static let oggetto = Carattere(dimensione: 14, peso: .regular)
             static let oggettoForte = Carattere(dimensione: 14, peso: .bold)
@@ -122,7 +122,7 @@ extension Tema.Apple {
             static let spazioOggetto: CGFloat = 4
             static let filetto = Colore.separatore
             static let spessoreFiletto = Misura.bordo
-            /// L'avviso sopra il testo (Ruby non è pronta, una cifra cambiata): sfera ferma e `.k`, 14 sopra.
+            /// L'avviso sopra il testo (Vera non è pronta, una cifra cambiata): sfera ferma e `.k`, 14 sopra.
             static let avviso = Carattere(dimensione: 12.5, peso: .regular, interlinea: 1.4)
             static let coloreAvviso = Colore.inchiostro2
             static let sopraAvviso: CGFloat = 14
@@ -144,14 +144,14 @@ extension Tema.Apple {
             /// Il margine interno della riga del campo di testo del sistema (si toglie per allineare testo e campo).
             static let rientroCampo: CGFloat = 5
             /// Nuvoletta di Messaggi: fondo accento, testo bianco, `padding:14px 18px`, raggi 22/22/6/22 (l'angolo
-            /// stretto in basso a destra, come la bolla dell'utente nella chat di Ruby), larga al massimo 620, a destra.
+            /// stretto in basso a destra, come la bolla dell'utente nella chat di Vera), larga al massimo 620, a destra.
             static let fondoNuvoletta = Colore.accento
             static let testoNuvoletta = Color.white
             static let paddingNuvoletta = Misura.padding(14, 18)
             static let raggioNuvoletta: CGFloat = 22
             static let raggioNuvolettaStretto: CGFloat = 6
             static let larghezzaNuvoletta: CGFloat = 620
-            /// Mentre Ruby comincia: i tre puntini, 4 sopra.
+            /// Mentre Vera comincia: i tre puntini, 4 sopra.
             static let sopraPuntini: CGFloat = 4
         }
 

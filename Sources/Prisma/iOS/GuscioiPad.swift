@@ -7,7 +7,7 @@ import UniformTypeIdentifiers
 /// con la barra in alto, il dock (le app del dock del Mac e «Tutte le app») e un'app alla volta in una finestra di vetro fra la barra e il dock
 /// (come una finestra ingrandita del Mac), che entra ed esce con il movimento del Mac. Obiettivi, Documenti,
 /// Simulazioni, Confronti e Attività restano app a sé, in «Tutte le app» (sul Mac stanno nell'app ospite). Dentro la finestra le stesse viste `App*` del Mac con lo stesso
-/// StatoShell (tutte tranne Ruby, giro 4). Ciò che sul Mac apre la shell sopra le finestre (Ricerca come Spotlight,
+/// StatoShell (tutte tranne Vera, giro 4). Ciò che sul Mac apre la shell sopra le finestre (Ricerca come Spotlight,
 /// notifiche, guida, presentazione) qui si apre sopra tutto (PannelliMobile); i pannelli di apertura del Mac diventano
 /// `.fileImporter` e `.fileExporter`; i moduli (nuovo cliente, posizione, appuntamento…) sono i fogli delle app.
 /// Sotto tutto l'acqua animata di RadiceMobile.
@@ -15,7 +15,7 @@ struct GuscioiPad: View {
     @EnvironmentObject var mobile: StatoMobile
     @EnvironmentObject var stato: StatoShell
 
-    /// Tutte le app del Mac, Ruby compresa (Qwen del Mac in Wi‑Fi, PonteRuby).
+    /// Tutte le app del Mac, Vera compresa (Qwen del Mac in Wi‑Fi, PonteVera).
     static let appPronte: Set<AppPrisma> = Set(AppPrisma.allCases)
 
     private typealias D = Tema.Misura.Mobile.Dock
@@ -122,7 +122,7 @@ struct EsportaBackupiPad: ViewModifier {
     }
 }
 
-/// Segnaposto in vetro per le app non ancora portate (iPhone) o non disponibili (Ruby), dentro la finestra di vetro.
+/// Segnaposto in vetro per le app non ancora portate (iPhone) o non disponibili (Vera), dentro la finestra di vetro.
 struct InArrivoMobile: View {
     let app: AppPrisma
     let titolo: String

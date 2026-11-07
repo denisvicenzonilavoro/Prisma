@@ -16,8 +16,8 @@ struct Nota: Identifiable, Codable, Hashable {
 
     /// Limite del titolo (come nel template).
     static let limiteTitolo = 180
-    /// Caratteri di ogni nota passati a Ruby nella scheda del cliente.
-    static let limiteRuby = 300
+    /// Caratteri di ogni nota passati a Vera nella scheda del cliente.
+    static let limiteVera = 300
 
     var titoloMostrato: String {
         let t = titolo.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -38,7 +38,7 @@ struct Nota: Identifiable, Codable, Hashable {
     /// Caratteri dell'anteprima su una riga.
     static let limiteAnteprima = 95
 
-    /// Il testo su una riga, fino a `n` caratteri (per Ruby).
+    /// Il testo su una riga, fino a `n` caratteri (per Vera).
     func estratto(_ n: Int) -> String {
         String(testo.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ").prefix(n))
     }

@@ -138,14 +138,14 @@ enum SpazioOvunque {
 
     // MARK: - Istantanea (solo il Mac la scrive)
 
-    /// L'archivio come va nell'istantanea: senza conversazioni di Ruby, senza trascrizioni del copilota, senza le impostazioni
-    /// del Mac (Ruby, spazio) e senza giornale. I documenti (file) non ci sono: il telefono vede i dati estratti.
+    /// L'archivio come va nell'istantanea: senza conversazioni di Vera, senza trascrizioni del copilota, senza le impostazioni
+    /// del Mac (Vera, spazio) e senza giornale. I documenti (file) non ci sono: il telefono vede i dati estratti.
     static func datiIstantanea(_ d: DatiPrisma) -> DatiPrisma {
         var x = d
         x.conversazioni = [:]
         x.giornaleOvunque = []
         x.impostazioni.ovunque = ImpostazioniOvunque()
-        x.impostazioni.ruby = ImpostazioniRuby()
+        x.impostazioni.vera = ImpostazioniVera()
         x.sessioniCopilota = x.sessioniCopilota.map(CampiOvunque.senzaTrascrizione)
         return x
     }
@@ -431,7 +431,7 @@ enum SincroniaOvunque {
     }
 
     /// Sul dispositivo: l'istantanea del Mac al posto dell'archivio, tenendo ciò che è solo del dispositivo (conversazioni
-    /// con Ruby, aspetto, impostazioni dello spazio) e riapplicando le operazioni non ancora confermate.
+    /// con Vera, aspetto, impostazioni dello spazio) e riapplicando le operazioni non ancora confermate.
     static func accogli(_ ist: IstantaneaOvunque, in locale: DatiPrisma) -> (dati: DatiPrisma, confermate: Int, riapplicate: Int) {
         var nuovo = ist.dati
         let o = locale.impostazioni.ovunque
@@ -441,7 +441,7 @@ enum SincroniaOvunque {
         nuovo.conversazioni = locale.conversazioni
         let mie = locale.impostazioni
         var imp = nuovo.impostazioni
-        imp.ruby = mie.ruby
+        imp.vera = mie.vera
         imp.aspetto = mie.aspetto
         imp.dimensioneTesto = mie.dimensioneTesto
         imp.sfondoAnimato = mie.sfondoAnimato

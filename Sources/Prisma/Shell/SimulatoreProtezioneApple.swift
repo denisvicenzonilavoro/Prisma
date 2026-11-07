@@ -11,7 +11,7 @@ import SwiftUI
 //   ╰────╯   50.000 €  ──●────────────
 //            Premio stimato l'anno [stima]   Al mese   Scoperto che resta
 //   Ipotesi: …
-//   [Salva come proposta] [Chiedi a Ruby di spiegarlo]                    [Alleanza|Indipendente] (canale)
+//   [Salva come proposta] [Chiedi a Vera di spiegarlo]                    [Alleanza|Indipendente] (canale)
 //
 // - Fabbisogno e coperture vengono da MotoreAnalisi.protezione (le coperture caso morte in essere, non scadute);
 //   il premio dalla tariffa delle coperture caso morte del cliente o, se non ne ha, dalla media di quelle in
@@ -185,9 +185,9 @@ private struct CorpoSimulatoreProtezioneApple: View {
                 .help(salvabile
                       ? "Crea in Posizioni una proposta di temporanea caso morte da \(Formati.euro(aggiunta)), sul canale scelto"
                       : "Sposta il cursore per scegliere il capitale da aggiungere")
-            Button("Chiedi a Ruby di spiegarlo", action: chiediRuby)
+            Button("Chiedi a Vera di spiegarlo", action: chiediVera)
                 .buttonStyle(.appleGrande)
-                .disabled(stato.rubyInCorso)
+                .disabled(stato.veraInCorso)
             Spacer(minLength: s.spazioPiede)
             CanaleSimulatoreApple(canale: $canale)
         }
@@ -224,13 +224,13 @@ private struct CorpoSimulatoreProtezioneApple: View {
         }
     }
 
-    /// Chiude subito il dettaglio, apre Ruby e manda la domanda sulla protezione dopo 0,7 s.
-    private func chiediRuby() {
+    /// Chiude subito il dettaglio, apre Vera e manda la domanda sulla protezione dopo 0,7 s.
+    private func chiediVera() {
         let s = stato
         dettaglio?.chiudi(subito: true)
-        s.apri(.ruby)
-        DispatchQueue.main.asyncAfter(deadline: .now() + Tema.Apple.SimulatoriAnalisi.ritardoDomandaRuby) {
-            s.chiediRuby(SpuntoRuby.protezione.domanda, spunto: .protezione)
+        s.apri(.vera)
+        DispatchQueue.main.asyncAfter(deadline: .now() + Tema.Apple.SimulatoriAnalisi.ritardoDomandaVera) {
+            s.chiediVera(SpuntoVera.protezione.domanda, spunto: .protezione)
         }
     }
 }

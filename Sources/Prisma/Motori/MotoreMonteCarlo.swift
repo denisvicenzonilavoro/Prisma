@@ -131,7 +131,7 @@ struct EsitoMonteCarlo {
 /// mercati, anno per anno, con rendimenti lognormali di media e volatilità date. Un unico fattore di mercato
 /// comune a tutte le posizioni (correlazione piena: prudente, nessun beneficio di diversificazione).
 /// È pesante rispetto ai calcoli delle schede: NON va chiamato dentro `MotoreObiettivo.calcola` né negli
-/// spunti di Ruby, ma solo quando si apre l'obiettivo o si prepara il prospetto (con una cache).
+/// spunti di Vera, ma solo quando si apre l'obiettivo o si prepara il prospetto (con una cache).
 enum MotoreMonteCarlo {
     static let traiettoriePredefinite = 1_000
     static let massimoTraiettorie = 2_000

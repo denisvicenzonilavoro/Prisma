@@ -47,11 +47,11 @@ for b in "$BIN_DIR"/*.bundle; do
   [ -e "$b" ] || continue
   ditto "$b" "$APP/Contents/Resources/$(basename "$b")"
 done
-# Istruzioni, schemi ed esempi di Ruby
+# Istruzioni, schemi ed esempi di Vera
 for cartella in Istruzioni Schemi Esempi; do
-  if [ -d "Ruby/$cartella" ]; then
-    mkdir -p "$APP/Contents/Resources/Ruby"
-    ditto "Ruby/$cartella" "$APP/Contents/Resources/Ruby/$cartella"
+  if [ -d "Vera/$cartella" ]; then
+    mkdir -p "$APP/Contents/Resources/Vera"
+    ditto "Vera/$cartella" "$APP/Contents/Resources/Vera/$cartella"
   fi
 done
 codesign --force --deep --sign - "$APP"
@@ -62,7 +62,7 @@ if [ "$PROVE" = 1 ]; then
   "$APP/Contents/MacOS/Prisma" --verifica-risorse
   "$APP/Contents/MacOS/Prisma" --prova-backup
   "$APP/Contents/MacOS/Prisma" --prova-calcoli
-  "$APP/Contents/MacOS/Prisma" --prova-ruby
+  "$APP/Contents/MacOS/Prisma" --prova-vera
   "$APP/Contents/MacOS/Prisma" --prova-ovunque
   echo "✓ Prove superate"
 fi

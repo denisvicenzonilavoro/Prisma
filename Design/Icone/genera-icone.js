@@ -55,7 +55,7 @@ const ICONE = [
   ['Clienti', 'clienti'], ['Analisi', 'posizioni'], ['Analisi_360', 'analisi360'], ['Incontri', 'incontri'],
   ['Obiettivi', 'obiettivi'], ['Confronti', 'confronti'], ['Prodotti', 'prodotti'], ['Simulazioni', 'simulazioni'],
   ['Attivita', 'attivita'], ['Note', 'note'], ['Documenti', 'documenti'], ['Presentazioni', 'presentazioni'],
-  ['Ruby', 'ruby'], ['Ricerca', 'ricerca'], ['Impostazioni', 'impostazioni'], ['Prisma', 'home']
+  ['Vera', 'vera'], ['Ricerca', 'ricerca'], ['Impostazioni', 'impostazioni'], ['Prisma', 'home']
 ];
 
 // Icone nuove (nome del file = data-icona nel template → app), per template di partenza:
@@ -91,7 +91,7 @@ function lineaCSS(gradi) {
 const DEFS_GLIFI = `
     <linearGradient id="lgGlass" x1="0" y1="0" x2=".45" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity=".8"/></linearGradient>
     <linearGradient id="lgBeam" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff"/></linearGradient>
-    <radialGradient id="lgRubyOrb" cx="35%" cy="25%" r="80%"><stop offset="0" stop-color="#F3D7FF"/><stop offset=".35" stop-color="#B28DF4"/><stop offset=".72" stop-color="#6964D8"/><stop offset="1" stop-color="#3C3D92"/></radialGradient>`;
+    <radialGradient id="lgVeraOrb" cx="35%" cy="25%" r="80%"><stop offset="0" stop-color="#F3D7FF"/><stop offset=".35" stop-color="#B28DF4"/><stop offset=".72" stop-color="#6964D8"/><stop offset="1" stop-color="#3C3D92"/></radialGradient>`;
 
 // Classi dei glifi (`.ic .g1` … del tema, stile «colori»)
 function stileGlifi(acc, chiara) {

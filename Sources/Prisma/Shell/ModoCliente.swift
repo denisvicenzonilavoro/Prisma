@@ -30,7 +30,7 @@ extension StatoShell {
         pannelloSpazi = false
         pannelloAppAperte = false
         portafoglio = false
-        rubyPortafoglio = false
+        veraPortafoglio = false
         filtroClienteAgenda = nil
         filtroClienteAttivita = nil
         if avviso { mostraAvviso("Modalità cliente: si vede solo il dossier di \(c.nome).") }

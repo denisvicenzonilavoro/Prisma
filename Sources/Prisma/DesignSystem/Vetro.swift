@@ -100,7 +100,7 @@ extension View {
     /// - riempimento: sostituisce il riempimento della variante (es. il fondo dei chip dei canali).
     /// - interattivo: su macOS 26 il vetro reagisce al tocco (pulsanti).
     /// - ombra: false = senza ombra esterna.
-    /// - sopra: true per i pannelli che galleggiano sopra altri contenuti (mini Ruby, barra laterale aperta):
+    /// - sopra: true per i pannelli che galleggiano sopra altri contenuti (mini Vera, barra laterale aperta):
     ///   senza sfocatura (istantanee, vetro semplificato) il riempimento è coprente, il contenuto sotto non si legge.
     func vetro(_ variante: VarianteVetro = .spesso,
                forma: FormaVetro = .arrotondata(Tema.Raggio.widget),

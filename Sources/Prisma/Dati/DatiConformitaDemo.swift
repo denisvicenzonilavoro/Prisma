@@ -4,7 +4,7 @@ import Foundation
 // schermate mostrano sempre una varietà di stati. Ogni data sta ad almeno 13 giorni da una soglia (0, 30, 60
 // giorni), quindi i salti di fine mese non cambiano lo stato. Le scadute stanno tra −40 e −62 giorni circa e la
 // voce entro 30 giorni a +20: nel Centro notifiche restano dopo l'attività scaduta e la posizione a +10 giorni
-// che `--prova-ruby` cerca.
+// che `--prova-vera` cerca.
 
 extension DatiDemo {
     /// Le scadenze di conformità dei 5 clienti di prova, relative a oggi: una varietà di stati per le schermate.

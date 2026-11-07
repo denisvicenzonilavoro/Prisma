@@ -132,7 +132,7 @@ struct AppTelefono: View {
         case .note: NoteTelefono()
         case .documenti: DocumentiTelefono()
         case .impostazioni: ImpostazioniTelefono()
-        case .ruby: RubyTelefono().navigationTitle(app.titolo)
+        case .vera: VeraTelefono().navigationTitle(app.titolo)
         // Messaggi (giro 3 di «Orizzonte»): il messaggio in alto, le altre occasioni a un tocco (MessaggiTelefono.swift)
         case .messaggi: MessaggiTelefono()
         // Mercato (giro 7 di «Orizzonte»): la prima tessera grande, le altre e chi è toccato, gli avvisi a un tocco; in

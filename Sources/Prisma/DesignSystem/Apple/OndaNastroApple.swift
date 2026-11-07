@@ -2,7 +2,7 @@ import SwiftUI
 
 // L'onda «nastro» della voce del copilota dell'incontro (Design/template-novita-specifica.md §8.2.2 e §8.3): 48 barre
 // che seguono il microfono, l'ultimo valore entra a destra a ogni pezzo d'audio. Niente Timer: la vista si ridisegna
-// quando cambiano i livelli (`StatoCopilotaIncontro.livelli`, dal `livello` di AscoltoRuby).
+// quando cambiano i livelli (`StatoCopilotaIncontro.livelli`, dal `livello` di AscoltoVera).
 // - Ferma: tutte grigie, alte 3.
 // - Istantanee: la forma del template a un tempo fisso, sempre la stessa.
 // - «Riduci movimento»: l'onda resta (dice che il microfono sente) ma senza interpolazione fra un valore e l'altro.

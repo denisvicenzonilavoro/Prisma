@@ -1,6 +1,6 @@
 import Foundation
 
-/// La prova della schermata del copilota dentro `Prisma --prova-ruby` (ProvaCopilota.swift), senza microfono: i testi
+/// La prova della schermata del copilota dentro `Prisma --prova-vera` (ProvaCopilota.swift), senza microfono: i testi
 /// del contatore e della durata (§8.5.5 CP12), le parole illuminate della trascrizione, il dialogo di prova delle
 /// istantanee (senza consenso niente, con il consenso schede tutte proposte e niente nel dossier), il verbale confermato
 /// voce per voce (una voce tolta non entra, la seconda conferma non duplica, la trascrizione non conservata si

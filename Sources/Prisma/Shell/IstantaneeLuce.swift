@@ -7,7 +7,7 @@ import SwiftUI
 ///   finestra di Prisma alla larghezza minima (1100);
 /// - 616: la scrivania con il dock a 16 voci e i pulsanti «La tua settimana» e «Cerca ovunque», chiara e scura;
 /// - 617: la tavola delle icone nell'ordine del dock su fondo chiaro e scuro (Pratiche e Incontri, Biblioteca e Clienti,
-///   Sala e Ruby a confronto, decisione 122); 619: la tavola dei 29 glifi nei tasselli;
+///   Sala e Vera a confronto, decisione 122); 619: la tavola dei 29 glifi nei tasselli;
 /// - 618: le quattro finestre nuove con la testata e lo stato «in arrivo»;
 /// - 690-694: la Sala (griglia, palco, senza cliente, in modalità cliente, presentazione sulla sala opaca).
 /// I clienti sono quelli di prova del template (dati di prova): nessun dato nuovo nell'archivio.

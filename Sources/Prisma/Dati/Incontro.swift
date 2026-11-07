@@ -2,7 +2,7 @@ import Foundation
 
 /// Un incontro con il cliente: preparazione, ascolto, appunti e decisioni, prossimi passi.
 /// È il luogo dove il profilo dei bisogni si aggiorna: dalle risposte e dagli appunti
-/// Prisma (o Ruby) propone bisogni, eventi di vita e attività da confermare.
+/// Prisma (o Vera) propone bisogni, eventi di vita e attività da confermare.
 struct Incontro: Identifiable, Codable, Hashable {
     enum Stato: String, Codable { case preparazione, concluso }
 

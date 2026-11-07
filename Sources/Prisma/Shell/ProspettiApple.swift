@@ -5,7 +5,7 @@ import SwiftUI
 
 // Prospetti e report nel tema Apple, sul Mac e sull'iPad (Design/template-apple-specifica.md §4.5.1, riferimenti PIE p01-p08):
 //
-//   ┌─ ◉ Giulia Rossi ⌄ ───────────┐  Il check-up di Giulia Rossi        [Chiedi a Ruby] [▶︎ Presenta all'incontro]
+//   ┌─ ◉ Giulia Rossi ⌄ ───────────┐  Il check-up di Giulia Rossi        [Chiedi a Vera] [▶︎ Presenta all'incontro]
 //   │ PER L'INCONTRO               │  Report · Giulia Rossi · A4 …      [Stampa…] [Archivia nei Documenti] [Salva PDF…]
 //   │ ▌Check-up         (scelto)   │  ┌──────────────────────────────────────────────┐
 //   │   Prospetto | Report …       │  │              ┌────────────┐                   │
@@ -22,7 +22,7 @@ import SwiftUI
 // - L'anteprima è la carta vera (le stesse pagine del PDF, sempre bianche) su fondo `chip` con raggio 20, una pagina
 //   alla volta, grande quanto lo spazio permette. Cambia con `.cambioPagina` (§2.23): scegliendo un'altra voce (giù
 //   = la pagina vecchia sale), con le frecce sotto la carta o scorrendo con la rotella o il trackpad sull'anteprima.
-// - Le azioni di oggi restano tutte: Chiedi a Ruby, Presenta all'incontro (dalla pagina mostrata), Stampa, Archivia
+// - Le azioni di oggi restano tutte: Chiedi a Vera, Presenta all'incontro (dalla pagina mostrata), Stampa, Archivia
 //   nei Documenti, Salva PDF (il blu, l'azione principale).
 // - «Riduci movimento»: dissolvenze di 0,15 s; istantanee: tutto fermo nello stato finale.
 // - Sull'iPad la stessa app: niente passaggio del puntatore, la carta si sfoglia col dito (`SfogliaAnteprimaApple`).
@@ -364,14 +364,14 @@ extension AppProspetti {
                 .buttonStyle(.appleSobrio)
                 .fixedSize()
             }
-            if scelta.spuntoRuby != nil {
-                Button { stato.chiediRubyDelDocumento(scelta) } label: {
-                    etichettaAzione("Chiedi a Ruby", simbolo: "sparkles", soloIcona: soloIcona)
+            if scelta.spuntoVera != nil {
+                Button { stato.chiediVeraDelDocumento(scelta) } label: {
+                    etichettaAzione("Chiedi a Vera", simbolo: "sparkles", soloIcona: soloIcona)
                 }
                 .buttonStyle(.apple)
                 .fixedSize()
-                .disabled(stato.rubyInCorso)
-                .help("Chiedi a Ruby: spiega le cifre di questo documento, per te")
+                .disabled(stato.veraInCorso)
+                .help("Chiedi a Vera: spiega le cifre di questo documento, per te")
             }
             #if os(macOS)
             // Il tavolo con l'iPad (Shell/AlTavolo.swift): mai il portafoglio, che parla di tutti i clienti

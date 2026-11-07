@@ -781,12 +781,12 @@ struct AppProspetti: View {
                 .buttonStyle(StileCollegamento())
                 .fixedSize()
             }
-            if scelta.spuntoRuby != nil {
-                Button { stato.chiediRubyDelDocumento(scelta) } label: { Label("Chiedi a Ruby", systemImage: "sparkles") }
+            if scelta.spuntoVera != nil {
+                Button { stato.chiediVeraDelDocumento(scelta) } label: { Label("Chiedi a Vera", systemImage: "sparkles") }
                     .buttonStyle(StileVetro())
                     .fixedSize()
-                    .disabled(stato.rubyInCorso)
-                    .help("Chiedi a Ruby: spiega le cifre di questo documento, per te")
+                    .disabled(stato.veraInCorso)
+                    .help("Chiedi a Vera: spiega le cifre di questo documento, per te")
             }
             // Il portafoglio parla di tutti i clienti: non si mostra a un cliente
             if scelta.tipo != .portafoglio {
@@ -873,7 +873,7 @@ private struct TavoloDocumento: View, Equatable {
     }
 }
 
-/// Il commento del consulente nel report: Ruby scrive la bozza dalle cifre del documento, il consulente
+/// Il commento del consulente nel report: Vera scrive la bozza dalle cifre del documento, il consulente
 /// la rilegge, la modifica e la salva. Compare nella pagina «Due parole per te», dopo la copertina.
 private struct PannelloCommento: View {
     @EnvironmentObject var stato: StatoShell
@@ -893,7 +893,7 @@ private struct PannelloCommento: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("IL COMMENTO DEL CONSULENTE").font(SSP.etichetta).foregroundColor(SSP.coloreEtichetta)
             if salvato == nil && testo.isEmpty {
-                Text("Una lettera breve al cliente, nella pagina dopo la copertina. Ruby la scrive con le cifre del report; tu la rileggi e la cambi come vuoi.")
+                Text("Una lettera breve al cliente, nella pagina dopo la copertina. Vera la scrive con le cifre del report; tu la rileggi e la cambi come vuoi.")
                     .font(SSP.nota).foregroundColor(SSP.coloreNota).fixedSize(horizontal: false, vertical: true)
             } else {
                 TextEditor(text: $testo)
@@ -902,19 +902,19 @@ private struct PannelloCommento: View {
                     .padding(4)
                     .frame(height: 210)
                     .pozzettoTestoLungo()
-                    // Mentre Ruby scrive non si modifica: il suo testo sostituirebbe quello digitato
-                    .disabled(stato.rubyInCorso)
+                    // Mentre Vera scrive non si modifica: il suo testo sostituirebbe quello digitato
+                    .disabled(stato.veraInCorso)
                 HStack {
                     if let s = salvato {
                         Text(PannelloCommento.nota(s)).font(SSP.nota).foregroundColor(SSP.coloreNota)
                     }
                     Spacer()
                     // Cifre all'italiana ("1.400"), non con la virgola delle migliaia inglese
-                    Text(verbatim: "\(Formati.numeroFormatter.string(from: NSNumber(value: testo.count)) ?? "\(testo.count)") / \(Formati.numeroFormatter.string(from: NSNumber(value: CommentoRuby.limite)) ?? "\(CommentoRuby.limite)")")
+                    Text(verbatim: "\(Formati.numeroFormatter.string(from: NSNumber(value: testo.count)) ?? "\(testo.count)") / \(Formati.numeroFormatter.string(from: NSNumber(value: CommentoVera.limite)) ?? "\(CommentoVera.limite)")")
                         .font(SSP.nota)
-                        .foregroundColor(testo.count > CommentoRuby.limite ? SSP.errore : SSP.coloreNota)
+                        .foregroundColor(testo.count > CommentoVera.limite ? SSP.errore : SSP.coloreNota)
                 }
-                if testo.count > CommentoRuby.limite {
+                if testo.count > CommentoVera.limite {
                     Text("Il testo è troppo lungo per la pagina: accorcialo per salvarlo.")
                         .font(SSP.nota).foregroundColor(SSP.errore)
                 }
@@ -922,13 +922,13 @@ private struct PannelloCommento: View {
             HStack(spacing: 6) {
                 Button {
                     // Il commento salvato o le modifiche in corso non si perdono senza chiedere
-                    if salvato != nil || !testo.isEmpty { confermaRiscrivi = true } else { stato.scriviCommentoConRuby(scelta) }
+                    if salvato != nil || !testo.isEmpty { confermaRiscrivi = true } else { stato.scriviCommentoConVera(scelta) }
                 } label: {
-                    Label(stato.rubyInCorso ? "Ruby scrive…" : (salvato == nil ? "Scrivi con Ruby" : "Riscrivi"), systemImage: "sparkles")
+                    Label(stato.veraInCorso ? "Vera scrive…" : (salvato == nil ? "Scrivi con Vera" : "Riscrivi"), systemImage: "sparkles")
                 }
                 .buttonStyle(StileAzioneSceltaProspetto(taglia: .compatta))
                 .fixedSize()
-                .disabled(stato.rubyInCorso)
+                .disabled(stato.veraInCorso)
                 if !testo.isEmpty && testo != salvato?.testo {
                     // Il blu della finestra è «Salva PDF…»: il salvataggio del commento in vetro dell'accento
                     Button { stato.salvaCommento(scelta, testo: testo, bozzaDi: salvato?.bozzaDi) } label: {
@@ -936,7 +936,7 @@ private struct PannelloCommento: View {
                     }
                     .buttonStyle(StileAzioneSceltaProspetto(taglia: .compatta, accento: true))
                     .fixedSize()
-                    .disabled(testo.count > CommentoRuby.limite)
+                    .disabled(testo.count > CommentoVera.limite)
                 }
                 if salvato != nil {
                     Button("Togli") { stato.salvaCommento(scelta, testo: ""); testo = "" }
@@ -947,11 +947,11 @@ private struct PannelloCommento: View {
             }
         }
         .padding(12)
-        .confirmationDialog("Ruby riscrive il commento", isPresented: $confermaRiscrivi) {
-            Button("Riscrivi con Ruby", role: .destructive) { stato.scriviCommentoConRuby(scelta) }
+        .confirmationDialog("Vera riscrive il commento", isPresented: $confermaRiscrivi) {
+            Button("Riscrivi con Vera", role: .destructive) { stato.scriviCommentoConVera(scelta) }
             Button("Annulla", role: .cancel) {}
         } message: {
-            Text("Il testo attuale del commento viene sostituito dalla nuova stesura di Ruby.")
+            Text("Il testo attuale del commento viene sostituito dalla nuova stesura di Vera.")
         }
         .onAppear { if !caricato { testo = salvato?.testo ?? ""; caricato = true } }
         .onChange(of: salvato?.aggiornatoIl) { _ in testo = stato.commento(scelta)?.testo ?? "" }

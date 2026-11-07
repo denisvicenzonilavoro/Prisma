@@ -91,7 +91,7 @@ enum NovitaLuce: String, CaseIterable, Identifiable {
         case .film: return "Il piano in un breve video, da mostrare"
         case .disegna: return "Lo scarabocchio diventa un piano"
         case .settimanaAnno: return "Trenta secondi ogni lunedì"
-        case .palestra: return "Ruby fa il cliente difficile"
+        case .palestra: return "Vera fa il cliente difficile"
         case .prismaLuce: return "Il patrimonio in raggi di luce"
         case .capsula: return "Un messaggio sigillato fino al traguardo"
         case .traguardi: return "Il momento giusto, già pronto"

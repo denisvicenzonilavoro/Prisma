@@ -6,12 +6,12 @@ import SwiftUI
 ///   prossimo incontro di prova (le cifre del template, dimostrative: 550 € al mese);
 /// - Marco Bianchi: la polizza di prova «Infortuni famiglia» che scade fra 45 giorni (il primo giorno della soglia);
 /// - Sofia Romano: un consenso commerciale di prova firmato 25 mesi fa (vale 24 mesi: scaduto).
-/// Il testo dei messaggi è il modello fisso di Prisma compilato con le cifre dei motori; nelle scene «con Ruby» si mostra
-/// come scritto da Ruby (lo stato finale di Ruby: Qwen nelle istantanee non c'è).
+/// Il testo dei messaggi è il modello fisso di Prisma compilato con le cifre dei motori; nelle scene «con Vera» si mostra
+/// come scritto da Vera (lo stato finale di Vera: Qwen nelle istantanee non c'è).
 enum MessaggiDiProva {
     static let incontroGiulia = "incontro-giulia-casa"
     static let infortuniMarco = "pos-marco-infortuni-famiglia"
-    /// Il motivo di prova per «Ruby non è pronta».
+    /// Il motivo di prova per «Vera non è pronta».
     static let motivoNonPronta = "Ollama non è aperto: avvialo sul Mac e scegli il modello \(MotoreLocale.modelloPredefinito)."
 
     static func prepara(_ s: StatoShell, cal: Calendar = .current) {
@@ -36,11 +36,11 @@ enum MessaggiDiProva {
 
     /// Prepara i dati, chiede l'occasione, il tono, il canale e chi scrive, e apre Messaggi.
     static func apri(_ s: StatoShell, tipo: TipoOccasioneMessaggio, cliente: String, tono: TonoMessaggio = .cordiale,
-                     canale: CanaleMessaggio = .mail, ruby: Bool = true) {
+                     canale: CanaleMessaggio = .mail, vera: Bool = true) {
         prepara(s)
-        if !ruby { s.disponibilitaLocale = .nonDisponibile(motivoNonPronta) }
-        RichiestaIstantaneaMessaggi.chiedi(s, tipo: tipo, cliente: cliente, tono: tono, canale: canale, ruby: ruby,
-                                           motivoNonPronta: ruby ? nil : motivoNonPronta)
+        if !vera { s.disponibilitaLocale = .nonDisponibile(motivoNonPronta) }
+        RichiestaIstantaneaMessaggi.chiedi(s, tipo: tipo, cliente: cliente, tono: tono, canale: canale, vera: vera,
+                                           motivoNonPronta: vera ? nil : motivoNonPronta)
         s.apri(.messaggi)
     }
 
@@ -55,11 +55,11 @@ enum MessaggiDiProva {
 /// Le istantanee di Messaggi (Design/template-novita-specifica.md §5.7), 490-496 in chiaro e in scuro, tutte nello
 /// stato finale (`\.modoIstantanea`): testo completo, nessun puntino, pillole al loro posto. iPhone (497) e iPad (498)
 /// sono in iOS/IstantaneeMobile.swift. Dati di prova in `MessaggiDiProva`.
-/// - 490: il riepilogo dell'incontro di Giulia, Cordiale, Mail, scritto da Ruby;
+/// - 490: il riepilogo dell'incontro di Giulia, Cordiale, Mail, scritto da Vera;
 /// - 491: lo stesso con Messaggi e Breve: la nuvoletta blu e «Apri in Messaggi»;
 /// - 492: la scadenza di Marco, Formale, Mail con l'oggetto;
 /// - 493: il consenso commerciale di Sofia, scelto in «Questa settimana»;
-/// - 494: Ruby non è pronta: il testo di Prisma con la riga che lo spiega;
+/// - 494: Vera non è pronta: il testo di Prisma con la riga che lo spiega;
 /// - 495: Marco senza indirizzo email: la testata lo dice e il pulsante porta al dossier;
 /// - 496: nessuna occasione.
 extension Istantanee {
@@ -77,11 +77,11 @@ extension Istantanee {
             ("492-messaggi-formale-scuro", { s in MessaggiDiProva.apri(s, tipo: .scadenzaPosizione, cliente: "marco", tono: .formale) }),
             ("493-messaggi-consenso", { s in MessaggiDiProva.apri(s, tipo: .consenso, cliente: "sofia") }),
             ("493-messaggi-consenso-scuro", { s in MessaggiDiProva.apri(s, tipo: .consenso, cliente: "sofia") }),
-            ("494-messaggi-ruby-non-pronta", { s in
-                MessaggiDiProva.apri(s, tipo: .scadenzaPosizione, cliente: "marco", ruby: false)
+            ("494-messaggi-vera-non-pronta", { s in
+                MessaggiDiProva.apri(s, tipo: .scadenzaPosizione, cliente: "marco", vera: false)
             }),
-            ("494-messaggi-ruby-non-pronta-scuro", { s in
-                MessaggiDiProva.apri(s, tipo: .scadenzaPosizione, cliente: "marco", ruby: false)
+            ("494-messaggi-vera-non-pronta-scuro", { s in
+                MessaggiDiProva.apri(s, tipo: .scadenzaPosizione, cliente: "marco", vera: false)
             }),
             ("495-messaggi-recapito-mancante", { s in senzaEmailMarco(s) }),
             ("495-messaggi-recapito-mancante-scuro", { s in senzaEmailMarco(s) }),

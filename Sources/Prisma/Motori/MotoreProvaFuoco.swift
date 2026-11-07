@@ -225,7 +225,7 @@ enum MotoreProvaFuoco {
         }
     }
 
-    /// Variazione di una posizione qualunque (prepara la composizione al momento): per le prove e per Ruby.
+    /// Variazione di una posizione qualunque (prepara la composizione al momento): per le prove e per Vera.
     static func variazione(_ p: Posizione, _ s: ScenarioFuoco) -> Double {
         let d = durataObbligazioni(p)
         let x = BaseProvaFuoco.PosizioneComposta(posizione: p, composizione: MotoreResistenza.composizione(p), durata: d.anni,
@@ -261,7 +261,7 @@ enum MotoreProvaFuoco {
                                posizioniStimate: ordinate.reduce(0) { $0 + $1.posizioniStimate })
     }
 
-    /// Prepara e calcola in un colpo (prove, istantanee, Ruby).
+    /// Prepara e calcola in un colpo (prove, istantanee, Vera).
     static func calcola(_ s: ScenarioFuoco, clienti: [Cliente], posizioni: [Posizione], obiettivi: [Obiettivo],
                         oggi: Date) -> EsitoProvaFuoco {
         let base = prepara(clienti: clienti, posizioni: posizioni, obiettivi: obiettivi, oggi: oggi)

@@ -125,13 +125,13 @@ struct PannelloAlTavolo: View {
     /// A tavolo chiuso: che cosa fa, il codice (non in modalità cliente) e «Apri il tavolo».
     private var apertura: some View {
         let t = Tema.Apple.Tavolo.self
-        let codice = stato.dati.impostazioni.ruby.ponte.codice
+        let codice = stato.dati.impostazioni.vera.ponte.codice
         return VStack(alignment: .leading, spacing: t.spazioPannello) {
-            Text("L'iPad davanti al cliente mostra solo ciò che scegli qui. Mac e iPad sulla stessa rete Wi‑Fi, con il codice di Ruby.")
+            Text("L'iPad davanti al cliente mostra solo ciò che scegli qui. Mac e iPad sulla stessa rete Wi‑Fi, con il codice di Vera.")
                 .carattereApple(t.statoPannello)
                 .foregroundColor(t.coloreStatoPannello)
                 .fixedSize(horizontal: false, vertical: true)
-            if !stato.inModoCliente, PonteRuby.normalizza(codice) != nil {
+            if !stato.inModoCliente, PonteVera.normalizza(codice) != nil {
                 Text("Codice \(codice)")
                     .carattereApple(t.codice)
                     .foregroundColor(t.coloreCodice)

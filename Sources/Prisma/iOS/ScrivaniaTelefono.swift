@@ -3,7 +3,7 @@ import SwiftUI
 
 /// La scrivania dell'iPhone nel tema Apple (Design/iphone.html, schermata 1): sotto la barra, sull'acqua, la data e
 /// il saluto; poi i riquadri di vetro uno per riga, in ordine di importanza: la mossa del giorno in grande (con il
-/// prossimo incontro sotto), «Richiede attenzione», la riga di Ruby con la sfera e il portafoglio con i tre anelli;
+/// prossimo incontro sotto), «Richiede attenzione», la riga di Vera con la sfera e il portafoglio con i tre anelli;
 /// in fondo il piede. Comincia sotto la barra e scorre sotto il dock. I riquadri entrano a cascata (base 0,12 della
 /// scrivania), scendono a 0,98 alla pressione e aprono le app con `mobile.apri` dal punto toccato (`misuraOrigine`):
 /// StatoMobile porta l'app nella finestra di vetro. Con «Riduci movimento» e nelle istantanee tutto è già fermo.
@@ -89,7 +89,7 @@ struct ScrivaniaTelefono: View {
                 .entrataCascata(1, base: S.baseCascata, sfocatura: false)
             RiquadroAttenzioneTelefono()
                 .entrataCascata(2, base: S.baseCascata, sfocatura: false)
-            RiquadroRubyTelefono()
+            RiquadroVeraTelefono()
                 .entrataCascata(3, base: S.baseCascata, sfocatura: false)
             RiquadroPortafoglioTelefono()
                 .entrataCascata(4, base: S.baseCascata, sfocatura: false)

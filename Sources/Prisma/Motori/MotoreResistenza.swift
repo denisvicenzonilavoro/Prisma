@@ -223,7 +223,7 @@ enum MotoreResistenza {
         return perdita
     }
 
-    /// Due righe per Ruby e per le schede: la perdita di ogni scenario e il confronto con il profilo.
+    /// Due righe per Vera e per le schede: la perdita di ogni scenario e il confronto con il profilo.
     static func sintesi(_ r: ProvaResistenza) -> [String] {
         var righe: [String] = []
         for s in r.scenari where !s.voci.isEmpty {

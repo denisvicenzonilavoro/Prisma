@@ -3,7 +3,7 @@ import SwiftUI
 // «L'acqua risponde» (Design/template-apple-specifica.md §3.6 e §3.7): l'acqua della scrivania sente ciò che succede.
 // - un clic o un tocco sul fondo libero della scrivania fa cadere una goccia lì (`.gocciaAlTocco()`);
 // - una notifica nuova arriva come una goccia sulla campanella della barra;
-// - mentre Ruby risponde, l'acqua vibra piano intorno alla sua sfera;
+// - mentre Vera risponde, l'acqua vibra piano intorno alla sua sfera;
 // - allo sblocco una goccia grande apre la scrivania, al centro.
 // L'acqua è la stessa di oggi: la goccia è una goccia della pioggia (FisicaAcqua.goccia), la vibrazione una serie di
 // impatti leggeri della stessa fisica (FisicaAcqua.vibra), lo shader non cambia.
@@ -32,10 +32,10 @@ enum EventoAcqua {
 enum PuntoAcqua: Hashable {
     /// La campanella del centro notifiche, nella barra.
     case campanella
-    /// La sfera di Ruby sulla scrivania (pagina di Ruby, riga di Ruby sul telefono).
-    case sferaRuby
-    /// La sfera di Ruby nella barra (Mac): vale se quella della scrivania non c'è.
-    case sferaRubyBarra
+    /// La sfera di Vera sulla scrivania (pagina di Vera, riga di Vera sul telefono).
+    case sferaVera
+    /// La sfera di Vera nella barra (Mac): vale se quella della scrivania non c'è.
+    case sferaVeraBarra
 }
 
 /// Chi riceve le richieste: la coda di una tela d'acqua.
@@ -47,7 +47,7 @@ protocol RicevitoreAcqua: AnyObject {
 ///
 ///     RispostaAcqua.condivisa.goccia(in: puntoGlobale)                       // goccia del clic
 ///     RispostaAcqua.condivisa.goccia(su: .campanella, peso: Tema.Apple.Acqua.Goccia.pesoNotifica)
-///     RispostaAcqua.condivisa.vibra(intorno: .sferaRuby, durata: 4)          // Ruby che parla
+///     RispostaAcqua.condivisa.vibra(intorno: .sferaVera, durata: 4)          // Vera che parla
 ///     RispostaAcqua.condivisa.fermaVibrazioni()
 ///     RispostaAcqua.condivisa.gocciaAlCentro()                               // sblocco
 final class RispostaAcqua {
@@ -269,7 +269,7 @@ final class CodaRispostaAcqua: RicevitoreAcqua {
 // MARK: - Viste
 
 extension View {
-    /// Segna la vista come un punto su cui l'acqua risponde (la campanella, la sfera di Ruby).
+    /// Segna la vista come un punto su cui l'acqua risponde (la campanella, la sfera di Vera).
     func puntoAcqua(_ punto: PuntoAcqua) -> some View {
         modifier(SegnoPuntoAcqua(punto: punto))
     }
@@ -277,7 +277,7 @@ extension View {
     /// Un clic o un tocco sul fondo libero di questa vista fa cadere una goccia lì. Va sulla scrivania: lo strato sta
     /// dietro il contenuto, quindi widget, pulsanti e testi prendono i loro clic e solo il fondo libero arriva qui;
     /// barra, dock e finestre stanno sopra la scrivania e non ci arrivano mai. Un trascinamento non è un tocco
-    /// (il gesto della pagina di Ruby resta com'è).
+    /// (il gesto della pagina di Vera resta com'è).
     func gocciaAlTocco() -> some View {
         modifier(GocciaAlTocco())
     }

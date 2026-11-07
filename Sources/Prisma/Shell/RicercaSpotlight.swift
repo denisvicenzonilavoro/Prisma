@@ -748,7 +748,7 @@ enum SchedeRicerca {
             guard let n = stato.nota(id) else { break }
             s.sottotitolo = nome(n.clienteId)
             aggiungi("Aggiornata il", Formati.dataEstesa.string(from: n.aggiornataIl))
-            s.testo = n.testo.isEmpty ? nil : String(n.testo.prefix(Nota.limiteRuby))
+            s.testo = n.testo.isEmpty ? nil : String(n.testo.prefix(Nota.limiteVera))
             azione("Apri la nota", "note.text", .apri)
             azione("Crea un'attività", "checklist", .attivitaDaNota(n.id), modifica: true)
             azione("Apri il cliente", "person.crop.circle", .cliente(n.clienteId))

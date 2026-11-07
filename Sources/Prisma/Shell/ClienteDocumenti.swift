@@ -176,7 +176,7 @@ struct DocumentiCliente: View {
 
     // MARK: - Azioni
 
-    /// Un documento scelto da fuori (⌘K, notifiche, Ruby, Prodotti) che i filtri nasconderebbero: i filtri tornano a
+    /// Un documento scelto da fuori (⌘K, notifiche, Vera, Prodotti) che i filtri nasconderebbero: i filtri tornano a
     /// «Tutti» e la ricerca si svuota, così si vede nell'elenco.
     private func allinea() {
         guard let id = stato.documentoSelezionato, let d = stato.documento(id), d.clienteId == cliente.id else { return }

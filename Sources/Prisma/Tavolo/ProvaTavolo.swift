@@ -33,9 +33,9 @@ enum ProvaTavolo {
     // MARK: - Il protocollo, senza rete
 
     private static func protocollo(_ controlla: (Bool, String) -> Void) {
-        let codice = PonteRuby.nuovoCodice()
-        guard let k = ProtocolloTavolo.chiave(codice), let ruby = PonteRuby.chiave(codice),
-              let altra = ProtocolloTavolo.chiave(PonteRuby.nuovoCodice()) else {
+        let codice = PonteVera.nuovoCodice()
+        guard let k = ProtocolloTavolo.chiave(codice), let vera = PonteVera.chiave(codice),
+              let altra = ProtocolloTavolo.chiave(PonteVera.nuovoCodice()) else {
             return controlla(false, "Tavolo: chiave dal codice di abbinamento")
         }
         let m = MessaggioTavolo(sessione: "sessione-di-prova", numero: 1, contenuto: .neutra)
@@ -48,12 +48,12 @@ enum ProvaTavolo {
         controlla(lunghezza == scatola.count, "Tavolo: la cornice dice la lunghezza della scatola (\(lunghezza) byte)")
         controlla(ProtocolloTavolo.apri(scatola, chiave: k)?.messaggio == m, "Tavolo: il messaggio si apre con lo stesso codice")
         controlla(ProtocolloTavolo.apri(scatola, chiave: altra) == nil, "Tavolo: con un altro codice il messaggio non si apre")
-        controlla(PonteRuby.apri(scatola, ruby) == nil, "Tavolo: la chiave del tavolo non è quella del ponte di Ruby (sale proprio)")
+        controlla(PonteVera.apri(scatola, vera) == nil, "Tavolo: la chiave del tavolo non è quella del ponte di Vera (sale proprio)")
         controlla(!String(decoding: scatola, as: UTF8.self).contains("sessione-di-prova"), "Tavolo: il contenuto non si legge in chiaro")
 
         // Un contenuto di una versione più nuova non rompe il messaggio: si ignora
         let futuro = "{\"versione\":2,\"sessione\":\"s\",\"numero\":1,\"quando\":\(Date().timeIntervalSince1970),\"contenuto\":{\"ologramma\":{}}}"
-        let sigillato = (try? PonteRuby.sigilla(Data(futuro.utf8), k)) ?? Data()
+        let sigillato = (try? PonteVera.sigilla(Data(futuro.utf8), k)) ?? Data()
         let aperto = ProtocolloTavolo.apri(sigillato, chiave: k)
         controlla(aperto != nil && aperto?.messaggio.contenuto == nil, "Tavolo: un contenuto sconosciuto (versione 2) si ignora")
 
@@ -73,8 +73,8 @@ enum ProvaTavolo {
     private static func rete(_ controlla: (Bool, String) -> Void) {
         let stato = StatoShell(persistente: false)
         stato.clienteAttivoId = presente
-        let codice = PonteRuby.nuovoCodice()
-        stato.dati.impostazioni.ruby.ponte.codice = codice
+        let codice = PonteVera.nuovoCodice()
+        stato.dati.impostazioni.vera.ponte.codice = codice
         let tavolo = stato.tavolo
         controlla(tavolo.porta == nil && !tavolo.acceso, "Tavolo: chiuso finché il consulente non lo apre (nessun ascolto in rete)")
         tavolo.avvia(porta: 0, annuncia: false, tempi: tempi)
@@ -87,7 +87,7 @@ enum ProvaTavolo {
         // Il codice sbagliato: respinto, e niente arriva
         let intruso = ClienteTavolo(nome: "iPad estraneo", tempi: tempi)
         intruso.registra = true
-        intruso.collega(codice: PonteRuby.nuovoCodice(), host: "127.0.0.1", porta: porta)
+        intruso.collega(codice: PonteVera.nuovoCodice(), host: "127.0.0.1", porta: porta)
         let respinto = attendi(5) { intruso.collegamento == .rifiutato }
         controlla(respinto && !tavolo.collegato && intruso.registro.isEmpty && intruso.schermo == .neutra,
                   "Tavolo: con il codice sbagliato l'iPad è respinto e non riceve niente (\(intruso.collegamento))")

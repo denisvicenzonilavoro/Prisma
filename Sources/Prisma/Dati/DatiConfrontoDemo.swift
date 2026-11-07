@@ -2,7 +2,7 @@ import Foundation
 
 /// Documenti di prova del confronto con il dossier (specifica 9 del giro 5): il nuovo KID dell'ETF e un'appendice del
 /// piano di risparmio di Giulia. Servono solo alle prove DD e alle scene 190–194: `DatiDemo` non cambia, così
-/// `--prova-ruby` e le altre prove vedono gli stessi dati di prima. Il testo entra nelle scene con `memorizzaTesto`.
+/// `--prova-vera` e le altre prove vedono gli stessi dati di prima. Il testo entra nelle scene con `memorizzaTesto`.
 enum DatiConfrontoDemo {
     static let idKIDETF = "doc-giulia-kid-etf-aggiornato"
     static let idAppendice = "doc-giulia-appendice-risparmio"

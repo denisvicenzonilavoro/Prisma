@@ -20,11 +20,11 @@ final class SessioneMessaggi: ObservableObject {
     @Published var scelta: String?
     @Published var tono: TonoMessaggio = .cordiale
     @Published var canale: CanaleMessaggio = .mail
-    /// I testi pronti (di Ruby o di Prisma), per chiave.
+    /// I testi pronti (di Vera o di Prisma), per chiave.
     @Published private(set) var testi: [ChiaveTestoMessaggio: TestoScrittoMessaggio] = [:]
     /// Le correzioni del consulente al testo pronto.
     @Published private(set) var correzioni: [ChiaveTestoMessaggio: String] = [:]
-    /// Il testo che Ruby sta scrivendo adesso, e quello arrivato fin qui.
+    /// Il testo che Vera sta scrivendo adesso, e quello arrivato fin qui.
     @Published private(set) var inScrittura: ChiaveTestoMessaggio?
     @Published private(set) var parziale = ""
     /// I testi già comparsi per intero: da qui si possono correggere.
@@ -158,7 +158,7 @@ final class SessioneMessaggi: ObservableObject {
         verificato = true
         compito = Task { @MainActor [weak self] in
             if verifica {
-                let d = await MotoreLocale.verificaDispositivo(stato.dati.impostazioni.ruby)
+                let d = await MotoreLocale.verificaDispositivo(stato.dati.impostazioni.vera)
                 if stato.disponibilitaLocale != d { stato.disponibilitaLocale = d }
             }
             guard !Task.isCancelled else { return }
@@ -201,12 +201,12 @@ final class SessioneMessaggi: ObservableObject {
 
 /// I testi dell'app Messaggi (Design/template-novita-specifica.md §5.1 e §5.1.6).
 enum TestiMessaggi {
-    static let notaColonna = "Ruby scrive, tu spedisci: niente parte da solo. Ogni messaggio resta nel dossier del cliente."
+    static let notaColonna = "Vera scrive, tu spedisci: niente parte da solo. Ogni messaggio resta nel dossier del cliente."
     static let nienteOggi = "Niente da mandare oggi"
     static let vuoto = "Nessun messaggio da preparare. Quando c'è un incontro, una scadenza, un compleanno o un consenso da "
         + "rinnovare, lo trovi qui."
-    static let rubyScrive = "Ruby scrive con i dati del dossier"
-    static let rubyStaScrivendo = "Ruby sta scrivendo con i dati del dossier"
+    static let veraScrive = "Vera scrive con i dati del dossier"
+    static let veraStaScrivendo = "Vera sta scrivendo con i dati del dossier"
     static let testoPrisma = "Testo di Prisma, con i dati del dossier"
     static let cifreDaPrisma = "Le cifre vengono da Prisma"
     static let spedisciTu = "Lo controlli e lo spedisci tu"
@@ -245,7 +245,7 @@ enum TestiMessaggi {
     /// Chi ha scritto il testo, accanto alla nota sulle cifre.
     static func autore(_ s: TestoScrittoMessaggio) -> String {
         switch s.autore {
-        case .ruby: return "Scritto da Ruby" + (s.modello.map { " con \($0)" } ?? "")
+        case .vera: return "Scritto da Vera" + (s.modello.map { " con \($0)" } ?? "")
         case .modelloFisso: return "Testo di Prisma"
         }
     }

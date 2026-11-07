@@ -171,7 +171,7 @@ enum EstrattoreDocumento {
     // MARK: - Qwen
 
     static var istruzioniModello: String {
-        IstruzioniRuby.testo("documenti") ?? """
+        IstruzioniVera.testo("documenti") ?? """
         Leggi il testo di una pagina di un documento finanziario o assicurativo italiano e rispondi solo con righe nel formato:
         CAMPO|valore
         Campi possibili: \(CampoDocumento.allCases.map(\.rawValue).joined(separator: ", ")).

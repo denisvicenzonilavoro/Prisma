@@ -4,7 +4,7 @@ import AppKit
 #endif
 
 /// App Ricerca in finestra: resta per compatibilità (spazi di lavoro e sessioni salvate con la Ricerca aperta).
-/// ⌘K, il dock, la barra e Ruby aprono il pannello in alto come Spotlight (`RicercaSpotlight`).
+/// ⌘K, il dock, la barra e Vera aprono il pannello in alto come Spotlight (`RicercaSpotlight`).
 /// Si scrive, i risultati arrivano raggruppati per app; ↑ ↓ scelgono, Invio apre il risultato nella sua app.
 struct AppRicerca: View {
     @EnvironmentObject var stato: StatoShell

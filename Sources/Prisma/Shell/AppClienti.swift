@@ -506,7 +506,7 @@ struct PanoramicaCliente: View {
                 scheda(.documenti, .documenti, sottotitoloDocumenti, conteggio: stato.documentiCliente(cliente.id).count)
                 collegamento(.note, "Appunti e idee")
                 collegamento(.presentazioni, "Prospetti in PDF")
-                collegamento(.ruby, "Ragiona su questo cliente")
+                collegamento(.vera, "Ragiona su questo cliente")
             }
     }
 
@@ -532,7 +532,7 @@ struct PanoramicaCliente: View {
 
     /// Il riesame annuale, quando è dovuto: quanti punti ci sono da trattare e il prospetto per prepararlo.
     @ViewBuilder private var riesame: some View {
-        // Calcolato una volta per dati e ora (DerivatiDati): passa da tutta la fonte di Ruby
+        // Calcolato una volta per dati e ora (DerivatiDati): passa da tutta la fonte di Vera
         if let r = stato.riesameCliente(cliente.id) {
             if r.dovuto, r.prossimo == nil, !r.punti.isEmpty {
                 let alta = r.punti.filter { $0.priorita == .alta }.count

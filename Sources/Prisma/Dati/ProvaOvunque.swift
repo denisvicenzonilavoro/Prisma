@@ -5,7 +5,7 @@ import Foundation
 /// finché non si consegnano), file non ancora scaricati, copie «nome 2» e file troncati. Sotto c'è la cartella vera
 /// (`CartellaCondivisaFile`), con la stessa coordinazione dell'app.
 final class CartellaOvunqueFinta: CartellaCondivisa {
-    let vera: CartellaCondivisaFile
+    let reale: CartellaCondivisaFile
     /// true: le scritture non arrivano finché non si chiama `consegna()` (latenza di iCloud).
     var ritardo = false
     /// I file che risultano in iCloud ma non su questo dispositivo.
@@ -13,11 +13,11 @@ final class CartellaOvunqueFinta: CartellaCondivisa {
     private(set) var inViaggio: [String: Data] = [:]
 
     init(url: URL) {
-        vera = CartellaCondivisaFile(url: url)
+        reale = CartellaCondivisaFile(url: url)
     }
 
     func elenca() throws -> [VoceCartella] {
-        try vera.elenca().map { v in
+        try reale.elenca().map { v in
             guard nonScaricati.contains(v.nome) else { return v }
             return VoceCartella(nome: v.nome, dimensione: v.dimensione, modificatoIl: v.modificatoIl, scaricato: false)
         }
@@ -25,7 +25,7 @@ final class CartellaOvunqueFinta: CartellaCondivisa {
 
     func leggi(_ nome: String) throws -> Data {
         if nonScaricati.contains(nome) { throw ErroreOvunque.inAttesaDiICloud(nome) }
-        return try vera.leggi(nome)
+        return try reale.leggi(nome)
     }
 
     func sostituisci(_ nome: String, con dati: Data) throws {
@@ -33,12 +33,12 @@ final class CartellaOvunqueFinta: CartellaCondivisa {
             inViaggio[nome] = dati
             return
         }
-        try vera.sostituisci(nome, con: dati)
+        try reale.sostituisci(nome, con: dati)
     }
 
     func elimina(_ nome: String) throws {
         inViaggio[nome] = nil
-        try vera.elimina(nome)
+        try reale.elimina(nome)
     }
 
     /// iCloud porta a destinazione i file in viaggio.
@@ -46,19 +46,19 @@ final class CartellaOvunqueFinta: CartellaCondivisa {
         let tutti = inViaggio
         inViaggio = [:]
         for nome in tutti.keys.sorted() {
-            if let dati = tutti[nome] { try vera.sostituisci(nome, con: dati) }
+            if let dati = tutti[nome] { try reale.sostituisci(nome, con: dati) }
         }
     }
 
     /// La copia che iCloud crea quando due scritture si incrociano («giornale-x 2.cifrato»).
     func duplica(_ nome: String, in copia: String) throws {
-        try vera.sostituisci(copia, con: vera.leggi(nome))
+        try reale.sostituisci(copia, con: reale.leggi(nome))
     }
 
     /// Un file arrivato a metà: gli si tolgono gli ultimi `byte`.
     func tronca(_ nome: String, togli byte: Int) throws {
-        let dati = try vera.leggi(nome)
-        try vera.sostituisci(nome, con: dati.prefix(max(0, dati.count - byte)))
+        let dati = try reale.leggi(nome)
+        try reale.sostituisci(nome, con: dati.prefix(max(0, dati.count - byte)))
     }
 }
 
@@ -312,7 +312,7 @@ enum ProvaOvunque {
 
         // L'iPhone: archivio vuoto con una conversazione sua
         var tel = DatiPrisma(clienti: [], appuntamenti: [], attivita: [], posizioni: [], clienteAttivoId: "", impostazioni: Impostazioni())
-        tel.conversazioni["solo-telefono"] = [MessaggioRuby(autore: .utente, testo: "Resta sul telefono")]
+        tel.conversazioni["solo-telefono"] = [MessaggioVera(autore: .utente, testo: "Resta sul telefono")]
         tel.impostazioni.aspetto = .scuro
         try controlla((erroreDi { _ = try SpazioOvunque.apri(in: icloud, passphrase: "passphrase sbagliata") } as? ErroreOvunque)
                       == .passphraseErrata, "una passphrase sbagliata apre lo spazio")
@@ -591,7 +591,7 @@ enum ProvaOvunque {
         // Il controllo all'attivazione si accorge di un file cambiato
         let impronte = try icloud.impronte()
         try controlla(!SpazioOvunque.cartellaCambiata(icloud, rispetto: impronte), "una cartella ferma risulta cambiata")
-        try icloud.vera.sostituisci("giornale-dispositivo-nuovo.cifrato", con: Data([1, 2, 3]))
+        try icloud.reale.sostituisci("giornale-dispositivo-nuovo.cifrato", con: Data([1, 2, 3]))
         try controlla(SpazioOvunque.cartellaCambiata(icloud, rispetto: impronte), "un giornale nuovo non si nota al controllo")
         // Il ritmo dell'istantanea: a gruppi
         try controlla(!RitmoIstantanea.daScrivere(.modifica, archivioCambiato: true, ultima: ora(0), adesso: ora(5))

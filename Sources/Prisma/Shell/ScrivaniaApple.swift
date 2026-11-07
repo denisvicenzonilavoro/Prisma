@@ -4,7 +4,7 @@ import SwiftUI
 //
 //   Buonasera, Denis.                              [▶︎ La tua settimana] [Cerca ovunque]
 //   ┌──────────────────────── La mossa del giorno ────────────────────────┐
-//   ┌──── Agenda di oggi ────┐┌─ Portafoglio clienti ─┐┌──────── Ruby ────────┐
+//   ┌──── Agenda di oggi ────┐┌─ Portafoglio clienti ─┐┌──────── Vera ────────┐
 //   ┌── Il tuo studio (Mac) ───┐┌──────── In scadenza entro 90 giorni ────────┐
 //
 // - Riquadri di vetro (raggio 26, padding 18×20): al passaggio salgono di 3 con la molla di 0,45 s; un clic
@@ -115,7 +115,7 @@ private struct CorpoRiquadriScrivania: View, Equatable {
     /// L'iPad in verticale, con gli stessi riquadri del Mac a due colonne:
     ///
     ///   ┌──── Agenda di oggi ────┐┌─ Portafoglio ─┐   300
-    ///   ┌────────── Ruby ─────────┐┌─ Da fare oggi ┐   270
+    ///   ┌────────── Vera ─────────┐┌─ Da fare oggi ┐   270
     ///   ┌──────── In scadenza entro 90 giorni ──────┐  168
     private func righeStrette(_ misura: CGSize, pronto: Bool, ritardoAnelli: Double) -> some View {
         let d = Tema.Apple.Scrivania.Disposizione.self
@@ -139,7 +139,7 @@ private struct CorpoRiquadriScrivania: View, Equatable {
             }
             .frame(height: alta)
             HStack(alignment: .top, spacing: s) {
-                RiquadroRubyScrivania()
+                RiquadroVeraScrivania()
                     .frame(width: medie[0])
                     .modifier(entrata(5))
                 RiquadroDaFare()
@@ -172,7 +172,7 @@ private struct CorpoRiquadriScrivania: View, Equatable {
                 RiquadroPortafoglioScrivania(pronto: pronto, ritardoAnelli: ritardoAnelli, altezza: alta)
                     .frame(width: alte[1])
                     .modifier(entrata(4))
-                RiquadroRubyScrivania()
+                RiquadroVeraScrivania()
                     .frame(width: alte[2])
                     .modifier(entrata(5))
             }
@@ -919,9 +919,9 @@ private struct CorpoPortafoglioScrivania: View, Equatable {
     }
 }
 
-// MARK: - Ruby
+// MARK: - Vera
 
-private struct RiquadroRubyScrivania: View {
+private struct RiquadroVeraScrivania: View {
     @EnvironmentObject var stato: StatoShell
 
     var body: some View {
@@ -930,25 +930,25 @@ private struct RiquadroRubyScrivania: View {
     }
 
     private func corpo(viva: Bool) -> some View {
-        CorpoRubyScrivaniaApple(stato: stato, chiave: stato.chiaveVista, pronta: stato.qwen.disponibilita.pronto,
-                               nomeMotore: stato.qwen.nome, inCorso: stato.rubyInCorso,
-                               consentita: stato.appConsentita(.ruby),
+        CorpoVeraScrivaniaApple(stato: stato, chiave: stato.chiaveVista, pronta: stato.qwen.disponibilita.pronto,
+                               nomeMotore: stato.qwen.nome, inCorso: stato.veraInCorso,
+                               consentita: stato.appConsentita(.vera),
                                // La sfera respira solo con la scrivania scoperta: sotto le finestre resta ferma
                                viva: viva)
             .equatable()
             .riquadroScrivania(apre: {
-                guard stato.appConsentita(.ruby) else { return }
+                guard stato.appConsentita(.vera) else { return }
                 #if os(iOS)
-                // Sull'iPad Ruby non ha la pagina a destra della scrivania: si apre la sua app
-                stato.apri(.ruby)
+                // Sull'iPad Vera non ha la pagina a destra della scrivania: si apre la sua app
+                stato.apri(.vera)
                 #else
-                stato.mostraRubyScrivania()
+                stato.mostraVeraScrivania()
                 #endif
             })
     }
 }
 
-/// Ridisegna il riquadro di Ruby quando la scrivania si copre o si scopre (le finestre aperte o ridotte).
+/// Ridisegna il riquadro di Vera quando la scrivania si copre o si scopre (le finestre aperte o ridotte).
 private struct SferaScrivaniaScoperta<C: View>: View {
     @ObservedObject var sistema: StatoFinestre
     let contenuto: (Bool) -> C
@@ -958,7 +958,7 @@ private struct SferaScrivaniaScoperta<C: View>: View {
     }
 }
 
-private struct CorpoRubyScrivaniaApple: View, Equatable {
+private struct CorpoVeraScrivaniaApple: View, Equatable {
     let stato: StatoShell
     let chiave: ChiaveVista
     let pronta: Bool
@@ -967,21 +967,21 @@ private struct CorpoRubyScrivaniaApple: View, Equatable {
     let consentita: Bool
     let viva: Bool
 
-    nonisolated static func == (a: CorpoRubyScrivaniaApple, b: CorpoRubyScrivaniaApple) -> Bool {
+    nonisolated static func == (a: CorpoVeraScrivaniaApple, b: CorpoVeraScrivaniaApple) -> Bool {
         a.chiave == b.chiave && a.pronta == b.pronta && a.nomeMotore == b.nomeMotore && a.inCorso == b.inCorso
             && a.consentita == b.consentita && a.viva == b.viva
     }
 
     var body: some View {
-        let e = Tema.Apple.Scrivania.Ruby.self
-        let suggerimenti = stato.suggerimentiRubyScrivania()
+        let e = Tema.Apple.Scrivania.Vera.self
+        let suggerimenti = stato.suggerimentiVeraScrivania()
         return VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: e.spazioTesta) {
-                SferaRuby(misura: e.sfera, viva: viva, pensa: inCorso)
-                    // Mentre Ruby risponde l'acqua vibra intorno a questa sfera (OsservatoreAcqua)
-                    .puntoAcqua(.sferaRuby)
+                SferaVera(misura: e.sfera, viva: viva, pensa: inCorso)
+                    // Mentre Vera risponde l'acqua vibra intorno a questa sfera (OsservatoreAcqua)
+                    .puntoAcqua(.sferaVera)
                 VStack(alignment: .leading, spacing: 0) {
-                    Text("Ruby")
+                    Text("Vera")
                         .carattereApple(e.nome)
                         .foregroundColor(Tema.Apple.Colore.inchiostro)
                     Text(pronta ? "\(nomeMotore) · pronto" : "\(nomeMotore) · non pronto")
@@ -1011,9 +1011,9 @@ private struct CorpoRubyScrivaniaApple: View, Equatable {
     }
 
     private func domande(_ elenco: [DomandaScrivania]) -> some View {
-        DisposizioneAcapoRicerca(spazio: Tema.Apple.Scrivania.Ruby.spazioSuggerimenti) {
+        DisposizioneAcapoRicerca(spazio: Tema.Apple.Scrivania.Vera.spazioSuggerimenti) {
             ForEach(elenco) { d in
-                SuggerimentoRubyScrivania(testo: d.testo) { stato.chiediDallaScrivania(d) }
+                SuggerimentoVeraScrivania(testo: d.testo) { stato.chiediDallaScrivania(d) }
                     .disabled(inCorso)
             }
         }
@@ -1021,14 +1021,14 @@ private struct CorpoRubyScrivaniaApple: View, Equatable {
 }
 
 /// Una domanda suggerita: capsula `card` col filo, 13 medium; al passaggio sale di 2.
-private struct SuggerimentoRubyScrivania: View {
+private struct SuggerimentoVeraScrivania: View {
     let testo: String
     let azione: () -> Void
     @Environment(\.prismaStatoFinale) private var fermo
     @State private var sopra = false
 
     var body: some View {
-        let e = Tema.Apple.Scrivania.Ruby.self
+        let e = Tema.Apple.Scrivania.Vera.self
         let alzato = sopra && !fermo
         Button(action: azione) {
             Text(testo)
@@ -1050,7 +1050,7 @@ private struct SuggerimentoRubyScrivania: View {
         .offset(y: alzato ? Tema.Apple.Scrivania.Moto.sollevamentoSuggerimento : 0)
         .animation(fermo ? nil : Tema.Apple.Scrivania.Moto.sopraSuggerimento, value: alzato)
         .modifier(PassaggioRiquadro(sopra: $sopra))
-        .help("Apre Ruby sulla scrivania e le chiede: \(testo)")
+        .help("Apre Vera sulla scrivania e le chiede: \(testo)")
     }
 }
 

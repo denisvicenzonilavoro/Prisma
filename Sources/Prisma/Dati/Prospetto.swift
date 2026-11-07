@@ -214,7 +214,7 @@ extension BloccoProspetto {
     }
 }
 
-/// Il commento del consulente in un report per il cliente: Ruby scrive la bozza dalle cifre del
+/// Il commento del consulente in un report per il cliente: Vera scrive la bozza dalle cifre del
 /// documento, il consulente la rilegge e la modifica. Compare nella pagina dopo la copertina.
 struct CommentoReport: Codable, Equatable, Identifiable {
     /// Chiave del documento (vedi `SceltaProspetto.chiaveCommento`).

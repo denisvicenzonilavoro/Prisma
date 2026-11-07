@@ -6,7 +6,7 @@ import SwiftUI
 ///
 ///   ┌──────── Agenda ────────┐┌── Cliente in primo piano ──┐
 ///   │                        ││                            │
-///   │                        │├──────── Ruby (barra) ───────┤
+///   │                        │├──────── Vera (barra) ───────┤
 ///   └────────────────────────┘└────────────────────────────┘
 ///   ┌─ Da fare ─┐┌─ Scadenze ─┐┌─ Portafoglio ─┐
 struct BachecaWidget: View {
@@ -21,9 +21,9 @@ struct BachecaWidget: View {
     var body: some View {
         GeometryReader { geo in
             let s = Tema.Misura.grigliaSpazio
-            let ruby = Tema.Misura.widgetRuby
+            let vera = Tema.Misura.widgetVera
             // Righe 1fr / 64 / 1.04fr
-            let fila = max(0, (geo.size.height - ruby - 2 * s) / (1 + Tema.Misura.Shell.quotaFilaBassa))
+            let fila = max(0, (geo.size.height - vera - 2 * s) / (1 + Tema.Misura.Shell.quotaFilaBassa))
             let meta = max(0, (geo.size.width - s) / 2)
             let terzo = max(0, (geo.size.width - 2 * s) / 3)
             VStack(spacing: s) {
@@ -31,11 +31,11 @@ struct BachecaWidget: View {
                     entrata(WidgetAgenda().frame(width: meta), 0)
                     VStack(spacing: s) {
                         entrata(WidgetCliente(), 1)
-                        entrata(WidgetRuby(), 2)
+                        entrata(WidgetVera(), 2)
                     }
                     .frame(width: meta)
                 }
-                .frame(height: fila + s + ruby)
+                .frame(height: fila + s + vera)
                 HStack(spacing: s) {
                     entrata(WidgetAttivita().frame(width: terzo), 3)
                     entrata(WidgetScadenze().frame(width: terzo), 4)
@@ -185,7 +185,7 @@ struct WidgetAgenda: View {
 
     var body: some View {
         // Il contenuto si rifà solo con dati dei calcoli nuovi, un altro giorno o un'altra ora: non a ogni
-        // nota, messaggio di Ruby o cliente scelto
+        // nota, messaggio di Vera o cliente scelto
         CorpoWidgetAgenda(stato: stato, chiave: stato.chiaveVista)
             .equatable()
             .padding(Tema.Misura.widgetMargine)
@@ -413,7 +413,7 @@ private struct CorpoWidgetCliente: View, Equatable {
     /// I pulsanti in basso: le app si aprono da lì.
     @State private var origineScheda = OrigineApertura()
     @State private var originePosizioni = OrigineApertura()
-    @State private var origineRuby = OrigineApertura()
+    @State private var origineVera = OrigineApertura()
 
     nonisolated static func == (a: CorpoWidgetCliente, b: CorpoWidgetCliente) -> Bool {
         a.chiave == b.chiave && a.attivo == b.attivo
@@ -521,8 +521,8 @@ private struct CorpoWidgetCliente: View, Equatable {
                         stato.apri(.posizioni, da: originePosizioni.punto)
                     }
                     .misuraOrigine(originePosizioni)
-                    Button("Chiedi a Ruby") { stato.apri(.ruby, da: origineRuby.punto) }
-                        .misuraOrigine(origineRuby)
+                    Button("Chiedi a Vera") { stato.apri(.vera, da: origineVera.punto) }
+                        .misuraOrigine(origineVera)
                 }
                 .buttonStyle(StileVetro())
             }
@@ -590,23 +590,23 @@ private struct CorpoWidgetCliente: View, Equatable {
     }
 }
 
-// MARK: - Ruby: la barra per ritrovare il filo
+// MARK: - Vera: la barra per ritrovare il filo
 
-struct WidgetRuby: View {
+struct WidgetVera: View {
     @EnvironmentObject var stato: StatoShell
-    /// Ruby si apre dalla barra.
+    /// Vera si apre dalla barra.
     @State private var origine = OrigineApertura()
 
     var body: some View {
-        Button { stato.apri(.ruby, da: origine.punto) } label: {
+        Button { stato.apri(.vera, da: origine.punto) } label: {
             HStack(spacing: Tema.Misura.Shell.rigaSpazio) {
-                IconaApp(app: .ruby, lato: Tema.Misura.Shell.iconaRuby)
+                IconaApp(app: .vera, lato: Tema.Misura.Shell.iconaVera)
                 VStack(alignment: .leading, spacing: Tema.Misura.Shell.rigaTestoSpazio) {
-                    Text("Ritrova il filo con Ruby.")
-                        .font(Tema.Testo.Shell.titoloRuby)
+                    Text("Ritrova il filo con Vera.")
+                        .font(Tema.Testo.Shell.titoloVera)
                         .foregroundColor(Tema.Colore.inchiostro)
-                    Text(stato.rubyPortafoglio ? "Il tuo portafoglio, chi ricontattare, le scadenze" : "Incontri, sintesi e prossimi passi")
-                        .font(Tema.Testo.Shell.testoRuby)
+                    Text(stato.veraPortafoglio ? "Il tuo portafoglio, chi ricontattare, le scadenze" : "Incontri, sintesi e prossimi passi")
+                        .font(Tema.Testo.Shell.testoVera)
                         .foregroundColor(Tema.Colore.inchiostroWidgetSecondario)
                         .lineLimit(1)
                 }
@@ -620,9 +620,9 @@ struct WidgetRuby: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(StileSemplice())
-        .frame(height: Tema.Misura.widgetRuby)
-        .corniceWidget(raggio: Tema.Raggio.widgetRuby)
-        .frame(height: Tema.Misura.widgetRuby)
+        .frame(height: Tema.Misura.widgetVera)
+        .corniceWidget(raggio: Tema.Raggio.widgetVera)
+        .frame(height: Tema.Misura.widgetVera)
         .misuraOrigine(origine)
     }
 }

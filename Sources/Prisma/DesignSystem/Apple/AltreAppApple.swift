@@ -99,7 +99,7 @@ extension Tema.Apple {
         static let cifraPiccola = Carattere(dimensione: 22, peso: .bold, tracking: -0.4, tabellare: true)
         /// Note di contorno (piedi, conteggi).
         static let nota = Carattere(dimensione: 12, peso: .regular)
-        /// Stati vuoti: il simbolo grande e la frase (come «Ciao, sono Ruby.»).
+        /// Stati vuoti: il simbolo grande e la frase (come «Ciao, sono Vera.»).
         static let simboloVuoto = Carattere(dimensione: 34, peso: .light)
         static let titoloVuoto = Carattere.titoloGruppo
         /// Collegamenti («Apri ↗», «Mostra tutto»).

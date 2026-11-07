@@ -6,7 +6,7 @@ import SwiftUI
 /// (tono, canale, il testo con le cifre usate, «Apri in Mail» o «Apri in Messaggi»), il resto a un tocco: le altre
 /// occasioni nel menu «Occasioni» a destra nella barra. Lo stesso pannello del Mac (PannelloMessaggio) in versione
 /// compatta, che scorre tutto insieme. Il testo lo scrive Qwen del Mac attraverso il ponte in rete locale; se il Mac
-/// non risponde resta il testo di Prisma e Ruby lo dice. Prisma non spedisce mai: Mail e Messaggi si aprono già
+/// non risponde resta il testo di Prisma e Vera lo dice. Prisma non spedisce mai: Mail e Messaggi si aprono già
 /// compilati.
 @MainActor
 struct MessaggiTelefono: View {
@@ -50,7 +50,7 @@ struct MessaggiTelefono: View {
         let fisso: TestoScrittoMessaggio? = scatto
             ? (richiesta?.scritto(o, cliente: c, stato: stato)
                ?? RichiestaIstantaneaMessaggi.testo(o, cliente: c, stato: stato, tono: sessione.tono, canale: sessione.canale,
-                                                    ruby: false, motivo: stato.disponibilitaLocale.motivo))
+                                                    vera: false, motivo: stato.disponibilitaLocale.motivo))
             : nil
         return PannelloMessaggio(sessione: sessione, occasione: o, cliente: c, tono: tono, canale: canale,
                                  compatto: true, incorniciato: false, base: Tema.Apple.Messaggi.Moto.baseApertura,

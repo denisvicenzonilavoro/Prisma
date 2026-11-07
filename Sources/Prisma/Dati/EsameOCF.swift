@@ -11,9 +11,9 @@ enum OrigineDomandaOCF: String, Codable, CaseIterable {
     case esempio
     /// Importata dal consulente da un file CSV o JSON.
     case importata
-    /// Proposta da Ruby e confermata dal consulente.
+    /// Proposta da Vera e confermata dal consulente.
     /// Compatibilità: negli archivi, nei backup e nei giornali di «Prisma ovunque» il valore salvato resta «eve» (il vecchio nome).
-    case ruby = "eve"
+    case vera = "eve"
 }
 
 /// Il tipo di caso dei clienti a cui una domanda (o una materia) si può collegare: il «caso vero» dell'archivio.

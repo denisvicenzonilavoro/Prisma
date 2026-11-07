@@ -198,7 +198,7 @@ final class StatoMobile: ObservableObject {
     // MARK: - App aperta (iPhone e iPad)
 
     /// Un'icona (dock, «Tutte le app», un pulsante della barra): l'app va subito nella finestra, poi passa da
-    /// StatoShell, così modo cliente, Impostazioni e Ruby restano quelli del Mac. Sull'iPhone i percorsi ripartono
+    /// StatoShell, così modo cliente, Impostazioni e Vera restano quelli del Mac. Sull'iPhone i percorsi ripartono
     /// dalla radice. In modo cliente le app riservate non si aprono: lo dice `stato.apri` con il suo avviso.
     func apri(_ app: AppPrisma, da origine: CGPoint? = nil) {
         guard stato.appConsentita(app) else {

@@ -78,14 +78,14 @@ Clienti → Clienti · Analisi → Posizioni · Analisi_360 → Analisi 360 ·
 Incontri → Incontri · Obiettivi → Obiettivi · Confronti → Confronti ·
 Prodotti → Prodotti · Simulazioni → Simulazioni · Agenda_base/Agenda_vetro →
 Agenda · Attivita → Attività · Note → Note · Documenti → Documenti ·
-Presentazioni → Prospetti e report · Ruby → Ruby · Ricerca → Ricerca ·
+Presentazioni → Prospetti e report · Vera → Vera · Ricerca → Ricerca ·
 Impostazioni → Impostazioni · Prisma → Scrivania (dock, benvenuto, impostazioni) ·
 Studio → Studio · Messaggi → Messaggi · Mercato → Mercato
 
 ICONE NUOVE DI «ORIZZONTE» (fondo c1 → c2, glifo)
 - Studio    #7E97B3 → #3F5A78 (blu ardesia): valigetta
 - Messaggi  #F2A675 → #C8683A (terracotta): busta con il pallino rosso e la
-            stellina di Ruby
+            stellina di Vera
 - Mercato   #5E6E80 → #2C3846 (grafite): andamento in salita con il punto
 
 ICONE NUOVE DI «LUCE» (Design/template-luce-specifica.md §1.2.1)

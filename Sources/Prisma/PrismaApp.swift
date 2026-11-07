@@ -25,9 +25,9 @@ struct PrismaApp: App {
             // Prisma ovunque: due archivi e una cartella locale che finge iCloud Drive (Dati/ProvaOvunque.swift)
             exit(ProvaOvunque.esegui())
         }
-        // «--prova-eve» è il sinonimo di prima del cambio di nome
-        if argomenti.contains("--prova-ruby") || argomenti.contains("--prova-eve") {
-            exit(ProvaRuby.esegui())
+        // «--prova-ruby» e «--prova-eve» sono i sinonimi di prima dei cambi di nome
+        if argomenti.contains("--prova-vera") || argomenti.contains("--prova-ruby") || argomenti.contains("--prova-eve") {
+            exit(ProvaVera.esegui())
         }
         if argomenti.contains("--prova-tavolo") {
             // Il tavolo con l'iPad a circuito chiuso su 127.0.0.1 (Tavolo/ProvaTavolo.swift)
@@ -113,7 +113,7 @@ struct ComandiPrisma: Commands {
             Button("Spazi di lavoro…") { stato.pannelloSpazi = true }
                 .disabled(menu.inModoCliente)
             Button("Le tue app aperte…") { stato.pannelloAppAperte = true }
-            Button(menu.conversazioneAVoce ? "Chiudi la conversazione con Ruby" : "Parla con Ruby") { stato.alternaAscolto(daMenu: true) }
+            Button(menu.conversazioneAVoce ? "Chiudi la conversazione con Vera" : "Parla con Vera") { stato.alternaAscolto(daMenu: true) }
                 .keyboardShortcut("e", modifiers: [.command, .option])
             Divider()
             Button("Scrivania") { stato.mostraScrivania() }

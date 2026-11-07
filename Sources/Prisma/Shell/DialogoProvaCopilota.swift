@@ -6,7 +6,7 @@ import Foundation
 /// DATI DI PROVA DICHIARATI: il dialogo è quello inventato del template, il consenso di Giulia è registrato solo dentro
 /// la scena (lo stato delle istantanee non si salva) e le cifre (40.000 €, 90 € al mese, 450/550/650 €) sono quelle
 /// dimostrative del template. Righe, evidenze e schede sono scritte qui, già nello stato finale, senza microfono; le
-/// schede sono quelle che le regole di Prisma trovano sulle stesse frasi (Ruby/Esempi/copilota.json), più l'attività
+/// schede sono quelle che le regole di Prisma trovano sulle stesse frasi (Vera/Esempi/copilota.json), più l'attività
 /// che nasce dalla polizza di un'altra compagnia.
 enum DialogoProvaCopilota {
     static let cliente = "giulia"

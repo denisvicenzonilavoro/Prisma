@@ -348,7 +348,7 @@ enum StampaCarta {
         #endif
     }
 
-    /// Testo delle pagine di un PDF (per Ruby e per la scheda Testo dei Documenti).
+    /// Testo delle pagine di un PDF (per Vera e per la scheda Testo dei Documenti).
     static func testo(_ dati: Data) -> [String] {
         guard let d = PDFDocument(data: dati) else { return [] }
         return (0..<d.pageCount).map { d.page(at: $0)?.string ?? "" }

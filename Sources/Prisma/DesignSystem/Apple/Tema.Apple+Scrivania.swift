@@ -32,7 +32,7 @@ extension Tema.Apple {
             /// Sotto questa altezza la riga bassa non scende (i titoli e una riga restano leggibili).
             static let rigaBassaMinima: CGFloat = 104
             static let rigaAltaMinima: CGFloat = 200
-            /// Larghezze della riga alta (Agenda 560, Portafoglio 384, Ruby il resto: 376) e della bassa (660 / 676).
+            /// Larghezze della riga alta (Agenda 560, Portafoglio 384, Vera il resto: 376) e della bassa (660 / 676).
             static let quoteRigaAlta: [CGFloat] = [560, 384, 376]
             static let quoteRigaBassa: [CGFloat] = [660, 676]
         }
@@ -166,14 +166,14 @@ extension Tema.Apple {
             static let coloreProposte = Colore.anello3
         }
 
-        // MARK: Ruby
+        // MARK: Vera
 
-        enum Ruby {
+        enum Vera {
             static let sfera: CGFloat = 46
             static let spazioTesta: CGFloat = 10
             static let nome = Carattere(dimensione: 15, peso: .bold)
             static let stato = Carattere.secondario
-            static let frase = Carattere.fraseRuby
+            static let frase = Carattere.fraseVera
             static let fraseSopra: CGFloat = 18
             static let fraseSotto: CGFloat = 16
             /// La frase sta al massimo su 4 righe (meno se il riquadro è basso).
@@ -184,7 +184,7 @@ extension Tema.Apple {
             static let fondoSuggerimento = Colore.card
             static let bordoSuggerimento = Colore.separatore
             static let spazioSuggerimenti: CGFloat = 6
-            /// Un clic su un suggerimento apre Ruby e manda la domanda dopo 0,7 s.
+            /// Un clic su un suggerimento apre Vera e manda la domanda dopo 0,7 s.
             static let attesaDomanda: Double = 0.7
             static let coloreNonPronto = Colore.arancio
         }
@@ -238,7 +238,7 @@ extension Tema.Apple {
             /// Il riquadro sotto il puntatore sale di 3 con la molla di 0,45 s.
             static var sopra: Animation { Tema.Apple.Moto.RiquadroSopra.animazione }
             static let sollevamento: CGFloat = Tema.Apple.Moto.RiquadroSopra.spostamento
-            /// Il suggerimento di Ruby sotto il puntatore sale di 2 con la molla di 0,25 s.
+            /// Il suggerimento di Vera sotto il puntatore sale di 2 con la molla di 0,25 s.
             static var sopraSuggerimento: Animation { Tema.Apple.Moto.SuggerimentoSopra.animazione }
             static let sollevamentoSuggerimento: CGFloat = Tema.Apple.Moto.SuggerimentoSopra.spostamento
             /// Con una finestra aperta davanti la scrivania scende al 25% in 0,5 s.

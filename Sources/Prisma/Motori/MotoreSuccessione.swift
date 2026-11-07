@@ -225,7 +225,7 @@ enum MotoreSuccessione {
         return r.map { (nome: $0.0, relazione: $0.1, quota: $0.2, minorenne: $0.3) }
     }
 
-    /// Le righe per Ruby e per le schede.
+    /// Le righe per Vera e per le schede.
     static func sintesi(_ s: Successione) -> [String] {
         var righe: [String] = []
         righe.append("Fuori dalla successione, ai beneficiari: \(Formati.euro(s.fuoriAsse)) (\(CifreDoc.percento(s.quotaFuori * 100, decimali: 0)) di quanto passerebbe), in poche settimane.")

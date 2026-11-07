@@ -848,7 +848,7 @@ struct ParoleCopilota: Layout {
 // MARK: - Le schede
 
 /// La colonna delle schede: una per ogni cosa capita, nell'ordine in cui nascono, ognuna con l'azione, «Conferma» e
-/// «Scarta». Sopra, quando serve, la nota su Ruby non pronta e (sull'iPad) le schede in attesa del Mac.
+/// «Scarta». Sopra, quando serve, la nota su Vera non pronta e (sull'iPad) le schede in attesa del Mac.
 @MainActor
 struct ColonnaSchedeCopilota: View {
     @EnvironmentObject var stato: StatoShell
@@ -862,7 +862,7 @@ struct ColonnaSchedeCopilota: View {
         let attiva = copilota.ascolta || !schede.isEmpty
         return VStack(alignment: .leading, spacing: 0) {
             if attiva && !copilota.qwenPronto(stato) {
-                nota(TestiCopilota.rubyNonPronta, colore: S.coloreNota)
+                nota(TestiCopilota.veraNonPronta, colore: S.coloreNota)
             }
             if CopilotaIncontro.suIPad && copilota.inAttesaPonte > 0 {
                 HStack(alignment: .firstTextBaseline, spacing: S.spazioPulsanti) {

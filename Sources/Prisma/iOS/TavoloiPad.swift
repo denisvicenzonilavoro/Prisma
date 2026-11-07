@@ -5,7 +5,7 @@ import UIKit
 
 // Il tavolo con il Mac, lato iPad: una modalità a tutto schermo davanti al cliente, senza dock né altre app, che mostra
 // solo ciò che il Mac sceglie (Tavolo/ProtocolloTavolo.swift, `ClienteTavolo` e `OsservatoreTavolo`).
-// - Si entra da Impostazioni › Ruby («Tavolo con il Mac») o dalla schermata d'apertura, con il codice del ponte di Ruby.
+// - Si entra da Impostazioni › Vera («Tavolo con il Mac») o dalla schermata d'apertura, con il codice del ponte di Vera.
 //   La modalità comincia solo quando il Mac ha dato il benvenuto: finché cerca, l'ingresso si può annullare.
 // - Al tavolo si esce SOLO dal Mac: nessun gesto né pulsante dell'iPad la chiude; esce con «fine» del Mac.
 // - Se la connessione cade: schermata neutra (il logo sull'acqua, nessun dato) e l'iPad riprova da solo finché il Mac
@@ -50,11 +50,11 @@ final class TavoloiPad: ObservableObject {
 
     var alTavolo: Bool { fase == .alTavolo }
 
-    /// Cerca il Mac con il codice del ponte di Ruby; al benvenuto del Mac comincia la modalità a tutto schermo.
+    /// Cerca il Mac con il codice del ponte di Vera; al benvenuto del Mac comincia la modalità a tutto schermo.
     func entra(codice c: String) {
         guard Self.disponibile, fase == .spento else { return }
-        guard PonteRuby.normalizza(c) != nil else {
-            esito = "Scrivi il codice del Mac: lo trovi in Prisma sul Mac, Impostazioni › Ruby."
+        guard PonteVera.normalizza(c) != nil else {
+            esito = "Scrivi il codice del Mac: lo trovi in Prisma sul Mac, Impostazioni › Vera."
             return
         }
         codice = c
@@ -128,7 +128,7 @@ final class TavoloiPad: ObservableObject {
             if fase == .alTavolo { esci("Il Mac ha chiuso il tavolo.") }
         case .rifiutato:
             if fase == .cerca {
-                esci("Il Mac non riconosce questo codice: controllalo in Prisma sul Mac, Impostazioni › Ruby.")
+                esci("Il Mac non riconosce questo codice: controllalo in Prisma sul Mac, Impostazioni › Vera.")
             } else {
                 rifiuti += 1
                 if rifiuti >= Self.rifiutiMassimi {
@@ -268,7 +268,7 @@ struct ModalitaTavoloiPad: View {
     }
 }
 
-// MARK: - L'ingresso (Impostazioni › Ruby e schermata d'apertura)
+// MARK: - L'ingresso (Impostazioni › Vera e schermata d'apertura)
 
 /// «Tavolo con il Mac»: il pulsante per mettersi al tavolo, la ricerca del Mac (annullabile) e l'ultimo esito.
 /// `conCodice`: anche il campo del codice (nella schermata d'apertura; in Impostazioni c'è già la riga del codice).
@@ -292,7 +292,7 @@ private struct IngressoTavoloiPadCorpo: View {
     var body: some View {
         VStack(alignment: .leading, spacing: T.spazioIngresso) {
             if conCodice {
-                TextField("Codice del Mac (ABCD-EFGH-JKLM)", text: $stato.dati.impostazioni.ruby.ponte.codice)
+                TextField("Codice del Mac (ABCD-EFGH-JKLM)", text: $stato.dati.impostazioni.vera.ponte.codice)
                     .campoTesto()
                     .textInputAutocapitalization(.characters)
                     .autocorrectionDisabled()
@@ -314,7 +314,7 @@ private struct IngressoTavoloiPadCorpo: View {
                         Label("Al tavolo con il Mac", systemImage: "rectangle.on.rectangle")
                     }
                     .buttonStyle(StilePulsanteApple(.principale))
-                    .disabled(!stato.dati.impostazioni.ruby.ponte.abbinato)
+                    .disabled(!stato.dati.impostazioni.vera.ponte.abbinato)
                     Spacer(minLength: 0)
                 }
             }
@@ -329,18 +329,18 @@ private struct IngressoTavoloiPadCorpo: View {
 
     private func entra() {
         guard tavolo.fase == .spento else { return }
-        tavolo.entra(codice: stato.dati.impostazioni.ruby.ponte.codice)
+        tavolo.entra(codice: stato.dati.impostazioni.vera.ponte.codice)
     }
 }
 
-/// Il gruppo «Tavolo con il Mac» in Impostazioni › Ruby dell'iPad (su iPhone non c'è).
+/// Il gruppo «Tavolo con il Mac» in Impostazioni › Vera dell'iPad (su iPhone non c'è).
 struct GruppoTavoloiPad: View {
     var body: some View {
         if TavoloiPad.disponibile {
             GruppoImpostazioni(titolo: "Tavolo con il Mac") {
                 RigaImpostazione(titolo: "Al tavolo",
                                  sottotitolo: "L'iPad davanti al cliente mostra solo ciò che sceglie il Mac",
-                                 aiuto: "Sul Mac apri «Al tavolo» in Prospetti o nella presentazione: stesso codice di Ruby, stessa rete Wi‑Fi, tutto cifrato. Si esce solo dal Mac",
+                                 aiuto: "Sul Mac apri «Al tavolo» in Prospetti o nella presentazione: stesso codice di Vera, stessa rete Wi‑Fi, tutto cifrato. Si esce solo dal Mac",
                                  ultima: true) {
                     EmptyView()
                 }

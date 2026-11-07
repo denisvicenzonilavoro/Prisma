@@ -8,7 +8,7 @@ import Foundation
 /// - i nomi sotto le icone ci sono solo sull'iPad dove ci stanno (orizzontale e verticale da 834): non sull'iPhone
 ///   (dock compatto, Design/iphone.html) né sull'iPad mini in verticale;
 /// - il dock dell'iPhone e «Tutte le app» insieme hanno tutte le app, ognuna una volta; il dock dell'iPad ha le app
-///   del dock del Mac fino a Prospetti più Sala e Ruby (versione «Luce», decisione 121), nello stesso ordine; in modo
+///   del dock del Mac fino a Prospetti più Sala e Vera (versione «Luce», decisione 121), nello stesso ordine; in modo
 ///   cliente solo quelle consentite.
 @MainActor
 enum ProvaDockMobile {
@@ -53,9 +53,9 @@ enum ProvaDockMobile {
         verifica("il dock dell'iPhone non ripete le app", Set(nelDock).count == nelDock.count)
         verifica("il dock dell'iPhone ha solo app di Prisma", Set(nelDock).isSubset(of: tutte))
         let dockiPad = DisposizioneDockMobile.app(.iPad, consentita: { _ in true })
-        verifica("il dock dell'iPad ha le app del dock del Mac fino a Prospetti, più Sala e Ruby, nello stesso ordine",
+        verifica("il dock dell'iPad ha le app del dock del Mac fino a Prospetti, più Sala e Vera, nello stesso ordine",
                  dockiPad == [.clienti, .posizioni, .analisi360, .incontri, .agenda, .territorio, .messaggi, .pratiche,
-                              .presentazioni, .sala, .ruby])
+                              .presentazioni, .sala, .vera])
         verifica("il dock dell'iPad ha solo app del dock del Mac, senza ripetizioni",
                  Set(dockiPad).isSubset(of: Set(AppPrisma.delDock)) && Set(dockiPad).count == dockiPad.count)
         verifica("le app del Mac che non stanno nel dock dell'iPad sono in «Tutte le app»",

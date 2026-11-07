@@ -263,10 +263,10 @@ struct AppIncontri: View {
             case .preparazione:
                 HStack(spacing: Tema.Misura.Incontri.spazioGettoni) {
                     Button {
-                        stato.apri(.ruby)
-                        stato.chiediRuby(SpuntoRuby.incontro.domanda, spunto: .incontro)
+                        stato.apri(.vera)
+                        stato.chiediVera(SpuntoVera.incontro.domanda, spunto: .incontro)
                     } label: {
-                        Label("Prepara con Ruby", systemImage: "sparkles")
+                        Label("Prepara con Vera", systemImage: "sparkles")
                     }
                     .buttonStyle(StileVetro())
                     .fixedSize()

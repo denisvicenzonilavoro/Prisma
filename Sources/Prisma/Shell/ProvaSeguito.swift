@@ -200,7 +200,7 @@ enum ProvaSeguito {
             }
         }
 
-        // 10. Le regole delle notifiche restano (lo specchio dei controlli di --prova-ruby)
+        // 10. Le regole delle notifiche restano (lo specchio dei controlli di --prova-vera)
         do {
             let s = StatoShell(persistente: false)
             let mattina = cal.date(bySettingHour: 8, minute: 0, second: 0, of: adesso) ?? adesso
@@ -219,7 +219,7 @@ enum ProvaSeguito {
             controlla(n.contains { $0.id.hasPrefix("beneficiari-") && $0.id.contains("marco") }, "restano i beneficiari di Marco")
         }
 
-        // 12. Dati di prova intatti: nessuna proposta ferma, nessuna notifica del seguito (garanzia per --prova-ruby)
+        // 12. Dati di prova intatti: nessuna proposta ferma, nessuna notifica del seguito (garanzia per --prova-vera)
         do {
             let s = StatoShell(persistente: false)
             controlla(s.proposteInSospeso.isEmpty, "dati di prova: nessuna proposta ferma")

@@ -57,8 +57,8 @@ extension Istantanee {
     /// Posizioni › Portafoglio con la scena aperta: il ponte acceso o spento e, se ci sono, le righe del foglio
     /// arrivate dall'iPhone di prova (subito nello stato finale).
     nonisolated static func preparaInquadra(_ s: StatoShell, ponte: Bool = true, righe: [RigaLetta]? = nil) {
-        s.dati.impostazioni.ruby.ponte.condividi = ponte
-        if ponte, !s.dati.impostazioni.ruby.ponte.abbinato { s.dati.impostazioni.ruby.ponte.codice = PonteRuby.nuovoCodice() }
+        s.dati.impostazioni.vera.ponte.condividi = ponte
+        if ponte, !s.dati.impostazioni.vera.ponte.abbinato { s.dati.impostazioni.vera.ponte.codice = PonteVera.nuovoCodice() }
         s.posizioneInDettaglio = nil
         s.portafoglio = true
         s.provaFuoco.vista = .portafoglio

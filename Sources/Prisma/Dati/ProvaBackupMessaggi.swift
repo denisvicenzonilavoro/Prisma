@@ -5,7 +5,7 @@ import Foundation
 // e tutto il resto uguale, un messaggio illeggibile si scarta da solo. I testi e le firme sono DI PROVA.
 
 extension ProvaBackup {
-    /// Due messaggi di prova: uno scritto da Ruby e aperto in Mail, uno del modello fisso salvato nel dossier.
+    /// Due messaggi di prova: uno scritto da Vera e aperto in Mail, uno del modello fisso salvato nel dossier.
     static func messaggiDiProva(clienteId: String) -> [MessaggioCliente] {
         let creato = AiutiProva.data(2026, 11, 4)
         var mail = MessaggioCliente(clienteId: clienteId, occasioneId: "riepilogoIncontro-\(clienteId)-incontro-prova",
@@ -13,7 +13,7 @@ extension ProvaBackup {
                                     canaleLavoro: .indipendente, tono: .cordiale, canale: .mail, oggetto: "Il riepilogo del nostro incontro",
                                     testo: "Ciao, grazie per l'incontro del 4 novembre 2026.\n\nUn saluto,\nFirma di prova",
                                     cifre: [CifraMessaggio(.dataIncontro, "4 novembre 2026"), CifraMessaggio(.oraIncontro, "09:30")],
-                                    autore: .ruby, modello: "qwen3.5:4b", creatoIl: creato)
+                                    autore: .vera, modello: "qwen3.5:4b", creatoIl: creato)
         mail.id = "messaggio-prova-mail"
         mail.stato = .apertoInMail
         mail.apertoIl = AiutiProva.data(2026, 11, 5)

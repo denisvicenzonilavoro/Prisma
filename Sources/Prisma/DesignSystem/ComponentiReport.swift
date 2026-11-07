@@ -221,7 +221,7 @@ struct CopertinaReport: View {
     }
 }
 
-/// La lettera del consulente al cliente, dopo la copertina: il commento scritto con Ruby e riletto
+/// La lettera del consulente al cliente, dopo la copertina: il commento scritto con Vera e riletto
 /// dal consulente, con la firma.
 struct LetteraConsulente: View {
     @Environment(\.paletteDocumento) private var C

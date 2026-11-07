@@ -3,7 +3,7 @@ import SwiftUI
 
 // I riquadri della scrivania dell'iPhone nel tema Apple (Design/iphone.html, schermata 1): il vetro dei riquadri
 // del Mac (raggio 26, padding 18×20), uno per riga, in ordine di importanza. In alto la mossa del giorno in grande
-// con il prossimo incontro, poi ciò che richiede attenzione (rosso e arancio), la riga di Ruby con la sfera e il
+// con il prossimo incontro, poi ciò che richiede attenzione (rosso e arancio), la riga di Vera con la sfera e il
 // portafoglio con i tre anelli. Alla pressione scendono a 0,98 (`.inclinazione`, variante iOS); con «Riduci
 // movimento» e nelle istantanee numeri e anelli sono già al loro valore. Tutte le cifre vengono dai motori di
 // Prisma: mossa del giorno (MotoreMossaDelGiorno), stato del lavoro (MotoreStatoDelLavoro), riepilogo delle posizioni.
@@ -59,11 +59,11 @@ struct TestataRiquadroTelefono: View {
 // MARK: - La mossa del giorno
 
 /// La mossa del giorno: la sfera con le iniziali, «La mossa del giorno» col canale, il titolo, il perché, poi
-/// «Prepara con Ruby» e «Apri la scheda»; sotto il filo il prossimo incontro (un tocco apre l'Agenda).
+/// «Prepara con Vera» e «Apri la scheda»; sotto il filo il prossimo incontro (un tocco apre l'Agenda).
 struct RiquadroMossaTelefono: View {
     @EnvironmentObject var stato: StatoShell
     @EnvironmentObject var mobile: StatoMobile
-    @State private var origineRuby = OrigineApertura()
+    @State private var origineVera = OrigineApertura()
     @State private var origineScheda = OrigineApertura()
 
     private typealias M = Tema.Apple.Telefono.Mossa
@@ -125,18 +125,18 @@ struct RiquadroMossaTelefono: View {
         if let m = esito.mossa {
             HStack(spacing: S.spazioPulsanti) {
                 Button {
-                    stato.rubyPortafoglio = false
+                    stato.veraPortafoglio = false
                     stato.clienteAttivoId = m.cliente.id
-                    mobile.apri(.ruby, da: origineRuby.punto)
+                    mobile.apri(.vera, da: origineVera.punto)
                 } label: {
-                    Text("Prepara con Ruby")
+                    Text("Prepara con Vera")
                         .lineLimit(1)
                         .minimumScaleFactor(Tema.Apple.Telefono.Mossa.riduzionePulsanti)
                         .frame(maxWidth: .infinity, minHeight: Tema.Apple.Telefono.tocco)
                 }
                 .buttonStyle(StilePulsanteApple(.principale, grande: true))
-                .misuraOrigine(origineRuby)
-                .disabled(!stato.appConsentita(.ruby))
+                .misuraOrigine(origineVera)
+                .disabled(!stato.appConsentita(.vera))
                 Button {
                     apriScheda(m.cliente.id)
                 } label: {
@@ -460,27 +460,27 @@ struct RiquadroAttenzioneTelefono: View {
     }
 }
 
-// MARK: - Ruby
+// MARK: - Vera
 
-/// La riga di Ruby: la sfera (l'unico simbolo di Ruby), «Ruby», la frase e lo stato di Qwen sul Mac. Un tocco apre Ruby.
-struct RiquadroRubyTelefono: View {
+/// La riga di Vera: la sfera (l'unico simbolo di Vera), «Vera», la frase e lo stato di Qwen sul Mac. Un tocco apre Vera.
+struct RiquadroVeraTelefono: View {
     @EnvironmentObject var stato: StatoShell
     @EnvironmentObject var mobile: StatoMobile
     @State private var origine = OrigineApertura()
 
-    private typealias R = Tema.Apple.Telefono.RigaRuby
+    private typealias R = Tema.Apple.Telefono.RigaVera
 
     init() {}
 
     var body: some View {
         let pronto = stato.disponibilitaLocale.pronto
         HStack(spacing: R.spazio) {
-            SferaRuby(misura: R.sfera, viva: pronto, pensa: stato.rubyInCorso)
-                // Mentre Ruby risponde l'acqua vibra intorno a questa sfera (OsservatoreAcqua)
-                .puntoAcqua(.sferaRuby)
+            SferaVera(misura: R.sfera, viva: pronto, pensa: stato.veraInCorso)
+                // Mentre Vera risponde l'acqua vibra intorno a questa sfera (OsservatoreAcqua)
+                .puntoAcqua(.sferaVera)
                 .misuraOrigine(origine)
             VStack(alignment: .leading, spacing: Tema.Apple.Telefono.Elenco.spazioTesto) {
-                Text("Ritrova il filo con Ruby.")
+                Text("Ritrova il filo con Vera.")
                     .carattereApple(R.nome)
                     .foregroundColor(Tema.Apple.Colore.inchiostro)
                     .fixedSize(horizontal: false, vertical: true)
@@ -495,7 +495,7 @@ struct RiquadroRubyTelefono: View {
                 .foregroundColor(Tema.Apple.Colore.inchiostro3)
         }
         .riquadroTelefono {
-            if stato.appConsentita(.ruby) { mobile.apri(.ruby, da: origine.punto) }
+            if stato.appConsentita(.vera) { mobile.apri(.vera, da: origine.punto) }
         }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)

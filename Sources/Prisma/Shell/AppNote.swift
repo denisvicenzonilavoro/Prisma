@@ -331,7 +331,7 @@ private struct CampoCercaNote: View {
         .onChange(of: testo) { _ in
             invio.dopo(AppNote.attesaRicerca) { if stato.ricercaNote != testo { stato.ricercaNote = testo } }
         }
-        // Cambiata da fuori (nuova nota, ricerca da Ruby): vale quella dello stato
+        // Cambiata da fuori (nuova nota, ricerca da Vera): vale quella dello stato
         .onChange(of: stato.ricercaNote) { nuova in if nuova != testo { testo = nuova } }
         .onDisappear { invio.subito() }
     }
@@ -384,7 +384,7 @@ private struct CampiNota: View {
         .frame(maxHeight: .infinity)
         .onChange(of: titolo) { _ in rimanda() }
         .onChange(of: testo) { _ in rimanda() }
-        // Cambiati da fuori (Ruby, un ripristino): vale l'archivio
+        // Cambiati da fuori (Vera, un ripristino): vale l'archivio
         .onChange(of: nota.titolo) { nuovo in if nuovo != titolo { titolo = nuovo } }
         .onChange(of: nota.testo) { nuovo in if nuovo != testo { testo = nuovo } }
         .onDisappear { scrittura.subito() }

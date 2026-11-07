@@ -5,11 +5,11 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 /// App Impostazioni. Sul Mac nel tema Apple (§4.6, ImpostazioniAppleMac.swift): barra laterale 260 con le sezioni
-/// (Panoramica, Aspetto, Archivio e backup, Ruby, Profilo; poi Studio, Agenda e lavoro, Promemoria e occasioni, Conformità,
+/// (Panoramica, Aspetto, Archivio e backup, Vera, Profilo; poi Studio, Agenda e lavoro, Promemoria e occasioni, Conformità,
 /// Proposte e PDF, Rendimenti di confronto, Scorciatoie; in fondo Strumenti) e a destra la pagina con il titolo
 /// `.h2` e le righe come card senza ombra (titolo, spiegazione, controllo a destra). Lo stesso sull'iPad; l'iPhone ha
 /// ImpostazioniTelefono. Le pagine stanno anche in ImpostazioniPagine.swift (lavoro, promemoria,
-/// conformità, PDF, Ruby, voce) e ImpostazioniArchivio.swift (archivio e backup).
+/// conformità, PDF, Vera, voce) e ImpostazioniArchivio.swift (archivio e backup).
 struct AppImpostazioni: View {
     @EnvironmentObject var stato: StatoShell
     @State var daRipristinare: VoceBackup?
@@ -24,8 +24,8 @@ struct AppImpostazioni: View {
     @State var confermaPassword = ""
     @State var erroreNuovaPassword: String?
     @State var confermaTogliPassword = false
-    /// Ruby › Avanzate (fornitore e indirizzo) e Strumenti › Parlare con Ruby: chiusi finché non servono.
-    @State var mostraAvanzateRuby = false
+    /// Vera › Avanzate (fornitore e indirizzo) e Strumenti › Parlare con Vera: chiusi finché non servono.
+    @State var mostraAvanzateVera = false
     @State var mostraVoce = false
     /// «Riduci movimento» del sistema (per dire che è già acceso anche se quello di Prisma è spento).
     @Environment(\.accessibilityReduceMotion) var calmoSistema
@@ -143,7 +143,7 @@ struct AppImpostazioni: View {
             gruppoPDF
                 .id("impostazioni-pdf")
         case .rendimenti: ImpostazioniRiferimenti()
-        case .ruby: paginaRuby
+        case .vera: paginaVera
         case .archivio:
             #if os(macOS)
             archivio
@@ -229,7 +229,7 @@ struct AppImpostazioni: View {
         VStack(alignment: .leading, spacing: M.spazioGruppi) {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: M.tesseraMinima), spacing: M.spazioTessere, alignment: .top)],
                       alignment: .leading, spacing: M.spazioTessere) {
-                tesseraRuby
+                tesseraVera
                 tesseraBackup
                 tesseraPromemoria
                 tesseraArchivio
@@ -255,21 +255,21 @@ struct AppImpostazioni: View {
         }
     }
 
-    private var tesseraRuby: some View {
+    private var tesseraVera: some View {
         let pronta = stato.disponibilitaLocale.pronto
         #if os(macOS)
-        let ruby = stato.dati.impostazioni.ruby
-        return TesseraImpostazioni(pagina: .ruby, etichetta: "Ruby · \(stato.qwen.nome)", valore: ruby.modello,
+        let vera = stato.dati.impostazioni.vera
+        return TesseraImpostazioni(pagina: .vera, etichetta: "Vera · \(stato.qwen.nome)", valore: vera.modello,
                                    nota: pronta ? "Sul Mac, senza internet" : "Qwen non risponde",
                                    stato: Pillola(testo: pronta ? "Pronta" : "Non pronta", tono: pronta ? .ok : .attenzione)) {
-            stato.schedaImpostazioni = .ruby
+            stato.schedaImpostazioni = .vera
         }
         #else
-        let abbinato = stato.dati.impostazioni.ruby.ponte.abbinato
-        return TesseraImpostazioni(pagina: .ruby, etichetta: "Ruby", valore: "Qwen sul Mac",
+        let abbinato = stato.dati.impostazioni.vera.ponte.abbinato
+        return TesseraImpostazioni(pagina: .vera, etichetta: "Vera", valore: "Qwen sul Mac",
                                    nota: abbinato ? "Abbinata al Mac" : "Da abbinare al Mac",
                                    stato: Pillola(testo: pronta ? "Collegata" : "Non collegata", tono: pronta ? .ok : .attenzione)) {
-            stato.schedaImpostazioni = .ruby
+            stato.schedaImpostazioni = .vera
         }
         #endif
     }
@@ -343,7 +343,7 @@ struct AppImpostazioni: View {
         }
         #if os(macOS)
         if !stato.disponibilitaLocale.pronto {
-            return ("Ruby non è pronta", stato.disponibilitaLocale.motivo ?? "Qwen non risponde", .ruby)
+            return ("Vera non è pronta", stato.disponibilitaLocale.motivo ?? "Qwen non risponde", .vera)
         }
         #endif
         return nil
@@ -442,7 +442,7 @@ struct AppImpostazioni: View {
                 .cascataImpostazioni(3)
                 // «L'acqua risponde» (SfondoAcquaRisposta.swift): gocce al clic, alle notifiche e allo sblocco
                 RigaImpostazione(titolo: "L'acqua della scrivania", sottotitolo: testoAcqua,
-                                 aiuto: "Una goccia al clic sul fondo libero, alle notifiche nuove e allo sblocco; l'acqua vibra piano mentre Ruby risponde") {
+                                 aiuto: "Una goccia al clic sul fondo libero, alle notifiche nuove e allo sblocco; l'acqua vibra piano mentre Vera risponde") {
                     Toggle(isOn: $stato.dati.impostazioni.acquaDellaScrivania) { EmptyView() }
                         .toggleStyle(.appleSenzaEtichetta)
                         .accessibilityLabel("L'acqua della scrivania")
@@ -514,7 +514,7 @@ struct AppImpostazioni: View {
                 RigaImpostazione(titolo: "Cerca ovunque") { TastiScorciatoia(tasti: ["⌘", "K"]) }
                 RigaImpostazione(titolo: "Torna alla scrivania", sottotitolo: "Riduce tutte le finestre") { TastiScorciatoia(tasti: ["⌥", "0"]) }
                 RigaImpostazione(titolo: "Modalità cliente") { TastiScorciatoia(tasti: ["⌥", "⌘", "M"]) }
-                RigaImpostazione(titolo: "Parla con Ruby", sottotitolo: "Di nuovo per mandare la frase", ultima: true) {
+                RigaImpostazione(titolo: "Parla con Vera", sottotitolo: "Di nuovo per mandare la frase", ultima: true) {
                     TastiScorciatoia(tasti: ["⌥", "⌘", "E"])
                 }
             }
@@ -532,7 +532,7 @@ struct AppImpostazioni: View {
     // MARK: Strumenti
 
     /// Strumenti di prova, separati dalle preferenze: dati di prova, confronto dei modelli, prova dei promemoria
-    /// e, chiusa, la voce di Ruby (per ora Ruby non parla).
+    /// e, chiusa, la voce di Vera (per ora Vera non parla).
     private var strumenti: some View {
         let c = Tema.Colore.Impostazioni.self
         return VStack(alignment: .leading, spacing: M.spazioGruppi) {
@@ -550,15 +550,15 @@ struct AppImpostazioni: View {
                                  aiuto: "Utile per provare i motori di calcolo. Prima viene salvato un backup.") {
                     ValoreRiga(testo: "Ripristina") { confermaDatiProva = true }
                 }
-                RigaImpostazione(titolo: "35 clienti di prova completi", sottotitolo: "Prisma piena, per Ruby e le prove",
+                RigaImpostazione(titolo: "35 clienti di prova completi", sottotitolo: "Prisma piena, per Vera e le prove",
                                  icona: IconaVetroImpostazioni(simbolo: "person.3.fill", colori: c.dati),
-                                 aiuto: "I 5 del template più 30 clienti inventati, con polizze Alleanza, investimenti, famiglia, agenda e note: per vedere Prisma piena e fare domande a Ruby. Prima viene salvato un backup.",
+                                 aiuto: "I 5 del template più 30 clienti inventati, con polizze Alleanza, investimenti, famiglia, agenda e note: per vedere Prisma piena e fare domande a Vera. Prima viene salvato un backup.",
                                  ultima: true) {
                     ValoreRiga(testo: "Carica") { confermaClientiCompleti = true }
                 }
             }
             NotaImpostazioni("Prima di ogni cambio Prisma salva un backup.")
-            GruppoImpostazioni(titolo: "Ruby") {
+            GruppoImpostazioni(titolo: "Vera") {
                 rigaConfrontaModelli
             }
             #endif
@@ -572,8 +572,8 @@ struct AppImpostazioni: View {
                         .disabled(stato.permessoPromemoria == .negati || !stato.dati.impostazioni.promemoria.attivi)
                 }
             }
-            GruppoImpostazioni(titolo: "Parlare con Ruby") {
-                rigaApri("Voce e ascolto", "Per ora Ruby non parla", aperta: $mostraVoce, ultima: !mostraVoce)
+            GruppoImpostazioni(titolo: "Parlare con Vera") {
+                rigaApri("Voce e ascolto", "Per ora Vera non parla", aperta: $mostraVoce, ultima: !mostraVoce)
                 if mostraVoce {
                     righeVoce
                 }

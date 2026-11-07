@@ -132,7 +132,7 @@ enum EstrattoreIncontro {
 
     /// Istruzioni per il modello: righe "BISOGNO|area|importanza|frase", "EVENTO|tipo|anno|frase", "ATTIVITA|titolo".
     static var istruzioniModello: String {
-        IstruzioniRuby.testo("estrazione") ?? """
+        IstruzioniVera.testo("estrazione") ?? """
         Leggi gli appunti di un incontro tra un consulente finanziario e il suo cliente e rispondi solo con righe in questo formato:
         BISOGNO|area|importanza|frase degli appunti
         EVENTO|tipo|anno|frase degli appunti

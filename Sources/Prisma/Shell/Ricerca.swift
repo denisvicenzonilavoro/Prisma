@@ -505,7 +505,7 @@ extension StatoShell {
         if pannelloRicerca { pannelloRicerca = false }
     }
 
-    /// Apre un'app dall'interfaccia (dock, menu Vai, comandi di Ruby): la Ricerca è il pannello, le altre una finestra.
+    /// Apre un'app dall'interfaccia (dock, menu Vai, comandi di Vera): la Ricerca è il pannello, le altre una finestra.
     /// Le app accorpate (`AppPrisma.ospite`) le porta all'ospite `apri`, con la scheda giusta.
     func apriApp(_ app: AppPrisma, da origine: CGPoint? = nil) {
         if app == .ricerca {

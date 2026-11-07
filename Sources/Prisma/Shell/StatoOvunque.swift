@@ -74,7 +74,7 @@ final class StatoOvunque: ObservableObject {
     var cartella: CartellaCondivisaFile?
     /// Dispositivo: l'archivio all'ultima registrazione del giornale (si confronta con quello di adesso).
     var base: DatiPrisma?
-    /// Mac: l'archivio visto all'ultimo controllo del ritmo (senza le impostazioni dello spazio e senza Ruby).
+    /// Mac: l'archivio visto all'ultimo controllo del ritmo (senza le impostazioni dello spazio e senza Vera).
     var ultimiDatiVisti: DatiPrisma?
     var ultimoTentativoIstantanea: Date?
     /// Un altro giro chiesto mentre uno lavorava.

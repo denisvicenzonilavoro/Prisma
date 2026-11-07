@@ -90,7 +90,7 @@ extension Tema.Misura {
         static let tesseraData = CGSize(width: 40, height: 44)
         /// Avviso temporaneo (.toast).
         static let avviso = EdgeInsets(top: 10, leading: 18, bottom: 10, trailing: 18)
-        /// La sfera di Ruby nel suo commiato (.toast .orb.sm: 17 px) e lo spazio prima del testo.
+        /// La sfera di Vera nel suo commiato (.toast .orb.sm: 17 px) e lo spazio prima del testo.
         static let sferaAvviso: CGFloat = 17
         static let spazioSferaAvviso: CGFloat = 9
         /// Campo di testo (.field): margine laterale, altezza minima e margine verticale.
@@ -238,7 +238,7 @@ enum AspettoPulsante {
     case vetroAccento
     /// `.btn.primary`: capsula piena dell'accento, testo bianco. Uno solo per finestra.
     case principale
-    /// Capsula piena rossa (il microfono di Ruby mentre ascolta).
+    /// Capsula piena rossa (il microfono di Vera mentre ascolta).
     case rosso
 }
 
@@ -434,7 +434,7 @@ private struct SceltaPulsanteApple<Vecchio: View>: View {
     }
 }
 
-/// Il pulsante del microfono di Ruby: accento come gli altri, rosso mentre Ruby ascolta.
+/// Il pulsante del microfono di Vera: accento come gli altri, rosso mentre Vera ascolta.
 struct StileMicrofono: ButtonStyle {
     let acceso: Bool
 
@@ -888,13 +888,13 @@ struct IconaAgenda: View {
 /// sopra il dock): capsula di vetro dei pannelli con il riempimento coprente, che non lascia leggere sotto.
 struct VistaAvviso: View {
     let testo: String
-    /// Il commiato di Ruby (.toast di Design/ruby-mini.html): la sfera prima del testo.
+    /// Il commiato di Vera (.toast di Design/vera-mini.html): la sfera prima del testo.
     var sfera = false
 
     var body: some View {
         HStack(spacing: Tema.Misura.Componenti.spazioSferaAvviso) {
             if sfera {
-                SferaAcquaRuby(lato: Tema.Misura.Componenti.sferaAvviso, velocita: Tema.Moto.MiniRuby.velocitaAscolto)
+                SferaAcquaVera(lato: Tema.Misura.Componenti.sferaAvviso, velocita: Tema.Moto.MiniVera.velocitaAscolto)
             }
             Text(testo)
                 .font(Tema.Testo.Componenti.avviso)

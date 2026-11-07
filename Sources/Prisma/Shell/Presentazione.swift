@@ -73,7 +73,7 @@ extension StatoShell {
         if sistema.pannelloNovita { sistema.pannelloNovita = false }
         // La guida resterebbe sotto la sala con il suo Esc: si chiude (l'introduzione non si segna come vista)
         if sistema.guida != nil { sistema.guida = nil }
-        // Nessun campo sotto il velo deve ricevere i tasti: il commento o la chat di Ruby resterebbero scrivibili
+        // Nessun campo sotto il velo deve ricevere i tasti: il commento o la chat di Vera resterebbero scrivibili
         #if os(macOS)
         if persistente { NSApp.keyWindow?.makeFirstResponder(nil) }
         guard let finestra = schermoIntero else { return }

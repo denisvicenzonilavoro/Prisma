@@ -251,11 +251,11 @@ enum Istantanee {
             s.clienteAttivoId = "marco"
             s.apri(.posizioni)
         }),
-        ("72-ruby-resistenza", { s in
+        ("72-vera-resistenza", { s in
             s.clienteAttivoId = "marco"
             s.rispostePreparate = true
-            s.chiediRuby(SpuntoRuby.resistenza.domanda, spunto: .resistenza)
-            s.apri(.ruby)
+            s.chiediVera(SpuntoVera.resistenza.domanda, spunto: .resistenza)
+            s.apri(.vera)
         }),
         ("73-resistenza-report", { s in
             s.clienteAttivoId = "marco"
@@ -312,23 +312,23 @@ enum Istantanee {
                 s.paginaSeguente()
             }
         }),
-        ("84-ruby-ascolta", { s in
-            // Una conversazione a voce: Ruby ha risposto e ora ascolta la frase successiva
+        ("84-vera-ascolta", { s in
+            // Una conversazione a voce: Vera ha risposto e ora ascolta la frase successiva
             s.rispostePreparate = true
             s.clienteAttivoId = "marco"
-            s.chiediRuby(SpuntoRuby.resistenza.domanda, spunto: .resistenza)
+            s.chiediVera(SpuntoVera.resistenza.domanda, spunto: .resistenza)
             s.conversazioneAVoce = true
             s.voceIstantanea = StatoVoce(ascolta: true, trascritto: "Va bene, e quanto pesano i costi del suo piano pensione", livello: 0.6)
-            s.apri(.ruby)
+            s.apri(.vera)
         }),
-        ("86-ruby-comandi", { s in
-            // Ruby fa le cose: un appuntamento, un promemoria e l'agenda di domani, dalla conversazione
+        ("86-vera-comandi", { s in
+            // Vera fa le cose: un appuntamento, un promemoria e l'agenda di domani, dalla conversazione
             s.rispostePreparate = true
             s.clienteAttivoId = "marco"
-            s.chiediRuby("Fissa una telefonata con Marco domani alle 15")
-            s.chiediRuby("Ricordami di mandargli il KID del PIP venerdì")
-            s.chiediRuby("Cosa ho domani?")
-            s.apri(.ruby)
+            s.chiediVera("Fissa una telefonata con Marco domani alle 15")
+            s.chiediVera("Ricordami di mandargli il KID del PIP venerdì")
+            s.chiediVera("Cosa ho domani?")
+            s.apri(.vera)
         }),
         ("87-clienti-fittizi", { s in
             // I 35 clienti di prova completi: rubrica piena e un cliente inventato aperto
@@ -368,49 +368,49 @@ enum Istantanee {
             s.documentoSelezionato = "doc-marco-polizza"
             s.apri(.documenti)
         }),
-        ("19-ruby", { s in
+        ("19-vera", { s in
             s.rispostePreparate = true
             s.clienteAttivoId = "giulia"
-            s.chiediRuby(SpuntoRuby.incontro.domanda, spunto: .incontro)
-            s.apri(.ruby)
+            s.chiediVera(SpuntoVera.incontro.domanda, spunto: .incontro)
+            s.apri(.vera)
         }),
-        // La risposta di Ruby mentre arriva (streaming): la bolla cresce con il testo
-        ("240-ruby-risposta-in-arrivo", { s in
+        // La risposta di Vera mentre arriva (streaming): la bolla cresce con il testo
+        ("240-vera-risposta-in-arrivo", { s in
             s.clienteAttivoId = "giulia"
-            s.aggiungiMessaggio(MessaggioRuby(autore: .utente, testo: "Cos'è l'inflazione, in parole semplici?"), cliente: "giulia", parla: false)
-            s.rubyInCorso = true
-            let g = s.flussoRuby.inizia(SceltaRuby(modalita: .conversazione, pensa: false), motore: "Qwen sul Mac")
-            s.flussoRuby.aggiorna(ParzialeRuby(testo: "L'inflazione è l'aumento generale dei prezzi nel tempo: con gli stessi soldi, domani compri un po' meno di oggi. Per i risparmi vuol dire che", pensa: false), generazione: g)
-            s.apri(.ruby)
+            s.aggiungiMessaggio(MessaggioVera(autore: .utente, testo: "Cos'è l'inflazione, in parole semplici?"), cliente: "giulia", parla: false)
+            s.veraInCorso = true
+            let g = s.flussoVera.inizia(SceltaVera(modalita: .conversazione, pensa: false), motore: "Qwen sul Mac")
+            s.flussoVera.aggiorna(ParzialeVera(testo: "L'inflazione è l'aumento generale dei prezzi nel tempo: con gli stessi soldi, domani compri un po' meno di oggi. Per i risparmi vuol dire che", pensa: false), generazione: g)
+            s.apri(.vera)
         }),
         ("48-report-commento", { s in
             s.rispostePreparate = true
             s.clienteAttivoId = "giulia"
             s.prospetto = .checkUp(report: true)
-            s.scriviCommentoConRuby(.checkUp(report: true))
+            s.scriviCommentoConVera(.checkUp(report: true))
             s.apri(.presentazioni)
         }),
-        ("50-ruby-proposte", { s in
+        ("50-vera-proposte", { s in
             s.rispostePreparate = true
             s.clienteAttivoId = "giulia"
-            s.chiediRuby(SpuntoRuby.proposte.domanda, spunto: .proposte)
-            s.apri(.ruby)
+            s.chiediVera(SpuntoVera.proposte.domanda, spunto: .proposte)
+            s.apri(.vera)
         }),
-        ("49-ruby-documento", { s in
+        ("49-vera-documento", { s in
             s.rispostePreparate = true
-            s.spiegaDocumentoConRuby("doc-marco-polizza")
+            s.spiegaDocumentoConVera("doc-marco-polizza")
         }),
-        ("46-ruby-pensione", { s in
+        ("46-vera-pensione", { s in
             s.rispostePreparate = true
             s.clienteAttivoId = "marco"
             s.prospetto = .previdenza(report: false)
-            s.chiediRubyDelDocumento(.previdenza(report: false))
+            s.chiediVeraDelDocumento(.previdenza(report: false))
         }),
-        ("47-ruby-checkup", { s in
+        ("47-vera-checkup", { s in
             s.rispostePreparate = true
             s.clienteAttivoId = "giulia"
-            s.chiediRuby(SpuntoRuby.checkUp.domanda, spunto: .checkUp)
-            s.apri(.ruby)
+            s.chiediVera(SpuntoVera.checkUp.domanda, spunto: .checkUp)
+            s.apri(.vera)
         }),
         ("53-ricerca", { s in
             s.testoRicerca = "marco"
@@ -485,17 +485,17 @@ enum Istantanee {
         ("66-prospetto-portafoglio", { s in
             s.apriProspetto(.portafoglio)
         }),
-        ("67-ruby-portafoglio", { s in
+        ("67-vera-portafoglio", { s in
             s.rispostePreparate = true
-            s.rubyPortafoglio = true
-            s.chiediRubyPortafoglio(SpuntoPortafoglio.quadro.domanda, spunto: .quadro)
-            s.chiediRubyPortafoglio(SpuntoPortafoglio.settimana.domanda, spunto: .settimana)
-            s.apri(.ruby)
+            s.veraPortafoglio = true
+            s.chiediVeraPortafoglio(SpuntoPortafoglio.quadro.domanda, spunto: .quadro)
+            s.chiediVeraPortafoglio(SpuntoPortafoglio.settimana.domanda, spunto: .settimana)
+            s.apri(.vera)
         }),
         ("51-scrivania-schermo-basso", { _ in }),
-        ("52-ruby-schermo-basso", { s in
+        ("52-vera-schermo-basso", { s in
             s.clienteAttivoId = "giulia"
-            s.apri(.ruby)
+            s.apri(.vera)
         }),
         ("18-analisi360-protezione", { s in
             s.clienteAttivoId = "marco"
@@ -1027,13 +1027,13 @@ enum Istantanee {
             s.schedaImpostazioni = .rendimenti
             s.apri(.impostazioni)
         }),
-        // Impostazioni a pagine: la Panoramica con le tessere di stato, Ruby, il Profilo con i canali
+        // Impostazioni a pagine: la Panoramica con le tessere di stato, Vera, il Profilo con i canali
         ("250-impostazioni-panoramica", { s in
             s.schedaImpostazioni = .panoramica
             s.apri(.impostazioni)
         }),
-        ("251-impostazioni-ruby", { s in
-            s.schedaImpostazioni = .ruby
+        ("251-impostazioni-vera", { s in
+            s.schedaImpostazioni = .vera
             s.apri(.impostazioni)
         }),
         ("252-impostazioni-profilo", { s in
@@ -1385,7 +1385,7 @@ enum Istantanee {
         ("400-vetrina-apple", { _ in }),
         ("400-vetrina-apple-scuro", { _ in }),
         // Tema Apple, la scrivania (§3.6): la mossa del giorno su una proposta ferma (il PIP di Giulia presentato
-        // 50 giorni fa), l'agenda di oggi, i tre anelli, Ruby con le domande, da fare e scadenze
+        // 50 giorni fa), l'agenda di oggi, i tre anelli, Vera con le domande, da fare e scadenze
         ("410-scrivania-apple", { s in propostaFermaGiulia(s) }),
         ("410-scrivania-apple-scuro", { s in propostaFermaGiulia(s) }),
         // La stessa scrivania sotto il blocco, con il centro notifiche aperto e con una finestra davanti (al 25%)
@@ -1612,13 +1612,13 @@ enum Istantanee {
             print("ERRORE: cartella delle istantanee non creata: \(error.localizedDescription)")
             return 1
         }
-        // Le scene comuni e quelle della mini finestra di Ruby (solo Mac: IstantaneeMiniRuby.swift)
+        // Le scene comuni e quelle della mini finestra di Vera (solo Mac: IstantaneeMiniVera.swift)
         // Unite una per volta: una catena lunga di `+` mette in difficoltà il controllo dei tipi
         var tutteLeScene = scene
-        tutteLeScene += sceneMiniRuby
-        tutteLeScene += sceneRubyScrivania
-        tutteLeScene += sceneRubyApple
-        tutteLeScene += sceneScenariRuby
+        tutteLeScene += sceneMiniVera
+        tutteLeScene += sceneVeraScrivania
+        tutteLeScene += sceneVeraApple
+        tutteLeScene += sceneScenariVera
         tutteLeScene += scenePosizioniApple
         tutteLeScene += sceneDossierApple
         tutteLeScene += sceneSimulatoriApple
@@ -1665,7 +1665,7 @@ enum Istantanee {
                 if scuro { stato.dati.impostazioni.aspetto = .scuro }
                 scena.prepara(stato)
                 stato.area = ShellView.area(per: misura, dockNascosto: !stato.finestreVisibili.isEmpty)
-                // La mini finestra di Ruby è un pannello a parte: qui si disegna sopra la shell, dove compare
+                // La mini finestra di Vera è un pannello a parte: qui si disegna sopra la shell, dove compare
                 let vetrina = sceneVetrina.contains(scena.nome)
                 // Il foglio della fattura a grandezza piena (515): solo la carta, sempre chiara
                 let carta = cartaIstantanea(scena.nome, stato) ?? tavolaLuce(scena.nome)
@@ -1676,15 +1676,15 @@ enum Istantanee {
                         carta
                     } else {
                         ShellView()
-                        if stato.miniRuby.aperta {
-                            VistaMiniRuby()
-                                .padding(.top, Tema.Misura.barra + Tema.Misura.MiniRuby.distanzaBarra - Tema.Misura.MiniRuby.margineOmbraSopra)
-                                .padding(.trailing, Tema.Misura.MiniRuby.distanzaDestra - Tema.Misura.MiniRuby.margineOmbraLati)
+                        if stato.miniVera.aperta {
+                            VistaMiniVera()
+                                .padding(.top, Tema.Misura.barra + Tema.Misura.MiniVera.distanzaBarra - Tema.Misura.MiniVera.margineOmbraSopra)
+                                .padding(.trailing, Tema.Misura.MiniVera.distanzaDestra - Tema.Misura.MiniVera.margineOmbraLati)
                         }
                     }
                 }
                     .environmentObject(stato)
-                    .environmentObject(stato.miniRuby)
+                    .environmentObject(stato.miniVera)
                     .environment(\.modoIstantanea, true)
                     .environment(\.colorScheme, scuro ? .dark : .light)
                     .frame(width: misura.width, height: misura.height)

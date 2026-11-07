@@ -76,7 +76,7 @@ struct AppDocumenti: View {
         .gestioneDocumenti(nome: nome, scelta: $sceltaFile, daEliminare: $daEliminare, allinea: allinea)
     }
 
-    /// Un documento scelto da fuori (⌘K, notifiche, Ruby, Prodotti) che i filtri nasconderebbero: i filtri tornano a
+    /// Un documento scelto da fuori (⌘K, notifiche, Vera, Prodotti) che i filtri nasconderebbero: i filtri tornano a
     /// «Tutti» e la ricerca si svuota, così si vede nell'elenco.
     private func allinea() {
         guard let id = stato.documentoSelezionato, let d = stato.documento(id), d.clienteId == cliente else { return }
@@ -131,7 +131,7 @@ struct AppDocumenti: View {
                 stato.vistaDocumenti.canale = stato.vistaDocumenti.canale == c ? nil : c
             }
         }
-        CollegatiRail(app: [.posizioni, .prodotti, .ruby])
+        CollegatiRail(app: [.posizioni, .prodotti, .vera])
     }
 }
 
@@ -245,11 +245,11 @@ struct ElencoDocumenti: View {
                 stato.leggiDocumento(d.id)
             }
             .disabled(file == nil || d.tipo.creatoDaPrisma || stato.solaLettura || stato.documentiInLettura.contains(d.id))
-            Button("Apri con Ruby") {
+            Button("Apri con Vera") {
                 TestiRinviati.scriviOra()
-                stato.spiegaDocumentoConRuby(d.id)
+                stato.spiegaDocumentoConVera(d.id)
             }
-            .disabled(d.tipo.creatoDaPrisma || stato.rubyInCorso || stato.documentiInLettura.contains(d.id))
+            .disabled(d.tipo.creatoDaPrisma || stato.veraInCorso || stato.documentiInLettura.contains(d.id))
             Divider()
             Button("Elimina…") { elimina(d) }
                 .disabled(stato.solaLettura)

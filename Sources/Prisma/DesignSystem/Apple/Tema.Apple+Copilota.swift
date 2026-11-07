@@ -259,7 +259,7 @@ extension Tema.Apple {
             static let vuoto = Carattere(dimensione: 14, peso: .regular, interlinea: 1.45)
             static let coloreVuoto = Colore.inchiostro2
             static let paddingVuoto: CGFloat = 30
-            /// «Ruby non è pronta: Prisma riconosce con le sue regole.» sotto l'occhiello; l'iPad in attesa del Mac in arancio.
+            /// «Vera non è pronta: Prisma riconosce con le sue regole.» sotto l'occhiello; l'iPad in attesa del Mac in arancio.
             static let nota = Carattere(dimensione: 12, peso: .regular, interlinea: 1.4)
             static let coloreNota = Colore.inchiostro2
             static let coloreAttesa = Colore.arancio

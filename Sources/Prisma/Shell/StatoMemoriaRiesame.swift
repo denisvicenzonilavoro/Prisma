@@ -13,7 +13,7 @@ extension StatoShell {
 
     /// La fotografia delle cifre di oggi (non salvata): fonte del cliente, completezza (giro 3) e conformità (giro 4).
     func fotografiaAttuale(_ id: String, origine: FotografiaRiesame.Origine = .manuale) -> FotografiaRiesame? {
-        guard let f = fonteRuby(id) else { return nil }
+        guard let f = fonteVera(id) else { return nil }
         let completezza = completezzaCliente(id).map {
             DatiCompletezzaFoto(percentuale: $0.percentuale, livello: $0.livello.nome)
         }

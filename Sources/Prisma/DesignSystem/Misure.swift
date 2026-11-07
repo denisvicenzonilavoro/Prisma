@@ -97,7 +97,7 @@ enum Misure {
         static let raggio: CGFloat = Tema.Raggio.widget
         static let spazio: CGFloat = 20
         static let intestazione: CGFloat = 40
-        /// Quota d'altezza della fila alta (Agenda, Cliente in primo piano con la barra di Ruby).
+        /// Quota d'altezza della fila alta (Agenda, Cliente in primo piano con la barra di Vera).
         static let quotaAlta: CGFloat = 0.56
         static let margine = EdgeInsets(top: 14, leading: 16, bottom: 14, trailing: 16)
         /// La piastrella grande del giorno nel widget Agenda.
@@ -120,8 +120,8 @@ enum Misure {
         static let clienteSpazio: CGFloat = 8
         /// Lo spazio fra totale, barre dei canali e proposte nel portafoglio.
         static let portafoglioSpazio: CGFloat = 10
-        /// La barra di Ruby sotto il cliente (.os-desk-ruby).
-        static let barraRuby: CGFloat = 60
+        /// La barra di Vera sotto il cliente (.os-desk-vera).
+        static let barraVera: CGFloat = 60
         static let avatarCliente: CGFloat = 39
         /// Ex cucitura della pelle (nel tema non si vede più).
         static let cucituraRientro: CGFloat = 6
@@ -165,7 +165,7 @@ enum Misure {
         static let icona: CGFloat = 26
     }
 
-    enum Ruby {
+    enum Vera {
         static let giornata: CGFloat = 290
         static let raggioNuvola: CGFloat = 16
         static let larghezzaNuvola: CGFloat = 0.78
@@ -204,7 +204,7 @@ enum Misure {
         static let data = CGSize(width: 36, height: 48)
         static let dataRaggio: CGFloat = Tema.Raggio.tesseraData
         static let dataMese: CGFloat = 17
-        static let iconaRuby: CGFloat = 37
+        static let iconaVera: CGFloat = 37
     }
 
     enum Dock {
@@ -315,8 +315,8 @@ enum Misure {
         static let ombraSfocatura: CGFloat = 1.5
     }
 
-    /// Spunti di Ruby: la sfumatura sul bordo destro della riga che scorre.
-    enum SpuntiRuby {
+    /// Spunti di Vera: la sfumatura sul bordo destro della riga che scorre.
+    enum SpuntiVera {
         static let sfumatura: CGFloat = 24
     }
 }

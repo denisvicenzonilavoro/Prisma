@@ -116,7 +116,7 @@ final class FisicaAcqua {
         var x: Float, y: Float, r: Float, t: Float, seme: Float
     }
 
-    /// L'acqua che vibra piano intorno a un punto (Ruby che parla): piccoli impatti senza getto, uno ogni
+    /// L'acqua che vibra piano intorno a un punto (Vera che parla): piccoli impatti senza getto, uno ogni
     /// `Tema.Apple.Acqua.Vibrazione.intervallo`, finché `resta` non arriva a zero.
     struct Vibrazione {
         var x: Float, y: Float, resta: Float, prossima: Float

@@ -44,7 +44,7 @@ final class ProvaGuidata {
     private var finestraRisultati: NSWindow?
     private let avanzamento = AvanzamentoProvaGuidata()
 
-    /// Le app che la prova può aprire, in ordine di preferenza (né Ruby né Impostazioni, che avviano lavori propri;
+    /// Le app che la prova può aprire, in ordine di preferenza (né Vera né Impostazioni, che avviano lavori propri;
     /// né la Ricerca, che dal dock apre il pannello ⌘K e non una finestra; né le app accorpate, senza finestra propria).
     private static let candidate: [AppPrisma] = [
         .clienti, .posizioni, .agenda, .analisi360, .note, .prodotti, .incontri,
@@ -112,7 +112,7 @@ final class ProvaGuidata {
         if stato.modoCliente != nil { return "Esci prima dalla modalità cliente: la prova apre app che lì restano chiuse." }
         if stato.presentazione != nil { return "Chiudi prima la presentazione, poi riprova." }
         if stato.menu.conversazioneAVoce {
-            return "Chiudi prima la conversazione con Ruby: la schermata di benvenuto la fermerebbe."
+            return "Chiudi prima la conversazione con Vera: la schermata di benvenuto la fermerebbe."
         }
         return nil
     }

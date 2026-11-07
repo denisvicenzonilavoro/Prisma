@@ -7,8 +7,8 @@ extension CompositoreProspetti {
     static let titoloRiesame = "Riesame annuale"
 
     /// Con `memoria` (giro 6) il prospetto apre l'ordine del giorno con quanto è cambiato dal riesame precedente e
-    /// aggiunge la cronologia dei riesami; senza è identico a prima (Ruby lo chiama senza).
-    static func riesame(_ f: FonteRuby, conformita: EsitoConformita? = nil, occasioni: [Occasione]? = nil,
+    /// aggiunge la cronologia dei riesami; senza è identico a prima (Vera lo chiama senza).
+    static func riesame(_ f: FonteVera, conformita: EsitoConformita? = nil, occasioni: [Occasione]? = nil,
                         memoria: MemoriaRiesame? = nil) -> ContenutoProspetto {
         let r = MotoreRiesame.calcola(f, conformita: conformita, occasioni: occasioni)
         let data: (Date) -> String = { Formati.dataBreve.string(from: $0) }

@@ -478,11 +478,11 @@ struct DettaglioAttivita: View {
                 PulsanteAzione(titolo: "Modifica attività", simbolo: "pencil", azione: modifica)
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 6) {
-                        azioneRuby
+                        azioneVera
                         azioneScheda
                     }
                     VStack(spacing: 6) {
-                        azioneRuby
+                        azioneVera
                         azioneScheda
                     }
                 }
@@ -496,10 +496,10 @@ struct DettaglioAttivita: View {
         }
     }
 
-    private var azioneRuby: some View {
-        PulsanteAzione(titolo: "Chiedi a Ruby", simbolo: "sparkles") {
+    private var azioneVera: some View {
+        PulsanteAzione(titolo: "Chiedi a Vera", simbolo: "sparkles") {
             stato.clienteAttivoId = attivita.clienteId
-            stato.apri(.ruby)
+            stato.apri(.vera)
         }
     }
 

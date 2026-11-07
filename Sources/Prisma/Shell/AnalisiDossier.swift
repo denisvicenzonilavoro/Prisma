@@ -23,7 +23,7 @@ extension StatoShell {
                                     costi: MotoreCosti.calcola(mie, prodotti: dati.prodotti, cliente: id),
                                     successione: c.map { MotoreSuccessione.calcola(cliente: $0, posizioni: mie) })
         d.dossier[id] = valore
-        // L'ultima calcolata resta anche qui (la prova di Ruby controlla che la cache ci sia)
+        // L'ultima calcolata resta anche qui (la prova di Vera controlla che la cache ci sia)
         cacheDossier = (versioneDati, valore)
         return valore
     }

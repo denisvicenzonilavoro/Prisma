@@ -121,17 +121,17 @@
         </dict>
     </array>
     <key>NSMicrophoneUsageDescription</key>
-    <string>Prisma usa il microfono per le domande a Ruby e, con il consenso del cliente, per il copilota dell’incontro. L’audio resta sul dispositivo e non si registra.</string>
+    <string>Prisma usa il microfono per le domande a Vera e, con il consenso del cliente, per il copilota dell’incontro. L’audio resta sul dispositivo e non si registra.</string>
     <key>NSCameraUsageDescription</key>
     <string>Prisma usa la fotocamera solo per inquadrare polizze e documenti: il testo letto va al tuo Mac in rete locale, cifrato. L'immagine resta sul telefono e non si salva.</string>
     <key>NSSpeechRecognitionUsageDescription</key>
-    <string>Prisma trascrive la voce solo sul dispositivo: le domande a Ruby e, con il consenso del cliente, il copilota dell’incontro. Al Mac arriva solo il testo, mai l’audio.</string>
+    <string>Prisma trascrive la voce solo sul dispositivo: le domande a Vera e, con il consenso del cliente, il copilota dell’incontro. Al Mac arriva solo il testo, mai l’audio.</string>
     <key>LSSupportsOpeningDocumentsInPlace</key>
     <false/>
     <key>UIFileSharingEnabled</key>
     <false/>
     <key>NSLocalNetworkUsageDescription</key>
-    <string>Ruby usa Qwen del tuo Mac e il tavolo con l'iPad mostra al cliente ciò che scegli sul Mac, attraverso la rete di casa o dello studio, cifrati con il codice di abbinamento. Nessun dato va su internet.</string>
+    <string>Vera usa Qwen del tuo Mac e il tavolo con l'iPad mostra al cliente ciò che scegli sul Mac, attraverso la rete di casa o dello studio, cifrati con il codice di abbinamento. Nessun dato va su internet.</string>
     <key>NSBonjourServices</key>
     <array>
         <string>_prisma-eve._tcp</string>

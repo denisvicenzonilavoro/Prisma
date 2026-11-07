@@ -10,7 +10,7 @@ extension Tema.Apple.Scrivania {
         static let sogliaDueColonne: CGFloat = 1100
         /// Riga alta a due colonne: Agenda di oggi e Portafoglio clienti, nelle quote del Mac (560 / 384).
         static let quoteRigaAlta: [CGFloat] = [560, 384]
-        /// Riga di mezzo: Ruby e Da fare oggi, larghi uguali.
+        /// Riga di mezzo: Vera e Da fare oggi, larghi uguali.
         static let quoteRigaMedia: [CGFloat] = [1, 1]
         /// Altezza della riga di mezzo (in proporzione con la riga alta, 300, e la bassa, 168), e la minima.
         static let rigaMedia: CGFloat = 270

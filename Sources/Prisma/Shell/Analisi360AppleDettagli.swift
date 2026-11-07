@@ -10,7 +10,7 @@ import SwiftUI
 //   fiscale), i blocchi dei mesi con la soglia delle ipotesi, mesi di spese da parte (con la virgola), spese mensili
 //   e liquidità sui conti dalle ipotesi e dalle posizioni (non i 2.300 € fissi del template).
 // - Sotto i risultati le ipotesi, sempre scritte; nel piede «Salva come proposta» sul canale scelto (le proposte
-//   di Prisma per l'area, MotoreSintesi.calcolaProposte), «Chiedi a Ruby di spiegarlo»; in alto «Apri l'analisi
+//   di Prisma per l'area, MotoreSintesi.calcolaProposte), «Chiedi a Vera di spiegarlo»; in alto «Apri l'analisi
 //   completa ›» porta al pannello di sempre.
 // Le cifre vengono da MotoreAree360 (in cache, CacheAree360). Valori in DesignSystem/Apple/Tema.Apple+Aree360.swift.
 
@@ -346,7 +346,7 @@ private struct IpotesiDettaglioArea360: View {
     }
 }
 
-/// «Salva come proposta» (sul canale scelto, sempre riconoscibile), «Chiedi a Ruby di spiegarlo».
+/// «Salva come proposta» (sul canale scelto, sempre riconoscibile), «Chiedi a Vera di spiegarlo».
 private struct PiedeDettaglioArea360: View {
     @EnvironmentObject var stato: StatoShell
     @Environment(\.statoDettaglioApple) private var dettaglio
@@ -362,8 +362,8 @@ private struct PiedeDettaglioArea360: View {
             .buttonStyle(.applePrimarioGrande)
             .disabled(stato.solaLettura)
             .help("Le proposte che le analisi di Prisma suggeriscono per l'area diventano una bozza in Posizioni")
-            Button(action: chiediRuby) {
-                Text("Chiedi a Ruby di spiegarlo")
+            Button(action: chiediVera) {
+                Text("Chiedi a Vera di spiegarlo")
             }
             .buttonStyle(.appleGrande)
             Spacer(minLength: 0)
@@ -382,9 +382,9 @@ private struct PiedeDettaglioArea360: View {
         }
     }
 
-    /// Chiude subito il dettaglio, apre Ruby e le manda la domanda sull'area dopo 0,7 s.
-    private func chiediRuby() {
+    /// Chiude subito il dettaglio, apre Vera e le manda la domanda sull'area dopo 0,7 s.
+    private func chiediVera() {
         dettaglio?.chiudi(subito: true)
-        stato.chiediRubyArea360(area)
+        stato.chiediVeraArea360(area)
     }
 }

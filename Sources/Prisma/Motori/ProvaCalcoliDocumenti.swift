@@ -192,7 +192,7 @@ enum ProvaCalcoliDocumenti {
         verifica.vero("D5 Identità: data di rilascio", campo(i, .dataRilascio)?.valore == "05/03/2020")
         verifica.vero("D5 Identità: scadenza", campo(i, .scadenza)?.valore == "14/03/2030")
         verifica.vero("D5 Identità: nessun numero di contratto", campo(i, .numeroContratto) == nil)
-        verifica.vero("D5 Identità: per Ruby resta «altro»", EstrattoreDocumento.tipoProbabile(identita) == .altro)
+        verifica.vero("D5 Identità: per Vera resta «altro»", EstrattoreDocumento.tipoProbabile(identita) == .altro)
         verifica.vero("D5 Identità: categoria", MotoreDocumenti.categoriaProbabile(identita, tipo: .altro) == .identita)
 
         // D6. Questionario
@@ -201,7 +201,7 @@ enum ProvaCalcoliDocumenti {
         verifica.vero("D6 Questionario: profilo «moderato»", campo(q, .profiloRischio)?.valore == "moderato")
         verifica.vero("D6 Questionario: orizzonte «10»", campo(q, .orizzonte)?.valore == "10")
         verifica.vero("D6 Questionario: categoria", MotoreDocumenti.categoriaProbabile(questionario, tipo: .altro) == .questionario)
-        verifica.vero("D6 Questionario: per Ruby resta «altro»", EstrattoreDocumento.tipoProbabile(questionario) == .altro)
+        verifica.vero("D6 Questionario: per Vera resta «altro»", EstrattoreDocumento.tipoProbabile(questionario) == .altro)
     }
 
     // MARK: - D7–D8 Categoria e tipo
@@ -223,7 +223,7 @@ enum ProvaCalcoliDocumenti {
         // D8. Categoria e tipo
         verifica.vero("D8 Contratto da una proposta resta proposta", CategoriaDocumento.contratto.tipo(da: .proposta) == .proposta)
         verifica.vero("D8 Contratto da «altro» diventa polizza", CategoriaDocumento.contratto.tipo(da: .altro) == .polizza)
-        verifica.vero("D8 Identità: per Ruby è «altro»", CategoriaDocumento.identita.tipo(da: .kid) == .altro)
+        verifica.vero("D8 Identità: per Vera è «altro»", CategoriaDocumento.identita.tipo(da: .kid) == .altro)
         verifica.vero("D8 Un estratto conto senza categoria è un estratto",
                       Documento(clienteId: "a", titolo: "x", tipo: .estrattoConto).genere == .estratto)
         var report = Documento(clienteId: "a", titolo: "x", tipo: .report)

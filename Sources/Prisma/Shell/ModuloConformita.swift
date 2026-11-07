@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Il modulo delle date di conformità del cliente («In regola · Giulia Rossi»): questionari e adeguata verifica
 /// per canale, documento d'identità, privacy e consenso commerciale, voci non richieste. Lavora su una copia
-/// della conformità e la scrive nella scheda solo al salvataggio (vuota: nil). Non sa niente di Ruby né dei PDF.
+/// della conformità e la scrive nella scheda solo al salvataggio (vuota: nil). Non sa niente di Vera né dei PDF.
 struct ModuloConformita: View {
     @Environment(\.dismiss) private var chiudi
     @State private var bozza: Cliente

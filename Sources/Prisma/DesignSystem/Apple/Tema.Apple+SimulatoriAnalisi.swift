@@ -73,8 +73,8 @@ extension Tema.Apple {
         static let spazioPiede: CGFloat = 8
         /// Fra i pulsanti e la scelta del canale della proposta.
         static let spazioCanale: CGFloat = 8
-        /// «Chiedi a Ruby di spiegarlo»: la domanda parte 0,7 s dopo l'apertura di Ruby.
-        static let ritardoDomandaRuby = Tema.Apple.Moto.DomandaDaScrivania.ritardo
+        /// «Chiedi a Vera di spiegarlo»: la domanda parte 0,7 s dopo l'apertura di Vera.
+        static let ritardoDomandaVera = Tema.Apple.Moto.DomandaDaScrivania.ritardo
 
         // MARK: Le due aree
 

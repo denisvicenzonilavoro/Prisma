@@ -107,7 +107,7 @@ extension Tema.Colore {
 }
 
 extension SchedaImpostazioni {
-    /// L'icona della pagina: quella dell'app quando la pagina la riguarda (Profilo → Clienti, Ruby…),
+    /// L'icona della pagina: quella dell'app quando la pagina la riguarda (Profilo → Clienti, Vera…),
     /// altrimenti un simbolo bianco sul vetro colorato.
     enum Icona {
         case app(AppPrisma)
@@ -126,7 +126,7 @@ extension SchedaImpostazioni {
         case .conformita: return .simbolo("checkmark.shield.fill", c.conformita)
         case .proposte: return .app(.documenti)
         case .rendimenti: return .simbolo("chart.line.uptrend.xyaxis", c.rendimenti)
-        case .ruby: return .app(.ruby)
+        case .vera: return .app(.vera)
         case .archivio: return .simbolo("externaldrive.fill", c.archivio)
         case .scorciatoie: return .simbolo("keyboard", c.scorciatoie)
         case .studio: return .app(.studio)

@@ -5,7 +5,7 @@ import SwiftUI
 //   ┌─ Panoramica ─────────┐  Aspetto
 //   │ ▌Aspetto    (scelta) │  ┌──────────────────────────────────────────────────────────────┐
 //   │  Archivio e backup   │  │ Aspetto                          [Chiaro | Scuro | Automatico] │
-//   │  Ruby                 │  │ Chiaro, scuro o automatico come il Mac.                        │
+//   │  Vera                 │  │ Chiaro, scuro o automatico come il Mac.                        │
 //   │  Profilo             │  └──────────────────────────────────────────────────────────────┘
 //   │ IL LAVORO            │  ┌──────────────────────────────────────────────────────────────┐
 //   │  Agenda e lavoro …   │  │ Riduci movimento                                        (●  ) │
@@ -14,18 +14,18 @@ import SwiftUI
 //   │ ● Archivio locale    │
 //   └──────────────────────┘
 //
-// - Barra laterale 260 (`.side`): le sezioni del template (Aspetto, Archivio e backup, Ruby, Profilo) dopo la
+// - Barra laterale 260 (`.side`): le sezioni del template (Aspetto, Archivio e backup, Vera, Profilo) dopo la
 //   Panoramica, poi le altre pagine di Prisma sotto «Il lavoro» e Strumenti sotto «Per le prove». Voci `.rub`.
 // - Pagina: titolo `.h2` (4 sopra, 14 sotto) e le righe come card senza ombra (`.impostazioniApple()`); cambiando
-//   sezione la cascata riparte con base 0. Aspetto, Archivio e backup, Ruby e Profilo come nel template; le altre
+//   sezione la cascata riparte con base 0. Aspetto, Archivio e backup, Vera e Profilo come nel template; le altre
 //   pagine sono quelle di sempre, nelle card del tema.
 // - «Riduci movimento» e istantanee: tutto è subito fermo nello stato finale.
 // Valori in DesignSystem/Apple/Tema.Apple+Impostazioni.swift.
 
 extension AppImpostazioni {
     /// Le sezioni della barra laterale, dall'alto in basso (tutte le pagine di sempre).
-    /// L'ordine del template di Orizzonte (§13.1.2): Aspetto · iPhone e iPad · Archivio e backup · Ruby · Profilo.
-    static let sezioniPrincipali: [SchedaImpostazioni] = [.panoramica, .aspetto, .ovunque, .archivio, .ruby, .profilo]
+    /// L'ordine del template di Orizzonte (§13.1.2): Aspetto · iPhone e iPad · Archivio e backup · Vera · Profilo.
+    static let sezioniPrincipali: [SchedaImpostazioni] = [.panoramica, .aspetto, .ovunque, .archivio, .vera, .profilo]
     static let sezioniLavoro: [SchedaImpostazioni] = [.studio, .mercato, .lavoro, .promemoria, .conformita, .proposte, .rendimenti, .scorciatoie]
     static let sezioniProve: [SchedaImpostazioni] = [.strumenti]
 
@@ -90,14 +90,14 @@ extension AppImpostazioni {
         }
     }
 
-    /// Un pallino accanto alla sezione solo quando c'è da guardare (backup, archivio, Ruby non pronta).
+    /// Un pallino accanto alla sezione solo quando c'è da guardare (backup, archivio, Vera non pronta).
     private func statoVoceLaterale(_ p: SchedaImpostazioni) -> Pillola.Tono? {
         switch p {
         case .archivio:
             if stato.solaLettura || stato.dati.impostazioni.backup.ultimoErrore != nil { return .errore }
             if stato.copieNonLeggibili > 0 || stato.dati.impostazioni.backup.inRitardo { return .attenzione }
             return nil
-        case .ruby:
+        case .vera:
             return stato.disponibilitaLocale.pronto ? nil : .attenzione
         case .ovunque:
             guard stato.dati.impostazioni.ovunque.acceso else { return nil }
@@ -160,7 +160,7 @@ extension AppImpostazioni {
     /// Le quattro sezioni del template hanno le righe a cascata una per una; le altre entrano tutte insieme.
     @ViewBuilder private func contenutoApple(_ pagina: SchedaImpostazioni) -> some View {
         switch pagina {
-        case .aspetto, .archivio, .ruby, .ovunque:
+        case .aspetto, .archivio, .vera, .ovunque:
             contenuto(pagina)
         case .profilo:
             profiloApple

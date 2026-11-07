@@ -40,7 +40,7 @@ enum NovitaOrizzonte: String, CaseIterable, Identifiable {
     var frase: String {
         switch self {
         case .studio: return "Il cruscotto del tuo lavoro: ricavi, obiettivi, proposte, incassi"
-        case .scrivePerTe: return "Ruby prepara i messaggi ai clienti, li spedisci tu"
+        case .scrivePerTe: return "Vera prepara i messaggi ai clienti, li spedisci tu"
         case .mercato: return "Quote e tassi aggiornati, avvisi, chi è toccato"
         case .ovunque: return "Una copia cifrata su iPhone e iPad, anche senza il Mac"
         case .copilota: return "Prisma ascolta e capisce mentre parli col cliente"

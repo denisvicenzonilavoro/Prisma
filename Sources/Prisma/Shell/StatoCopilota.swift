@@ -88,7 +88,7 @@ extension StatoShell {
         guard !pulito.isEmpty else { return [] }
         var s = dati.sessioniCopilota[i]
         var contesto = contestoCopilota(s, oggi: quando)
-        var pezzo = PezzoTrascrizione(testo: String(pulito.prefix(PonteRuby.massimoTestoPezzo)), quando: quando, chi: chi, dispositivo: dispositivo)
+        var pezzo = PezzoTrascrizione(testo: String(pulito.prefix(PonteVera.massimoTestoPezzo)), quando: quando, chi: chi, dispositivo: dispositivo)
         let esito = RiconoscitoreCopilota.leggi(pezzo.testo, pezzoId: pezzo.id, contesto: &contesto)
         pezzo.evidenze = esito.evidenze
         s.trascrizione.append(pezzo)
@@ -104,7 +104,7 @@ extension StatoShell {
         guard let i = dati.sessioniCopilota.firstIndex(where: { $0.id == id }), dati.sessioniCopilota[i].aperta else { return }
         var s = dati.sessioniCopilota[i]
         let contesto = contestoCopilota(s, oggi: oggi)
-        let pulite = schede.prefix(PonteRuby.massimoSchede).map { x -> SchedaCopilota in
+        let pulite = schede.prefix(PonteVera.massimoSchede).map { x -> SchedaCopilota in
             var y = RiconoscitoreCopilota.adatta(x, contesto: contesto)
             // Mai confermate da fuori: la conferma la dà il consulente sul Mac
             y.stato = .proposta
@@ -165,7 +165,7 @@ extension StatoShell {
               let pezzo = s.trascrizione.first(where: { $0.id == pezzoId }) else { return }
         let contesto = contestoCopilota(s, oggi: pezzo.quando)
         let messaggi = RiconoscitoreCopilota.messaggi(pezzo: pezzo.testo, contesto: contesto, cliente: cliente(s.clienteId)?.nome)
-        let opzioni = RiconoscitoreCopilota.opzioni(dati.impostazioni.ruby)
+        let opzioni = RiconoscitoreCopilota.opzioni(dati.impostazioni.vera)
         let motore = qwen
         Task { @MainActor in
             guard let r = try? await motore.scrivi(messaggi, opzioni: opzioni),
@@ -199,9 +199,9 @@ extension StatoShell {
             }
             if let i = dati.sessioniCopilota.firstIndex(where: { $0.id == sid }) {
                 var s = dati.sessioniCopilota[i]
-                for var x in p.pezzi.prefix(PonteRuby.massimoPezzi) where !s.trascrizione.contains(where: { $0.id == x.id }) {
+                for var x in p.pezzi.prefix(PonteVera.massimoPezzi) where !s.trascrizione.contains(where: { $0.id == x.id }) {
                     x.dispositivo = p.dispositivo
-                    x.testo = String(x.testo.prefix(PonteRuby.massimoTestoPezzo))
+                    x.testo = String(x.testo.prefix(PonteVera.massimoTestoPezzo))
                     s.trascrizione.append(x)
                 }
                 dati.sessioniCopilota[i] = s

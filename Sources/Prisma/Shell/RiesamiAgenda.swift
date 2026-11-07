@@ -86,7 +86,7 @@ extension StatoShell {
     /// `mese`: il mese mostrato in Agenda (si cerca da lì in poi, mai prima di domani).
     /// Lo spazio si cerca sempre su tutti gli appuntamenti dell'archivio, anche in modalità cliente.
     func pianificaRiesame(_ clienteId: String, mese: Date? = nil, oggi: Date = Date()) -> RiesamePianificato? {
-        guard let f = fonteRuby(clienteId), let r = riesameCliente(clienteId) else { return nil }
+        guard let f = fonteVera(clienteId), let r = riesameCliente(clienteId) else { return nil }
         let cal = MotorePianificazione.calendario
         let orari = dati.impostazioni.orari
         var da = cal.date(byAdding: .day, value: MotorePianificazione.preavvisoGiorni, to: cal.startOfDay(for: oggi)) ?? oggi

@@ -601,7 +601,7 @@ enum ProvaProspetti {
         stato.clienteAttivoId = "giulia"
         for scelta in [SceltaProspetto.checkUp(report: true), .previdenza(report: true), .resoconto(report: true)] {
             let senza = stato.documentoProspetto(scelta)?.pagine.count ?? 0
-            stato.scriviCommentoConRuby(scelta)
+            stato.scriviCommentoConVera(scelta)
             let testoCommento = stato.commento(scelta)?.testo ?? ""
             guard let d = stato.documentoProspetto(scelta), let pdf = StampaCarta.pdf(d) else {
                 verifica("Commento in «\(scelta.tipo.nome)»: PDF creato", false)

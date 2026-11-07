@@ -6,7 +6,7 @@ import SwiftUI
 /// Barra superiore del template Apple (Design/template-apple-specifica.md §3.3): alta 34, senza un fondo proprio;
 /// ogni gruppo è una capsula di vetro a sé sopra l'acqua. A sinistra la pillola del marchio (porta alla scrivania)
 /// e quella dell'app in primo piano (apre gli spazi di lavoro), al centro «lun 2 nov 23:09», a destra gli strumenti,
-/// separati e a 6 l'uno dall'altro: Cerca ⌘K, la sfera di Ruby, la campanella con il numero delle nuove, la guida,
+/// separati e a 6 l'uno dall'altro: Cerca ⌘K, la sfera di Vera, la campanella con il numero delle nuove, la guida,
 /// il lucchetto, la modalità cliente e l'avatar. Il marchio comincia dopo i pulsanti veri della finestra del Mac,
 /// alla loro altezza (`LettoreSemafori`). Al blocco svanisce e allo sblocco ricompare in 0,6 s (ShellView).
 /// Dalla versione «Orizzonte», prima di Cerca, la pillola «✦ Novità» con il numero delle funzioni nuove (sul Mac).
@@ -162,11 +162,11 @@ struct BarraSuperiore: View {
                 }
 
                 #if os(macOS)
-                // La sfera di Ruby: apre la mini finestra (anche ⌥ Spazio, da qualsiasi app)
-                PulsanteSferaRuby(mini: stato.miniRuby)
+                // La sfera di Vera: apre la mini finestra (anche ⌥ Spazio, da qualsiasi app)
+                PulsanteSferaVera(mini: stato.miniVera)
                     .frame(width: B.tasto, height: B.tasto)
                     .vetro(.leggero, forma: .capsula)
-                    .puntoAcqua(.sferaRubyBarra)
+                    .puntoAcqua(.sferaVeraBarra)
                 #endif
 
                 PulsanteBarra(aiuto: "Notifiche", azione: { stato.alternaNotifiche() }) {

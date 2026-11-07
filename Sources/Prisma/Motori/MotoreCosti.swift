@@ -313,7 +313,7 @@ enum MotoreCosti {
                                  dichiarato: p.incidenzaCostiKID ?? prodotto?.incidenzaCostiKID)
     }
 
-    /// Le righe per Ruby e per le schede.
+    /// Le righe per Vera e per le schede.
     static func sintesi(_ a: AnalisiCosti) -> [String] {
         var righe: [String] = []
         if let m = a.costoMedio {

@@ -255,7 +255,7 @@ private struct SchedaInquadraMac: View {
 
     private var testa: some View {
         HStack(spacing: S.spazioTesta) {
-            SferaRuby(misura: S.sfera, viva: true, pensa: inquadra.fase == .lettura)
+            SferaVera(misura: S.sfera, viva: true, pensa: inquadra.fase == .lettura)
             Text("Prisma sul Mac")
                 .carattereApple(S.etichetta)
                 .foregroundColor(S.coloreEtichetta)
@@ -288,7 +288,7 @@ private struct SchedaInquadraMac: View {
         case .attesa:
             return "Sull’iPhone apri Prisma › Posizioni › Inquadra: il testo letto arriva qui, cifrato in rete locale. Oppure trascina qui una foto o un PDF."
         case .trascina:
-            return "L’iPhone non è collegato: attiva «iPhone e iPad» in Impostazioni › Ruby, oppure trascina qui una foto o un PDF. Prisma lo legge sul Mac e non lo salva."
+            return "L’iPhone non è collegato: attiva «iPhone e iPad» in Impostazioni › Vera, oppure trascina qui una foto o un PDF. Prisma lo legge sul Mac e non lo salva."
         case .lettura:
             return "Leggo «\(inquadra.origine)» sul Mac, senza mandarlo fuori."
         case .illeggibile:

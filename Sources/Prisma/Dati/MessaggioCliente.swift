@@ -1,7 +1,7 @@
 import Foundation
 
 // I messaggi ai clienti di «Prisma scrive per te» (Design/template-novita-specifica.md §5): Prisma trova l'occasione
-// (MotoreOccasioniMessaggi), Ruby scrive il testo con Qwen sul Mac o resta il modello fisso di Prisma (MessaggiRuby,
+// (MotoreOccasioniMessaggi), Vera scrive il testo con Qwen sul Mac o resta il modello fisso di Prisma (MessaggiVera,
 // ModelliMessaggi), il consulente lo apre già compilato in Mail o in Messaggi e lo spedisce lui (AperturaMessaggi).
 // Prisma non spedisce mai niente da solo. Ogni messaggio preparato resta nel dossier del cliente (`DatiPrisma.messaggi`,
 // archivio versione 26, letto con tolleranza) ed entra nel backup.
@@ -153,14 +153,14 @@ enum StatoMessaggio: String, Codable, CaseIterable {
     var copreOccasione: Bool { self != .bozza }
 }
 
-/// Chi ha scritto il testo: Ruby con Qwen (il modello è in `MessaggioCliente.modello`) o il modello fisso di Prisma.
+/// Chi ha scritto il testo: Vera con Qwen (il modello è in `MessaggioCliente.modello`) o il modello fisso di Prisma.
 enum AutoreMessaggio: String, Codable, CaseIterable {
     // Compatibilità: negli archivi, nei backup e nei giornali di «Prisma ovunque» il valore salvato resta «eve» (il vecchio nome).
-    case ruby = "eve", modelloFisso
+    case vera = "eve", modelloFisso
 
     var nome: String {
         switch self {
-        case .ruby: return "Ruby"
+        case .vera: return "Vera"
         case .modelloFisso: return "Testo di Prisma"
         }
     }
@@ -182,7 +182,7 @@ struct MessaggioCliente: Identifiable, Codable, Hashable {
     /// Solo per Mail; nil per Messaggi.
     var oggetto: String?
     var testo: String
-    /// Le cifre dei motori che il testo poteva citare (le stesse della scheda passata a Ruby).
+    /// Le cifre dei motori che il testo poteva citare (le stesse della scheda passata a Vera).
     var cifre: [CifraMessaggio] = []
     var stato = StatoMessaggio.bozza
     /// Quando è stato aperto in Mail o in Messaggi (nil se non è mai stato aperto).

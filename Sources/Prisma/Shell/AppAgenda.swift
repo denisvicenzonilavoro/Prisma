@@ -1120,17 +1120,17 @@ struct DettaglioAppuntamento: View {
             // Le azioni in due gruppi: le principali in alto, le altre in una fila sola se c'è posto,
             // altrimenti due per riga (o una sotto l'altra): i titoli non si troncano mai
             // Nessun blu nel dettaglio (il blu è «Appuntamento» nella barra): per prima l'azione consigliata,
-            // «Prepara l'incontro», in vetro dell'accento; l'analisi viene prima di Ruby.
+            // «Prepara l'incontro», in vetro dell'accento; l'analisi viene prima di Vera.
             let spazio = Misure.AgendaImpaginazione.spazioAzioni
             VStack(spacing: spazio) {
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: spazio) {
                         azioneIncontro
-                        azioneRuby
+                        azioneVera
                     }
                     VStack(spacing: spazio) {
                         azioneIncontro
-                        azioneRuby
+                        azioneVera
                     }
                 }
                 ViewThatFits(in: .horizontal) {
@@ -1165,10 +1165,10 @@ struct DettaglioAppuntamento: View {
 
     // MARK: - Azioni del dettaglio
 
-    private var azioneRuby: some View {
-        PulsanteAzione(titolo: "Prepara con Ruby", simbolo: "sparkles") {
+    private var azioneVera: some View {
+        PulsanteAzione(titolo: "Prepara con Vera", simbolo: "sparkles") {
             stato.clienteAttivoId = evento.clienteId
-            stato.apri(.ruby)
+            stato.apri(.vera)
         }
     }
 

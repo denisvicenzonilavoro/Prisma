@@ -18,7 +18,7 @@ enum ProspettoCosti {
     }
 
     /// L'incidenza annua dei costi come nel KID (RIY) di ogni posizione con i costi, nello stesso ordine
-    /// dell'analisi. Si calcola qui, per il documento: non dentro `MotoreCosti.calcola`, che usa anche Ruby.
+    /// dell'analisi. Si calcola qui, per il documento: non dentro `MotoreCosti.calcola`, che usa anche Vera.
     static func incidenze(_ t: TestiCosti, prodotti: [Prodotto] = []) -> [IncidenzaCostiKID] {
         t.a.voci.compactMap { v -> IncidenzaCostiKID? in
             let prodotto = v.posizione.prodottoId.flatMap { id in prodotti.first { $0.id == id } }

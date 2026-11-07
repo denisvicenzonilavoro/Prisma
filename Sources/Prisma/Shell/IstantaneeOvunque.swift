@@ -94,7 +94,7 @@ enum DatiProvaOvunque {
         s.dati.giornaleOvunque = ops
         // Le modifiche sono già nell'archivio del dispositivo (il giornale le registra dopo)
         for op in ops { MotoreUnioneOvunque.applicaForzata(op, a: &s.dati) }
-        s.disponibilitaLocale = .nonDisponibile(PonteRuby.macNonTrovato)
+        s.disponibilitaLocale = .nonDisponibile(PonteVera.macNonTrovato)
     }
 }
 

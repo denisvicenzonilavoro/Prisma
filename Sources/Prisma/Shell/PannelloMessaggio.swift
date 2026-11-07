@@ -5,15 +5,15 @@ import SwiftUI
 //
 //   ◉  A: Giulia Rossi · giulia.rossi@example.com              [Perché adesso: Incontro di ieri alle 17:30]
 //      Il riepilogo dell'incontro di ieri
-//   [Cordiale · Formale · Breve] [Mail · Messaggi]                       ◎ Ruby scrive con i dati del dossier
+//   [Cordiale · Formale · Breve] [Mail · Messaggi]                       ◎ Vera scrive con i dati del dossier
 //   Oggetto: Il riepilogo del nostro incontro
 //   ──────────────────────────────────────────────────────────────────────────────────────────────
-//   Ciao Giulia, …   (parola per parola mentre Ruby scrive, poi modificabile; con Messaggi nella nuvoletta blu)
+//   Ciao Giulia, …   (parola per parola mentre Vera scrive, poi modificabile; con Messaggi nella nuvoletta blu)
 //   [Decisioni · …] [Prossimo incontro · 3 dicembre 2026]
-//   Le cifre vengono da Prisma · Scritto da Ruby con qwen3.5:4b
+//   Le cifre vengono da Prisma · Scritto da Vera con qwen3.5:4b
 //   [Apri in Mail] [Salva nel dossier] [↻ Riscrivi]                                  Lo controlli e lo spedisci tu
 //
-// - Il testo lo scrive Qwen sul Mac (SessioneMessaggi, MessaggiRuby): mentre arriva compare parola per parola
+// - Il testo lo scrive Qwen sul Mac (SessioneMessaggi, MessaggiVera): mentre arriva compare parola per parola
 //   (TestoProgressivo, 22 ms a parola) e, finito, diventa un campo di testo da correggere. Se Qwen non è pronto, o se
 //   il suo testo cambia una cifra, resta il testo di Prisma con la riga che lo spiega (sfera ferma).
 // - Senza email o telefono nel dossier la testata lo dice e il pulsante principale porta all'anagrafica.
@@ -191,27 +191,27 @@ struct PannelloMessaggio: View {
             VStack(alignment: .leading, spacing: P.spazioControlli) {
                 segmentatoTono
                 segmentatoCanale
-                notaRuby
+                notaVera
             }
         } else {
             HStack(alignment: .center, spacing: P.spazioControlli) {
                 segmentatoTono.fixedSize()
                 segmentatoCanale.fixedSize()
                 Spacer(minLength: P.spazioControlli)
-                notaRuby
+                notaVera
             }
         }
     }
 
-    /// La sfera di Ruby con chi scrive: viva quando scrive Ruby, ferma sul testo di Prisma.
-    private var notaRuby: some View {
-        let ruby = scrive || pronto?.autore == .ruby
-        let testo = scrive ? TestiMessaggi.rubyStaScrivendo : (pronto == nil || ruby ? TestiMessaggi.rubyScrive : TestiMessaggi.testoPrisma)
+    /// La sfera di Vera con chi scrive: viva quando scrive Vera, ferma sul testo di Prisma.
+    private var notaVera: some View {
+        let vera = scrive || pronto?.autore == .vera
+        let testo = scrive ? TestiMessaggi.veraStaScrivendo : (pronto == nil || vera ? TestiMessaggi.veraScrive : TestiMessaggi.testoPrisma)
         return HStack(spacing: P.spazioSfera) {
-            SferaRuby(misura: P.sfera, viva: ruby || pronto == nil, pensa: scrive)
+            SferaVera(misura: P.sfera, viva: vera || pronto == nil, pensa: scrive)
             Text(testo)
-                .carattereApple(P.notaRuby)
-                .foregroundColor(P.coloreNotaRuby)
+                .carattereApple(P.notaVera)
+                .foregroundColor(P.coloreNotaVera)
                 .lineLimit(1)
         }
         .fixedSize()
@@ -243,7 +243,7 @@ struct PannelloMessaggio: View {
         VStack(alignment: .leading, spacing: 0) {
             if !scrive, let a = pronto?.avviso {
                 HStack(alignment: .top, spacing: P.spazioSfera) {
-                    SferaRuby(misura: P.sfera, viva: false)
+                    SferaVera(misura: P.sfera, viva: false)
                     Text(a)
                         .carattereApple(P.avviso)
                         .foregroundColor(P.coloreAvviso)
@@ -392,7 +392,7 @@ struct PannelloMessaggio: View {
         }
         .buttonStyle(.appleGrande)
         .disabled(scrive || scrittoIstantanea != nil)
-        .help("Ruby scrive di nuovo lo stesso messaggio, con le stesse cifre")
+        .help("Vera scrive di nuovo lo stesso messaggio, con le stesse cifre")
     }
 
     // MARK: Fare

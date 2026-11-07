@@ -9,8 +9,8 @@
 #   (di solito build/ios/Build/Products/Release-iphonesimulator).
 #
 # Su iOS il bundle è piatto (niente Contents/): eseguibile, Info.plist, Prisma_Prisma.bundle,
-# Ruby/Istruzioni e icone stanno nella radice del .app. Bundle.main.resourceURL è la radice
-# del .app, quindi Risorse.bundle e MotoriRuby trovano tutto senza modifiche al codice.
+# Vera/Istruzioni e icone stanno nella radice del .app. Bundle.main.resourceURL è la radice
+# del .app, quindi Risorse.bundle e MotoriVera trovano tutto senza modifiche al codice.
 set -euo pipefail
 
 if [ $# -lt 2 ] || [ $# -gt 3 ]; then
@@ -73,16 +73,16 @@ for b in "$PROD"/*.bundle; do
 done
 [ "$trovati" = 1 ] || errore "Nessun bundle di risorse in $PROD"
 
-# Istruzioni di Ruby (si leggono da Bundle.main.resourceURL/Ruby/Istruzioni)
-if [ -d "$RADICE/Ruby/Istruzioni" ]; then
-    mkdir -p "$APP/Ruby"
-    ditto "$RADICE/Ruby/Istruzioni" "$APP/Ruby/Istruzioni"
+# Istruzioni di Vera (si leggono da Bundle.main.resourceURL/Vera/Istruzioni)
+if [ -d "$RADICE/Vera/Istruzioni" ]; then
+    mkdir -p "$APP/Vera"
+    ditto "$RADICE/Vera/Istruzioni" "$APP/Vera/Istruzioni"
 fi
-# Schemi (scenari «E se…?») ed esempi per --prova-ruby, accanto alle istruzioni
+# Schemi (scenari «E se…?») ed esempi per --prova-vera, accanto alle istruzioni
 for cartella in Schemi Esempi; do
-    if [ -d "$RADICE/Ruby/$cartella" ]; then
-        mkdir -p "$APP/Ruby"
-        ditto "$RADICE/Ruby/$cartella" "$APP/Ruby/$cartella"
+    if [ -d "$RADICE/Vera/$cartella" ]; then
+        mkdir -p "$APP/Vera"
+        ditto "$RADICE/Vera/$cartella" "$APP/Vera/$cartella"
     fi
 done
 
@@ -130,17 +130,17 @@ if [ -d "$RADICE/Sources/Prisma/Risorse" ]; then
     [ "$mancanti" = 0 ] || errore "$mancanti risorse mancanti nel .app"
 fi
 
-if [ -d "$RADICE/Ruby/Istruzioni" ]; then
-    test -f "$APP/Ruby/Istruzioni/chat.md" || errore "Ruby/Istruzioni/chat.md mancante"
-    test -f "$APP/Ruby/Istruzioni/commento.md" || errore "Ruby/Istruzioni/commento.md mancante"
-    test -f "$APP/Ruby/Istruzioni/conversazione.md" || errore "Ruby/Istruzioni/conversazione.md mancante"
-    test -f "$APP/Ruby/Istruzioni/mini.md" || errore "Ruby/Istruzioni/mini.md mancante"
-    test -f "$APP/Ruby/Istruzioni/scenari.md" || errore "Ruby/Istruzioni/scenari.md mancante"
-    test -f "$APP/Ruby/Istruzioni/messaggi.md" || errore "Ruby/Istruzioni/messaggi.md mancante"
-    test -f "$APP/Ruby/Schemi/scenario.json" || errore "Ruby/Schemi/scenario.json mancante"
-    test -f "$APP/Ruby/Istruzioni/copilota.md" || errore "Ruby/Istruzioni/copilota.md mancante"
-    test -f "$APP/Ruby/Schemi/copilota.json" || errore "Ruby/Schemi/copilota.json mancante"
-    test -f "$APP/Ruby/Istruzioni/verbale-copilota.md" || errore "Ruby/Istruzioni/verbale-copilota.md mancante"
+if [ -d "$RADICE/Vera/Istruzioni" ]; then
+    test -f "$APP/Vera/Istruzioni/chat.md" || errore "Vera/Istruzioni/chat.md mancante"
+    test -f "$APP/Vera/Istruzioni/commento.md" || errore "Vera/Istruzioni/commento.md mancante"
+    test -f "$APP/Vera/Istruzioni/conversazione.md" || errore "Vera/Istruzioni/conversazione.md mancante"
+    test -f "$APP/Vera/Istruzioni/mini.md" || errore "Vera/Istruzioni/mini.md mancante"
+    test -f "$APP/Vera/Istruzioni/scenari.md" || errore "Vera/Istruzioni/scenari.md mancante"
+    test -f "$APP/Vera/Istruzioni/messaggi.md" || errore "Vera/Istruzioni/messaggi.md mancante"
+    test -f "$APP/Vera/Schemi/scenario.json" || errore "Vera/Schemi/scenario.json mancante"
+    test -f "$APP/Vera/Istruzioni/copilota.md" || errore "Vera/Istruzioni/copilota.md mancante"
+    test -f "$APP/Vera/Schemi/copilota.json" || errore "Vera/Schemi/copilota.json mancante"
+    test -f "$APP/Vera/Istruzioni/verbale-copilota.md" || errore "Vera/Istruzioni/verbale-copilota.md mancante"
 fi
 
 codesign --verify --strict --verbose=2 "$APP"

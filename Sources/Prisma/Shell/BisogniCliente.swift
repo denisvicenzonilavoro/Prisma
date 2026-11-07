@@ -4,7 +4,7 @@ import SwiftUI
 /// 1. bisogni rilevati dai dati (con il motivo), da confermare o scartare;
 /// 2. mappa delle sei aree di vita: due tocchi per area (quanto conta, entro quando);
 /// 3. eventi di vita, che generano da soli i bisogni collegati.
-/// Il risultato è la ruota dei bisogni, che orienta l'Analisi 360 e la traccia di Ruby.
+/// Il risultato è la ruota dei bisogni, che orienta l'Analisi 360 e la traccia di Vera.
 struct BisogniCliente: View {
     @EnvironmentObject var stato: StatoShell
     let cliente: Cliente

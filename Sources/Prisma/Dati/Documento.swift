@@ -118,7 +118,7 @@ struct Documento: Identifiable, Codable, Hashable {
 }
 
 /// I gruppi dell'elenco dei Documenti (dalla versione 23 dell'archivio). `Documento.Tipo` resta com'è perché lo
-/// usano Ruby e i prospetti; la categoria lo affina: per Ruby i documenti d'identità e i questionari sono `.altro`.
+/// usano Vera e i prospetti; la categoria lo affina: per Vera i documenti d'identità e i questionari sono `.altro`.
 enum CategoriaDocumento: String, Codable, CaseIterable, Identifiable {
     case kid, contratto, estratto, identita, questionario, altro, prisma
 

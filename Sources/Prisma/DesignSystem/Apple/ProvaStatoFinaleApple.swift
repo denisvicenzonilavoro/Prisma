@@ -47,26 +47,26 @@ enum ProvaStatoFinaleApple {
                       MotoApple.animazione(MotoApple.Cascata.animazione, calmo: false, istantanea: true) == nil)
         verifica("Tema Apple: dissolvenza calma di 0,15 s", MotoApple.durataCalma, 0.15, tolleranza: 1e-9)
 
-        // Ruby (§2.18-2.20): la sfera respira fino a 1,045 a metà ciclo e pulsa fino a 1,1; i puntini salgono al 30%
+        // Vera (§2.18-2.20): la sfera respira fino a 1,045 a metà ciclo e pulsa fino a 1,1; i puntini salgono al 30%
         // e al 60% sono di nuovo spenti; il testo si divide in parole tenendo spazi e a capo di Qwen
         let metaRespiro = Date(timeIntervalSinceReferenceDate: MotoApple.Sfera.respiro / 2)
-        verifica("Tema Apple: sfera di Ruby a metà del respiro",
-                 Double(SferaRuby.fase(al: metaRespiro, viva: true, pensa: false, inizioPensa: nil).scala),
+        verifica("Tema Apple: sfera di Vera a metà del respiro",
+                 Double(SferaVera.fase(al: metaRespiro, viva: true, pensa: false, inizioPensa: nil).scala),
                  Double(MotoApple.Sfera.scalaRespiro), tolleranza: 1e-9)
-        verifica("Tema Apple: sfera di Ruby a metà della pulsazione",
-                 Double(SferaRuby.fase(al: metaRespiro.addingTimeInterval(MotoApple.Sfera.pensa / 2), viva: true, pensa: true,
+        verifica("Tema Apple: sfera di Vera a metà della pulsazione",
+                 Double(SferaVera.fase(al: metaRespiro.addingTimeInterval(MotoApple.Sfera.pensa / 2), viva: true, pensa: true,
                                       inizioPensa: metaRespiro).scala),
                  Double(MotoApple.Sfera.scalaPensa), tolleranza: 1e-9)
-        verifica.vero("Tema Apple: sfera di Ruby ferma a riposo", SferaRuby.Fase.riposo.scala == 1 && SferaRuby.Fase.riposo.angolo == 0)
+        verifica.vero("Tema Apple: sfera di Vera ferma a riposo", SferaVera.Fase.riposo.scala == 1 && SferaVera.Fase.riposo.angolo == 0)
         let picco = PuntiniScrittura.picco(MotoApple.Puntini.ciclo * MotoApple.Puntini.picco)
         verifica("Tema Apple: puntino in alto al 30% del ciclo", picco.salita, 1, tolleranza: 1e-9)
         verifica("Tema Apple: puntino spento dopo il 60% del ciclo", PuntiniScrittura.picco(MotoApple.Puntini.ciclo * 0.8).luce, 0)
         let frase = "Ciao  Giulia,\nla casa è al 52%."
         let fini = TestoProgressivo.fini(frase)
-        verifica.vero("Tema Apple: testo di Ruby diviso in parole", fini.count == 7)
-        verifica.vero("Tema Apple: testo di Ruby fino alla seconda parola, con gli spazi di Qwen",
+        verifica.vero("Tema Apple: testo di Vera diviso in parole", fini.count == 7)
+        verifica.vero("Tema Apple: testo di Vera fino alla seconda parola, con gli spazi di Qwen",
                       TestoProgressivo.prefisso(frase, fini: fini, parole: 2) == "Ciao  Giulia,")
-        verifica.vero("Tema Apple: testo di Ruby completo all'ultima parola",
+        verifica.vero("Tema Apple: testo di Vera completo all'ultima parola",
                       TestoProgressivo.prefisso(frase, fini: fini, parole: fini.count) == frase
                           && TestoProgressivo.prefisso(frase, fini: fini, parole: 0).isEmpty)
     }

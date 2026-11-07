@@ -18,8 +18,8 @@ struct DatiPrisma: Codable, Equatable {
     var documenti: [Documento] = []
     /// Valutazioni d'investimento (prospetto e report di riscatto).
     var valutazioni: [ValutazioneInvestimento] = []
-    /// Conversazioni con Ruby, per cliente.
-    var conversazioni: [String: [MessaggioRuby]] = [:]
+    /// Conversazioni con Vera, per cliente.
+    var conversazioni: [String: [MessaggioVera]] = [:]
     /// Commenti del consulente nei report per i clienti.
     var commenti: [CommentoReport] = []
     /// Note del taccuino, legate ai clienti.
@@ -75,7 +75,7 @@ struct DatiPrisma: Codable, Equatable {
     /// 3: posizioni in essere e in proposta.
     /// 4: tipo, canale e posizione degli appuntamenti; note e appuntamento collegato delle attività.
     /// 5: scenari del simulatore e Analisi 360 dei clienti.
-    /// 6: conversazioni e impostazioni di Ruby.
+    /// 6: conversazioni e impostazioni di Vera.
     /// 7: profilo dei bisogni dei clienti (mappa, eventi di vita, bisogni rilevati confermati).
     /// 8: incontri (preparazione, ascolto, appunti, decisioni, prossimi passi).
     /// 9: schede prodotto e obiettivi dei clienti.
@@ -84,7 +84,7 @@ struct DatiPrisma: Codable, Equatable {
     /// 12: rilevazioni dei valori delle posizioni (storico per il resoconto).
     /// 13: trattenuto sul rendimento e dati fiscali delle posizioni (regime, titoli di Stato, bollo, previdenza).
     /// 14: reddito lordo annuo nel profilo del cliente (previdenza e deducibilità).
-    /// 15: commenti del consulente nei report (scritti con Ruby).
+    /// 15: commenti del consulente nei report (scritti con Vera).
     /// 16: quota in gestione separata delle polizze multiramo; impostazioni di backup con l'ultimo errore.
     /// 17: spazi di lavoro salvati.
     /// 18: note del taccuino.
@@ -185,7 +185,7 @@ struct DatiPrisma: Codable, Equatable {
         obiettivi = (try? c.decodeIfPresent([Obiettivo].self, forKey: .obiettivi)) ?? []
         documenti = (try? c.decodeIfPresent([Documento].self, forKey: .documenti)) ?? []
         valutazioni = (try? c.decodeIfPresent([ValutazioneInvestimento].self, forKey: .valutazioni)) ?? []
-        conversazioni = (try? c.decodeIfPresent([String: [MessaggioRuby]].self, forKey: .conversazioni)) ?? [:]
+        conversazioni = (try? c.decodeIfPresent([String: [MessaggioVera]].self, forKey: .conversazioni)) ?? [:]
         commenti = (try? c.decodeIfPresent([CommentoReport].self, forKey: .commenti)) ?? []
         // Dalla versione 27 con tolleranza: uno spazio o una finestra illeggibile (un'app di un Prisma più nuovo) si salta
         spazi = (try? c.decodeIfPresent(ElencoTollerante<SpazioLavoro>.self, forKey: .spazi))?.elementi ?? []
@@ -225,7 +225,7 @@ struct Impostazioni: Codable, Equatable {
     var inizialiUtente = "DV"
     var backup = ImpostazioniBackup()
     /// Dalla versione 6 dell'archivio.
-    var ruby = ImpostazioniRuby()
+    var vera = ImpostazioniVera()
     /// PDF da consegnare ai clienti (letto con tolleranza: gli archivi di prima non l'hanno).
     var pdf = ImpostazioniPDF()
     /// La guida «Comincia con i tuoi dati» nascosta dalla scrivania.
@@ -241,7 +241,7 @@ struct Impostazioni: Codable, Equatable {
     /// Quanta pioggia cade sull'acqua della scrivania.
     var pioggia = IntensitaPioggia.leggera
     /// «L'acqua della scrivania» (Impostazioni › Aspetto): l'acqua risponde, con una goccia al clic sul fondo libero, alle
-    /// notifiche nuove e allo sblocco, e vibra piano mentre Ruby risponde. Acceso di base; letto con tolleranza, senza
+    /// notifiche nuove e allo sblocco, e vibra piano mentre Vera risponde. Acceso di base; letto con tolleranza, senza
     /// alzare la versione: gli archivi e i backup di prima, che non l'hanno, si aprono con l'acqua accesa.
     var acquaDellaScrivania = true
     /// «Riduci movimento» di Prisma (Impostazioni › Aspetto): si somma a quello del sistema. Tutto compare già fermo
@@ -287,8 +287,8 @@ struct Impostazioni: Codable, Equatable {
     init() {}
 
     private enum CodingKeys: String, CodingKey {
-        // Compatibilità: le impostazioni di Ruby restano sotto la chiave «eve» (il vecchio nome) negli archivi e nei backup.
-        case nomeUtente, inizialiUtente, backup, ruby = "eve", pdf, guidaNascosta, introduzioneVista, dimensioneTesto, aspetto, sfondoAnimato, pioggia
+        // Compatibilità: le impostazioni di Vera restano sotto la chiave «eve» (il vecchio nome) negli archivi e nei backup.
+        case nomeUtente, inizialiUtente, backup, vera = "eve", pdf, guidaNascosta, introduzioneVista, dimensioneTesto, aspetto, sfondoAnimato, pioggia
         case promemoria, ricercheSalvate, giorniSeguitoProposte, orari
         case acquaDellaScrivania, riduciMovimento
         case consegna, conformita, occasioni
@@ -305,7 +305,7 @@ struct Impostazioni: Codable, Equatable {
         if nomeUtente == "Dennis" { nomeUtente = "Denis" }
         inizialiUtente = try c.decodeIfPresent(String.self, forKey: .inizialiUtente) ?? "DV"
         backup = try c.decodeIfPresent(ImpostazioniBackup.self, forKey: .backup) ?? ImpostazioniBackup()
-        ruby = (try? c.decodeIfPresent(ImpostazioniRuby.self, forKey: .ruby)) ?? ImpostazioniRuby()
+        vera = (try? c.decodeIfPresent(ImpostazioniVera.self, forKey: .vera)) ?? ImpostazioniVera()
         pdf = (try? c.decodeIfPresent(ImpostazioniPDF.self, forKey: .pdf)) ?? ImpostazioniPDF()
         guidaNascosta = (try? c.decodeIfPresent(Bool.self, forKey: .guidaNascosta)) ?? false
         // L'introduzione: gli archivi di prima non la hanno (Denis la vede una volta, poi dal menu Aiuto)
@@ -500,9 +500,9 @@ struct ImpostazioniPromemoria: Codable, Equatable {
     }
 }
 
-/// Impostazioni di Ruby (comprese nel backup).
-struct ImpostazioniRuby: Codable, Equatable {
-    /// Quando Ruby risponde anche a voce.
+/// Impostazioni di Vera (comprese nel backup).
+struct ImpostazioniVera: Codable, Equatable {
+    /// Quando Vera risponde anche a voce.
     enum RisposteAVoce: String, Codable, CaseIterable, Identifiable {
         /// Solo quando le parli tu.
         case quandoParli
@@ -529,11 +529,11 @@ struct ImpostazioniRuby: Codable, Equatable {
     var risposteAVoce = RisposteAVoce.quandoParli
     /// A voce legge tutta la risposta, non solo l'inizio.
     var leggiTutto = false
-    /// Dopo aver risposto a voce, Ruby torna ad ascoltare finché non le dici «basta».
+    /// Dopo aver risposto a voce, Vera torna ad ascoltare finché non le dici «basta».
     var conversazioneContinua = true
     /// Quale riconoscimento vocale usare per ascoltarti (sempre sul Mac).
     var riconoscimento = SceltaRiconoscimento.automatico
-    /// Modalità diagnostica: sotto il campo di Ruby compare l'ultimo passaggio dell'ascolto.
+    /// Modalità diagnostica: sotto il campo di Vera compare l'ultimo passaggio dell'ascolto.
     var mostraPassaggiVoce = false
     /// Chi fa girare il modello sul Mac: Ollama oppure un server compatibile OpenAI (MLX, llama.cpp, LM Studio).
     var fornitore = TipoFornitore.ollama
@@ -543,15 +543,15 @@ struct ImpostazioniRuby: Codable, Equatable {
     /// Server compatibile OpenAI: anche qui solo indirizzi del Mac.
     var indirizzoCompatibile = FornitoreCompatibileOpenAI.indirizzoPredefinito
     var modelloCompatibile = ""
-    /// Quando Ruby ragiona prima di rispondere.
+    /// Quando Vera ragiona prima di rispondere.
     var ragionamento = SceltaRagionamento.automatico
-    /// All'avvio di Prisma Ruby apre Ollama (se serve) e carica il modello: è già pronta alla prima domanda.
+    /// All'avvio di Prisma Vera apre Ollama (se serve) e carica il modello: è già pronta alla prima domanda.
     var prontaAllAvvio = true
     /// Quanto il modello resta in memoria dopo l'ultima risposta (formato di Ollama: «10m»).
     var restaInMemoria = MotoreLocale.restaInMemoria
-    /// I modelli del confronto (Impostazioni › Ruby), separati da virgole.
+    /// I modelli del confronto (Impostazioni › Vera), separati da virgole.
     var modelliConfronto = ConfrontoModelli.predefiniti
-    /// iPhone e iPad usano Qwen di questo Mac in rete locale, cifrato con il codice di abbinamento (PonteRuby).
+    /// iPhone e iPad usano Qwen di questo Mac in rete locale, cifrato con il codice di abbinamento (PonteVera).
     var ponte = ImpostazioniPonte()
 
     /// Il modello del fornitore scelto.

@@ -295,19 +295,19 @@ struct ImpostazioniTelefono: View {
             }
             .schedaTelefono()
 
-            SezioneTelefono(titolo: "Ruby")
+            SezioneTelefono(titolo: "Vera")
             VStack(alignment: .leading, spacing: E.spazioRiga) {
                 VStack(alignment: .leading, spacing: E.spazioEtichette) {
                     Text("Codice del Mac")
                         .carattereApple(E.nome)
                         .foregroundColor(E.coloreNome)
-                    Text(stato.dati.impostazioni.ruby.ponte.abbinato
-                         ? (stato.disponibilitaLocale.motivo ?? "Collegata: Ruby risponde con Qwen del tuo Mac, in Wi‑Fi e cifrato")
-                         : "Sul Mac apri Impostazioni › Ruby, attiva «iPhone e iPad» e scrivi qui il codice che compare (arriva anche aprendo un backup del Mac)")
+                    Text(stato.dati.impostazioni.vera.ponte.abbinato
+                         ? (stato.disponibilitaLocale.motivo ?? "Collegata: Vera risponde con Qwen del tuo Mac, in Wi‑Fi e cifrato")
+                         : "Sul Mac apri Impostazioni › Vera, attiva «iPhone e iPad» e scrivi qui il codice che compare (arriva anche aprendo un backup del Mac)")
                         .carattereApple(E.dettaglio)
                         .foregroundColor(stato.disponibilitaLocale.pronto ? Tema.Apple.Colore.verde : E.coloreDettaglio)
                         .fixedSize(horizontal: false, vertical: true)
-                    TextField("ABCD-EFGH-JKLM", text: $stato.dati.impostazioni.ruby.ponte.codice)
+                    TextField("ABCD-EFGH-JKLM", text: $stato.dati.impostazioni.vera.ponte.codice)
                         .carattereApple(E.valore)
                         .textInputAutocapitalization(.characters)
                         .autocorrectionDisabled()
@@ -332,7 +332,7 @@ struct ImpostazioniTelefono: View {
     }
 
     /// «L'acqua della scrivania» (SfondoAcquaRisposta.swift): toccando il fondo libero cade una goccia, le notifiche
-    /// arrivano come gocce e l'acqua vibra piano mentre Ruby risponde. Come in Impostazioni › Aspetto del Mac.
+    /// arrivano come gocce e l'acqua vibra piano mentre Vera risponde. Come in Impostazioni › Aspetto del Mac.
     private var acquaDellaScrivania: some View {
         let animato = stato.dati.impostazioni.sfondoAnimato
         return HStack(alignment: .center, spacing: E.spazioRiga) {

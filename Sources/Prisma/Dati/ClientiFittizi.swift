@@ -1,6 +1,6 @@
 import Foundation
 
-/// Trenta clienti fittizi completi, in aggiunta ai 5 del template: per vedere Prisma piena e per fare a Ruby
+/// Trenta clienti fittizi completi, in aggiunta ai 5 del template: per vedere Prisma piena e per fare a Vera
 /// domande vere (scadenze, coperture, pensione, portafoglio). Persone, polizze e cifre sono inventate;
 /// i prodotti Alleanza sono quelli della scheda di prova. Generati sempre uguali (niente caso), con le date
 /// che partono da oggi così agenda, scadenze e storico restano attuali.

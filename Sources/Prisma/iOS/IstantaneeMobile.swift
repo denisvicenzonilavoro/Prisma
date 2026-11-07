@@ -61,7 +61,7 @@ enum IstantaneeMobile {
         if iPad {
             elenco += [
                 Scena(nome: "8-simulazioni") { m in m.apri(.simulazioni) },
-                Scena(nome: "9-ruby", attesaInPiu: IstantaneeMobile.attesaScrivania) { m in m.apri(.ruby) },
+                Scena(nome: "9-vera", attesaInPiu: IstantaneeMobile.attesaScrivania) { m in m.apri(.vera) },
                 Scena(nome: "10-impostazioni-archivio") { m in
                     m.stato.schedaImpostazioni = .archivio
                     m.apri(.impostazioni)
@@ -183,10 +183,10 @@ enum IstantaneeMobile {
                 Scena(nome: "51-tavolo-cursore", attesaInPiu: IstantaneeMobile.attesaScrivania) { m in IstantaneeTavoloiPad.cursore(m) },
                 Scena(nome: "52-tavolo-presa-visione") { m in IstantaneeTavoloiPad.presaVisione(m) },
                 Scena(nome: "53-tavolo-neutro") { m in IstantaneeTavoloiPad.neutra(m) },
-                // «Luce», giro 1: il dock dell'iPad in verticale con le app del Mac fino a Prospetti, più Sala e Ruby
+                // «Luce», giro 1: il dock dell'iPad in verticale con le app del Mac fino a Prospetti, più Sala e Vera
                 // (13 elementi, decisione 121); Biblioteca, Mercato, Studio e Impostazioni in «Tutte le app»
                 Scena(nome: "55-dock-ipad-luce", attesaInPiu: IstantaneeMobile.attesaScrivania) { m in m.mostraHome() },
-                // Messaggi (giro 3 di «Orizzonte»): la colonna delle occasioni e il riepilogo di Giulia scritto da Ruby,
+                // Messaggi (giro 3 di «Orizzonte»): la colonna delle occasioni e il riepilogo di Giulia scritto da Vera,
                 // con i dati di prova di MessaggiDiProva (Shell/IstantaneeMessaggi.swift)
                 Scena(nome: "498-messaggi") { m in IstantaneeMobile.messaggi(m) },
                 // Mercato (giro 7 di «Orizzonte»): la stessa finestra del Mac con i dati di prova di MercatoDiProva
@@ -221,7 +221,7 @@ enum IstantaneeMobile {
                 },
                 Scena(nome: "10-impostazioni") { m in m.apri(.impostazioni) },
                 // La scrivania del tema Apple a una colonna: in cima (saluto, la mossa del giorno con il prossimo incontro,
-                // «Richiede attenzione») e in fondo (la riga di Ruby, il portafoglio con i tre anelli, il piede, il dock)
+                // «Richiede attenzione») e in fondo (la riga di Vera, il portafoglio con i tre anelli, il piede, il dock)
                 Scena(nome: "40-scrivania") { m in m.mostraHome() },
                 Scena(nome: "41-scrivania-giu") { m in
                     m.mostraHome()
@@ -252,11 +252,11 @@ enum IstantaneeMobile {
                     m.apri(.documenti)
                 },
                 Scena(nome: "49-in-arrivo") { m in m.apri(.analisi360) },
-                // Ruby sull'iPhone: Qwen del Mac in Wi‑Fi. Prima il Mac non collegato, poi una conversazione
-                Scena(nome: "50-ruby-mac-assente") { m in
+                // Vera sull'iPhone: Qwen del Mac in Wi‑Fi. Prima il Mac non collegato, poi una conversazione
+                Scena(nome: "50-vera-mac-assente") { m in
                     m.stato.clienteAttivoId = "giulia"
-                    m.stato.disponibilitaLocale = .nonDisponibile(PonteRuby.macNonTrovato)
-                    m.apri(.ruby)
+                    m.stato.disponibilitaLocale = .nonDisponibile(PonteVera.macNonTrovato)
+                    m.apri(.vera)
                 },
                 // Messaggi (giro 3 di «Orizzonte»): il messaggio dell'occasione in alto, tono, canale e testo, le altre
                 // occasioni a un tocco nel menu «Occasioni»
@@ -287,14 +287,14 @@ enum IstantaneeMobile {
                     m.stato.ovunque.modulo = .accendi
                     m.apri(.impostazioni)
                 },
-                Scena(nome: "51-ruby-conversazione") { m in
+                Scena(nome: "51-vera-conversazione") { m in
                     m.stato.clienteAttivoId = "giulia"
                     m.stato.disponibilitaLocale = .pronto
-                    m.stato.aggiungiMessaggio(MessaggioRuby(autore: .utente, testo: "Cosa ha Giulia in scadenza nei prossimi mesi?"),
+                    m.stato.aggiungiMessaggio(MessaggioVera(autore: .utente, testo: "Cosa ha Giulia in scadenza nei prossimi mesi?"),
                                               cliente: "giulia", parla: false)
-                    m.stato.aggiungiMessaggio(MessaggioRuby(autore: .ruby, testo: "Nei prossimi 12 mesi Giulia ha 2 posizioni in scadenza: il conto deposito a gennaio (indipendente) e il piano di risparmio a marzo (Alleanza). È liquidità che può andare verso l'anticipo della casa: ne parlerei con lei prima di gennaio.",
+                    m.stato.aggiungiMessaggio(MessaggioVera(autore: .vera, testo: "Nei prossimi 12 mesi Giulia ha 2 posizioni in scadenza: il conto deposito a gennaio (indipendente) e il piano di risparmio a marzo (Alleanza). È liquidità che può andare verso l'anticipo della casa: ne parlerei con lei prima di gennaio.",
                                                            motore: "Qwen sul Mac"), cliente: "giulia", parla: false)
-                    m.apri(.ruby)
+                    m.apri(.vera)
                 },
             ]
         }
@@ -308,11 +308,11 @@ enum IstantaneeMobile {
         let schede = sid.flatMap { m.stato.sessioneCopilota($0)?.schede.count } ?? 0
         m.stato.copilota.mostraPerIstantanea(fase: .ascolto, sessione: sid, secondi: 9, qwenPronto: true,
                                              attesaPonte: attesa ? schede : 0,
-                                             motivoPonte: attesa ? PonteRuby.macNonTrovato : nil)
+                                             motivoPonte: attesa ? PonteVera.macNonTrovato : nil)
         m.apri(.incontri)
     }
 
-    /// Messaggi con i dati di prova: il riepilogo dell'incontro di Giulia, Cordiale, Mail, nello stato finale di Ruby.
+    /// Messaggi con i dati di prova: il riepilogo dell'incontro di Giulia, Cordiale, Mail, nello stato finale di Vera.
     static func messaggi(_ m: StatoMobile) {
         MessaggiDiProva.prepara(m.stato)
         RichiestaIstantaneaMessaggi.chiedi(m.stato, tipo: .riepilogoIncontro, cliente: "giulia")

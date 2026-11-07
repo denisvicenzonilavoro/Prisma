@@ -101,14 +101,14 @@ extension Tema.Misura {
         static let segno: CGFloat = 30
         static let raggioSegno: CGFloat = 9
         static let massimoAttenzione = 4
-        /// La sfera di Ruby nella sua riga.
+        /// La sfera di Vera nella sua riga.
         static let sfera: CGFloat = 32
         /// Altezza del widget del portafoglio sul telefono.
         static let portafoglio: CGFloat = 250
     }
 
-    /// Ruby sull'iPhone (RubyTelefono): la chat del Mac a tutta larghezza, il contesto in una riga in alto.
-    enum RubyTelefono {
+    /// Vera sull'iPhone (VeraTelefono): la chat del Mac a tutta larghezza, il contesto in una riga in alto.
+    enum VeraTelefono {
         static let margine: CGFloat = 16
         /// La riga in alto: di chi si parla (menu) e lo stato di Qwen sul Mac.
         static let testata: CGFloat = 44
@@ -195,14 +195,14 @@ extension Tipo {
         static let spaziaturaOcchiello = Tema.Testo.spaziatura(0.04, 12.5)
         static let titoloIncontro = Tipo.sistema(17, .semibold)
         static let simboloAttenzione = Tipo.sistema(14, .bold)
-        /// Ruby sull'iPhone: il gettone di chi si parla, lo stato di Qwen, l'avviso, il campo.
-        static let rubyGettone = Tipo.sistema(15, .semibold)
-        static let rubyStato = Tipo.sistema(12.5, .medium)
-        static let rubyAvvisoTitolo = Tipo.sistema(15, .semibold)
-        static let rubyAvviso = Tipo.sistema(14)
-        static let rubyCampo = Tipo.sistema(16)
-        static let rubyBenvenuto = Tipo.sistema(22, .bold)
-        static let rubyBenvenutoTesto = Tipo.sistema(15)
+        /// Vera sull'iPhone: il gettone di chi si parla, lo stato di Qwen, l'avviso, il campo.
+        static let veraGettone = Tipo.sistema(15, .semibold)
+        static let veraStato = Tipo.sistema(12.5, .medium)
+        static let veraAvvisoTitolo = Tipo.sistema(15, .semibold)
+        static let veraAvviso = Tipo.sistema(14)
+        static let veraCampo = Tipo.sistema(16)
+        static let veraBenvenuto = Tipo.sistema(22, .bold)
+        static let veraBenvenutoTesto = Tipo.sistema(15)
     }
 }
 
@@ -227,7 +227,7 @@ extension Tema.Misura.Mobile {
     enum Scrivania {
         /// --gut: clamp(16px, 3vw, 44px) → 16 sul telefono.
         static let margineTelefono: CGFloat = 16
-        /// Altezze dei widget a una colonna (@media 760: rows 330 310 64 300 280 250; Ruby: Tema.Misura.widgetRuby).
+        /// Altezze dei widget a una colonna (@media 760: rows 330 310 64 300 280 250; Vera: Tema.Misura.widgetVera).
         static let agenda: CGFloat = 330
         static let cliente: CGFloat = 310
         static let attivita: CGFloat = 300

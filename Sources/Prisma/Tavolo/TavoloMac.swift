@@ -11,8 +11,8 @@ import SwiftUI
 // famiglia (cifre già calcolate dai motori, minime, solo del cliente presente), un cursore da muovere (il Mac
 // ricalcola e rimanda il risultato), la richiesta di presa visione. La presa visione torna con il tratto e la data:
 // finisce in fondo al PDF del documento, archiviato nei Documenti del cliente.
-// Il servizio ascolta in rete (NWListener, come ServerPonteRuby) solo dopo «Apri il tavolo» e si spegne con «Chiudi
-// il tavolo». Il codice di abbinamento è quello del ponte di Ruby (Impostazioni › Ruby); il protocollo è in
+// Il servizio ascolta in rete (NWListener, come ServerPonteVera) solo dopo «Apri il tavolo» e si spegne con «Chiudi
+// il tavolo». Il codice di abbinamento è quello del ponte di Vera (Impostazioni › Vera); il protocollo è in
 // ProtocolloTavolo.swift. Le viste (pulsante «Al tavolo», pannello, striscia della sala, pagina della presa visione)
 // stanno in Shell/AlTavolo.swift.
 
@@ -257,14 +257,14 @@ final class TavoloMac: ObservableObject {
     // MARK: Aprire e chiudere
 
     /// «Apri il tavolo»: ascolta in rete locale (e si annuncia con Bonjour). Senza codice ne crea uno, lo stesso
-    /// che usa Ruby su iPhone e iPad (Impostazioni › Ruby).
+    /// che usa Vera su iPhone e iPad (Impostazioni › Vera).
     func avvia(porta: UInt16 = ProtocolloTavolo.porta, annuncia: Bool = true, tempi: ProtocolloTavolo.Tempi = .normali) {
         guard ascolto == nil, let s = stato else { return }
-        if PonteRuby.normalizza(s.dati.impostazioni.ruby.ponte.codice) == nil {
-            s.dati.impostazioni.ruby.ponte.codice = PonteRuby.nuovoCodice()
+        if PonteVera.normalizza(s.dati.impostazioni.vera.ponte.codice) == nil {
+            s.dati.impostazioni.vera.ponte.codice = PonteVera.nuovoCodice()
         }
-        guard let k = ProtocolloTavolo.chiave(s.dati.impostazioni.ruby.ponte.codice) else { return }
-        let a = AscoltoTavolo(chiave: k, nomeMac: ServerPonteRuby.condiviso.nomeMac, tempi: tempi)
+        guard let k = ProtocolloTavolo.chiave(s.dati.impostazioni.vera.ponte.codice) else { return }
+        let a = AscoltoTavolo(chiave: k, nomeMac: ServerPonteVera.condiviso.nomeMac, tempi: tempi)
         a.eventi = { [weak self] e in
             DispatchQueue.main.async { [weak self] in self?.evento(e) }
         }

@@ -667,34 +667,34 @@ private struct CardArea360Apple: View, Equatable {
     }
 }
 
-// MARK: - Ruby e proposte dalle aree
+// MARK: - Vera e proposte dalle aree
 
 extension StatoShell {
-    /// «Chiedi a Ruby di spiegarlo»: apre Ruby e, dopo 0,7 s (subito con «Riduci movimento»), le manda la domanda
+    /// «Chiedi a Vera di spiegarlo»: apre Vera e, dopo 0,7 s (subito con «Riduci movimento»), le manda la domanda
     /// sull'area del cliente attivo, con lo spunto che porta i dati di Prisma di quell'area.
-    func chiediRubyArea360(_ area: AreaAnalisi) {
-        guard appConsentita(.ruby) else {
-            apri(.ruby)
+    func chiediVeraArea360(_ area: AreaAnalisi) {
+        guard appConsentita(.vera) else {
+            apri(.vera)
             return
         }
         let nome = clienteAttivo.map(StatoShell.nomeBreve) ?? "il cliente"
-        let testo = TestiAree360.domandaRuby(area, nome: nome)
-        let spunto = TestiAree360.spuntoRuby(area)
-        if rubyPortafoglio { rubyPortafoglio = false }
-        apri(.ruby)
+        let testo = TestiAree360.domandaVera(area, nome: nome)
+        let spunto = TestiAree360.spuntoVera(area)
+        if veraPortafoglio { veraPortafoglio = false }
+        apri(.vera)
         let attesa = Movimenti.calmo ? 0 : Tema.Apple.Moto.DomandaDaScrivania.ritardo
         DispatchQueue.main.asyncAfter(deadline: .now() + attesa) { [weak self] in
-            _ = self?.chiediRuby(testo, spunto: spunto)
+            _ = self?.chiediVera(testo, spunto: spunto)
         }
     }
 
     /// «Salva come proposta»: la prima azione che le analisi di Prisma suggeriscono per l'area (le stesse proposte di
-    /// Ruby, MotoreSintesi.calcolaProposte) diventa una bozza di proposta nel dossier, sul canale scelto.
+    /// Vera, MotoreSintesi.calcolaProposte) diventa una bozza di proposta nel dossier, sul canale scelto.
     /// Restituisce se è stata salvata e il testo dell'avviso.
     func salvaPropostaArea360(_ area: AreaAnalisi, canale: Canale) -> (salvata: Bool, testo: String) {
         guard !solaLettura else { return (false, TestiAree360.solaLettura) }
         guard let c = clienteAttivo else { return (false, TestiAree360.nessunaProposta(area, nome: "il cliente")) }
-        guard let fonte = fonteRuby(c.id),
+        guard let fonte = fonteVera(c.id),
               let p = MotoreAree360.proposta(per: area, tra: MotoreSintesi.calcolaProposte(fonte)),
               let areaPosizione = p.area else {
             return (false, TestiAree360.nessunaProposta(area, nome: c.nome))

@@ -483,7 +483,7 @@ struct GlossarioVista: View {
                     if let v = scelta {
                         ScrollView { dettaglio(v).frame(maxWidth: .infinity, alignment: .leading) }
                     } else {
-                        Text("Nessuna parola trovata. Prova con una parte della parola, o chiedi a Ruby.")
+                        Text("Nessuna parola trovata. Prova con una parte della parola, o chiedi a Vera.")
                             .font(Tema.Testo.Guida.testoBlocco)
                             .foregroundColor(Tema.Colore.inchiostroSecondario)
                             .fixedSize(horizontal: false, vertical: true)

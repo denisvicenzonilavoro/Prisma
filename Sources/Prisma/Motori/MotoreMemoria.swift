@@ -98,7 +98,7 @@ enum MotoreMemoria {
 
     // MARK: - Fotografia
 
-    /// La fotografia delle cifre di oggi. `posizioni` e `obiettivi` sono già quelli del cliente (come in FonteRuby).
+    /// La fotografia delle cifre di oggi. `posizioni` e `obiettivi` sono già quelli del cliente (come in FonteVera).
     static func fotografia(cliente: Cliente, posizioni: [Posizione], analisi: Analisi360, obiettivi: [Obiettivo],
                            oggi: Date, origine: FotografiaRiesame.Origine,
                            completezza: DatiCompletezzaFoto? = nil,
@@ -154,7 +154,7 @@ enum MotoreMemoria {
     }
 
     /// La stessa, dalla fonte del cliente: `f.cliente`, `f.posizioni`, `f.analisi`, `f.obiettivi`, `f.oggi`.
-    static func fotografia(_ f: FonteRuby, origine: FotografiaRiesame.Origine, completezza: DatiCompletezzaFoto? = nil,
+    static func fotografia(_ f: FonteVera, origine: FotografiaRiesame.Origine, completezza: DatiCompletezzaFoto? = nil,
                            conformita: [FotografiaRiesame.VoceConformitaFoto]? = nil) -> FotografiaRiesame {
         fotografia(cliente: f.cliente, posizioni: f.posizioni, analisi: f.analisi, obiettivi: f.obiettivi,
                    oggi: f.oggi, origine: origine, completezza: completezza, conformita: conformita)

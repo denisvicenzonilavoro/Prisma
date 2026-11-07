@@ -6,7 +6,7 @@ private typealias D = Misure.Documento
 // La scheda di adeguatezza su carta (giro 4, specifica 1): A4 verticale, due pagine, carta bianca e colori
 // fissi. Pagina 1: i controlli con il pallino colorato e i riferimenti. Pagina 2: a cosa risponde, esperienza
 // del cliente, documenti consegnati con le caselle, dichiarazioni, avvertenze e le tre righe per le firme.
-// Non è un `SceltaProspetto` (toccherebbe Ruby): si costruisce dal dettaglio della proposta.
+// Non è un `SceltaProspetto` (toccherebbe Vera): si costruisce dal dettaglio della proposta.
 
 extension DocumentoStampabile {
     /// La scheda di adeguatezza di una proposta: A4 verticale, due pagine, da firmare.

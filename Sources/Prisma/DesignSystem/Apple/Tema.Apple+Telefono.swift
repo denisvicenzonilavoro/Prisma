@@ -153,8 +153,8 @@ extension Tema.Apple {
             static let paddingRiga: CGFloat = 10
         }
 
-        /// La riga di Ruby: la sfera 40, «Ruby» 15 bold, la frase e lo stato di Qwen.
-        enum RigaRuby {
+        /// La riga di Vera: la sfera 40, «Vera» 15 bold, la frase e lo stato di Qwen.
+        enum RigaVera {
             static let sfera: CGFloat = 40
             static let nome = Carattere(dimensione: 15, peso: .bold)
             static let frase = Carattere(dimensione: 13.5, peso: .regular)
@@ -277,9 +277,9 @@ extension Tema.Apple {
             static let coloreLegenda = Colore.inchiostro2
         }
 
-        // MARK: Ruby (Design/iphone.html, schermata 5)
+        // MARK: Vera (Design/iphone.html, schermata 5)
 
-        enum Ruby {
+        enum Vera {
             static let margine: CGFloat = 12
             /// Di chi si parla: capsula `chip` alta 36, 13,5 semibold; a destra il pallino 8 e lo stato.
             static let gettone: CGFloat = 36
@@ -293,7 +293,7 @@ extension Tema.Apple {
             static let nonPronto = Colore.arancio
             static let testata: CGFloat = 48
             static let spazio: CGFloat = 8
-            /// L'avviso «Ruby usa Qwen del tuo Mac»: card d'avviso arancio, titolo 15 bold, testo 13.
+            /// L'avviso «Vera usa Qwen del tuo Mac»: card d'avviso arancio, titolo 15 bold, testo 13.
             static let fondoAvviso = Colore.avvisoFondo
             static let bordoAvviso = Colore.avvisoBordo
             static let titoloAvviso = Carattere(dimensione: 15, peso: .bold)

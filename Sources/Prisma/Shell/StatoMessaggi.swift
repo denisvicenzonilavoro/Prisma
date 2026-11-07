@@ -2,7 +2,7 @@ import Foundation
 
 // Ciò che Messaggi chiede allo stato (fondamenta del giro 3 di Orizzonte): le occasioni di oggi e della settimana
 // (MotoreOccasioniMessaggi, tenute da parte in DerivatiDati finché non cambiano i dati dei calcoli, messaggi compresi,
-// o il giorno), i messaggi di un cliente per il dossier, la firma, la scrittura con Ruby e il salvataggio nel dossier.
+// o il giorno), i messaggi di un cliente per il dossier, la firma, la scrittura con Vera e il salvataggio nel dossier.
 // Prisma non spedisce mai: `apriMessaggio` apre Mail o Messaggi già compilati e segna il messaggio come aperto.
 
 extension StatoShell {
@@ -33,15 +33,15 @@ extension StatoShell {
 
     /// Il testo di un messaggio: Qwen se è pronto (in streaming su `aggiorna`, dal thread del modello), altrimenti o se
     /// il testo non passa la verifica delle cifre il modello fisso di Prisma con l'avviso. Sul thread principale: legge
-    /// `dati` e `disponibilitaLocale` senza gare con il salvataggio; la scrittura di Qwen gira fuori (MessaggiRuby.scrivi).
+    /// `dati` e `disponibilitaLocale` senza gare con il salvataggio; la scrittura di Qwen gira fuori (MessaggiVera.scrivi).
     @MainActor
     func scriviMessaggio(_ o: OccasioneMessaggio, tono: TonoMessaggio, canale: CanaleMessaggio,
                          aggiorna: ((String) -> Void)? = nil) async -> TestoScrittoMessaggio? {
         guard let c = dati.clienti.first(where: { $0.id == o.clienteId }) else { return nil }
-        let ruby = dati.impostazioni.ruby
+        let vera = dati.impostazioni.vera
         let firma = firmaMessaggio(o.canale, tono: tono)
-        return await MessaggiRuby.scrivi(o, cliente: c, tono: tono, canale: canale, firma: firma,
-                                        motore: MotoriRuby.qwen(ruby, locale: disponibilitaLocale), ruby: ruby, aggiorna: aggiorna)
+        return await MessaggiVera.scrivi(o, cliente: c, tono: tono, canale: canale, firma: firma,
+                                        motore: MotoriVera.qwen(vera, locale: disponibilitaLocale), vera: vera, aggiorna: aggiorna)
     }
 
     /// Salva nel dossier il messaggio di un'occasione (o aggiorna quello con lo stesso id). Restituisce il messaggio

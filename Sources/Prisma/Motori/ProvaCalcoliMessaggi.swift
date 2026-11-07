@@ -4,7 +4,7 @@ import Foundation
 /// `Prisma --prova-calcoli`): le occasioni per fonte (riepilogo, scadenza, compleanno, consenso, riesame, parcella),
 /// la divisione «Da mandare oggi» / «Questa settimana», l'esclusione delle occasioni già coperte da un messaggio, ordine e
 /// massimo per gruppo, i modelli fissi compilati (solo cifre della scheda, saluto, firma dai dati, lunghezze), la verifica
-/// dei testi di Ruby, gli indirizzi mailto: e sms: e i clienti di prova. Oggi fisso al 4 novembre 2026, a mezzogiorno.
+/// dei testi di Vera, gli indirizzi mailto: e sms: e i clienti di prova. Oggi fisso al 4 novembre 2026, a mezzogiorno.
 /// Nomi, recapiti e importi sono DI PROVA.
 enum ProvaCalcoliMessaggi {
     private static let cal = Calendar.current
@@ -51,7 +51,7 @@ enum ProvaCalcoliMessaggi {
         parcelle(verifica)
         ordine(verifica)
         modelliFissi(verifica)
-        verificaRuby(verifica)
+        verificaVera(verifica)
         indirizzi(verifica)
         clientiDiProva(verifica)
     }
@@ -329,8 +329,8 @@ enum ProvaCalcoliMessaggi {
                     let t = ModelliMessaggi.testo(o, tono: tono, canale: canale, cliente: c, firma: firma)
                     let nome = "\(o.tipo.rawValue)/\(tono.rawValue)/\(canale.rawValue)"
                     // Solo le cifre della scheda (la bozza stessa non conta: si controlla contro i fatti)
-                    let soloFatti = MessaggiRuby.ammessi(o, cliente: c, bozza: TestoMessaggio(oggetto: nil, corpo: "", chiusura: t.chiusura))
-                    if !CommentoRuby.cifre(t.completo).isSubset(of: CommentoRuby.cifre(soloFatti)) { sbagliati.append("\(nome): cifre") }
+                    let soloFatti = MessaggiVera.ammessi(o, cliente: c, bozza: TestoMessaggio(oggetto: nil, corpo: "", chiusura: t.chiusura))
+                    if !CommentoVera.cifre(t.completo).isSubset(of: CommentoVera.cifre(soloFatti)) { sbagliati.append("\(nome): cifre") }
                     let apertura = tono == .formale ? "Gentile \(c.nome)," : "Ciao \(ModelliMessaggi.primoNome(c.nome)),"
                     if !t.corpo.hasPrefix(apertura) { sbagliati.append("\(nome): saluto") }
                     if !t.completo.hasSuffix("Denis") { sbagliati.append("\(nome): firma") }
@@ -339,7 +339,7 @@ enum ProvaCalcoliMessaggi {
                     if canale == .mail, (t.oggetto ?? "").isEmpty || (t.oggetto ?? "").count > RegoleMessaggi.caratteriOggetto {
                         sbagliati.append("\(nome): oggetto")
                     }
-                    if let motivo = MessaggiRuby.controlla(t.corpo, occasione: o, cliente: c, tono: tono, bozza: t) {
+                    if let motivo = MessaggiVera.controlla(t.corpo, occasione: o, cliente: c, tono: tono, bozza: t) {
                         sbagliati.append("\(nome): \(motivo)")
                     }
                 }
@@ -380,15 +380,15 @@ enum ProvaCalcoliMessaggi {
         verifica.vero("M9 Modelli: il tono breve si taglia a parola intera entro il limite", lungo.count <= 120 && lungo.hasSuffix("…"))
     }
 
-    // MARK: - M10 Verifica dei testi di Ruby
+    // MARK: - M10 Verifica dei testi di Vera
 
-    private static func verificaRuby(_ verifica: VerificaCalcoli) {
+    private static func verificaVera(_ verifica: VerificaCalcoli) {
         let marco = cliente("marco", "Marco Bianchi")
         guard let o = calcola(dati([marco], posizioni: [polizza("p45", scade: 45)])).tutte.first(where: { $0.tipo == .scadenzaPosizione }) else {
             return verifica.vero("M10 Verifica: occasione di prova", false)
         }
         let bozza = ModelliMessaggi.testo(o, tono: .cordiale, canale: .mail, cliente: marco, firma: "Denis")
-        func passa(_ t: String) -> Bool { MessaggiRuby.controlla(t, occasione: o, cliente: marco, tono: .cordiale, bozza: bozza) == nil }
+        func passa(_ t: String) -> Bool { MessaggiVera.controlla(t, occasione: o, cliente: marco, tono: .cordiale, bozza: bozza) == nil }
         verifica.vero("M10 Verifica: un testo con le cifre della scheda passa",
                       passa("Ciao Marco,\n\nla tua «Infortuni famiglia» scade il 19 dicembre 2026, tra 45 giorni: guardiamola insieme?"))
         verifica.vero("M10 Verifica: una cifra inventata, «55 mila», una promessa o un segnaposto non passano",
@@ -396,19 +396,19 @@ enum ProvaCalcoliMessaggi {
                       && !passa("Ciao Marco, con 55 mila euro potresti coprire tutto.")
                       && !passa("Ciao Marco, con un rendimento garantito stai tranquillo.")
                       && !passa("Ciao Marco, ci vediamo? [Il tuo nome]"))
-        let fatti = MessaggiRuby.ammessi(o, cliente: marco, bozza: bozza)
+        let fatti = MessaggiVera.ammessi(o, cliente: marco, bozza: bozza)
         verifica.vero("M10 Verifica: nel flusso una cifra inventata ferma la comparsa, la cifra che sta arrivando no",
-                      MessaggiRuby.mostrabile("Ciao Marco, la tua «Infortuni famiglia» scade il 1", fatti: fatti)
-                      && MessaggiRuby.mostrabile("Ciao Marco, scade il 19 dicembre 2026, tra 45 giorni", fatti: fatti)
-                      && !MessaggiRuby.mostrabile("Ciao Marco, risparmieresti 120 € all'anno", fatti: fatti)
-                      && !MessaggiRuby.mostrabile("Ciao Marco, con un rendimento garantito", fatti: fatti))
+                      MessaggiVera.mostrabile("Ciao Marco, la tua «Infortuni famiglia» scade il 1", fatti: fatti)
+                      && MessaggiVera.mostrabile("Ciao Marco, scade il 19 dicembre 2026, tra 45 giorni", fatti: fatti)
+                      && !MessaggiVera.mostrabile("Ciao Marco, risparmieresti 120 € all'anno", fatti: fatti)
+                      && !MessaggiVera.mostrabile("Ciao Marco, con un rendimento garantito", fatti: fatti))
         verifica.vero("M10 Verifica: un testo troppo lungo non passa",
                       !passa("Ciao Marco, " + String(repeating: "davvero ", count: RegoleMessaggi.paroleTollerate)))
-        let pulito = MessaggiRuby.pulisci("Oggetto: La tua polizza\n**Ciao Marco,**\n\nGuardiamola insieme.\n\nUn saluto,\nDenis", firma: "Denis")
-        verifica.vero("M10 Verifica: dal testo di Ruby si tolgono oggetto, grassetti, chiusura e firma (le mette Prisma)",
+        let pulito = MessaggiVera.pulisci("Oggetto: La tua polizza\n**Ciao Marco,**\n\nGuardiamola insieme.\n\nUn saluto,\nDenis", firma: "Denis")
+        verifica.vero("M10 Verifica: dal testo di Vera si tolgono oggetto, grassetti, chiusura e firma (le mette Prisma)",
                       pulito == "Ciao Marco,\n\nGuardiamola insieme.")
         verifica.vero("M10 Verifica: una firma diversa in fondo si toglie lo stesso",
-                      MessaggiRuby.pulisci("Ciao Marco,\n\nA presto!\nDenis Vicenzoni", firma: "Denis") == "Ciao Marco,")
+                      MessaggiVera.pulisci("Ciao Marco,\n\nA presto!\nDenis Vicenzoni", firma: "Denis") == "Ciao Marco,")
     }
 
     // MARK: - M11 Indirizzi mailto: e sms:
@@ -451,7 +451,7 @@ enum ProvaCalcoliMessaggi {
             guard let c = x.clienti.first(where: { $0.id == o.clienteId }) else { continue }
             for tono in TonoMessaggio.allCases {
                 let t = ModelliMessaggi.testo(o, tono: tono, canale: .mail, cliente: c, firma: "Denis")
-                if MessaggiRuby.controlla(t.corpo, occasione: o, cliente: c, tono: tono, bozza: t) != nil { sbagliati.append("\(o.id)/\(tono.rawValue)") }
+                if MessaggiVera.controlla(t.corpo, occasione: o, cliente: c, tono: tono, bozza: t) != nil { sbagliati.append("\(o.id)/\(tono.rawValue)") }
             }
         }
         verifica.vero("M12 Clienti di prova: i modelli fissi passano la verifica delle cifre"
@@ -460,7 +460,7 @@ enum ProvaCalcoliMessaggi {
         if let o = r.tutte.first ?? campionario().occasioni.first {
             var m = messaggio(o, stato: .apertoInMessaggi, il: d(2026, 11, 4))
             m.apertoIl = d(2026, 11, 4)
-            m.autore = .ruby
+            m.autore = .vera
             m.modello = "qwen3.5:4b"
             let letto = (try? Archivio.codificatore.encode(m)).flatMap { try? Archivio.decodificatore.decode(MessaggioCliente.self, from: $0) }
             verifica.vero("M12 Archivio: il messaggio si salva e si rilegge uguale", letto == m)

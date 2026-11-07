@@ -1,6 +1,6 @@
 import Foundation
 
-/// Il foglio del confronto tra modelli di Ruby (una pagina HTML sul Mac): carta chiara e colori fissi e opachi
+/// Il foglio del confronto tra modelli di Vera (una pagina HTML sul Mac): carta chiara e colori fissi e opachi
 /// come i documenti di Prisma (Carta.swift), una colonna per modello.
 enum StileConfronto {
     static let css = """

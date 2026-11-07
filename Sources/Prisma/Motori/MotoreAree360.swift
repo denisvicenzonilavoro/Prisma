@@ -270,9 +270,9 @@ enum MotoreAree360 {
     // MARK: - La proposta di un'area
 
     /// La proposta che «Salva come proposta» registra per un'area: la prima che le analisi di Prisma suggeriscono
-    /// per quell'area (MotoreSintesi.calcolaProposte, le stesse di Ruby), nil se non ce n'è nessuna o ce n'è già una
+    /// per quell'area (MotoreSintesi.calcolaProposte, le stesse di Vera), nil se non ce n'è nessuna o ce n'è già una
     /// aperta.
-    static func proposta(per area: AreaAnalisi, tra elenco: [PropostaRuby]) -> PropostaRuby? {
+    static func proposta(per area: AreaAnalisi, tra elenco: [PropostaVera]) -> PropostaVera? {
         let prefissi: [String]
         switch area {
         case .previdenza: prefissi = ["previdenza"]
@@ -289,7 +289,7 @@ enum MotoreAree360 {
 
 // MARK: - Testi
 
-/// Le parole della griglia e dei dettagli: mesi con la virgola, accordo al genere, domande a Ruby.
+/// Le parole della griglia e dei dettagli: mesi con la virgola, accordo al genere, domande a Vera.
 enum TestiAree360 {
     static let cifreDaiMotori = "Le cifre vengono dai motori di Prisma"
     static let solaLettura = "In sola lettura le proposte non si salvano."
@@ -342,8 +342,8 @@ enum TestiAree360 {
         a == .risparmio ? "Risparmio e liquidità" : a.nome
     }
 
-    /// La domanda che «Chiedi a Ruby di spiegarlo» manda, con il nome del cliente.
-    static func domandaRuby(_ a: AreaAnalisi, nome: String) -> String {
+    /// La domanda che «Chiedi a Vera di spiegarlo» manda, con il nome del cliente.
+    static func domandaVera(_ a: AreaAnalisi, nome: String) -> String {
         switch a {
         case .previdenza: return "Spiegami la previdenza di \(nome)"
         case .protezione: return "Spiegami la protezione di \(nome)"
@@ -352,8 +352,8 @@ enum TestiAree360 {
         }
     }
 
-    /// Lo spunto di Ruby dell'area: decide quali dati di Prisma accompagnano la domanda.
-    static func spuntoRuby(_ a: AreaAnalisi) -> SpuntoRuby {
+    /// Lo spunto di Vera dell'area: decide quali dati di Prisma accompagnano la domanda.
+    static func spuntoVera(_ a: AreaAnalisi) -> SpuntoVera {
         switch a {
         case .previdenza: return .pensione
         case .protezione: return .protezione

@@ -1,14 +1,14 @@
 import Foundation
 
 // Ciò che la scrivania del tema Apple chiede allo stato (Design/template-apple-specifica.md §3.6), oltre alla
-// mossa del giorno (StatoMossaDelGiorno.swift): i tre anelli del Portafoglio clienti e le domande suggerite a Ruby.
+// mossa del giorno (StatoMossaDelGiorno.swift): i tre anelli del Portafoglio clienti e le domande suggerite a Vera.
 // Tutto viene dalle cache e dai motori di Prisma: nessuna cifra scritta a mano.
 
 /// Una domanda suggerita sulla scrivania: il testo della capsula e di chi parla (tutto il portafoglio o un cliente).
 struct DomandaScrivania: Identifiable, Equatable {
     enum Ambito: Equatable {
         case portafoglio(SpuntoPortafoglio)
-        case cliente(id: String, spunto: SpuntoRuby)
+        case cliente(id: String, spunto: SpuntoVera)
     }
 
     let testo: String
@@ -17,8 +17,8 @@ struct DomandaScrivania: Identifiable, Equatable {
     var id: String { testo }
 }
 
-/// Il riquadro di Ruby: la frase e le domande suggerite.
-struct SuggerimentiRubyScrivania: Equatable {
+/// Il riquadro di Vera: la frase e le domande suggerite.
+struct SuggerimentiVeraScrivania: Equatable {
     let frase: String
     let domande: [DomandaScrivania]
 }
@@ -41,8 +41,8 @@ extension StatoShell {
         return v
     }
 
-    /// La frase di Ruby e due o tre domande, dagli incontri di oggi e dalla mossa del giorno.
-    func suggerimentiRubyScrivania(oggi: Date = Date()) -> SuggerimentiRubyScrivania {
+    /// La frase di Vera e due o tre domande, dagli incontri di oggi e dalla mossa del giorno.
+    func suggerimentiVeraScrivania(oggi: Date = Date()) -> SuggerimentiVeraScrivania {
         let diOggi = appuntamentiDiOggi.sorted { $0.inizio < $1.inizio }
         let primo = diOggi.lazy.compactMap { self.cliente($0.clienteId) }.first
         let mossa = mossaDelGiorno(oggi: oggi).mossa
@@ -80,35 +80,35 @@ extension StatoShell {
         } else if let c = protagonista {
             domande.append(DomandaScrivania(testo: "Cosa scade?", ambito: .cliente(id: c.id, spunto: .scadenze)))
         }
-        return SuggerimentiRubyScrivania(frase: frase, domande: Array(domande.prefix(3)))
+        return SuggerimentiVeraScrivania(frase: frase, domande: Array(domande.prefix(3)))
     }
 
-    /// Un suggerimento della scrivania: apre Ruby sulla scrivania (la pagina a destra, RubyScrivania.swift) su chi
+    /// Un suggerimento della scrivania: apre Vera sulla scrivania (la pagina a destra, VeraScrivania.swift) su chi
     /// riguarda la domanda e la manda dopo 0,7 s, quando la pagina è arrivata (subito con «Riduci movimento»).
     func chiediDallaScrivania(_ d: DomandaScrivania) {
-        guard appConsentita(.ruby), !rubyInCorso else { return }
+        guard appConsentita(.vera), !veraInCorso else { return }
         switch d.ambito {
         case .portafoglio:
             guard !inModoCliente else { return }
-            if !rubyPortafoglio { rubyPortafoglio = true }
+            if !veraPortafoglio { veraPortafoglio = true }
         case .cliente(let id, _):
-            if rubyPortafoglio { rubyPortafoglio = false }
+            if veraPortafoglio { veraPortafoglio = false }
             if clienteAttivoId != id { clienteAttivoId = id }
         }
         #if os(iOS)
-        // Su iPhone e iPad Ruby non ha la pagina a destra della scrivania: la domanda va nella sua app
-        apri(.ruby)
+        // Su iPhone e iPad Vera non ha la pagina a destra della scrivania: la domanda va nella sua app
+        apri(.vera)
         #else
-        mostraRubyScrivania()
+        mostraVeraScrivania()
         #endif
-        let attesa = Movimenti.calmo ? 0 : Tema.Apple.Scrivania.Ruby.attesaDomanda
+        let attesa = Movimenti.calmo ? 0 : Tema.Apple.Scrivania.Vera.attesaDomanda
         DispatchQueue.main.asyncAfter(deadline: .now() + attesa) { [weak self] in
             guard let self else { return }
             switch d.ambito {
             case .portafoglio(let spunto):
-                self.chiediRubyPortafoglio(spunto.domanda, spunto: spunto)
+                self.chiediVeraPortafoglio(spunto.domanda, spunto: spunto)
             case .cliente(_, let spunto):
-                self.chiediRuby(spunto.domanda, spunto: spunto)
+                self.chiediVera(spunto.domanda, spunto: spunto)
             }
         }
     }

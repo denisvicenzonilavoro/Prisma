@@ -1,7 +1,7 @@
 import Foundation
 
 // «L'acqua risponde» (Design/template-apple-specifica.md §3.6 e §3.7): un clic sul fondo libero, una notifica nuova,
-// Ruby che parla e lo sblocco toccano l'acqua della scrivania. L'acqua resta quella di oggi (SfondoAcqua*.swift,
+// Vera che parla e lo sblocco toccano l'acqua della scrivania. L'acqua resta quella di oggi (SfondoAcqua*.swift,
 // la stessa fisica e lo stesso shader): qui ci sono solo i pesi delle gocce e i tempi della vibrazione.
 // Il template usa un'altra simulazione (forze 32 / 90 sulla griglia d'onda): i pesi sono la traduzione nella fisica
 // di Prisma, dove la pioggia ha peso 0,4…1.
@@ -20,7 +20,7 @@ extension Tema.Apple {
             static let pesoMassimo: Float = 2.0
         }
 
-        /// L'acqua che vibra piano intorno alla sfera di Ruby mentre risponde.
+        /// L'acqua che vibra piano intorno alla sfera di Vera mentre risponde.
         enum Vibrazione {
             /// Un piccolo impatto ogni tanti secondi.
             static let intervallo: Float = 0.45

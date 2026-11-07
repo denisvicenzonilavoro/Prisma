@@ -9,7 +9,7 @@ import UIKit
 
 // Inquadra e capisci (Design/template-novita-specifica.md §9, Orizzonte giro 5): lo stato della scena.
 // - Sul Mac il pulsante «◎ Inquadra con l’iPhone» (testata di Posizioni › Portafoglio) o la voce 6 delle Novità aprono
-//   la scena: con il ponte acceso (Impostazioni › Ruby › iPhone e iPad) si aspetta il testo dall'iPhone, altrimenti si
+//   la scena: con il ponte acceso (Impostazioni › Vera › iPhone e iPad) si aspetta il testo dall'iPhone, altrimenti si
 //   trascina una foto o un PDF, letti sul Mac con LetturaDocumenti (Vision, sul dispositivo).
 // - I campi trovati (MotoreInquadra) si illuminano sul foglio uno alla volta e compaiono nella scheda «Prisma sul Mac».
 // - Niente entra nel dossier senza conferma: «Aggiungi a Posizioni di …» chiede di confermare i dati letti, poi crea il
@@ -215,9 +215,9 @@ extension StatoShell {
     /// Il lato massimo dell'immagine tenuta in memoria e letta da Vision.
     static let latoImmagineInquadra = 2_000
 
-    /// Il ponte con iPhone e iPad è acceso e ha un codice (Impostazioni › Ruby).
+    /// Il ponte con iPhone e iPad è acceso e ha un codice (Impostazioni › Vera).
     var ponteInquadraAcceso: Bool {
-        let p = dati.impostazioni.ruby.ponte
+        let p = dati.impostazioni.vera.ponte
         return p.condividi && p.abbinato
     }
 
@@ -300,8 +300,8 @@ extension StatoShell {
                     let righe = pagina.components(separatedBy: .newlines)
                         .map { $0.trimmingCharacters(in: .whitespaces) }
                         .filter { !$0.isEmpty }
-                        .prefix(PonteRuby.massimoRighe)
-                        .map { RigaLetta(testo: String($0.prefix(PonteRuby.massimoTestoRiga))) }
+                        .prefix(PonteVera.massimoRighe)
+                        .map { RigaLetta(testo: String($0.prefix(PonteVera.massimoTestoRiga))) }
                     return (righe: Array(righe), immagine: nil)
                 }
                 guard let immagine = LetturaDocumenti.anteprima(url, lato: Self.latoImmagineInquadra),

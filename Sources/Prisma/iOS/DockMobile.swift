@@ -181,16 +181,16 @@ enum StileDockMobile { case telefono, iPad }
 enum DisposizioneDockMobile {
     private typealias D = Tema.Misura.Mobile.Dock
 
-    /// Le app del dock dell'iPhone (Ruby sta sulla sua striscia della scrivania e in «Tutte le app»).
+    /// Le app del dock dell'iPhone (Vera sta sulla sua striscia della scrivania e in «Tutte le app»).
     static let appTelefono: [AppPrisma] = [.clienti, .posizioni, .agenda, .attivita]
 
     /// Le app del dock dell'iPad (versione «Luce», decisione 121): con le quindici app del Mac le icone diventerebbero
     /// troppo piccole, quindi le app del dock del Mac fino a Prospetti, più Sala (quella che serve davanti al cliente) e
-    /// Ruby, nello stesso ordine; le altre (Biblioteca, Mercato, Studio, Impostazioni) sono in «Tutte le app».
+    /// Vera, nello stesso ordine; le altre (Biblioteca, Mercato, Studio, Impostazioni) sono in «Tutte le app».
     static var appiPad: [AppPrisma] {
         let dock = AppPrisma.delDock
         let finoAProspetti = dock.firstIndex(of: .presentazioni).map { Array(dock[...$0]) } ?? dock
-        return finoAProspetti + dock.filter { $0 == .sala || $0 == .ruby }
+        return finoAProspetti + dock.filter { $0 == .sala || $0 == .vera }
     }
 
     /// Le app nel dock per questo stile, solo quelle consentite (in modo cliente le riservate non ci sono).

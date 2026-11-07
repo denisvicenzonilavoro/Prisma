@@ -8,7 +8,7 @@ import Foundation
 // - eventi della vita («a giugno del 2027 ci sposiamo»);
 // - attività («ti preparo un confronto»), anche derivate (la polizza da chiedere per il confronto).
 // Due livelli: (a) regole locali, deterministiche e veloci (parole, cifre, anni), che funzionano anche senza Qwen;
-// (b) Qwen con Ruby/Istruzioni/copilota.md e lo schema fisso Ruby/Schemi/copilota.json: ogni scheda di Qwen con una
+// (b) Qwen con Vera/Istruzioni/copilota.md e lo schema fisso Vera/Schemi/copilota.json: ogni scheda di Qwen con una
 // cifra che non è nella frase si scarta, e sulle stesse cose vincono le regole. Le cifre sono sempre lette dalla frase,
 // mai inventate; i titoli li scrive l'app con frasi fisse. Le schede nascono «proposte»: niente entra nel dossier
 // senza conferma (`ApplicaCopilota`).
@@ -142,20 +142,20 @@ enum RiconoscitoreCopilota {
         var esito: [Importo] = []
         // 1. Gli elenchi
         for m in tutti(#"(?<![\d.,])("# + numeroNC + #"(?:\s*,\s*"# + numeroNC + #")*\s+e\s+"# + numeroNC + #")\s*(?:€|euro\b)"# + parteFrequenza, lavoro) {
-            let valori = tutti("(" + numeroNC + ")", m.gruppi[1]).compactMap { ScenariRuby.euro($0.gruppi[1]) }
+            let valori = tutti("(" + numeroNC + ")", m.gruppi[1]).compactMap { ScenariVera.euro($0.gruppi[1]) }
             guard valori.count >= 2 else { continue }
             esito.append(Importo(valori: valori, frequenza: frequenza(m.gruppi[2]), intervallo: m.intervallo))
             lavoro = copri(lavoro, m.intervallo)
         }
         // 2. Una cifra con «euro», «€» o «mila» dopo
         for m in tutti(#"(?<![\d.,])("# + numeroNC + #")\s*(?:(mila)\b\s*(?:€|euro\b)?|(€|euro\b))"# + parteFrequenza, lavoro) {
-            guard let v = ScenariRuby.euro(m.gruppi[1], m.gruppi[2]) else { continue }
+            guard let v = ScenariVera.euro(m.gruppi[1], m.gruppi[2]) else { continue }
             esito.append(Importo(valori: [v], frequenza: frequenza(m.gruppi[4]), intervallo: m.intervallo))
             lavoro = copri(lavoro, m.intervallo)
         }
         // 3. «€ 90»
         for m in tutti(#"€\s*("# + numeroNC + #")"# + parteFrequenza, lavoro) {
-            guard let v = ScenariRuby.euro(m.gruppi[1]) else { continue }
+            guard let v = ScenariVera.euro(m.gruppi[1]) else { continue }
             esito.append(Importo(valori: [v], frequenza: frequenza(m.gruppi[2]), intervallo: m.intervallo))
         }
         return esito.sorted { $0.intervallo < $1.intervallo }
@@ -187,7 +187,7 @@ enum RiconoscitoreCopilota {
     static func numero(_ parola: String) -> Int? {
         if let n = Int(parola) { return n }
         if parola == "una" { return 1 }
-        return ScenariRuby.numeriInLettere.first { $0.0 == parola }?.1
+        return ScenariVera.numeriInLettere.first { $0.0 == parola }?.1
     }
 
     /// I tempi detti nella frase, in ordine: «tra tre anni», «anzi tra quattro», «a giugno del 2027», «nel 2030»,
@@ -620,9 +620,9 @@ enum RiconoscitoreCopilota {
 
     // MARK: - Qwen: lo schema JSON
 
-    /// Lo schema di Ruby/Schemi/copilota.json dal pacchetto (in sviluppo e su iOS senza la cartella: quello qui sotto).
+    /// Lo schema di Vera/Schemi/copilota.json dal pacchetto (in sviluppo e su iOS senza la cartella: quello qui sotto).
     static var schema: [String: Any] {
-        if let url = Bundle.main.resourceURL?.appendingPathComponent("Ruby/Schemi/copilota.json"),
+        if let url = Bundle.main.resourceURL?.appendingPathComponent("Vera/Schemi/copilota.json"),
            let d = try? Data(contentsOf: url), let j = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] {
             return j
         }
@@ -635,7 +635,7 @@ enum RiconoscitoreCopilota {
     static let propensioniJSON = ["prudente", "moderata", "dinamica", "aggressiva", "nessuna"]
     static let eventiJSON = ["matrimonio", "casa", "figlio", "studi", "eredita", "annoSabbatico", "pensione", "altro", "nessuno"]
 
-    /// Lo stesso schema, nel codice (la prova controlla che coincida con quello della cartella Ruby/Schemi).
+    /// Lo stesso schema, nel codice (la prova controlla che coincida con quello della cartella Vera/Schemi).
     static let schemaInterno: [String: Any] = {
         var p: [String: Any] = [:]
         p["tipo"] = ["type": "string", "enum": RiconoscitoreCopilota.tipiJSON] as [String: Any]
@@ -657,9 +657,9 @@ enum RiconoscitoreCopilota {
         return ["type": "object", "properties": ["schede": schede], "required": ["schede"]]
     }()
 
-    /// Le istruzioni di Ruby/Istruzioni/copilota.md (con un ripiego minimo in sviluppo).
+    /// Le istruzioni di Vera/Istruzioni/copilota.md (con un ripiego minimo in sviluppo).
     static var istruzioni: String {
-        IstruzioniRuby.testo("copilota") ?? "Leggi un pezzo della trascrizione di un incontro tra un consulente finanziario e il suo cliente e rispondi solo con un oggetto JSON {\"schede\": [...]}: obiettivi (area, importo, anniDaOggi o anno e mese), polizze di altre compagnie (tipoPolizza, compagnia, importo, frequenza), timori sul rischio (propensione), eventi della vita (evento, anno, mese), attività del consulente (attivita). Per ogni scheda la frase esatta del testo. Solo cifre scritte nella frase: non inventare e non fare conti. Nessuna scheda per le domande."
+        IstruzioniVera.testo("copilota") ?? "Leggi un pezzo della trascrizione di un incontro tra un consulente finanziario e il suo cliente e rispondi solo con un oggetto JSON {\"schede\": [...]}: obiettivi (area, importo, anniDaOggi o anno e mese), polizze di altre compagnie (tipoPolizza, compagnia, importo, frequenza), timori sul rischio (propensione), eventi della vita (evento, anno, mese), attività del consulente (attivita). Per ogni scheda la frase esatta del testo. Solo cifre scritte nella frase: non inventare e non fare conti. Nessuna scheda per le domande."
     }
 
     /// La richiesta per Qwen: le istruzioni fisse, il contesto (cliente, obiettivi già nel dossier, ultimo obiettivo
@@ -676,13 +676,13 @@ enum RiconoscitoreCopilota {
 
     /// Estrazione: niente fantasia, niente ragionamento, la stessa finestra delle altre risposte, risposta vincolata
     /// allo schema.
-    static func opzioni(_ ruby: ImpostazioniRuby) -> OpzioniModello {
+    static func opzioni(_ vera: ImpostazioniVera) -> OpzioniModello {
         var o = OpzioniModello()
         o.temperatura = 0
         o.pensa = false
-        o.contesto = NucleoRuby.finestra
+        o.contesto = NucleoVera.finestra
         o.massimoToken = 600
-        o.restaInMemoria = ruby.restaInMemoria
+        o.restaInMemoria = vera.restaInMemoria
         o.formato = schema
         return o
     }
@@ -712,7 +712,7 @@ enum RiconoscitoreCopilota {
         }
         func numero(_ k: String) -> Double? {
             if let n = v[k] as? NSNumber { return CFGetTypeID(n) == CFBooleanGetTypeID() ? nil : n.doubleValue }
-            if let s = v[k] as? String { return ScenariRuby.euro(s) }
+            if let s = v[k] as? String { return ScenariVera.euro(s) }
             return nil
         }
         func intero(_ k: String) -> Int? { numero(k).map { Int($0.rounded()) } }
@@ -762,7 +762,7 @@ enum RiconoscitoreCopilota {
             guard let e = c.evento else { return nil }
             s = SchedaCopilota(id: "evento-\(e.rawValue)", tipo: .evento, titolo: "", azione: .aggiungiLineaVita, frase: frase, evidenze: evidenze)
         case "attivita":
-            guard let titolo = testo("attivita"), titolo.count <= 90, CommentoRuby.numeriConservati(bozza: frase, testo: titolo) else { return nil }
+            guard let titolo = testo("attivita"), titolo.count <= 90, CommentoVera.numeriConservati(bozza: frase, testo: titolo) else { return nil }
             let t = titolo.prefix(1).uppercased() + titolo.dropFirst()
             s = SchedaCopilota(id: "attivita-\(chiave(t))", tipo: .attivita, titolo: t, azione: .creaAttivita, frase: frase, evidenze: evidenze)
         default:
@@ -780,7 +780,7 @@ enum RiconoscitoreCopilota {
     static func numeriDetti(_ t: String) -> Set<Double> {
         var x = Set<Double>()
         for m in tutti(#"(\d[\d.,]*\d|\d)(?:\s*(mila)\b)?"#, t) {
-            if let v = ScenariRuby.euro(m.gruppi[1]) {
+            if let v = ScenariVera.euro(m.gruppi[1]) {
                 x.insert(v)
                 if !m.gruppi[2].isEmpty { x.insert(v * 1_000) }
             }

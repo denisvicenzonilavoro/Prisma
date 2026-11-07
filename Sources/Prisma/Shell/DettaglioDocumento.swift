@@ -3,7 +3,7 @@ import SwiftUI
 // MARK: - Dettaglio di un documento (app Documenti, giro 6)
 
 /// Il dettaglio di un documento: il foglio è il protagonista, a tutta altezza. Sopra una barra compatta (titolo, stato
-/// con il canale, l'azione che vale, Ruby, il menu «⋯» e il pulsante dei dati); accanto, snello e richiudibile, il
+/// con il canale, l'azione che vale, Vera, il menu «⋯» e il pulsante dei dati); accanto, snello e richiudibile, il
 /// pannello «Dati», «Confronto», «Testo». Il pannello non copre mai il foglio: se non c'è posto accanto si chiude da
 /// solo (resta il pulsante «Dati» con il numero da confermare) e, se il consulente lo apre, diventa un cassetto in basso.
 /// La vista non riscrive mai `documentoSelezionato`.
@@ -164,7 +164,7 @@ struct DettaglioDocumento: View {
 
     // MARK: Barra
 
-    /// Una barra sola: tessera, titolo con lo stato sotto; a destra l'azione che vale, Ruby, «⋯» e i dati.
+    /// Una barra sola: tessera, titolo con lo stato sotto; a destra l'azione che vale, Vera, «⋯» e i dati.
     private var barra: some View {
         let m = Tema.Misura.Documenti.self
         return HStack(alignment: .center, spacing: m.spazioRiga) {
@@ -333,11 +333,11 @@ struct DettaglioDocumento: View {
         return HStack(spacing: m.spazioBarra) {
             azionePrincipaleVista(compatta: compatta)
             if d.genere != .prisma {
-                PulsanteIcona(simbolo: "sparkles", aiuto: "Apri con Ruby: spiega il documento e lo confronta con il dossier") {
+                PulsanteIcona(simbolo: "sparkles", aiuto: "Apri con Vera: spiega il documento e lo confronta con il dossier") {
                     TestiRinviati.scriviOra()
-                    stato.spiegaDocumentoConRuby(d.id)
+                    stato.spiegaDocumentoConVera(d.id)
                 }
-                .disabled(stato.rubyInCorso || inLettura)
+                .disabled(stato.veraInCorso || inLettura)
             }
             MenuAzioni(voci: { vociMenu() }, margine: m.pulsanteIcona, taglia: .normale) {
                 Image(systemName: "ellipsis")
@@ -377,15 +377,15 @@ struct DettaglioDocumento: View {
         .accessibilityLabel(aiuto)
     }
 
-    // MARK: Menu «⋯»: Ruby, collega, crea, tipo e il resto
+    // MARK: Menu «⋯»: Vera, collega, crea, tipo e il resto
 
     private func vociMenu() -> [VoceMenuAzioni] {
         var voci: [VoceMenuAzioni] = []
         if d.genere != .prisma {
             let id = d.id
-            voci.append(VoceMenuAzioni.azione("Apri con Ruby", attiva: !stato.rubyInCorso && !inLettura) {
+            voci.append(VoceMenuAzioni.azione("Apri con Vera", attiva: !stato.veraInCorso && !inLettura) {
                 TestiRinviati.scriviOra()
-                stato.spiegaDocumentoConRuby(id)
+                stato.spiegaDocumentoConVera(id)
             })
             if !stato.solaLettura {
                 if !MotoreDocumenti.delCliente(d) {

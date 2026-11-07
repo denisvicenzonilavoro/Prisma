@@ -1,17 +1,17 @@
 import SwiftUI
 
-// La tabella prima/dopo degli scenari «E se…?» di Ruby (Design/template-apple-specifica.md §4.7): un modello grafico
-// fisso riempito con le cifre di MotoreScenari, mai con quelle di Qwen. Gettoni in Tema.Apple+ScenariRuby.swift.
+// La tabella prima/dopo degli scenari «E se…?» di Vera (Design/template-apple-specifica.md §4.7): un modello grafico
+// fisso riempito con le cifre di MotoreScenari, mai con quelle di Qwen. Gettoni in Tema.Apple+ScenariVera.swift.
 // «Riduci movimento»: compare con la dissolvenza di 0,15 s, senza spostamento; istantanee: già al suo posto.
 
 /// La tabella a tre colonne: voce, oggi, con lo scenario (in viola).
 struct TabellaScenarioApple: View {
     let colonnaOggi: String
     let colonnaScenario: String
-    let righe: [RigaScenarioRuby]
+    let righe: [RigaScenarioVera]
 
     var body: some View {
-        let t = Tema.Apple.ScenarioRuby.self
+        let t = Tema.Apple.ScenarioVera.self
         VStack(spacing: 0) {
             riga("", colonnaOggi, colonnaScenario, intestazione: true)
                 .background(t.fondoIntestazione)
@@ -31,7 +31,7 @@ struct TabellaScenarioApple: View {
     }
 
     private func riga(_ voce: String, _ oggi: String, _ scenario: String, intestazione: Bool) -> some View {
-        let t = Tema.Apple.ScenarioRuby.self
+        let t = Tema.Apple.ScenarioVera.self
         return ColonneScenarioApple(pesi: t.pesiColonne).callAsFunction {
             cella(voce, intestazione ? t.intestazione : t.voce, t.coloreVoce)
             cella(oggi, intestazione ? t.intestazione : t.oggi, t.coloreOggi)
@@ -40,7 +40,7 @@ struct TabellaScenarioApple: View {
     }
 
     private func cella(_ testo: String, _ carattere: Tema.Apple.Carattere, _ colore: Color) -> some View {
-        let t = Tema.Apple.ScenarioRuby.self
+        let t = Tema.Apple.ScenarioVera.self
         return Text(testo)
             .carattereApple(carattere)
             .foregroundColor(colore)
@@ -92,7 +92,7 @@ private struct EntrataTabellaScenario: ViewModifier {
     @State private var entrata = false
 
     func body(content: Content) -> some View {
-        let t = Tema.Apple.ScenarioRuby.self
+        let t = Tema.Apple.ScenarioVera.self
         let fuori = attiva && !entrata && !istantanea
         return content
             .opacity(fuori ? 0 : 1)
@@ -105,7 +105,7 @@ private struct EntrataTabellaScenario: ViewModifier {
 }
 
 extension View {
-    /// L'entrata della scheda prima/dopo sotto la risposta di Ruby (`attiva` false: c'era già o entra con altro).
+    /// L'entrata della scheda prima/dopo sotto la risposta di Vera (`attiva` false: c'era già o entra con altro).
     func entrataTabellaScenario(_ attiva: Bool = true) -> some View {
         modifier(EntrataTabellaScenario(attiva: attiva))
     }

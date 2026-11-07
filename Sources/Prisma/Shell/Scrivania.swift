@@ -2,10 +2,10 @@ import SwiftUI
 
 /// La scrivania del Mac nel tema Apple (Design/template-apple-specifica.md §3.6, riferimenti shell/03-scrivania e
 /// 13-riquadro-hover): il saluto sull'acqua, «Nuovo cliente» e «Cerca ovunque», la mossa del giorno a tutta
-/// larghezza, poi Agenda di oggi, Portafoglio clienti con i tre anelli e Ruby, sotto Da fare oggi e In scadenza.
+/// larghezza, poi Agenda di oggi, Portafoglio clienti con i tre anelli e Vera, sotto Da fare oggi e In scadenza.
 /// I riquadri sono in ScrivaniaApple.swift, i valori in DesignSystem/Apple/Tema.Apple+Scrivania.swift.
 /// Un clic sul fondo libero fa cadere una goccia sull'acqua (`.gocciaAlTocco()`, SfondoAcquaRisposta.swift);
-/// il trascinamento orizzontale verso Ruby resta quello di `PagineScrivania` (RubyScrivania.swift).
+/// il trascinamento orizzontale verso Vera resta quello di `PagineScrivania` (VeraScrivania.swift).
 /// iPhone e iPad hanno le loro scrivanie (iOS/) con i widget di Widget.swift.
 struct Scrivania: View {
     var body: some View {

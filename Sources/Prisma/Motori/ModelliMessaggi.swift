@@ -1,8 +1,8 @@
 import Foundation
 
 // I modelli fissi dei messaggi: per ogni tipo d'occasione e ogni tono un testo già compilato con i dati del cliente e
-// le cifre dei motori (solo quelle dell'occasione: nessun altro numero). Si usano quando Qwen non è pronto (Ruby lo dice)
-// o quando il testo di Qwen non passa la verifica delle cifre (MessaggiRuby), e sono la bozza che Qwen riscrive.
+// le cifre dei motori (solo quelle dell'occasione: nessun altro numero). Si usano quando Qwen non è pronto (Vera lo dice)
+// o quando il testo di Qwen non passa la verifica delle cifre (MessaggiVera), e sono la bozza che Qwen riscrive.
 // La chiusura e la firma le mette sempre Prisma: la firma viene dalle impostazioni o dai dati del consulente, e se
 // mancano il messaggio resta senza firma (mai una firma inventata).
 

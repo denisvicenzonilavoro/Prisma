@@ -132,7 +132,7 @@ extension Tema.Misura {
         static let kpiSpazioColonne: CGFloat = 12
         static let clienteSpazio: CGFloat = 10
         static let canaliSpazio: CGFloat = 5
-        static let iconaRuby: CGFloat = 38
+        static let iconaVera: CGFloat = 38
         static let barraCanali: CGFloat = 10
         static let barraCanaliSpazio: CGFloat = 2
         static let quadratinoCanale: CGFloat = 10
@@ -254,8 +254,8 @@ extension Tema.Testo {
         static let etichettaKpi = Tema.Testo.sfFisso(11.5)
         static let spaziaturaKpi = Tema.Testo.spaziatura(-0.01, 16)
         static let notaCliente = Tema.Testo.sfFisso(12.5)
-        static let titoloRuby = Tema.Testo.sfFisso(14, .semibold)
-        static let testoRuby = Tema.Testo.sfFisso(12)
+        static let titoloVera = Tema.Testo.sfFisso(14, .semibold)
+        static let testoVera = Tema.Testo.sfFisso(12)
         static let chevron = Tema.Testo.sfFisso(12, .semibold)
         static let nomeRiga = Tema.Testo.sfFisso(13, .semibold)
         static let secondarioRiga = Tema.Testo.sfFisso(12)
