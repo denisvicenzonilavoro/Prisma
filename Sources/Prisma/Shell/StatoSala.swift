@@ -111,6 +111,10 @@ final class StatoSala: ObservableObject {
     @Published var esperienza: EsperienzaSala?
     /// «▶︎ Presenta» ha acceso la modalità cliente: alla chiusura della presentazione si spegne (non pubblicato).
     var presentazioneHaAccesoModoCliente = false
+    /// Solo istantanee (giro 4): lo stato di prova del prisma di luce e il tratto di prova di «Disegna il tuo futuro»
+    /// (punti 0…1 nell'area del grafico, x = età da oggi a 90 anni, y = patrimonio da 0 al massimo dell'asse).
+    var provaLuce: ProvaLuce?
+    var provaDisegno: [CGPoint]?
 }
 
 extension StatoShell {

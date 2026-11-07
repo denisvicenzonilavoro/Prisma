@@ -329,17 +329,21 @@ private struct PalcoSala: View {
             .lineLimit(1)
             Spacer(minLength: P.spazioTestata)
             HStack(spacing: P.spazioPulsanti) {
+                // Il tavolo e il Prisma del cliente non sono ancora pronti per nessuna esperienza (decisioni 7 e 111):
+                // i pulsanti restano spenti anche dove l'esperienza c'è già
                 if esperienza.mostraSulTavolo {
                     Button { } label: { Text("▣ Mostra sul tavolo") }
                         .buttonStyle(.apple)
-                        .disabled(!esperienza.disponibile)
-                        .help("Sull'iPad del tavolo: arriva insieme all'esperienza")
+                        .disabled(true)
+                        .help(esperienza.disponibile ? "Sull'iPad del tavolo: arriva con un prossimo aggiornamento"
+                              : "Sull'iPad del tavolo: arriva insieme all'esperienza")
                 }
                 if esperienza.aggiungeAlPrisma {
                     Button { } label: { Text("✦ Aggiungi al Prisma di \(nome)") }
                         .buttonStyle(.apple)
-                        .disabled(!esperienza.disponibile)
-                        .help("Nel file personale del cliente: arriva insieme all'esperienza. Prisma non manda nulla da solo")
+                        .disabled(true)
+                        .help(esperienza.disponibile ? "Nel file personale del cliente: arriva con il Prisma del cliente. Prisma non manda nulla da solo"
+                              : "Nel file personale del cliente: arriva insieme all'esperienza. Prisma non manda nulla da solo")
                 }
                 Button { stato.presentaEsperienza(esperienza) } label: { Text("▶︎ Presenta") }
                     .buttonStyle(.applePrimario)
@@ -351,13 +355,17 @@ private struct PalcoSala: View {
 }
 
 /// Dentro la card del palco: la vista dell'esperienza. Finché un'esperienza non c'è, lo stato «in arrivo».
-private struct ContenutoPalco: View {
+struct ContenutoPalco: View {
     let esperienza: EsperienzaSala
     let cliente: Cliente
 
     var body: some View {
-        // Ogni giro aggiunge qui la sua esperienza (switch su `esperienza`)
-        InArrivoEsperienza(esperienza: esperienza)
+        // Ogni giro aggiunge qui la sua esperienza
+        switch esperienza {
+        case .prismaLuce: PalcoLuce(cliente: cliente)               // giro 4, Shell/SalaLuce.swift
+        case .disegna: DisegnaIlFuturo(cliente: cliente)            // giro 4, Shell/SalaDisegna.swift
+        default: InArrivoEsperienza(esperienza: esperienza)
+        }
     }
 }
 
@@ -413,8 +421,16 @@ struct VistaPresentazioneEsperienza: View {
                     .foregroundColor(s.coloreCliente)
                     .lineLimit(1)
                     .frame(height: s.margine)
-                InArrivoEsperienza(esperienza: esperienza, inSala: true)
-                    .environment(\.colorScheme, .dark)
+                if esperienza.disponibile, let cliente = stato.clienteAttivo {
+                    // L'esperienza vera, nella sua card scura
+                    ContenutoPalco(esperienza: esperienza, cliente: cliente)
+                        .superficieApple(Tema.Apple.SalaEsperienze.Scheda.superficie, raggio: Tema.Apple.SalaEsperienze.Scheda.raggio)
+                        .clipShape(RoundedRectangle(cornerRadius: Tema.Apple.SalaEsperienze.Scheda.raggio, style: .continuous))
+                        .environment(\.colorScheme, .dark)
+                } else {
+                    InArrivoEsperienza(esperienza: esperienza, inSala: true)
+                        .environment(\.colorScheme, .dark)
+                }
                 HStack {
                     Spacer()
                     Button("Chiudi") { stato.chiudiSovrapposizione() }

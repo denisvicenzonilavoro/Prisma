@@ -1266,6 +1266,10 @@ enum ProvaCalcoli {
         // «Luce», giro 3: la proposta che si costruisce da sola (bisogni, prodotti adatti, importi dai motori, premio non
         // inventato, canale del prodotto, adeguatezza rossa che ferma, moduli in arrivo)
         ProvaCalcoliProposta.esegui(verificaEsterna)
+        // «Luce», giro 4: il prisma di luce (quote per vista, canali distinti, obiettivi senza il 20% del template,
+        // anni dalla linea della vita, geometria, shader) e «Disegna il tuo futuro» (versamento in più verificato)
+        ProvaCalcoliLuce.esegui(verificaEsterna)
+        ProvaCalcoliDisegno.esegui(verificaEsterna)
 
         // Giro 7: glossario e guida. Ogni chiave ha la sua voce, le etichette puntano a voci vere, ogni app ha 3 passi
         verifica("Glossario: voci per ogni chiave", Double(VoceGlossario.Chiave.allCases.filter { Glossario.voce($0) == nil }.count), 0)
