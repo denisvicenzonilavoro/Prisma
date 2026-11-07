@@ -36,6 +36,8 @@ struct StrumentoVera {
     let annullabile: Bool
     /// In modalità cliente: lo strumento resta nel dossier del cliente davanti a te.
     let nelDossier: Bool
+    /// Solo per Prisma (le schede di «Lascia cadere qui»): non si dà al modello.
+    var soloPrisma = false
 
     var modello: StrumentoModello { StrumentoModello(nome: nome, descrizione: descrizione, parametri: parametri) }
 }
@@ -92,6 +94,8 @@ enum RegistroStrumenti {
     static let simulatoreApri = "simulatore_apri"
     static let praticheApri = "pratiche_apri"
     static let studioChilometri = "studio_registra_chilometri"
+    static let memoriaRicorda = "memoria_ricorda"
+    static let documentiArchivia = "documenti_archivia"
 
     private static func testo(_ descrizione: String) -> [String: Any] { ["type": "string", "description": descrizione] }
     private static func scelta(_ valori: [String], _ descrizione: String) -> [String: Any] {
@@ -179,13 +183,22 @@ enum RegistroStrumenti {
                                           "motivo": testo("Il motivo della trasferta.")],
                                          richiesti: ["chilometri"]),
                       disponibile: false, annullabile: true, nelDossier: false),
+        StrumentoVera(nome: memoriaRicorda, app: .vera,
+                      descrizione: "Ricorda una preferenza o un'abitudine del consulente o di un cliente (mai numeri di documenti, conti o password).",
+                      parametri: oggetto(["cliente": schemaCliente, "testo": testo("Il ricordo, in una frase, con le parole del consulente.")],
+                                         richiesti: ["testo"]),
+                      disponibile: true, annullabile: true, nelDossier: true),
+        StrumentoVera(nome: documentiArchivia, app: .documenti,
+                      descrizione: "Archivia un documento trascinato su Prisma nel cliente giusto, con i dati letti.",
+                      parametri: oggetto([:], richiesti: []),
+                      disponibile: true, annullabile: true, nelDossier: true, soloPrisma: true),
     ]
 
     static func strumento(_ nome: String) -> StrumentoVera? { tutti.first { $0.nome == nome } }
 
     /// Gli strumenti da dare al modello. In modalità cliente solo quelli che restano nel dossier.
     static func perModello(inModoCliente: Bool) -> [StrumentoModello] {
-        tutti.filter { !inModoCliente || $0.nelDossier }.map(\.modello)
+        tutti.filter { !$0.soloPrisma && (!inModoCliente || $0.nelDossier) }.map(\.modello)
     }
 
     // MARK: - Dalla chiamata all'azione
@@ -211,6 +224,21 @@ enum RegistroStrumenti {
         case posizioniScadenza: return scadenzaPosizione(a, contesto)
         case simulatoreApri: return apriSimulatore(a, contesto)
         case praticheApri: return praticaInAttesa(a, contesto)
+        case memoriaRicorda:
+            guard let t = a.testo("testo") else { return .domanda("Cosa ricordo?") }
+            if let motivo = MemoriaVera.vietato(t) { return .impossibile(motivo) }
+            var cliente: String?
+            if let n = a.testo("cliente") {
+                guard case .trovato(let c) = RegistroStrumenti.cliente(n, contesto) else { return .impossibile("Non trovo «\(n)» tra i clienti.") }
+                cliente = c.id
+            }
+            let chi = cliente.flatMap { id in contesto.clienti.first { $0.id == id }?.nome }
+            var argomenti = ["testo": t, "fonte": "in chat"]
+            if let cliente { argomenti["cliente"] = cliente }
+            return .azione(AzioneConferma(strumento: memoriaRicorda, app: .vera, titolo: chi.map { "Ricordo per \($0)" } ?? "Ricordo su di te",
+                                          dettaglio: "«\(t)» · nella memoria di Vera, sul Mac, cifrata", argomenti: argomenti))
+        case documentiArchivia:
+            return .impossibile("I documenti si archiviano trascinandoli su Vera.")
         case studioChilometri:
             return .impossibile("Studio non registra ancora i chilometri: quando sarà pronto lo farò io. Per ora segnali tu in Studio.")
         default: return .impossibile("Non conosco l'azione «\(c.nome)».")

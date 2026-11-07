@@ -66,6 +66,8 @@ final class StatoShell: ObservableObject {
             // Gli array non toccati condividono la memoria con i vecchi: confrontarli costa O(1)
             if dati.note != oldValue.note { versioneNote &+= 1 }
             if !dati.stessiCalcoli(di: oldValue) { versioneCalcoli &+= 1 }
+            // «Il filo lungo» e le lezioni seguono le impostazioni di Vera
+            if dati.impostazioni.vera != oldValue.impostazioni.vera { applicaImpostazioniVera() }
         }
     }
     /// Cresce a ogni modifica dei dati (salvataggio, segno della cache del dossier per Vera). Non pubblicata.
@@ -360,6 +362,12 @@ final class StatoShell: ObservableObject {
     #endif
     /// Il salvataggio in background (Archivio.swift): generazione 0 = i dati letti all'avvio.
     private let salvataggio = SalvataggioArchivio()
+    /// La memoria di Vera (fase 2 del brief): ricordi, lezioni e riassunti cifrati (StatoMemoriaVera.swift).
+    lazy var memoriaVera = StatoMemoriaVera(persistente: persistente)
+    /// I vettori della ricerca per significato, in una cache cifrata (RicercaVera.swift).
+    lazy var indiceVera = IndiceVera(persistente: persistente) { [weak self] in self?.memoriaVera.chiaveMemoria() }
+    /// La biblioteca delle norme (funzione 13, BibliotecaVera.swift).
+    lazy var biblioteca = StatoBiblioteca(persistente: persistente)
     private var salvataggioSospeso = false
     /// Stop del Mac o schermo spento (RipresaSistema.swift): i lavori a tempo aspettano il risveglio.
     private(set) var lavoriInPausa = false
@@ -398,6 +406,7 @@ final class StatoShell: ObservableObject {
             // Su iPhone e iPad niente backup automatico: i dati arrivano dal backup del Mac
             #endif
             preparaVera()
+            applicaImpostazioniVera()
             DiagnosticaVoce.osservatore = { [weak self] riga in self?.passaggioVoce = riga }
             aggiornaElencoBackup()
             // Promemoria del Mac: solo qui, con l'archivio sul disco (mai nelle istantanee e nelle prove)
@@ -811,7 +820,7 @@ final class StatoShell: ObservableObject {
         d.file.map { Archivio.cartellaDocumenti.appendingPathComponent($0) }
     }
 
-    private func urlTesto(_ d: Documento) -> URL? {
+    func urlTesto(_ d: Documento) -> URL? {
         urlDocumento(d).map { $0.deletingPathExtension().appendingPathExtension("txt") }
     }
 
@@ -1877,6 +1886,8 @@ final class StatoShell: ObservableObject {
         compitoVera = nil
         dati.conversazioni[id] = nil
         conversazioniTemporanee[id] = nil
+        // Il riassunto del filo lungo va con la conversazione
+        if memoriaVera.filo(id) != nil { memoriaVera.aggiornaFilo(id, nil) }
     }
 
     /// Una domanda a Vera sul portafoglio (tutti i clienti). Le cifre sono quelle della vista Portafoglio;
@@ -2113,14 +2124,47 @@ final class StatoShell: ObservableObject {
         ambiente.breve = breve
         // La modalità scelta nella testata di Vera (la mini finestra decide da sé, con le sue cifre)
         if !breve { ambiente.modalita = modalitaVeraScelta }
-        let piano = NucleoVera.piano(richiesta, impostazioni: dati.impostazioni.vera, ambiente: ambiente)
+        // Fase 2: i ricordi pertinenti e il filo delle battute uscite dalla finestra (VeraFaseDueShell.swift)
+        ambiente.ricordi = ricordiPerVera(cliente: id)
+        var piano = NucleoVera.piano(richiesta, impostazioni: dati.impostazioni.vera, ambiente: ambiente)
+        var uscite = NucleoVera.uscite(storia, piano: piano)
+        // Il riassunto allunga l'ultimo messaggio: possono uscire altre battute, che vanno riassunte anche loro
+        for _ in 0..<3 {
+            guard let r = riassuntoVera(chiave: id, uscite: uscite) else { break }
+            ambiente.riassunto = r
+            piano = NucleoVera.piano(richiesta, impostazioni: dati.impostazioni.vera, ambiente: ambiente)
+            let nuove = NucleoVera.uscite(storia, piano: piano)
+            if nuove.count == uscite.count { break }
+            uscite = nuove
+        }
+        let usciteIniziali = uscite
+        let ricordiProposti = schedaRicordi(da: testo, chiave: id)
+        let pianoIniziale = piano
+        let ambienteIniziale = ambiente
         conQwen(cliente: id) { _ in
             // La risposta arriva a pezzi e si vede mentre Vera la scrive (FlussoVera, bolla in arrivo)
             let motore = self.qwen
             self.veraInCorso = true
-            let generazione = self.flussoVera.inizia(piano.scelta, motore: motore.nome)
+            let generazione = self.flussoVera.inizia(pianoIniziale.scelta, motore: motore.nome)
             self.compitoVera = Task { @MainActor in
+                var piano = pianoIniziale
+                var ambiente = ambienteIniziale
+                var uscite = usciteIniziali
                 do {
+                    // In lavoro, i passaggi dei documenti e delle note trovati con la ricerca (fase 2)
+                    if piano.scelta.conScheda, !breve {
+                        let brani = await self.braniPerVera(testo, cliente: id)
+                        if !brani.isEmpty {
+                            ambiente.brani = brani
+                            piano = NucleoVera.piano(richiesta, impostazioni: self.dati.impostazioni.vera, ambiente: ambiente)
+                            let dopo = NucleoVera.uscite(storia, piano: piano)
+                            if dopo.count > uscite.count, let r = self.riassuntoVera(chiave: id, uscite: dopo) {
+                                uscite = dopo
+                                ambiente.riassunto = r
+                                piano = NucleoVera.piano(richiesta, impostazioni: self.dati.impostazioni.vera, ambiente: ambiente)
+                            }
+                        }
+                    }
                     // I pezzi arrivano fuori dal thread principale: la bolla si aggiorna sul principale
                     let r = try await motore.scrivi(piano) { p in
                         DispatchQueue.main.async { self.flussoVera.aggiorna(p, generazione: generazione) }
@@ -2132,7 +2176,11 @@ final class StatoShell: ObservableObject {
                         let f = FontiVera.fonti(r.testo, fonte: fonte, richiesta: piano.messaggi.last?.testo ?? "")
                         if !f.isEmpty { m.fonti = f }
                     }
+                    // «La memoria»: i ricordi che Vera propone dalla tua domanda, salvati solo dopo «Ricorda»
+                    m.conferma = ricordiProposti
                     self.aggiungiMessaggio(m, cliente: id)
+                    // «Il filo lungo»: le battute uscite si riassumono in background
+                    self.aggiornaFiloVera(chiave: id, uscite: uscite, motore: motore)
                 } catch is CancellationError {
                     // Nuova conversazione: la risposta interrotta non resta
                 } catch {
@@ -2655,12 +2703,15 @@ final class StatoShell: ObservableObject {
         }
         mostraAvviso(cambio ? "Password dei backup cambiata: vale dai prossimi backup."
                             : "Backup protetti: da ora si aprono solo con la password.")
+        // La chiave della memoria di Vera nel backup segue la password nuova
+        memoriaVera.riavvolgiChiave(password: password)
         return true
     }
 
     /// Toglie la protezione: i prossimi backup sono .zip in chiaro; quelli protetti restano protetti.
     func togliPasswordBackup() {
         if persistente { PortachiaviBackup.elimina() }
+        memoriaVera.riavvolgiChiave(password: nil)
         passwordBackupInMemoria = nil
         dati.impostazioni.backup.protetto = false
         if dati.impostazioni.backup.ultimoErrore == ErroreBackup.passwordNonDisponibile.localizedDescription {
@@ -2758,6 +2809,8 @@ final class StatoShell: ObservableObject {
         salvataggioSospeso = true
         // Nessuna scrittura in coda deve arrivare sopra la cartella ripristinata
         salvataggio.attendi()
+        StatoMemoriaVera.attendiScritture()
+        StatoBiblioteca.attendiScritture()
         backupInCorso = true
         let destinazione = cartellaBackup
         let creaCartella = cartellaBackupPredefinita
@@ -2795,6 +2848,9 @@ final class StatoShell: ObservableObject {
                     self.testiDocumenti = MemoriaTesti()
                     self.documentoSelezionato = nil
                     self.azzeraNote()
+                    // La memoria di Vera e la Biblioteca si rileggono dalla cartella ripristinata (fase 2)
+                    self.memoriaVera.ricarica()
+                    self.biblioteca.ricarica()
                     self.solaLettura = false
                     self.salvataggioSospeso = false
                     self.salvaOra()

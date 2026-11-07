@@ -531,6 +531,11 @@ enum ProvaBackup {
                 print("ERRORE: \(errore)")
                 return 1
             }
+            // La memoria di Vera cifrata (con la chiave nel backup solo con la password) e la biblioteca delle norme (ProvaBackupMemoriaVera.swift)
+            if let errore = try provaMemoriaVera(radice: radice) {
+                print("ERRORE: \(errore)")
+                return 1
+            }
             print("OK: backup, rotazione (\(elenco.count) copie), ripristino, backup protetti da password, salvataggio in background, lettore zip e archivi col vecchio nome di Vera verificati")
             return 0
         } catch {

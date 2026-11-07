@@ -20,8 +20,13 @@ extension StatoShell {
     /// tutti i clienti, poi «Fallo tu» con Qwen. true se la frase è stata gestita.
     func smistaVera(_ testo: String, chiave: String) -> Bool {
         if rispostaAllaSchedaVera(testo, chiave: chiave) { return true }
+        // «Ricorda che…» (fase 2): si salva subito, con «Annulla»
+        if ricordaVera(testo, chiave: chiave) { return true }
         if eseguiComandoVera(testo) { return true }
+        // «Raccontami Marco» (funzione 6) e le domande sulle norme della biblioteca (funzione 13)
+        if chiediTrentaSecondi(testo, chiave: chiaveConversazione) { return true }
         if chiediClientela(testo, nelDossier: chiave != VeraPortafoglio.chiave) { return true }
+        if chiediNorme(testo, chiave: chiaveConversazione) { return true }
         return chiediFalloTu(testo, chiave: chiaveConversazione)
     }
 
@@ -103,6 +108,7 @@ extension StatoShell {
             aggiungiMessaggio(MessaggioVera(autore: .utente, testo: testo), cliente: chiave)
             domandaVera = ""
             aggiornaSchedaVera(messaggio: m.id) { $0.stato = .rinunciata }
+            ripulisciInArrivo(s)
             aggiungiMessaggio(MessaggioVera(autore: .vera, testo: "Va bene, lascio stare: non ho fatto niente.", motore: Self.motoreAzioni), cliente: chiave)
             return true
         }
@@ -157,10 +163,27 @@ extension StatoShell {
         }
     }
 
+    /// «No, grazie» / «Lascia stare»: la scheda non si esegue.
+    func lasciaStareSchedaVera(messaggio: String) {
+        aggiornaSchedaVera(messaggio: messaggio) { s in if s.stato == .daConfermare { s.stato = .rinunciata } }
+        if let s = messaggioVera(messaggio)?.conferma { ripulisciInArrivo(s) }
+    }
+
+    /// I file trascinati che non si archiviano più (scheda lasciata stare o sostituita) escono dalla cartella temporanea.
+    func ripulisciInArrivo(_ s: SchedaConfermaVera) {
+        guard s.origine == .documento else { return }
+        for a in s.azioni {
+            if let p = a.argomenti["file"], p.hasPrefix(Self.cartellaInArrivo.path) {
+                try? FileManager.default.removeItem(at: URL(fileURLWithPath: p).deletingLastPathComponent())
+            }
+        }
+    }
+
     /// «Modifica»: la richiesta torna nel campo di scrittura, da correggere a parole; la scheda è sostituita.
     func modificaSchedaVera(messaggio: String) {
         guard let s = messaggioVera(messaggio)?.conferma, s.stato == .daConfermare else { return }
         aggiornaSchedaVera(messaggio: messaggio) { $0.stato = .sostituita }
+        ripulisciInArrivo(s)
         domandaVera = s.richiesta
         mostraAvviso("Correggi la richiesta a parole: rifaccio la scheda")
     }
@@ -322,6 +345,21 @@ extension StatoShell {
             }
             return EsitoAzioneVera(fatta: true, messaggio: "Il simulatore è aperto.")
 
+        case RegistroStrumenti.memoriaRicorda:
+            guard dati.impostazioni.vera.memoriaAttiva else { return no("La memoria di Vera è spenta (Impostazioni › Vera).") }
+            guard let testo = arg["testo"] else { return no("Non c'è niente da ricordare.") }
+            if let motivo = MemoriaVera.vietato(testo) { return no(motivo) }
+            let gia = Set(memoriaVera.ricordi.map(\.id))
+            guard let r = memoriaVera.ricorda(testo, cliente: arg["cliente"], fonte: arg["fonte"] ?? "in chat") else {
+                return no(memoriaVera.bloccata ? "La memoria non si apre su questo Mac: sbloccala da Impostazioni › Vera." : "Non l'ho ricordato.")
+            }
+            // Un ricordo che c'era già: «Annulla» non deve cancellare quello vecchio
+            if gia.contains(r.id) { return EsitoAzioneVera(fatta: true, messaggio: "Lo ricordavo già: «\(r.testo)».", oggetto: nil, prima: "gia") }
+            return EsitoAzioneVera(fatta: true, messaggio: "Ricordato: «\(r.testo)».", oggetto: r.id)
+
+        case RegistroStrumenti.documentiArchivia:
+            return archiviaDocumentoCaduto(a)
+
         default:
             return no("Questa azione non è ancora disponibile in Prisma.")
         }
@@ -369,6 +407,15 @@ extension StatoShell {
         case RegistroStrumenti.posizioniScadenza:
             guard let id = e.oggetto, let i = dati.posizioni.firstIndex(where: { $0.id == id }) else { return false }
             dati.posizioni[i].scadenza = RegistroStrumenti.daIso(e.prima)
+        case RegistroStrumenti.memoriaRicorda:
+            if e.prima == "gia" { return true }
+            guard let id = e.oggetto, memoriaVera.ricordi.contains(where: { $0.id == id }) else { return false }
+            memoriaVera.dimentica(id)
+        case RegistroStrumenti.documentiArchivia:
+            guard let id = e.oggetto, let d = documento(id) else { return false }
+            if let u = urlDocumento(d) { try? FileManager.default.removeItem(at: u) }
+            if let u = urlTesto(d) { try? FileManager.default.removeItem(at: u) }
+            dati.documenti.removeAll { $0.id == id }
         default:
             return false
         }

@@ -998,6 +998,8 @@ enum ProvaVera {
         ProvaCopilota.esegui(controlla)
         // La fase 1 del brief: strumenti, scheda di conferma, «Fallo tu», «Chiedi alla tua clientela», «Mai a caso» (ProvaFalloTu.swift)
         ProvaFalloTu.esegui(controlla)
+        // La fase 2: ricerca, memoria, lezioni, filo lungo, 30 secondi, norme, lascia cadere (ProvaFaseDueVera.swift)
+        ProvaFaseDueVera.esegui(controlla)
         #if os(macOS)
         // La mini finestra: ⌥ Spazio, i cinque stati, cifre e canali, «non pronta» (ProvaMiniVera.swift)
         ProvaMiniVera.esegui(controlla)

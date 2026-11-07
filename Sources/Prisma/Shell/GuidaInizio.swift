@@ -169,8 +169,8 @@ extension StatoShell {
         guard !solaLettura else { return }
         let documenti = urls.filter { ["pdf", "png", "jpg", "jpeg", "tiff", "tif", "heic"].contains($0.pathExtension.lowercased()) }
         if !documenti.isEmpty {
-            apri(.documenti)
-            importaDocumenti(documenti)
+            // «Lascia cadere qui» (Vera, funzione 9): Vera legge il documento, riconosce il cliente e chiede conferma
+            lasciaCadere(documenti)
         }
         // Le tabelle e i contatti: un'anteprima per volta, la prima
         if let url = urls.first(where: { !documenti.contains($0) }) {

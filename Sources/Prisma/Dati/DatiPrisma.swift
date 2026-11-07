@@ -569,6 +569,14 @@ struct ImpostazioniVera: Codable, Equatable {
     var modelliConfronto = ConfrontoModelli.predefiniti
     /// iPhone e iPad usano Qwen di questo Mac in rete locale, cifrato con il codice di abbinamento (PonteVera).
     var ponte = ImpostazioniPonte()
+    /// «La memoria» (fase 2 di Vera): Vera propone i ricordi e li salva dopo il tuo sì (cifrati, Vera/memoria.cifrato).
+    var memoriaAttiva = true
+    /// «Impara dalle correzioni»: 👍 e 👎 sotto le risposte, le lezioni rilette prima di rispondere.
+    var imparaDalleCorrezioni = true
+    /// «Il filo lungo»: la finestra del modello in token (una sola per tutte le chiamate: Ollama ricarica il modello se cambia).
+    var finestra = FinestraVera.predefinita
+    /// Il modello della ricerca per significato (Ollama, /api/embed), caricato solo quando serve.
+    var modelloRicerca = RicercaVera.modelloPredefinito
 
     /// Il modello del fornitore scelto.
     var modello: String {
@@ -587,6 +595,7 @@ struct ImpostazioniVera: Codable, Equatable {
     private enum CodingKeys: String, CodingKey {
         case conservaConversazioni, voce, velocitaVoce, risposteAVoce, leggiTutto, conversazioneContinua, indirizzoLocale, modelloLocale, riconoscimento, mostraPassaggiVoce
         case fornitore, indirizzoCompatibile, modelloCompatibile, ragionamento, prontaAllAvvio, restaInMemoria, modelliConfronto, ponte
+        case memoriaAttiva, imparaDalleCorrezioni, finestra, modelloRicerca
     }
 
     init(from decoder: Decoder) throws {
@@ -612,6 +621,11 @@ struct ImpostazioniVera: Codable, Equatable {
         riconoscimento = (try? c.decodeIfPresent(SceltaRiconoscimento.self, forKey: .riconoscimento)) ?? .automatico
         mostraPassaggiVoce = (try? c.decodeIfPresent(Bool.self, forKey: .mostraPassaggiVoce)) ?? false
         ponte = (try? c.decodeIfPresent(ImpostazioniPonte.self, forKey: .ponte)) ?? ImpostazioniPonte()
+        memoriaAttiva = (try? c.decodeIfPresent(Bool.self, forKey: .memoriaAttiva)) ?? true
+        imparaDalleCorrezioni = (try? c.decodeIfPresent(Bool.self, forKey: .imparaDalleCorrezioni)) ?? true
+        finestra = FinestraVera.valida((try? c.decodeIfPresent(Int.self, forKey: .finestra)) ?? FinestraVera.predefinita)
+        let ricerca = (try? c.decodeIfPresent(String.self, forKey: .modelloRicerca)) ?? ""
+        modelloRicerca = ricerca.isEmpty ? RicercaVera.modelloPredefinito : ricerca
     }
 }
 

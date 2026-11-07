@@ -27,6 +27,12 @@ struct MessaggioVera: Identifiable, Codable, Equatable {
     var clientela: RisultatoClientela?
     /// «Mai a caso»: la fonte di ogni cifra della risposta (FontiVera.swift).
     var fonti: [FonteCifra]?
+    /// 👍 (true) o 👎 (false) del consulente sulla risposta («Impara dalle correzioni»).
+    var voto: Bool?
+    /// «Il cliente in 30 secondi»: le cinque sezioni con la loro fonte (TrentaSecondiVera.swift).
+    var trenta: SchedaTrentaSecondi?
+    /// «Il codice in tasca»: gli articoli citati dalla biblioteca delle norme (NormeVera.swift).
+    var norme: RispostaNorme?
 
     init(autore: Autore, testo: String, titolo: String? = nil, motore: String? = nil, proposte: [PropostaVera]? = nil) {
         self.autore = autore
@@ -37,7 +43,7 @@ struct MessaggioVera: Identifiable, Codable, Equatable {
         data = Appuntamento.alMinuto(Date())
     }
 
-    private enum CodingKeys: String, CodingKey { case id, autore, testo, titolo, motore, data, proposte, azione, modalita, scenario, conferma, clientela, fonti }
+    private enum CodingKeys: String, CodingKey { case id, autore, testo, titolo, motore, data, proposte, azione, modalita, scenario, conferma, clientela, fonti, voto, trenta, norme }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -54,6 +60,9 @@ struct MessaggioVera: Identifiable, Codable, Equatable {
         conferma = try? c.decodeIfPresent(SchedaConfermaVera.self, forKey: .conferma)
         clientela = try? c.decodeIfPresent(RisultatoClientela.self, forKey: .clientela)
         fonti = try? c.decodeIfPresent([FonteCifra].self, forKey: .fonti)
+        voto = try? c.decodeIfPresent(Bool.self, forKey: .voto)
+        trenta = try? c.decodeIfPresent(SchedaTrentaSecondi.self, forKey: .trenta)
+        norme = try? c.decodeIfPresent(RispostaNorme.self, forKey: .norme)
     }
 }
 

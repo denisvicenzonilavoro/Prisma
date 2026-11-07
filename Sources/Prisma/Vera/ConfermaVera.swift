@@ -32,6 +32,10 @@ struct SchedaConfermaVera: Codable, Equatable, Identifiable {
         case qwen
         /// «Crea attività» di «Chiedi alla tua clientela».
         case clientela
+        /// «La memoria»: i ricordi che Vera propone, salvati solo dopo «Ricorda».
+        case memoria
+        /// «Lascia cadere qui»: un documento trascinato, da archiviare con i dati letti.
+        case documento
     }
 
     var id = "conferma-\(UUID().uuidString.prefix(8).lowercased())"

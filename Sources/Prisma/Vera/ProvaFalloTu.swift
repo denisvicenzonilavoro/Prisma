@@ -69,7 +69,7 @@ enum ProvaFalloTu {
         let corpo = FornitoreOllama.corpo(modello: "qwen3.5:4b", messaggi: [MessaggioModello(ruolo: .utente, testo: "x")], opzioni: o)
         let tools = corpo["tools"] as? [[String: Any]] ?? []
         let nomi = Set(tools.compactMap { ($0["function"] as? [String: Any])?["name"] as? String })
-        controlla(nomi == Set(RegistroStrumenti.tutti.map(\.nome)) && corpo["format"] == nil && (corpo["options"] as? [String: Any])?["temperature"] as? Double == 0,
+        controlla(nomi == Set(RegistroStrumenti.tutti.filter { !$0.soloPrisma }.map(\.nome)) && !nomi.contains(RegistroStrumenti.documentiArchivia) && corpo["format"] == nil && (corpo["options"] as? [String: Any])?["temperature"] as? Double == 0,
                   "Strumenti: a Ollama tutti gli strumenti del registro in «tools», senza «format», temperatura 0 (\(nomi.count))")
         controlla(JSONSerialization.isValidJSONObject(corpo), "Strumenti: il corpo con gli schemi è JSON valido")
         let validi = RegistroStrumenti.tutti.allSatisfy { s in
@@ -200,7 +200,7 @@ enum ProvaFalloTu {
         }
         let ricevuto = ServerFintoScenari.ultimo
         let utente = ((ricevuto["messages"] as? [[String: Any]])?.last?["content"] as? String) ?? ""
-        controlla((ricevuto["tools"] as? [Any])?.count == RegistroStrumenti.tutti.count && utente.contains(richiesta) && utente.contains("Laura Moretti"),
+        controlla((ricevuto["tools"] as? [Any])?.count == RegistroStrumenti.tutti.filter { !$0.soloPrisma }.count && utente.contains(richiesta) && utente.contains("Laura Moretti"),
                   "Fallo tu, Qwen finto: la richiesta porta gli strumenti, la frase e i nomi dei clienti")
         controlla(r.chiamate.map(\.nome) == [RegistroStrumenti.agendaSposta, RegistroStrumenti.messaggiPrepara] && r.testo.isEmpty,
                   "Fallo tu, Qwen finto: due chiamate lette dallo streaming, un turno di sole chiamate è valido")

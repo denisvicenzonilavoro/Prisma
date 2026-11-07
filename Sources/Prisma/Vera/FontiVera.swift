@@ -69,6 +69,8 @@ enum FontiVera {
     /// La spiegazione di una cifra senza fonte.
     static let nonTrovata = "Non viene da Prisma: non la trovo nella scheda, nei calcoli o nei documenti. Non usarla."
     static let origineDomanda = "La tua domanda"
+    static let origineFilo = "Filo della conversazione"
+    static let origineDocumenti = "Documenti e note del cliente"
 
     // MARK: - I numeri nel testo
 
@@ -162,8 +164,19 @@ enum FontiVera {
                 contenuto = resto
             }
             guard !contenuto.isEmpty else { continue }
-            for n in numeri(contenuto) {
-                voci.append(VoceFonte(valore: n.valore, unita: n.unita, origine: blocco, dettaglio: String(contenuto.prefix(140)), app: nil))
+            // Le cifre del riassunto le ha scritte il modello: non sono una fonte (restano «non trovate»)
+            if blocco == origineFilo { continue }
+            var origine = blocco
+            var riga = contenuto
+            var app: AppPrisma?
+            // «[Documento «KID» · pagina 2] …»: la fonte vera è il documento con la pagina
+            if blocco == origineDocumenti, contenuto.hasPrefix("["), let fine = contenuto.firstIndex(of: "]") {
+                origine = String(contenuto[contenuto.index(after: contenuto.startIndex)..<fine])
+                riga = String(contenuto[contenuto.index(after: fine)...]).trimmingCharacters(in: .whitespaces)
+                app = .documenti
+            }
+            for n in numeri(riga) {
+                voci.append(VoceFonte(valore: n.valore, unita: n.unita, origine: origine, dettaglio: String(riga.prefix(140)), app: app))
             }
         }
         return voci
@@ -185,6 +198,9 @@ enum FontiVera {
         case let n where n.hasPrefix("scheda"): return ("Scheda del cliente · Prisma", resto)
         case let n where n.hasPrefix("bozza"): return ("Bozza di Prisma", resto)
         case let n where n.hasPrefix("calcoli"): return ("Calcoli di Prisma", resto)
+        case let n where n.hasPrefix("il filo"): return (origineFilo, resto)
+        case let n where n.hasPrefix("ricordi"): return ("Memoria di Vera", resto)
+        case let n where n.hasPrefix("dai documenti"): return (origineDocumenti, resto)
         default: return ("Calcoli di Prisma · \(bello)", resto)
         }
     }

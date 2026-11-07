@@ -391,6 +391,29 @@ extension AppImpostazioni {
                 }
             }
             .cascataImpostazioni(5)
+            // Fase 2 del brief di Vera: memoria, lezioni, filo lungo e ricerca per significato
+            GruppoImpostazioni(titolo: "Memoria") {
+                RigaImpostazione(titolo: "Vera ricorda", sottotitolo: "Propone i ricordi, li salva dopo il tuo sì.",
+                                 aiuto: "Ricordi su di te e sui clienti, sul Mac e cifrati. Mai numeri di documenti, conti o password") {
+                    interruttore($stato.dati.impostazioni.vera.memoriaAttiva)
+                }
+                RigaImpostazione(titolo: "Impara dalle correzioni", sottotitolo: "👍 e 👎 sotto le risposte.",
+                                 aiuto: "Una correzione scritta diventa una lezione che Vera rilegge prima di ogni risposta") {
+                    interruttore($stato.dati.impostazioni.vera.imparaDalleCorrezioni)
+                }
+                RigaImpostazione(titolo: "Il filo lungo", sottotitolo: "La memoria della conversazione.",
+                                 aiuto: "Misurato su questo Mac: Qwen 3.5 4B occupa 3,8 GB anche a 32.000 token. Le battute che escono dalla finestra restano in un riassunto") {
+                    MenuTendina(selezione: $stato.dati.impostazioni.vera.finestra,
+                                opzioni: FinestraVera.scelte.map { ($0, FinestraVera.nome($0)) }, larghezza: M.menuMedio)
+                }
+                RigaImpostazione(titolo: "Ricerca per significato", sottotitolo: "Modello in Ollama, solo quando serve.") {
+                    TextField(RicercaVera.modelloPredefinito, text: $stato.dati.impostazioni.vera.modelloRicerca)
+                        .campoTesto()
+                        .frame(width: M.campoModello)
+                }
+                RigaMemoriaVera(memoria: stato.memoriaVera)
+            }
+            .cascataImpostazioni(6)
             GruppoImpostazioni(titolo: "Avanzate") {
                 rigaApri("Fornitore e indirizzo", "\(vera.fornitore.nome) · solo indirizzi del Mac",
                          aperta: $mostraAvanzateVera, ultima: !mostraAvanzateVera)
@@ -410,9 +433,9 @@ extension AppImpostazioni {
                     }
                 }
             }
-            .cascataImpostazioni(6)
+            .cascataImpostazioni(7)
             NotaImpostazioni("Vera spiega e racconta; le cifre le calcola Prisma. I dati non lasciano il Mac.")
-                .cascataImpostazioni(7)
+                .cascataImpostazioni(8)
         }
     }
 
@@ -497,6 +520,22 @@ extension AppImpostazioni {
                          aiuto: "Dopo aver risposto Vera torna ad ascoltarti, finché non le dici «basta così» · ⌥⌘E per parlarle",
                          ultima: true) {
             interruttore($stato.dati.impostazioni.vera.conversazioneContinua)
+        }
+    }
+}
+
+/// La riga «La memoria di Vera» di Impostazioni › Vera: osserva la memoria, così conteggi e «Mostra» restano veri.
+private struct RigaMemoriaVera: View {
+    @EnvironmentObject var stato: StatoShell
+    @ObservedObject var memoria: StatoMemoriaVera
+
+    var body: some View {
+        RigaImpostazione(titolo: "La memoria di Vera", sottotitolo: "\(memoria.ricordi.count) ricordi · \(memoria.lezioni.count) lezioni", ultima: true) {
+            ValoreRiga(testo: memoria.aperta ? "Nascondi" : "Mostra") {
+                let v = !memoria.aperta
+                if v { stato.apri(.vera) }
+                memoria.aperta = v
+            }
         }
     }
 }

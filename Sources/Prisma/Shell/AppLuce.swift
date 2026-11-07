@@ -58,10 +58,18 @@ struct AppPratiche: View {
 
 /// Il contenuto della Biblioteca (giro 6): per ora lo stato vuoto e «in arrivo».
 struct AppBiblioteca: View {
+    @EnvironmentObject var stato: StatoShell
+
     var body: some View {
+        #if os(macOS)
+        // La biblioteca delle norme di Vera (fase 2, funzione 13: BibliotecaApple.swift)
+        BibliotecaApple(biblioteca: stato.biblioteca)
+        #else
+        // Su iPhone e iPad la Biblioteca non c'è ancora (decisione 114)
         let n = NovitaLuce.trovaLaPagina
         InArrivoAppLuce(app: .biblioteca, glifo: n.glifo, titolo: n.titolo, frase: n.frase + ".",
-                        nota: "Nessun documento caricato: la Biblioteca conterrà solo i PDF che porti tu, con l'edizione di ognuno.")
+                        nota: "La Biblioteca delle norme è sul Mac: i PDF che porti tu, con l'edizione di ognuno.")
+        #endif
     }
 }
 

@@ -30,6 +30,12 @@ struct AmbienteVera {
     var breve = false
     /// La modalità scelta dal consulente nella testata di Vera; nil = la sceglie Vera dalla domanda.
     var modalita: ModalitaVera?
+    /// «La memoria»: i ricordi pertinenti (del cliente e su di te), confermati dal consulente.
+    var ricordi: [String] = []
+    /// «Il filo lungo»: il riassunto delle battute uscite dalla finestra.
+    var riassunto: String?
+    /// La ricerca per significato: i passaggi dei documenti, delle note e degli incontri del cliente, con la fonte.
+    var brani: [(fonte: String, testo: String)] = []
 }
 
 /// Tutto quello che va al fornitore per una risposta.
@@ -40,13 +46,14 @@ struct PianoVera {
 }
 
 enum NucleoVera {
-    /// Finestra del modello: 8.192 token stanno bene nella memoria del Mac da 8 GB.
-    static let finestra = 8_192
+    /// Finestra del modello, una sola per tutte le chiamate (FinestraVera, Impostazioni › Vera › «Il filo lungo»):
+    /// misurata sul Mac da 8 GB, Qwen 3.5 4B occupa la stessa memoria a 8.192 e a 32.768 token.
+    static var finestra: Int { FinestraVera.attuale }
     /// Spazio lasciato alla risposta (al ragionamento serve di più).
     static let riservaRisposta = 1_600
     static let riservaRagionamento = 1_800
     /// Al massimo tante battute di storia, ognuna al massimo così lunga.
-    static let massimoBattute = 40
+    static var massimoBattute: Int { finestra >= 32_768 ? 160 : (finestra >= 16_384 ? 80 : 40) }
     static let massimoCaratteriBattuta = 6_000
 
     // MARK: - Modalità e ragionamento
@@ -162,9 +169,27 @@ enum NucleoVera {
                              + String(calcoli.prefix(ContestoVera.limiteCalcoli)))
             }
         }
+        if let f = ambiente.riassunto, !f.isEmpty {
+            parti.append("IL FILO DELLA CONVERSAZIONE (riassunto delle battute di prima, che non vedi più)\n" + f)
+        }
+        if !ambiente.ricordi.isEmpty {
+            parti.append("RICORDI (dalla memoria di Vera, confermati dal consulente)\n" + ambiente.ricordi.map { "- \($0)" }.joined(separator: "\n"))
+        }
+        if scelta.conScheda, !ambiente.brani.isEmpty {
+            parti.append("DAI DOCUMENTI E DALLE NOTE DEL CLIENTE (passaggi trovati da Prisma: cita la fonte, per esempio documento e pagina)\n"
+                         + ambiente.brani.map { "[\($0.fonte)] \($0.testo)" }.joined(separator: "\n"))
+        }
         if ambiente.breve { parti.append("COME RISPONDERE\n" + IstruzioniVera.mini) }
         parti.append("DOMANDA DEL CONSULENTE\n" + r.domanda)
         return parti.joined(separator: "\n\n")
+    }
+
+    /// Le battute che il piano non porta più al modello (le più vecchie, uscite dalla finestra), in ordine.
+    static func uscite(_ storia: [MessaggioVera], piano: PianoVera) -> [MessaggioVera] {
+        let dentro = max(0, piano.messaggi.count - 2)
+        let valide = storia.filter { !($0.autore == .vera && ($0.motore == "Prisma" || $0.titolo == "Vera non ha potuto rispondere")) }
+        guard valide.count > dentro else { return [] }
+        return Array(valide.prefix(valide.count - dentro))
     }
 
     /// Le battute più recenti che stanno nel budget, in ordine. Restano fuori gli avvisi di Prisma

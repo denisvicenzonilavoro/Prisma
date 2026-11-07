@@ -69,6 +69,9 @@ struct MotoreLocale: MotoreVera, MotoreGenerativo {
     /// Una risposta intera, per commenti e spiegazioni (modalità lavoro, senza ragionamento).
     func genera(istruzioni: String, richiesta: String) async throws -> String {
         var opzioni = OpzioniModello()
+        // La stessa finestra di tutte le chiamate (Ollama non ricarica il modello); niente lezioni nelle estrazioni a righe fisse
+        opzioni.contesto = NucleoVera.finestra
+        opzioni.conLezioni = false
         opzioni.restaInMemoria = restaInMemoria
         return try await scrivi([MessaggioModello(ruolo: .sistema, testo: istruzioni), MessaggioModello(ruolo: .utente, testo: richiesta)],
                                 opzioni: opzioni).testo
@@ -108,6 +111,8 @@ struct MotoreLocale: MotoreVera, MotoreGenerativo {
 
     private func raccogli(_ messaggi: [MessaggioModello], opzioni: OpzioniModello,
                           aggiorna: ((ParzialeVera) -> Void)?) async throws -> RispostaConStrumenti {
+        // «Impara dalle correzioni»: le lezioni del consulente in fondo alle istruzioni di ogni risposta a testo libero
+        let messaggi = LezioniVera.applica(messaggi, opzioni: opzioni)
         var chiamate: [ChiamataStrumento] = []
         var filtro = FiltroPensiero()
         var testo = "", pensiero = ""

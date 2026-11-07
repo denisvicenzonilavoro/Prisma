@@ -79,6 +79,8 @@ struct OpzioniModello {
     /// Lo schema JSON a cui la risposta deve attenersi (estrazione dei parametri degli scenari, Vera/Schemi):
     /// Ollama lo vuole in «format», i server compatibili OpenAI in «response_format». nil = testo libero.
     var formato: [String: Any]?
+    /// Le lezioni del consulente («Impara dalle correzioni») in fondo alle istruzioni: no per le estrazioni a righe fisse.
+    var conLezioni = true
 }
 
 /// Una chiamata a uno strumento chiesta dal modello.

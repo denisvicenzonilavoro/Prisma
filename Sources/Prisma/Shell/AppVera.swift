@@ -45,6 +45,9 @@ struct AppVera: View {
             .frame(width: geo.size.width, height: geo.size.height)
         }
         .altreAppApple()
+        // «Lascia cadere qui» e la pagina della memoria di Vera (fase 2, RilascioVera.swift)
+        .rilascioDocumentiVera()
+        .paginaMemoriaVera(stato.memoriaVera)
         // Parte sia alla nascita della vista (Vera era chiusa o ridotta) sia a ogni nuova richiesta
         .task(id: stato.richiestaDettatura) { await accendiDettatura() }
         // Il FocusState resta in pari con makeFirstResponder(nil), altrimenti il prossimo «true» non cambia niente
@@ -807,6 +810,13 @@ struct NuvolaVera: View {
                     if let f = messaggio.fonti, !f.isEmpty {
                         FontiVeraVista(fonti: f)
                     }
+                    // Fase 2: «Il cliente in 30 secondi» e gli articoli della biblioteca delle norme
+                    if let t = messaggio.trenta {
+                        TrentaSecondiVista(scheda: t)
+                    }
+                    if let n = messaggio.norme {
+                        NormeVeraVista(risposta: n)
+                    }
                     if let proposte = messaggio.proposte, !proposte.isEmpty {
                         elencoProposte(proposte)
                             .padding(.top, b.sopraScheda)
@@ -878,6 +888,7 @@ struct NuvolaVera: View {
                 }
             }
         } else {
+            VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: b.spazioAzioni) {
                 if azioniCliente && messaggio.motore != StatoShell.motoreAzioni && messaggio.conferma == nil {
                     azione("✓ Crea attività", creaAttivita)
@@ -886,6 +897,12 @@ struct NuvolaVera: View {
                 azione("Copia") {
                     Appunti.copia((messaggio.titolo.map { $0 + "\n\n" } ?? "") + messaggio.testo)
                 }
+            }
+            // «Impara dalle correzioni»: 👍 e 👎 sotto le risposte scritte da Qwen
+            if messaggio.motore != StatoShell.motoreAzioni, messaggio.motore != MotoriVera.sintesi.nome, messaggio.titolo != "Vera non ha potuto rispondere" {
+                PolliciVera(messaggio: messaggio)
+                    .padding(.top, b.spazioAzioni)
+            }
             }
         }
     }
