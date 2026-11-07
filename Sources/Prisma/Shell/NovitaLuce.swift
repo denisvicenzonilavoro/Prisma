@@ -217,6 +217,7 @@ enum NovitaLuce: String, CaseIterable, Identifiable {
         case .radar, .smontaggio: return true   // giro 2: Posizioni › Radar e Smontaggio
         case .dopoLaFirma: return true          // giro 3: Pratiche › Dopo la firma
         case .propostaDaSola: return true        // giro 3: Pratiche › Proposta
+        case .giornataPensione, .giocoRischio: return true   // giro 4: Sala › Una giornata della pensione, Il gioco del rischio
         default: return false
         }
     }

@@ -30,12 +30,12 @@ extension Tema.Apple.Studio {
             static let rosso = Tema.Apple.Colore.rosso
             static let nessuna = Tema.Apple.Colore.inchiostro3
             /// Opzione giusta: bordo #30B15C, fondo verde al 10%, cerchio pieno verde con la lettera bianca.
-            static let bordoGiusta = Tema.Apple.Colore.anello1
-            static let fondoGiusta = Color(r: 48, g: 177, b: 92, a: 0.10)
+            static let bordoGiusta = Tema.Apple.OpzioneLettera.bordoGiusta
+            static let fondoGiusta = Tema.Apple.OpzioneLettera.fondoGiusta
             /// Opzione sbagliata scelta: bordo #E5484D, fondo rosso all'8%.
-            static let bordoSbagliata = Tema.Apple.Colore.rosso
-            static let fondoSbagliata = Color(r: 229, g: 72, b: 77, a: 0.08)
-            static let letteraPiena = Color.white
+            static let bordoSbagliata = Tema.Apple.OpzioneLettera.bordoSbagliata
+            static let fondoSbagliata = Tema.Apple.OpzioneLettera.fondoSbagliata
+            static let letteraPiena = Tema.Apple.OpzioneLettera.letteraPiena
             /// Bordo della spiegazione: verde al 40% o rosso al 35%.
             static let bordoSpiegazioneGiusta = Color(r: 47, g: 163, b: 90, a: 0.40)
             static let bordoSpiegazioneSbagliata = Color(r: 229, g: 72, b: 77, a: 0.35)
@@ -144,27 +144,8 @@ extension Tema.Apple.Studio {
 
         // MARK: Opzioni
 
-        enum Opzione {
-            /// `.opz`: spazio 14, padding 13 / 16, raggio 16, bordo 1, fondo `cardPiena`, 10 fra loro, testo 15, al più 860.
-            static let spazio: CGFloat = 14
-            static let padding = Tema.Apple.Misura.padding(13, 16)
-            static let raggio: CGFloat = 16
-            static let bordo = Tema.Apple.Misura.bordo
-            static let coloreBordo = Tema.Apple.Colore.separatore
-            static let fondo = Tema.Apple.Colore.cardPiena
-            static let fraOpzioni: CGFloat = 10
-            static let larghezza: CGFloat = 860
-            static let testo = Tema.Apple.Carattere(dimensione: 15, peso: .regular, interlinea: 1.35)
-            static let coloreTesto = Tema.Apple.Colore.inchiostro
-            /// Il cerchio della lettera `.ol`: 30, fondo `chip`, lettera 15 bold.
-            static let lettera: CGFloat = 30
-            static let fondoLettera = Tema.Apple.Colore.chip
-            static let carattereLettera = Tema.Apple.Carattere(dimensione: 15, peso: .bold)
-            static let coloreLettera = Tema.Apple.Colore.inchiostro
-            /// Al passaggio del puntatore (domanda aperta): 4 a destra.
-            static let spostamentoPassaggio: CGFloat = 4
-            static let lettere = ["A", "B", "C", "D"]
-        }
+        /// Le risposte con la lettera: i gettoni comuni di `OpzioneLettera` (DesignSystem/Apple/OpzioneLettera.swift).
+        typealias Opzione = Tema.Apple.OpzioneLettera
 
         // MARK: Spiegazione
 

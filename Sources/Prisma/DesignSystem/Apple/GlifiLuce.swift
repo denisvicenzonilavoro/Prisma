@@ -382,3 +382,70 @@ struct TavolaGlifiLuce: View {
         }
     }
 }
+
+// MARK: - Le scene di una giornata della pensione
+
+/// I glifi delle scene di una giornata della pensione (Design/template-luce-specifica.md §4.2.2, `SCN[].ic`, righe
+/// 1351-1355; «Luce» giro 4), più il sole per le scene aggiunte. Stanno a parte dai 29 glifi delle novità (la tavola
+/// `619-glifi-luce` e le prove contano quelli): stesso lettore, tratto 1,8 su 24.
+enum GlifoScena: String, CaseIterable, Identifiable {
+    case colazione, casa, nipoti, cena, viaggio, sole
+
+    var id: String { rawValue }
+
+    var colore: Color {
+        typealias G = Tema.Apple.Colore.Glifi
+        switch self {
+        case .colazione: return G.colazione
+        case .casa: return G.casa
+        case .nipoti: return G.nipoti
+        case .cena: return G.cena
+        case .viaggio: return G.viaggio
+        case .sole: return G.giornata
+        }
+    }
+
+    fileprivate var pezzi: [PezzoGlifo] {
+        switch self {
+        case .colazione:
+            return [.tratto("M5 9h11v5a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5z"),
+                    .tratto("M16 10h1.5a2.5 2.5 0 0 1 0 5H16M8 3.5c0 1.5 1 1.5 1 3M12 3.5c0 1.5 1 1.5 1 3")]
+        case .casa: return [.tratto("M4 11l8-6.5 8 6.5"), .tratto("M6 10v9h12v-9"), .tratto("M10 19v-5h4v5")]
+        case .nipoti:
+            return [.cerchio(8, 7.5, 2.6, pieno: false), .cerchio(16.5, 9.5, 2, pieno: false),
+                    .tratto("M3.5 19c.6-3.6 2.4-5.5 4.5-5.5s3.9 1.9 4.5 5.5M13.3 19c.4-2.6 1.6-4 3.2-4s2.8 1.4 3.2 4")]
+        case .cena: return [.tratto("M7 3v18M4.5 3v5a2.5 2.5 0 0 0 5 0V3M16 21V3c2.5 1 3.5 4 3.5 7.5H16")]
+        case .viaggio: return [.tratto("M2.5 13.5l19-8.5-6 15-3.5-6.5z"), .tratto("M12 13.5l9.5-8.5")]
+        case .sole:
+            return [.cerchio(12, 12, 4, pieno: false),
+                    .tratto("M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.2 5.2l1.8 1.8M17 17l1.8 1.8M5.2 18.8L7 17M17 7l1.8-1.8")]
+        }
+    }
+
+    /// Il tracciato nel riquadro 24×24, letto una volta sola (solo dal thread principale).
+    fileprivate var tracciato: Path {
+        if let t = Self.cache[self] { return t }
+        var tutti = Path()
+        for p in pezzi { tutti.addPath(p.tracciato.0) }
+        Self.cache[self] = tutti
+        return tutti
+    }
+
+    private static var cache: [GlifoScena: Path] = [:]
+}
+
+/// Il glifo bianco di una scena, grande `lato`, con il tratto `tratto` su 24.
+struct GlifoScenaVista: View {
+    let glifo: GlifoScena
+    let lato: CGFloat
+    let tratto: CGFloat
+    var colore: Color = Tema.Apple.Tassello.coloreGlifo
+
+    var body: some View {
+        let scala = lato / 24
+        glifo.tracciato.applying(CGAffineTransform(scaleX: scala, y: scala))
+            .stroke(colore, style: StrokeStyle(lineWidth: tratto * scala, lineCap: .round, lineJoin: .round))
+            .frame(width: lato, height: lato)
+            .accessibilityHidden(true)
+    }
+}

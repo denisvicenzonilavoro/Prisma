@@ -75,6 +75,9 @@ struct DatiPrisma: Codable, Equatable {
     /// accettate; dentro ci sono solo i segni a mano, le note e il sollecito (i passi riconosciuti li calcola
     /// MotorePratiche).
     var pratiche: [Pratica] = []
+    /// Le partite del gioco del rischio (Sala, versione 27, «Luce» giro 4): solo quelle salvate con «Salva nel
+    /// dossier» (decisione 52). Non cambiano mai la propensione del cliente e non entrano in «Prisma ovunque».
+    var partiteRischio: [PartitaRischio] = []
     var clienteAttivoId: String
     var impostazioni: Impostazioni
 
@@ -124,7 +127,9 @@ struct DatiPrisma: Codable, Equatable {
     ///     portafogli modello (`portafogliModello`), la tolleranza del radar (`Impostazioni.tolleranzaRadar`), il modello
     ///     di ogni cliente (`Cliente.modelloId`) e il segno delle bozze di riequilibrio (`Posizione.riequilibrio`). Giro 3:
     ///     le pratiche dopo la firma (`pratiche`, lette con tolleranza: una pratica senza id o posizione si scarta) e
-    ///     la soglia delle pratiche ferme (`Impostazioni.pratiche`, 7 giorni se manca o è illeggibile).
+    ///     la soglia delle pratiche ferme (`Impostazioni.pratiche`, 7 giorni se manca o è illeggibile). Giro 4: la
+    ///     giornata della pensione nell'Analisi 360 (`Analisi360.giornata`, voci lette con tolleranza) e le partite del
+    ///     gioco del rischio salvate nel dossier (`partiteRischio`, lette con tolleranza).
     static let versioneAttuale = 27
 
     init(clienti: [Cliente], appuntamenti: [Appuntamento], attivita: [Attivita], posizioni: [Posizione],
@@ -185,6 +190,7 @@ struct DatiPrisma: Codable, Equatable {
         case mercato, famiglie, ocf
         case portafogliModello
         case pratiche
+        case partiteRischio
     }
 
     /// Lettura tollerante: gli archivi delle versioni precedenti non hanno tutte le sezioni.
@@ -236,6 +242,8 @@ struct DatiPrisma: Codable, Equatable {
         portafogliModello = ((try? c.decodeIfPresent(ElencoTollerante<PortafoglioModello>.self, forKey: .portafogliModello)) ?? nil)?.elementi ?? []
         // Pratiche dopo la firma (versione 27, giro 3): una pratica illeggibile si scarta, le altre restano
         pratiche = ((try? c.decodeIfPresent(ElencoTollerante<Pratica>.self, forKey: .pratiche)) ?? nil)?.elementi ?? []
+        // Partite del gioco del rischio (versione 27, giro 4): una partita illeggibile si scarta, le altre restano
+        partiteRischio = ((try? c.decodeIfPresent(ElencoTollerante<PartitaRischio>.self, forKey: .partiteRischio)) ?? nil)?.elementi ?? []
         clienteAttivoId = try c.decodeIfPresent(String.self, forKey: .clienteAttivoId) ?? (clienti.first?.id ?? "")
         impostazioni = try c.decodeIfPresent(Impostazioni.self, forKey: .impostazioni) ?? Impostazioni()
     }

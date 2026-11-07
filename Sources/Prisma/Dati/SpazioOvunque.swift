@@ -143,6 +143,8 @@ enum SpazioOvunque {
     static func datiIstantanea(_ d: DatiPrisma) -> DatiPrisma {
         var x = d
         x.conversazioni = [:]
+        // Le partite del gioco del rischio restano sul Mac (decisione 44)
+        x.partiteRischio = []
         x.giornaleOvunque = []
         x.impostazioni.ovunque = ImpostazioniOvunque()
         x.impostazioni.vera = ImpostazioniVera()
@@ -439,6 +441,7 @@ enum SincroniaOvunque {
         let inSospeso = locale.giornaleOvunque.filter { $0.seq > confermato }.sorted { $0.seq < $1.seq }
 
         nuovo.conversazioni = locale.conversazioni
+        nuovo.partiteRischio = locale.partiteRischio
         let mie = locale.impostazioni
         var imp = nuovo.impostazioni
         imp.vera = mie.vera
