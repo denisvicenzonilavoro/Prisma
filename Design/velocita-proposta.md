@@ -19,25 +19,25 @@ La prova della fluidità ha anche le azioni nuove di Luce: aprire la Sala, il pr
 
 ## Come stiamo
 
-Numeri del mio giro sul tuo Mac (M1, 8 GB), **con la versione di sviluppo** (debug): quella installata è più veloce, quindi questi numeri sono il caso peggiore. Il pulsante «Misura la velocità» darà quelli veri della versione installata. «Aggiornamento» è il lavoro di Prisma sul thread principale per un'azione (stato, ricalcolo delle viste, impaginazione), mediana di più giri.
+Numeri presi sul tuo Mac (M1, 8 GB) con **la versione installata** (release, commit cec9d4c), il 7 novembre 2026 sera, con il Mac occupato anche da un'altra sessione. «Aggiornamento» è il lavoro di Prisma sul thread principale per un'azione (stato, ricalcolo delle viste, impaginazione), mediana di più giri. Sono quasi uguali a quelli della versione di sviluppo: il tempo se ne va nella struttura, non nel compilatore.
 
 | Azione | 5 clienti | 200 clienti | Limite a cui puntiamo |
 |---|---:|---:|---:|
-| Un tasto in una nota | 50 ms | 69 ms | 16 ms |
-| Aprire Posizioni | 219 ms | 436 ms | 100 ms |
-| Prima apertura di 4 app pesanti | — | 1.476 ms | 100 ms per app |
-| Aspetto scuro | 424 ms | 633 ms | — |
-| Avvio (stato, dati, prima impaginazione) | 270 ms | 682 ms | 1 s fino alla scrivania |
-| Sblocco | 27 ms | 54 ms | 150 ms |
-| Ricerca ⌘K (apertura) | 79 ms | 114 ms | 30 ms per tasto |
-| Aprire la Sala | 74 ms | 108 ms | 100 ms |
-| Aprire il prisma di luce | 95 ms | 135 ms | 100 ms |
-| Aprire Pratiche | 53 ms | 83 ms (la prima volta 1.308 ms) | 100 ms |
-| Aprire il radar | 82 ms | 321 ms | 100 ms |
-| Tornare dal radar | 168 ms | 430 ms | 100 ms |
-| Aprire la Biblioteca | 39 ms | 64 ms | 100 ms |
+| Un tasto in una nota | 23 ms | 70 ms | 16 ms |
+| Aprire Posizioni | 211 ms | 411 ms | 100 ms |
+| Aspetto scuro | 372 ms | 698 ms | — |
+| Avvio (stato, dati, prima impaginazione) | 265 ms | 469 ms | 1 s fino alla scrivania |
+| Ricerca ⌘K (apertura) | 68 ms | 107 ms | 30 ms per tasto |
+| Aprire la Sala | 106 ms | 97 ms | 100 ms |
+| Aprire il prisma di luce | 94 ms | 147 ms | 100 ms |
+| Aprire Pratiche | 51 ms | 88 ms | 100 ms |
+| Aprire il radar | 79 ms | 331 ms | 100 ms |
+| Tornare dal radar | 185 ms | 491 ms | 100 ms |
+| Aprire la Biblioteca | 34 ms | 77 ms | 100 ms |
 
-Memoria della prova con 200 clienti e la shell aperta: 774 MB di impronta (sotto i 400 MB è l'obiettivo, ma qui ci sono anche la prova stessa e i disegni fuori schermo; da rimisurare nell'app vera).
+Memoria alla fine della prova con 200 clienti: **339 MB** di impronta (266 MB residenti), sotto l'obiettivo di 400 MB.
+
+I punti peggiori sono quelli che toccano tutti i clienti: aprire Posizioni, il radar e il ritorno dal radar con 200 clienti, e il cambio d'aspetto. Il radar migliora già con i motori in cache (sezione più sotto), senza aspettare la scelta A o B.
 
 L'archivio con 200 clienti (prova di carico, versione di sviluppo): **2,6 MB** di JSON, **0,52 s** per scriverlo e **0,51 s** per leggerlo.
 
