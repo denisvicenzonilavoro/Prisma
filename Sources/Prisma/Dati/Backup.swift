@@ -74,6 +74,9 @@ enum GestoreBackup {
     /// copie fatte a mano o di sicurezza: un ripristino non consuma la storia settimanale.
     static let massimo = 8
     static let notaAutomatico = "automatico"
+    /// Le cartelle che l'utente può lasciare fuori dai backup (la Biblioteca: PDF pesanti e circolari che possono essere
+    /// riservate). Un ripristino da un backup che non le ha tiene quelle del Mac.
+    static let cartelleEscludibili = ["Biblioteca"]
 
     /// Crea un backup di `sorgente` dentro `destinazione` e applica la rotazione.
     /// - creaCartella: false per la cartella scelta dall'utente: se non c'è (disco scollegato) è un
@@ -81,11 +84,28 @@ enum GestoreBackup {
     /// - proteggi: un backup da non eliminare con la rotazione (quello che si sta ripristinando).
     /// - password: con una password il backup è protetto («… .zip.cifrato»); nil = zip in chiaro.
     /// - iterazioni: solo per la prova (più bassa per la durata); l'app usa sempre quelle predefinite.
+    /// - escludi: cartelle dell'archivio da lasciare fuori («Biblioteca» con «Escludi la Biblioteca dal backup», «Luce»
+    ///   giro 6): il backup si fa da una copia senza quelle cartelle, nella cartella temporanea del Mac (su APFS la copia
+    ///   è un clone, non occupa spazio), che si cancella subito.
     @discardableResult
-    static func crea(sorgente: URL, destinazione: URL, nota: String? = nil, creaCartella: Bool = true, proteggi: URL? = nil,
-                     password: String? = nil, iterazioni: UInt32 = CifraturaBackup.iterazioniPredefinite) throws -> URL {
+    static func crea(sorgente: URL, escludi: [String] = [], destinazione: URL, nota: String? = nil, creaCartella: Bool = true,
+                     proteggi: URL? = nil, password: String? = nil,
+                     iterazioni: UInt32 = CifraturaBackup.iterazioniPredefinite) throws -> URL {
         if let password, password.isEmpty { throw ErroreBackup.passwordNonDisponibile }
         let fm = FileManager.default
+        var sorgente = sorgente
+        var copia: URL?
+        defer { if let copia { try? fm.removeItem(at: copia) } }
+        if !escludi.isEmpty, escludi.contains(where: { fm.fileExists(atPath: sorgente.appendingPathComponent($0).path) }) {
+            let radice = fm.temporaryDirectory.appendingPathComponent("Prisma-copia-\(UUID().uuidString)", isDirectory: true)
+            let dentro = radice.appendingPathComponent(sorgente.lastPathComponent, isDirectory: true)
+            copia = radice
+            try fm.createDirectory(at: dentro, withIntermediateDirectories: true)
+            for voce in try fm.contentsOfDirectory(at: sorgente, includingPropertiesForKeys: nil) where !escludi.contains(voce.lastPathComponent) {
+                try fm.copyItem(at: voce, to: dentro.appendingPathComponent(voce.lastPathComponent))
+            }
+            sorgente = dentro
+        }
         if creaCartella {
             try fm.createDirectory(at: destinazione, withIntermediateDirectories: true)
             #if os(macOS)
@@ -221,6 +241,11 @@ enum GestoreBackup {
         try fm.copyItem(at: estratta, to: nuova)
         // Un backup di prima del cambio di nome ha la cartella di Vera col vecchio nome
         Archivio.spostaCartellaVecchia(in: nuova)
+        // Un backup fatto con «Escludi la Biblioteca» non la porta: resta quella del Mac
+        for esclusa in cartelleEscludibili
+        where !fm.fileExists(atPath: nuova.appendingPathComponent(esclusa).path) && fm.fileExists(atPath: cartellaDati.appendingPathComponent(esclusa).path) {
+            try? fm.copyItem(at: cartellaDati.appendingPathComponent(esclusa), to: nuova.appendingPathComponent(esclusa))
+        }
         // Le copie degli archivi non leggibili restano: possono contenere gli unici dati veri
         for voce in (try? fm.contentsOfDirectory(at: cartellaDati, includingPropertiesForKeys: nil)) ?? []
         where voce.lastPathComponent.hasPrefix(Archivio.prefissoNonLeggibile) {

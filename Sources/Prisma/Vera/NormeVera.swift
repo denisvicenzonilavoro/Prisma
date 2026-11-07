@@ -28,6 +28,24 @@ struct TestoNorma: Codable, Identifiable, Equatable {
     var file: String
     var importatoIl = Date()
     var articoli: [ArticoloNorma] = []
+
+    // «Trova la pagina» (Luce, giro 6, §8.1): lo stesso testo è un documento della Biblioteca (`DocumentoBiblioteca`,
+    // Dati/Biblioteca.swift). Campi facoltativi: i testi di prima si leggono e valgono come normativa confermata.
+    /// Il genere proposto da Prisma o scelto dall'utente; nil = normativa (i testi del «Codice in tasca»).
+    var genere: GenereBiblioteca?
+    /// nil = di riferimento (normativa, circolari): nessun canale.
+    var canale: Canale?
+    /// false finché l'utente non conferma genere e canale proposti da Prisma.
+    var confermato: Bool?
+    var pagine: Int?
+    var pagineOCR: Int?
+    var dimensione: Int64?
+    /// Il testo pagina per pagina, accanto al PDF nella cartella della Biblioteca (`<id>.txt`).
+    var testo: String?
+    /// La scheda di Prodotti collegata (facoltativa).
+    var prodottoId: String?
+    /// Un fac-simile caricato con i clienti di prova: si toglie con loro.
+    var diProva: Bool?
 }
 
 /// Un articolo citato in una risposta.

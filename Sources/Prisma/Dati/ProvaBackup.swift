@@ -571,6 +571,11 @@ enum ProvaBackup {
                 print("ERRORE: \(errore)")
                 return 1
             }
+            // La Biblioteca di «Luce» (giro 6): documenti, testo, indice di prima, «Escludi la Biblioteca» (ProvaBackupBiblioteca.swift)
+            if let errore = try provaBiblioteca(radice: radice) {
+                print("ERRORE: \(errore)")
+                return 1
+            }
             print("OK: backup, rotazione (\(elenco.count) copie), ripristino, backup protetti da password, salvataggio in background, lettore zip e archivi col vecchio nome di Vera verificati")
             return 0
         } catch {

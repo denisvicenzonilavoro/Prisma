@@ -100,6 +100,13 @@ final class StatoBiblioteca: ObservableObject {
         }
     }
 
+    /// Cambia i campi di un documento e salva l'indice («Trova la pagina», Luce giro 6: genere, canale, pagine…).
+    func aggiorna(_ id: String, _ cambia: (inout TestoNorma) -> Void) {
+        guard let i = testi.firstIndex(where: { $0.id == id }) else { return }
+        cambia(&testi[i])
+        salva()
+    }
+
     func modifica(_ id: String, titolo: String, sigla: String, edizione: String) {
         guard let i = testi.firstIndex(where: { $0.id == id }) else { return }
         testi[i].titolo = titolo.trimmingCharacters(in: .whitespacesAndNewlines)

@@ -24,12 +24,14 @@ enum LetturaDocumenti {
         let pagineOCR: Int
     }
 
-    static func leggi(_ url: URL) -> Esito? {
+    /// - avanzamento: chiamato dopo ogni pagina letta (pagine lette, totale), dal thread della lettura (Biblioteca).
+    static func leggi(_ url: URL, avanzamento: ((Int, Int) -> Void)? = nil) -> Esito? {
         if url.pathExtension.lowercased() == "pdf" {
             guard let pdf = PDFDocument(url: url) else { return nil }
             var pagine: [String] = []
             var ocr = 0
             for i in 0..<pdf.pageCount {
+                defer { avanzamento?(i + 1, pdf.pageCount) }
                 autoreleasepool {
                     guard let pagina = pdf.page(at: i) else { pagine.append(""); return }
                     let testo = pagina.string ?? ""

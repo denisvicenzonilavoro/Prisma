@@ -1002,6 +1002,8 @@ enum ProvaVera {
         ProvaFalloTu.esegui(controlla)
         // La fase 2: ricerca, memoria, lezioni, filo lungo, 30 secondi, norme, lascia cadere (ProvaFaseDueVera.swift)
         ProvaFaseDueVera.esegui(controlla)
+        // «Luce», giro 6: Biblioteca · Trova la pagina (frase verificata sul passo, cifre, nomi, Qwen finto) (ProvaTrovaPaginaVera.swift)
+        ProvaTrovaPaginaVera.esegui(controlla)
         #if os(macOS)
         // La mini finestra: ⌥ Spazio, i cinque stati, cifre e canali, «non pronta» (ProvaMiniVera.swift)
         ProvaMiniVera.esegui(controlla)

@@ -379,6 +379,8 @@ final class StatoShell: ObservableObject {
     lazy var indiceVera = IndiceVera(persistente: persistente) { [weak self] in self?.memoriaVera.chiaveMemoria() }
     /// La biblioteca delle norme (funzione 13, BibliotecaVera.swift).
     lazy var biblioteca = StatoBiblioteca(persistente: persistente)
+    /// Biblioteca · «Trova la pagina» («Luce» giro 6, StatoTrovaPagina.swift): domanda, risultato, indice in memoria.
+    lazy var trovaPagina = StatoTrovaPagina(biblioteca: biblioteca, persistente: persistente)
     private var salvataggioSospeso = false
     /// Stop del Mac o schermo spento (RipresaSistema.swift): i lavori a tempo aspettano il risveglio.
     private(set) var lavoriInPausa = false
@@ -2772,11 +2774,12 @@ final class StatoShell: ObservableObject {
         salvaOra()
         backupInCorso = true
         let destinazione = cartellaBackup
+        let escluse = cartelleEscluseBackup
         let creaCartella = cartellaBackupPredefinita
         dati.impostazioni.backup.ultimoTentativo = Date()
         DispatchQueue.global(qos: .utility).async {
             do {
-                let url = try GestoreBackup.crea(sorgente: Archivio.cartella, destinazione: destinazione,
+                let url = try GestoreBackup.crea(sorgente: Archivio.cartella, escludi: escluse, destinazione: destinazione,
                                                  nota: automatico ? GestoreBackup.notaAutomatico : nil, creaCartella: creaCartella,
                                                  password: password)
                 DispatchQueue.main.async {
@@ -2826,6 +2829,7 @@ final class StatoShell: ObservableObject {
         StatoBiblioteca.attendiScritture()
         backupInCorso = true
         let destinazione = cartellaBackup
+        let escluse = cartelleEscluseBackup
         let creaCartella = cartellaBackupPredefinita
         // Le impostazioni di backup e il nome restano quelli di oggi, non quelli del backup
         let backupDiOggi = dati.impostazioni.backup
@@ -2837,7 +2841,7 @@ final class StatoShell: ObservableObject {
             do {
                 let estratto = try GestoreBackup.estrai(zip, password: chiave)
                 estratta = estratto.cartella
-                try GestoreBackup.crea(sorgente: Archivio.cartella, destinazione: destinazione, nota: "prima del ripristino",
+                try GestoreBackup.crea(sorgente: Archivio.cartella, escludi: escluse, destinazione: destinazione, nota: "prima del ripristino",
                                        creaCartella: creaCartella, proteggi: zip, password: perSicurezza)
                 try GestoreBackup.sostituisci(cartellaDati: Archivio.cartella, con: estratto.cartella)
                 Archivio.segnaCopieGestite()
@@ -2864,6 +2868,7 @@ final class StatoShell: ObservableObject {
                     // La memoria di Vera e la Biblioteca si rileggono dalla cartella ripristinata (fase 2)
                     self.memoriaVera.ricarica()
                     self.biblioteca.ricarica()
+                    self.trovaPagina.azzera()
                     self.solaLettura = false
                     self.salvataggioSospeso = false
                     self.salvaOra()
@@ -2922,9 +2927,10 @@ final class StatoShell: ObservableObject {
         salvaOra()
         backupInCorso = true
         let destinazione = cartellaBackup
+        let escluse = cartelleEscluseBackup
         let creaCartella = cartellaBackupPredefinita
         DispatchQueue.global(qos: .userInitiated).async {
-            let esito = Result { try GestoreBackup.crea(sorgente: Archivio.cartella, destinazione: destinazione, nota: "prima di togliere i dati di prova",
+            let esito = Result { try GestoreBackup.crea(sorgente: Archivio.cartella, escludi: escluse, destinazione: destinazione, nota: "prima di togliere i dati di prova",
                                                         creaCartella: creaCartella, password: password) }
             DispatchQueue.main.async {
                 self.backupInCorso = false
@@ -2958,9 +2964,10 @@ final class StatoShell: ObservableObject {
         salvaOra()
         backupInCorso = true
         let destinazione = cartellaBackup
+        let escluse = cartelleEscluseBackup
         let creaCartella = cartellaBackupPredefinita
         DispatchQueue.global(qos: .userInitiated).async {
-            let esito = Result { try GestoreBackup.crea(sorgente: Archivio.cartella, destinazione: destinazione, nota: "prima dell'importazione dei clienti",
+            let esito = Result { try GestoreBackup.crea(sorgente: Archivio.cartella, escludi: escluse, destinazione: destinazione, nota: "prima dell'importazione dei clienti",
                                                         creaCartella: creaCartella, password: password) }
             DispatchQueue.main.async {
                 self.backupInCorso = false
@@ -2996,9 +3003,10 @@ final class StatoShell: ObservableObject {
         salvaOra()
         backupInCorso = true
         let destinazione = cartellaBackup
+        let escluse = cartelleEscluseBackup
         let creaCartella = cartellaBackupPredefinita
         DispatchQueue.global(qos: .userInitiated).async {
-            let esito = Result { try GestoreBackup.crea(sorgente: Archivio.cartella, destinazione: destinazione, nota: "prima dell'importazione delle posizioni",
+            let esito = Result { try GestoreBackup.crea(sorgente: Archivio.cartella, escludi: escluse, destinazione: destinazione, nota: "prima dell'importazione delle posizioni",
                                                         creaCartella: creaCartella, password: password) }
             DispatchQueue.main.async {
                 self.backupInCorso = false
@@ -3057,9 +3065,10 @@ final class StatoShell: ObservableObject {
         salvaOra()
         backupInCorso = true
         let destinazione = cartellaBackup
+        let escluse = cartelleEscluseBackup
         let creaCartella = cartellaBackupPredefinita
         DispatchQueue.global(qos: .userInitiated).async {
-            let esito = Result { try GestoreBackup.crea(sorgente: Archivio.cartella, destinazione: destinazione, nota: nota,
+            let esito = Result { try GestoreBackup.crea(sorgente: Archivio.cartella, escludi: escluse, destinazione: destinazione, nota: nota,
                                                         creaCartella: creaCartella, password: password) }
             DispatchQueue.main.async {
                 self.backupInCorso = false
@@ -3092,6 +3101,8 @@ final class StatoShell: ObservableObject {
         if dati.clienti.first(where: { $0.id == dati.clienteAttivoId }) == nil {
             dati.clienteAttivoId = dati.clienti.first?.id ?? ""
         }
+        // I fac-simile della Biblioteca se ne vanno con i clienti di prova («Luce» giro 6)
+        togliEsempiBiblioteca()
     }
 
     /// Torna ai dati di prova (con backup di sicurezza dello stato attuale): i 5 clienti del template,
@@ -3108,9 +3119,10 @@ final class StatoShell: ObservableObject {
         salvaOra()
         backupInCorso = true
         let destinazione = cartellaBackup
+        let escluse = cartelleEscluseBackup
         let creaCartella = cartellaBackupPredefinita
         DispatchQueue.global(qos: .userInitiated).async {
-            let esito = Result { try GestoreBackup.crea(sorgente: Archivio.cartella, destinazione: destinazione, nota: "prima dei dati di prova",
+            let esito = Result { try GestoreBackup.crea(sorgente: Archivio.cartella, escludi: escluse, destinazione: destinazione, nota: "prima dei dati di prova",
                                                         creaCartella: creaCartella, password: password) }
             DispatchQueue.main.async {
                 self.backupInCorso = false
@@ -3123,6 +3135,8 @@ final class StatoShell: ObservableObject {
                     if demo.impostazioni.tolleranzaRadar == nil { demo.impostazioni.tolleranzaRadar = tolleranzaProva }
                     self.dati = demo
                     self.azzeraNote()
+                    // I sei fac-simile della Biblioteca arrivano con i clienti di prova («Luce» giro 6)
+                    self.caricaEsempiBiblioteca()
                     // I file dei clienti veri restano nel backup appena fatto, non nell'archivio
                     self.pulisciDocumentiOrfani()
                     self.aggiornaElencoBackup()

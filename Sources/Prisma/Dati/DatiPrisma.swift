@@ -693,6 +693,9 @@ struct ImpostazioniBackup: Codable, Equatable {
     /// I backup si proteggono con una password (che sta nel Portachiavi del Mac, mai qui).
     /// Opzionale: gli archivi di prima non hanno il campo e si leggono lo stesso.
     var protetto: Bool?
+    /// «Escludi la Biblioteca dal backup» («Luce» giro 6, decisione 9 della Biblioteca): i PDF della Biblioteca (e il loro
+    /// testo) restano fuori dai backup. Opzionale: nil = la Biblioteca è nel backup.
+    var escludiBiblioteca: Bool?
 
     /// true se i nuovi backup vanno protetti con la password.
     var cifrato: Bool { protetto == true }

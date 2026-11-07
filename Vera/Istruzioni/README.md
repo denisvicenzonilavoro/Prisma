@@ -34,5 +34,7 @@ L'assistente si chiama Vera (prima si chiamava Ruby, e prima ancora Eve). Le ist
 
 - `norme.md`: «Il codice in tasca» (funzione 13): risposte solo dagli articoli trovati nella biblioteca delle norme, in JSON con gli id degli articoli; senza articolo o con una cifra che non è nell'articolo la risposta si scarta e Vera dice che la norma non risponde.
 
+- `biblioteca.md`: Biblioteca · «Trova la pagina» («Luce», giro 6): risposte solo dai 6 passi che Prisma trova con BM25 nei documenti della Biblioteca (condizioni, KID, circolari, normativa), in JSON con lo schema fisso `Vera/Schemi/biblioteca.json` (trovato, passo, frase, risposta). Prisma verifica che la frase stia parola per parola nel passo e che le cifre della risposta siano nel passo: altrimenti mostra la pagina senza citazione. A Qwen non vanno mai dati dei clienti.
+
 Modificare qui il testo cambia il comportamento di Vera alla build successiva, senza toccare il codice.
 Tenere il testo ragionevolmente corto: la finestra di Qwen sul Mac è di 8.192 token per istruzioni, scheda, storia e risposta.

@@ -1,0 +1,24 @@
+{
+  "title": "Biblioteca · Trova la pagina",
+  "description": "La risposta di Qwen a una domanda sui documenti della Biblioteca (Vera/Istruzioni/biblioteca.md), solo dai passi trovati da Prisma con BM25. Lo schema va a Ollama nel campo «format». Prisma verifica che la frase stia parola per parola nel passo indicato e che le cifre della risposta siano nel passo: altrimenti la risposta non si mostra (TrovaPaginaVera.swift).",
+  "type": "object",
+  "properties": {
+    "trovato": {
+      "type": "boolean",
+      "description": "true se uno dei passi risponde davvero alla domanda"
+    },
+    "passo": {
+      "type": "string",
+      "description": "L'etichetta del passo da cui viene la risposta (P1, P2…)"
+    },
+    "frase": {
+      "type": "string",
+      "description": "La frase del passo che risponde, copiata parola per parola"
+    },
+    "risposta": {
+      "type": "string",
+      "description": "La risposta breve in italiano, con i termini e le cifre del passo"
+    }
+  },
+  "required": ["trovato", "passo", "frase", "risposta"]
+}
