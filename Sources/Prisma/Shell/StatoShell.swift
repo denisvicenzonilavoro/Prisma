@@ -132,6 +132,9 @@ final class StatoShell: ObservableObject {
     let provaFuoco = StatoProvaFuoco()
     /// Posizioni › Smontaggio («Luce» giro 2): il documento letto e le scelte, finché Prisma è aperta (SmontaggioApple.swift).
     let smontaggio = StatoSmontaggio()
+    /// Pratiche › Proposta («Luce» giro 3): il bisogno scelto, la sequenza delle cinque tappe, le scelte di prodotto
+    /// (StatoPraticheProposta.swift). Un oggetto a parte: la sequenza non pubblica StatoShell. Non si salva.
+    let praticheProposta = StatoPraticheProposta()
     /// Mercato (giro 7, StatoMercato.swift): il campo e il risultato della ricerca per ISIN, lo scaricamento in corso, il
     /// foglio aperto. Un oggetto a parte: scrivere nel campo non pubblica StatoShell. Non si salva.
     let sessioneMercato = SessioneMercato()

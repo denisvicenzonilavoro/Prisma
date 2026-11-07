@@ -387,6 +387,14 @@ enum DatiDemo {
                 $0.garanzie = "Capitale ai beneficiari in caso di decesso nel periodo di copertura."
                 $0.liquidabilita = "Nessun valore di riscatto."
             },
+            // «Luce», giro 3: una copertura caso morte del canale indipendente, così in Pratiche › Proposta la protezione ha
+            // due prodotti adatti, uno per canale (la scelta del prodotto). Nessun premio: si chiede alla compagnia.
+            p("prodotto-tcm-indipendente", "Temporanea caso morte indipendente", .indipendente, .protezione) {
+                $0.emittente = "Compagnia di esempio"; $0.tipologia = "Temporanea caso morte a capitale costante"
+                $0.garanzie = "Capitale ai beneficiari in caso di decesso nel periodo di copertura."
+                $0.liquidabilita = "Nessun valore di riscatto."
+                $0.note = "Dati di prova: scheda d'esempio per Pratiche › Proposta, da sostituire con un prodotto vero."
+            },
             p("prodotto-etf-globale", "ETF azionario globale", .indipendente, .investimento) {
                 $0.emittente = "Emittente ETF"; $0.tipologia = "ETF a replica fisica, piano di accumulo"
                 $0.rendimentoAtteso = 5; $0.costoAnnuo = 0.2; $0.aliquotaFiscale = 26; $0.sri = 4

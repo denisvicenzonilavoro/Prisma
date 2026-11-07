@@ -1660,6 +1660,8 @@ enum Istantanee {
         tutteLeScene += sceneSmontaggio
         // «Luce», giro 3: Pratiche › Dopo la firma (Shell/IstantaneePraticheDopo.swift)
         tutteLeScene += scenePraticheDopo
+        // «Luce», giro 3: Pratiche › Proposta, la proposta si costruisce da sola (Shell/IstantaneePraticheProposta.swift)
+        tutteLeScene += scenePraticheProposta
         for scena in tutteLeScene where solo?.contains(scena.nome) ?? true {
             // Un pool per scena: senza il ciclo degli eventi (si esce in PrismaApp.init) niente lo svuoterebbe,
             // e stato, finestra e bitmap di ogni scena resterebbero in memoria fino all'ultima istantanea
