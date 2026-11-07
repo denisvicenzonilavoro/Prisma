@@ -8,8 +8,13 @@ import Foundation
 /// - Vera/: impostazioni e memoria di Vera (fino al cambio di nome «Eve/»: si sposta da sola, `spostaCartellaVecchia`)
 enum Archivio {
     static var supportoApplicazioni: URL {
-        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        cartellaDiProva ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
     }
+
+    /// Solo per la prova della fluidità (`--prova-fluidita`, lanciata anche da Impostazioni › Strumenti › «Misura la
+    /// velocità su questo Mac»): una cartella vuota al posto di Application Support, così la prova non può toccare
+    /// l'archivio dell'utente nemmeno per sbaglio, e alla fine controlla che sia rimasta vuota. nil nell'app vera.
+    static var cartellaDiProva: URL?
 
     static var cartella: URL { supportoApplicazioni.appendingPathComponent("Prisma", isDirectory: true) }
     static var file: URL { cartella.appendingPathComponent("archivio.json") }

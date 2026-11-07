@@ -346,6 +346,19 @@ enum Istantanee {
             s.schedaImpostazioni = .strumenti
             s.apri(.impostazioni)
         }),
+        ("86-impostazioni-velocita", { s in
+            // Giro 0 di «Prisma istantaneo»: le tabelle delle due misure (DATI DI PROVA DICHIARATI, MisuraVelocita.swift)
+            s.misureIstantanea = MisuraVelocita.diProvaIstantanea
+            s.schedaImpostazioni = .strumenti
+            s.ancoraImpostazioni = MisuraVelocita.ancora
+            s.apri(.impostazioni)
+        }),
+        ("86-impostazioni-velocita-scuro", { s in
+            s.misureIstantanea = MisuraVelocita.diProvaIstantanea
+            s.schedaImpostazioni = .strumenti
+            s.ancoraImpostazioni = MisuraVelocita.ancora
+            s.apri(.impostazioni)
+        }),
         ("70-modo-cliente", { s in
             // Lo schermo girato verso Marco: solo il suo dossier, niente degli altri clienti
             s.clienteAttivoId = "marco"

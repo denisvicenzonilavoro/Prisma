@@ -576,6 +576,11 @@ enum ProvaBackup {
                 print("ERRORE: \(errore)")
                 return 1
             }
+            // «Misura la velocità su questo Mac» non tocca l'archivio dell'utente (ProvaBackupMisura.swift)
+            if let errore = try provaMisuraVelocita(radice: radice) {
+                print("ERRORE: \(errore)")
+                return 1
+            }
             print("OK: backup, rotazione (\(elenco.count) copie), ripristino, backup protetti da password, salvataggio in background, lettore zip e archivi col vecchio nome di Vera verificati")
             return 0
         } catch {

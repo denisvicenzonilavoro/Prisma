@@ -533,8 +533,8 @@ struct AppImpostazioni: View {
 
     // MARK: Strumenti
 
-    /// Strumenti di prova, separati dalle preferenze: dati di prova, confronto dei modelli, prova dei promemoria
-    /// e, chiusa, la voce di Vera (per ora Vera non parla).
+    /// Strumenti di prova, separati dalle preferenze: dati di prova, confronto dei modelli, le misure della velocità
+    /// (Prisma e Vera), prova dei promemoria e, chiusa, la voce di Vera (per ora Vera non parla).
     private var strumenti: some View {
         let c = Tema.Colore.Impostazioni.self
         return VStack(alignment: .leading, spacing: M.spazioGruppi) {
@@ -563,6 +563,9 @@ struct AppImpostazioni: View {
             GruppoImpostazioni(titolo: "Vera") {
                 rigaConfrontaModelli
             }
+            // Giro 0 di «Prisma istantaneo»: la prova della fluidità e i tempi di Vera su questo Mac (MisuraVelocita.swift)
+            GruppoVelocita()
+                .id(MisuraVelocita.ancora)
             #endif
             GruppoImpostazioni(titolo: "Promemoria") {
                 RigaImpostazione(titolo: "Prova un promemoria", sottotitolo: "Arriva subito, per vedere com'è",

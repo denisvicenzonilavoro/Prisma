@@ -1004,6 +1004,8 @@ enum ProvaVera {
         ProvaFaseDueVera.esegui(controlla)
         // «Luce», giro 6: Biblioteca · Trova la pagina (frase verificata sul passo, cifre, nomi, Qwen finto) (ProvaTrovaPaginaVera.swift)
         ProvaTrovaPaginaVera.esegui(controlla)
+        // Giro 0 di «Prisma istantaneo»: i tempi di Vera (caricamento, prima parola, parole al secondo) (ProvaMisuraVera.swift)
+        ProvaMisuraVera.esegui(controlla)
         #if os(macOS)
         // La mini finestra: ⌥ Spazio, i cinque stati, cifre e canali, «non pronta» (ProvaMiniVera.swift)
         ProvaMiniVera.esegui(controlla)

@@ -114,6 +114,10 @@ final class StatoShell: ObservableObject {
     var radarDettaglioIstantanea: String?
     /// Solo per le istantanee: la pratica con il dettaglio già aperto (Pratiche › Dopo la firma, «Luce» giro 3).
     var praticaDettaglioIstantanea: String?
+    #if os(macOS)
+    /// Solo per le istantanee: le misure di prova del gruppo Velocità (Impostazioni › Strumenti, MisuraVelocita.swift).
+    var misureIstantanea: MisuraVelocita?
+    #endif
     /// Il gruppo delle Impostazioni a cui scorrere dentro la pagina (`"impostazioni-occasioni"` in Promemoria e
     /// occasioni; `"impostazioni-conformita"` porta alla pagina Conformità); si consuma appena raggiunto.
     @Published var ancoraImpostazioni: String?
