@@ -140,6 +140,9 @@ jobs:
           test -f "$APP/Contents/Resources/Vera/Schemi/copilota.json"
           test -f "$APP/Contents/Resources/Vera/Esempi/copilota.json"
           test -f "$APP/Contents/Resources/Vera/Istruzioni/verbale-copilota.md"
+          test -f "$APP/Contents/Resources/Vera/Istruzioni/palestra.md"
+          test -f "$APP/Contents/Resources/Vera/Schemi/palestra.json"
+          test -f "$APP/Contents/Resources/Vera/Esempi/palestra.json"
           "$APP/Contents/MacOS/Prisma" --prova-vera
           # Prova del tavolo con l'iPad: Mac e iPad nello stesso processo su 127.0.0.1 (abbinamento, pagine, cursore,
           # presa visione nel PDF, caduta della connessione con la schermata neutra)

@@ -219,6 +219,7 @@ enum NovitaLuce: String, CaseIterable, Identifiable {
         case .propostaDaSola: return true        // giro 3: Pratiche › Proposta
         case .prismaLuce, .disegna: return true  // giro 4: Sala › Il prisma di luce, Disegna il tuo futuro
         case .giornataPensione, .giocoRischio: return true   // giro 4: Sala › Una giornata della pensione, Il gioco del rischio
+        case .palestra: return true              // giro 5: Studio › Palestra, la palestra della trattativa
         default: return false
         }
     }

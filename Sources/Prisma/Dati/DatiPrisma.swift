@@ -129,7 +129,9 @@ struct DatiPrisma: Codable, Equatable {
     ///     le pratiche dopo la firma (`pratiche`, lette con tolleranza: una pratica senza id o posizione si scarta) e
     ///     la soglia delle pratiche ferme (`Impostazioni.pratiche`, 7 giorni se manca o è illeggibile). Giro 4: la
     ///     giornata della pensione nell'Analisi 360 (`Analisi360.giornata`, voci lette con tolleranza) e le partite del
-    ///     gioco del rischio salvate nel dossier (`partiteRischio`, lette con tolleranza).
+    ///     gioco del rischio salvate nel dossier (`partiteRischio`, lette con tolleranza). Giro 5: il registro della
+    ///     palestra della trattativa (`Impostazioni.palestra`: data, cliente, difficoltà e punteggio, al massimo 50,
+    ///     letti con tolleranza; mai le conversazioni).
     static let versioneAttuale = 27
 
     init(clienti: [Cliente], appuntamenti: [Appuntamento], attivita: [Attivita], posizioni: [Posizione],
@@ -318,6 +320,9 @@ struct Impostazioni: Codable, Equatable {
     /// Le pratiche dopo la firma: dopo quanti giorni senza un passo nuovo una pratica è ferma (Impostazioni › Pratiche).
     /// Versione 27 («Luce» giro 3), letta con tolleranza: senza, 7 giorni.
     var pratiche = ImpostazioniPratiche()
+    /// La palestra della trattativa (Studio › Palestra): solo data, cliente, difficoltà e punteggio degli allenamenti,
+    /// al massimo 50; mai le conversazioni. Versione 27 («Luce» giro 5), letta con tolleranza: senza, nessun allenamento.
+    var palestra = ImpostazioniPalestra()
 
     init() {}
 
@@ -333,6 +338,7 @@ struct Impostazioni: Codable, Equatable {
         case ovunque, mercato
         case tolleranzaRadar
         case pratiche
+        case palestra
     }
 
     init(from decoder: Decoder) throws {
@@ -384,6 +390,8 @@ struct Impostazioni: Codable, Equatable {
         tolleranzaRadar = ((try? c.decodeIfPresent(Double.self, forKey: .tolleranzaRadar)) ?? nil).flatMap { $0 >= 0 ? $0 : nil }
         // Pratiche (versione 27, giro 3): senza o illeggibili, ferma dopo 7 giorni
         pratiche = ((try? c.decodeIfPresent(ImpostazioniPratiche.self, forKey: .pratiche)) ?? nil) ?? ImpostazioniPratiche()
+        // Palestra della trattativa (versione 27, giro 5): senza o illeggibile, nessun allenamento registrato
+        palestra = ((try? c.decodeIfPresent(ImpostazioniPalestra.self, forKey: .palestra)) ?? nil) ?? ImpostazioniPalestra()
     }
 }
 

@@ -240,6 +240,9 @@ extension StatoShell {
         } else if voce == .smontaggio {
             // Posizioni › Smontaggio (giro 2, SmontaggioApple.swift)
             apriSmontaggio()
+        } else if voce == .palestra {
+            // Studio › Palestra (giro 5, StudioPalestra.swift)
+            apriStudio(.palestra)
         } else if app == .studio {
             apriStudio(.cruscotto)
         } else {

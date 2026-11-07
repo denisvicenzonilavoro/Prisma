@@ -1,0 +1,35 @@
+{
+  "type": "object",
+  "properties": {
+    "giudizio": {
+      "type": "string",
+      "enum": ["ottima", "buona", "debole", "nessuno"]
+    },
+    "motivo": {
+      "type": "string"
+    },
+    "replica": {
+      "type": "string"
+    },
+    "convinta": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "prossimaObiezione": {
+      "type": "string"
+    },
+    "suggerite": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 3
+    },
+    "strumento": {
+      "type": "string",
+      "enum": ["lineaVita", "lanciaAnno", "film", "provaFuoco", "nessuno"]
+    }
+  },
+  "required": ["giudizio", "motivo", "replica", "convinta", "prossimaObiezione", "suggerite", "strumento"]
+}

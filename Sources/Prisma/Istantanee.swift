@@ -1666,6 +1666,8 @@ enum Istantanee {
         tutteLeScene += sceneSalaGiro4
         // «Luce», giro 4: Sala › Il gioco del rischio e Una giornata della pensione (Shell/IstantaneeSalaGiochi.swift)
         tutteLeScene += sceneSalaGiochi
+        // «Luce», giro 5: Studio › Palestra, la palestra della trattativa (Shell/IstantaneePalestra.swift)
+        tutteLeScene += scenePalestra
         for scena in tutteLeScene where solo?.contains(scena.nome) ?? true {
             // Un pool per scena: senza il ciclo degli eventi (si esce in PrismaApp.init) niente lo svuoterebbe,
             // e stato, finestra e bitmap di ogni scena resterebbero in memoria fino all'ultima istantanea
