@@ -249,6 +249,9 @@ extension StatoShell {
         } else if voce == .traguardi {
             // Messaggi sul primo traguardo da festeggiare (giro 5, PannelloTraguardo.swift)
             apriTraguardo(nil, clienteId: nil)
+        } else if voce == .palestra {
+            // Studio › Palestra (giro 5, StudioPalestra.swift)
+            apriStudio(.palestra)
         } else if app == .studio {
             apriStudio(.cruscotto)
         } else {

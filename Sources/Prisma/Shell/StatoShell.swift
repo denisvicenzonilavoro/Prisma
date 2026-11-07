@@ -153,6 +153,9 @@ final class StatoShell: ObservableObject {
     /// La storia della settimana e dell'anno di «Luce» (giro 5, StoriaLuce.swift): le pagine e quella in corso,
     /// osservate solo dalla storia. Non si salva.
     let storia = StatoStoria()
+    /// La palestra della trattativa (Studio › Palestra, «Luce» giro 5, StatoPalestra.swift): un oggetto a parte, ogni
+    /// parola di Vera ridisegna solo la conversazione. Non si salva (solo l'esito, in `dati.impostazioni.palestra`).
+    let palestra = StatoPalestra()
     /// Prisma ovunque (giro 8, StatoOvunque.swift): lo stato della pagina Impostazioni › iPhone e iPad, la chiave dello
     /// spazio in memoria e i lavori della sincronizzazione. Un oggetto a parte: i pallini e i controlli non pubblicano
     /// StatoShell. Non si salva (le impostazioni dello spazio stanno in `dati.impostazioni.ovunque`).

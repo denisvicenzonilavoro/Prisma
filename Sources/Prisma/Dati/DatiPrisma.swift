@@ -134,6 +134,9 @@ struct DatiPrisma: Codable, Equatable {
     ///     festeggiati (`Impostazioni.traguardi`: tipi spenti, anniversari, festeggiati, scartati) e il giorno in cui un
     ///     obiettivo è stato raggiunto (`Obiettivo.raggiuntoIl`); i messaggi con il tipo nuovo `traguardo` sono letti con
     ///     tolleranza (un Prisma di prima li salta).
+    ///     Giro 5 anche: il registro della
+    ///     palestra della trattativa (`Impostazioni.palestra`: data, cliente, difficoltà e punteggio, al massimo 50,
+    ///     letti con tolleranza; mai le conversazioni).
     static let versioneAttuale = 27
 
     init(clienti: [Cliente], appuntamenti: [Appuntamento], attivita: [Attivita], posizioni: [Posizione],
@@ -330,6 +333,9 @@ struct Impostazioni: Codable, Equatable {
     /// I traguardi festeggiati (versione 27, «Luce» giro 5): tipi spenti, anniversari, festeggiati e scartati. Letta
     /// con tolleranza.
     var traguardi = ImpostazioniTraguardi()
+    /// La palestra della trattativa (Studio › Palestra): solo data, cliente, difficoltà e punteggio degli allenamenti,
+    /// al massimo 50; mai le conversazioni. Versione 27 («Luce» giro 5), letta con tolleranza: senza, nessun allenamento.
+    var palestra = ImpostazioniPalestra()
 
     init() {}
 
@@ -346,6 +352,7 @@ struct Impostazioni: Codable, Equatable {
         case tolleranzaRadar
         case pratiche
         case storie, traguardi
+        case palestra
     }
 
     init(from decoder: Decoder) throws {
@@ -400,6 +407,8 @@ struct Impostazioni: Codable, Equatable {
         // Storie e traguardi (versione 27, giro 5): senza o illeggibili, i valori di base
         storie = ((try? c.decodeIfPresent(ImpostazioniStorie.self, forKey: .storie)) ?? nil) ?? ImpostazioniStorie()
         traguardi = ((try? c.decodeIfPresent(ImpostazioniTraguardi.self, forKey: .traguardi)) ?? nil) ?? ImpostazioniTraguardi()
+        // Palestra della trattativa (versione 27, giro 5): senza o illeggibile, nessun allenamento registrato
+        palestra = ((try? c.decodeIfPresent(ImpostazioniPalestra.self, forKey: .palestra)) ?? nil) ?? ImpostazioniPalestra()
     }
 }
 

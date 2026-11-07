@@ -141,6 +141,8 @@ if [ -d "$RADICE/Vera/Istruzioni" ]; then
     test -f "$APP/Vera/Istruzioni/copilota.md" || errore "Vera/Istruzioni/copilota.md mancante"
     test -f "$APP/Vera/Schemi/copilota.json" || errore "Vera/Schemi/copilota.json mancante"
     test -f "$APP/Vera/Istruzioni/verbale-copilota.md" || errore "Vera/Istruzioni/verbale-copilota.md mancante"
+    test -f "$APP/Vera/Istruzioni/palestra.md" || errore "Vera/Istruzioni/palestra.md mancante"
+    test -f "$APP/Vera/Schemi/palestra.json" || errore "Vera/Schemi/palestra.json mancante"
 fi
 
 codesign --verify --strict --verbose=2 "$APP"

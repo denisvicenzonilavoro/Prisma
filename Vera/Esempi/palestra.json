@@ -1,0 +1,22 @@
+{
+  "nota": "Esempi della palestra della trattativa (Design/template-luce-specifica.md §5.3). TESTI DI PROVA, da far approvare o riscrivere all'utente: frasi anonime, mai dati veri di clienti. Le risposte con «massimo» sono il giudizio più alto che le regole di Prisma concedono (Qwen può solo abbassarlo).",
+  "testiDiProva": true,
+  "obiezioni": [
+    "Mi piace l'idea, ma se tra qualche anno mi servono i soldi per la casa? Restano bloccati?",
+    "La banca mi propone un conto senza rischi. Perché dovrei fare altro?",
+    "Ci devo pensare. Ne parlo a casa stasera.",
+    "Quanto mi costa tutto questo, alla fine?",
+    "Ho già la banca che mi segue da anni.",
+    "E se i mercati scendono proprio adesso?"
+  ],
+  "risposte": [
+    { "testo": "La proposta vale solo fino a venerdì.", "massimo": "debole" },
+    { "testo": "Firmi oggi, poi non ci saranno più queste condizioni.", "massimo": "debole" },
+    { "testo": "Il rendimento è garantito, non può perdere niente.", "massimo": "debole" },
+    { "testo": "Le banche pensano solo a loro.", "massimo": "debole" },
+    { "testo": "Non si preoccupi, è un ottimo prodotto.", "massimo": "debole" },
+    { "testo": "Capisco il dubbio: il piano prevede riscatti parziali, come dicono le condizioni del prodotto.", "massimo": "buona" },
+    { "testo": "Guardiamo insieme la linea della vita: vediamo quando arriva la casa anche ritirando una parte.", "massimo": "ottima" },
+    { "testo": "Le preparo il film del piano da guardare insieme stasera, così decidete con calma.", "massimo": "ottima" }
+  ]
+}
