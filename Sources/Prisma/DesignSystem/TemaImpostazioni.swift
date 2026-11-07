@@ -131,6 +131,7 @@ extension SchedaImpostazioni {
         case .scorciatoie: return .simbolo("keyboard", c.scorciatoie)
         case .studio: return .app(.studio)
         case .mercato: return .app(.mercato)
+        case .portafogliModello: return .app(.posizioni)
         case .strumenti: return .simbolo("wrench.and.screwdriver.fill", c.strumenti)
         }
     }

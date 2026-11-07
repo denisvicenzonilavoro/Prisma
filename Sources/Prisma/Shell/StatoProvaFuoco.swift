@@ -5,18 +5,6 @@ import SwiftUI
 // riga). Stanno in un oggetto proprio (`StatoShell.provaFuoco`), così trascinare il cursore non pubblica StatoShell
 // e le altre app aperte non si ridisegnano.
 
-/// Le due viste del Portafoglio di Posizioni (segmenti della testata).
-enum VistaPosizioni: Hashable {
-    case portafoglio, provaDelFuoco
-
-    var titolo: String {
-        switch self {
-        case .portafoglio: return "Portafoglio"
-        case .provaDelFuoco: return "Prova del fuoco"
-        }
-    }
-}
-
 /// Le cinque chip degli scenari, nell'ordine del template.
 enum SceltaScenarioFuoco: String, CaseIterable, Identifiable {
     case mercati, tassi, inflazione, crisi2008, crisi2020

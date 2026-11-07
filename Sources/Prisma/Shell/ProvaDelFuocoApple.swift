@@ -74,9 +74,17 @@ struct VistePortafoglioApple<Portafoglio: View>: View {
         switch v {
         case .portafoglio:
             portafoglio
+        case .radar:
+            // Posizioni › Radar («Luce» giro 2, RadarPortafoglio.swift)
+            RadarPortafoglioApple(stato: stato, chiave: stato.chiaveVista, solaLettura: stato.solaLettura,
+                                  dettaglioAperto: stato.radarDettaglioIstantanea)
+                .equatable()
         case .provaDelFuoco:
             ProvaDelFuocoApple(stato: stato, prova: prova, chiave: stato.chiaveVista, solaLettura: stato.solaLettura)
                 .equatable()
+        case .smontaggio:
+            // Posizioni › Smontaggio («Luce» giro 2, SmontaggioApple.swift)
+            SmontaggioApple(stato: stato)
         }
     }
 
@@ -148,8 +156,7 @@ private struct TestataVistePortafoglio: View {
             // Inquadra e capisci (giro 5, ScenaInquadra.swift): accanto ai segmenti, come nel template
             PulsanteInquadra()
             #endif
-            SegmentatoPillola(selezione: $vista, voci: [(.portafoglio, VistaPosizioni.portafoglio.titolo),
-                                                        (.provaDelFuoco, VistaPosizioni.provaDelFuoco.titolo)])
+            SegmentatoPillola(selezione: $vista, voci: VistaPosizioni.segmenti)
         }
         .padding(.horizontal, d.margine)
         .padding(.top, d.margine)

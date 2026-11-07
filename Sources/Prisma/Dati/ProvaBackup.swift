@@ -159,6 +159,8 @@ enum ProvaBackup {
             // Orizzonte, giro 6: tabelle delle famiglie caricate e allenamento OCF (ProvaBackupFamiglieOCF.swift)
             originale.famiglie = ProvaBackup.famiglieDiProva()
             originale.ocf = ProvaBackup.ocfDiProva()
+            // «Luce», giro 2: portafogli modello, tolleranza, modello dei clienti, bozze di riequilibrio (ProvaBackupRadar.swift)
+            ProvaBackup.aggiungiRadarDiProva(&originale)
             // Il versamento mensile previsto dell'obiettivo (cursore del dettaglio nel tema Apple)
             if !originale.obiettivi.isEmpty { originale.obiettivi[0].versamentoMensile = 350 }
             guard !originale.simulazioni.isEmpty, !originale.incontri.isEmpty, !originale.prodotti.isEmpty, !originale.obiettivi.isEmpty, !originale.documenti.isEmpty, !originale.valutazioni.isEmpty, originale.clienti.contains(where: { !$0.bisogni.eventi.isEmpty }) else {
@@ -246,6 +248,11 @@ enum ProvaBackup {
             }
             // Messaggi ai clienti e impostazioni dei messaggi (versione 26, giro 3), e un archivio senza (ProvaBackupMessaggi.swift)
             if let e = try verificaMessaggi(originale: originale, estratto: estratto.dati) {
+                print("ERRORE: \(e)")
+                return 1
+            }
+            // Il radar del portafoglio (versione 27, «Luce» giro 2), e un archivio senza (ProvaBackupRadar.swift)
+            if let e = try verificaRadar(originale: originale, estratto: estratto.dati) {
                 print("ERRORE: \(e)")
                 return 1
             }

@@ -1654,6 +1654,10 @@ enum Istantanee {
         tutteLeScene += sceneEsameOCF
         // «Luce», giro 1: Novità a due gruppi, scrivania, icone, app nuove, glifi, la Sala (Shell/IstantaneeLuce.swift)
         tutteLeScene += sceneLuce
+        // «Luce», giro 2: Posizioni › Radar e Impostazioni › Portafogli modello (Shell/IstantaneeRadar.swift)
+        tutteLeScene += sceneRadar
+        // «Luce», giro 2: Posizioni › Smontaggio (Shell/IstantaneeSmontaggio.swift)
+        tutteLeScene += sceneSmontaggio
         for scena in tutteLeScene where solo?.contains(scena.nome) ?? true {
             // Un pool per scena: senza il ciclo degli eventi (si esce in PrismaApp.init) niente lo svuoterebbe,
             // e stato, finestra e bitmap di ogni scena resterebbero in memoria fino all'ultima istantanea
