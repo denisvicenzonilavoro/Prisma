@@ -215,6 +215,7 @@ enum NovitaLuce: String, CaseIterable, Identifiable {
     var disponibile: Bool {
         switch self {
         case .radar, .smontaggio: return true   // giro 2: Posizioni › Radar e Smontaggio
+        case .propostaDaSola: return true        // giro 3: Pratiche › Proposta
         default: return false
         }
     }
