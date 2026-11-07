@@ -198,6 +198,7 @@ struct AppClienti: View {
         case .inRegola: InRegolaCliente(cliente: c)
         case .note: note(c)
         case .riesami: CronologiaRiesami(cliente: c)
+        case .azienda: AziendaDossier(cliente: c)
         }
     }
 

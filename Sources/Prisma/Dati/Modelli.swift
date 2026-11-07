@@ -67,6 +67,10 @@ struct Cliente: Identifiable, Codable, Hashable {
     /// Il portafoglio modello del cliente (`PortafoglioModello.id`), scelto dall'utente per il radar di Posizioni
     /// (versione 27, «Luce» giro 2). nil = nessun modello: il cliente non va sul radar.
     var modelloId: String?
+    /// Le aziende del cliente imprenditore (versione 27, «Luce» giro 7, `Dati/AziendaCliente.swift`): ragione sociale,
+    /// quota, ruolo, dipendenti, fatturato e lo stato delle quattro aree, tutto scritto dall'utente. nil o vuoto =
+    /// nessuna azienda: la scheda «L'azienda» del dossier non compare.
+    var aziende: [AziendaCliente]?
 
     init(id: String, nome: String, iniziali: String, tinta: TintaAvatar, tema: String, email: String,
          telefono: String, preferito: Bool, nota: String, creatoIl: Date) {
@@ -107,6 +111,7 @@ struct Cliente: Identifiable, Codable, Hashable {
         case fiscale
         case consensoCopilota
         case modelloId
+        case aziende
     }
 
     /// Lettura tollerante: i campi aggiunti nelle versioni successive possono mancare.
@@ -142,7 +147,13 @@ struct Cliente: Identifiable, Codable, Hashable {
         consensoCopilota = (try? c.decodeIfPresent(ConsensoCopilota.self, forKey: .consensoCopilota)) ?? nil
         // Portafoglio modello (versione 27, giro 2): illeggibile o vuoto = nessun modello
         modelloId = ((try? c.decodeIfPresent(String.self, forKey: .modelloId)) ?? nil).flatMap { $0.isEmpty ? nil : $0 }
+        // Aziende (versione 27, giro 7): un'azienda illeggibile si scarta, le altre restano; nessuna = nil
+        aziende = ((try? c.decodeIfPresent(ElencoTollerante<AziendaCliente>.self, forKey: .aziende)) ?? nil)
+            .flatMap { $0.elementi.isEmpty ? nil : $0.elementi }
     }
+
+    /// Le aziende registrate (vuoto se nessuna).
+    var elencoAziende: [AziendaCliente] { aziende ?? [] }
 }
 
 enum StatoCivile: String, Codable, CaseIterable, Identifiable {

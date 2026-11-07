@@ -118,6 +118,9 @@ enum DatiDemo {
                 c.bisogni.imposta(ValutazioneBisogno(area: .patrimonio, importanza: .media, orizzonte: .medio))
                 c.bisogni.eventi = [EventoVita(id: "evento-marco-studi", tipo: .studiFigli, anno: anno + 5,
                                                nota: "Università di Anna, forse fuori sede")]
+                // L'azienda di prova del template (Luce, giro 7, §9.3.5 punto 8): dichiarata «di prova»; la professione
+                // resta quella di sempre (la scheda «L'azienda» dipende dall'azienda, non dalla parola «Imprenditore»)
+                c.aziende = [AziendeDiProva.bianchiSerramenti()]
                 c.bisogni.aggiornatoIl = c.creatoIl
             case "laura":
                 c.profilo.redditoLordoAnnuo = 41_000

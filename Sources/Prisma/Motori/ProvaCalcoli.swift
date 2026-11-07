@@ -1258,6 +1258,9 @@ enum ProvaCalcoli {
         ProvaCalcoliPensioneEsperienze.esegui(verificaEsterna)
         // «Luce», giro 2: il radar del portafoglio (distanza dal modello, spostamenti nei canali, costi dai motori, bozze)
         ProvaCalcoliRadar.esegui(verificaEsterna)
+        // «Luce», giro 7: la scheda «L'azienda» dei clienti imprenditori (persona chiave dalle coperture collegate, TFM sì/no
+        // senza calcoli fiscali, welfare e continuità dalle liste dell'utente, dati mancanti detti, frasi dai dati veri)
+        ProvaCalcoliAzienda.esegui(verificaEsterna)
         // e lo smontaggio (voci di costo dalle righe, cifre con la fonte, confronto con MotoreSostituzione)
         ProvaCalcoliSmontaggio.esegui(verificaEsterna)
         // «Luce», giro 3: le pratiche dopo la firma (passi riconosciuti dai dati, segno a mano, soglia, mese scorso, ordine,

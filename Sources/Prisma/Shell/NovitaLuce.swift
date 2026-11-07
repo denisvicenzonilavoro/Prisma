@@ -221,6 +221,7 @@ enum NovitaLuce: String, CaseIterable, Identifiable {
         case .giornataPensione, .giocoRischio: return true   // giro 4: Sala › Una giornata della pensione, Il gioco del rischio
         case .settimanaAnno, .traguardi: return true          // giro 5: la tua settimana e il tuo anno, i traguardi festeggiati
         case .palestra: return true              // giro 5: Studio › Palestra, la palestra della trattativa
+        case .imprenditori: return true          // giro 7: Clienti › dossier › L'azienda
         default: return false
         }
     }

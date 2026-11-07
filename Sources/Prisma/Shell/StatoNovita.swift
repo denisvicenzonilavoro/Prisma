@@ -252,6 +252,9 @@ extension StatoShell {
         } else if voce == .palestra {
             // Studio › Palestra (giro 5, StudioPalestra.swift)
             apriStudio(.palestra)
+        } else if voce == .imprenditori {
+            // Il dossier del primo cliente con un'azienda, sulla scheda «L'azienda» (giro 7, DossierAzienda.swift)
+            apriClientiImprenditori()
         } else if app == .studio {
             apriStudio(.cruscotto)
         } else {

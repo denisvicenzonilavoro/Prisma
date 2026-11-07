@@ -1674,6 +1674,8 @@ enum Istantanee {
         tutteLeScene += sceneTraguardi
         // «Luce», giro 5: Studio › Palestra, la palestra della trattativa (Shell/IstantaneePalestra.swift)
         tutteLeScene += scenePalestra
+        // «Luce», giro 7: Clienti › dossier › L'azienda, i clienti imprenditori (Shell/IstantaneeAzienda.swift)
+        tutteLeScene += sceneAzienda
         for scena in tutteLeScene where solo?.contains(scena.nome) ?? true {
             // Un pool per scena: senza il ciclo degli eventi (si esce in PrismaApp.init) niente lo svuoterebbe,
             // e stato, finestra e bitmap di ogni scena resterebbero in memoria fino all'ultima istantanea
@@ -1688,7 +1690,7 @@ enum Istantanee {
                 // La mini finestra di Vera è un pannello a parte: qui si disegna sopra la shell, dove compare
                 let vetrina = sceneVetrina.contains(scena.nome)
                 // Il foglio della fattura a grandezza piena (515): solo la carta, sempre chiara
-                let carta = cartaIstantanea(scena.nome, stato) ?? tavolaLuce(scena.nome)
+                let carta = cartaIstantanea(scena.nome, stato) ?? moduloAziendaIstantanea(scena.nome, stato) ?? tavolaLuce(scena.nome)
                 let vista = ZStack(alignment: .topTrailing) {
                     if vetrina {
                         VetrinaApple(intensita: stato.dati.impostazioni.pioggia.forza)

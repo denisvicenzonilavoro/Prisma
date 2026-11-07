@@ -560,7 +560,8 @@ struct PresentatoreDettaglioDossier<Contenuto: View>: View {
 
     private static func dettaglioIniziale(_ stato: StatoShell) -> StatoDettaglio {
         guard let id = RichiestaIstantaneaDossier.per(stato)?.dettaglio else { return StatoDettaglio() }
-        return StatoDettaglio(aperto: id, misura: Tema.Apple.Clienti.DettaglioObiettivo.misura)
+        let misura = DettaglioAziendaId(id) != nil ? Tema.Apple.Azienda.misuraDettaglio : Tema.Apple.Clienti.DettaglioObiettivo.misura
+        return StatoDettaglio(aperto: id, misura: misura)
     }
 
     var body: some View {
@@ -584,6 +585,9 @@ struct DettaglioDossierApple: View {
             DettaglioObiettivoApple(obiettivo: o, posizioni: stato.posizioniCliente(o.clienteId))
                 // Un altro obiettivo: il cursore riparte dal suo versamento
                 .id(o.id)
+        } else if let a = DettaglioAziendaId(id) {
+            // Un'area della scheda «L'azienda» («Luce» giro 7, DossierAzienda.swift)
+            DettaglioAreaAzienda(id: a)
         }
     }
 }

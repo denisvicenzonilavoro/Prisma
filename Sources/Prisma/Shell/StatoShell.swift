@@ -3281,6 +3281,9 @@ enum SchedaCliente: String, CaseIterable, Hashable {
     case nelTempo
     /// Il patrimonio da oggi a 90 anni con gli eventi trascinabili (Orizzonte, giro 4; specifica §7).
     case lineaVita
+    /// L'azienda dei clienti imprenditori («Luce» giro 7, Design/template-luce-specifica.md §9.3): nel segmentato solo per
+    /// chi ha almeno un'azienda registrata, altrimenti in «Altro» per aggiungerla.
+    case azienda
 
     var titolo: String {
         switch self {
@@ -3296,6 +3299,7 @@ enum SchedaCliente: String, CaseIterable, Hashable {
         case .riesami: return "Riesami"
         case .nelTempo: return "Nel tempo"
         case .lineaVita: return "Linea della vita"
+        case .azienda: return "L'azienda"
         }
     }
 }

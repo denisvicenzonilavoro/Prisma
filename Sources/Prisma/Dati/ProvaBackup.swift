@@ -169,6 +169,8 @@ enum ProvaBackup {
             ProvaBackup.aggiungiRelazioneDiProva(&originale)
             // «Luce», giro 5: il registro della palestra della trattativa, mai le conversazioni (ProvaBackupPalestra.swift)
             ProvaBackup.aggiungiPalestraDiProva(&originale)
+            // «Luce», giro 7: le aziende dei clienti imprenditori, una completa e una con il solo nome (ProvaBackupAziende.swift)
+            ProvaBackup.aggiungiAziendeDiProva(&originale)
             // Il versamento mensile previsto dell'obiettivo (cursore del dettaglio nel tema Apple)
             if !originale.obiettivi.isEmpty { originale.obiettivi[0].versamentoMensile = 350 }
             guard !originale.simulazioni.isEmpty, !originale.incontri.isEmpty, !originale.prodotti.isEmpty, !originale.obiettivi.isEmpty, !originale.documenti.isEmpty, !originale.valutazioni.isEmpty, originale.clienti.contains(where: { !$0.bisogni.eventi.isEmpty }) else {
@@ -256,6 +258,11 @@ enum ProvaBackup {
             }
             // Messaggi ai clienti e impostazioni dei messaggi (versione 26, giro 3), e un archivio senza (ProvaBackupMessaggi.swift)
             if let e = try verificaMessaggi(originale: originale, estratto: estratto.dati) {
+                print("ERRORE: \(e)")
+                return 1
+            }
+            // Le aziende dei clienti imprenditori (versione 27, «Luce» giro 7), e un archivio senza (ProvaBackupAziende.swift)
+            if let e = try verificaAziende(originale: originale, estratto: estratto.dati) {
                 print("ERRORE: \(e)")
                 return 1
             }

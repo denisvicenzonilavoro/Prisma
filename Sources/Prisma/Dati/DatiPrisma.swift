@@ -137,6 +137,9 @@ struct DatiPrisma: Codable, Equatable {
     ///     Giro 5 anche: il registro della
     ///     palestra della trattativa (`Impostazioni.palestra`: data, cliente, difficoltà e punteggio, al massimo 50,
     ///     letti con tolleranza; mai le conversazioni).
+    ///     Giro 7: le aziende dei clienti imprenditori (`Cliente.aziende`: ragione sociale, forma, partita IVA, settore,
+    ///     dipendenti, fatturato e anno, utile, quota e ruolo del cliente, reddito che ne ricava, persona chiave, TFM,
+    ///     welfare e passi della continuità), lette con tolleranza (un'azienda senza id o ragione sociale si scarta).
     static let versioneAttuale = 27
 
     init(clienti: [Cliente], appuntamenti: [Appuntamento], attivita: [Attivita], posizioni: [Posizione],
