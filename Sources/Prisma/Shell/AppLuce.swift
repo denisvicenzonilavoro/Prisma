@@ -49,10 +49,18 @@ struct AppPratiche: View {
     @EnvironmentObject var stato: StatoShell
 
     var body: some View {
-        let n = stato.schedaPratiche.novita
-        InArrivoAppLuce(app: .pratiche, glifo: n.glifo, titolo: n.titolo, frase: n.frase + ".",
-                        nota: "Il canale resta sempre in vista: Alleanza e consulenza indipendente, mai mescolati.",
-                        canali: true)
+        if stato.schedaPratiche == .dopoLaFirma {
+            // Giro 3: le pratiche dopo la firma (PraticheDopoFirma.swift)
+            PraticheDopoFirma()
+        } else if stato.schedaPratiche == .proposta {
+            // «Luce», giro 3: la proposta si costruisce da sola (Shell/PratichePropostaApple.swift)
+            PratichePropostaApple()
+        } else {
+            let n = stato.schedaPratiche.novita
+            InArrivoAppLuce(app: .pratiche, glifo: n.glifo, titolo: n.titolo, frase: n.frase + ".",
+                            nota: "Il canale resta sempre in vista: Alleanza e consulenza indipendente, mai mescolati.",
+                            canali: true)
+        }
     }
 }
 

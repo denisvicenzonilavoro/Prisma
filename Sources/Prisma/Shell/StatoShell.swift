@@ -112,6 +112,8 @@ final class StatoShell: ObservableObject {
     @Published var ancoraPosizioni: String?
     /// Solo per le istantanee: il cliente del radar con il dettaglio già aperto (Posizioni › Radar, «Luce» giro 2).
     var radarDettaglioIstantanea: String?
+    /// Solo per le istantanee: la pratica con il dettaglio già aperto (Pratiche › Dopo la firma, «Luce» giro 3).
+    var praticaDettaglioIstantanea: String?
     /// Il gruppo delle Impostazioni a cui scorrere dentro la pagina (`"impostazioni-occasioni"` in Promemoria e
     /// occasioni; `"impostazioni-conformita"` porta alla pagina Conformità); si consuma appena raggiunto.
     @Published var ancoraImpostazioni: String?
@@ -132,6 +134,9 @@ final class StatoShell: ObservableObject {
     let provaFuoco = StatoProvaFuoco()
     /// Posizioni › Smontaggio («Luce» giro 2): il documento letto e le scelte, finché Prisma è aperta (SmontaggioApple.swift).
     let smontaggio = StatoSmontaggio()
+    /// Pratiche › Proposta («Luce» giro 3): il bisogno scelto, la sequenza delle cinque tappe, le scelte di prodotto
+    /// (StatoPraticheProposta.swift). Un oggetto a parte: la sequenza non pubblica StatoShell. Non si salva.
+    let praticheProposta = StatoPraticheProposta()
     /// Mercato (giro 7, StatoMercato.swift): il campo e il risultato della ricerca per ISIN, lo scaricamento in corso, il
     /// foglio aperto. Un oggetto a parte: scrivere nel campo non pubblica StatoShell. Non si salva.
     let sessioneMercato = SessioneMercato()
@@ -575,6 +580,8 @@ final class StatoShell: ObservableObject {
         dati.posizioni.removeAll { $0.clienteId == id }
         dati.simulazioni.removeAll { $0.clienteId == id }
         dati.analisi[id] = nil
+        // Le partite del gioco del rischio della Sala («Luce» giro 4)
+        dati.partiteRischio.removeAll { $0.clienteId == id }
         dati.conversazioni[id] = nil
         dati.commenti.removeAll { $0.clienteId == id }
         dati.note.removeAll { $0.clienteId == id }
@@ -3224,6 +3231,8 @@ enum SchedaImpostazioni: String, CaseIterable, Hashable, Identifiable {
     case mercato
     /// I portafogli modello e la tolleranza del radar di Posizioni («Luce» giro 2, ImpostazioniModelli.swift).
     case portafogliModello
+    /// La soglia delle pratiche ferme di Pratiche › Dopo la firma («Luce» giro 3, ImpostazioniPraticheVista.swift).
+    case pratiche
     /// Dati di prova, confronto dei modelli, prove di promemoria e voce.
     case strumenti
 
@@ -3246,6 +3255,7 @@ enum SchedaImpostazioni: String, CaseIterable, Hashable, Identifiable {
         case .studio: return "Studio"
         case .mercato: return "Mercato"
         case .portafogliModello: return "Portafogli modello"
+        case .pratiche: return "Pratiche"
         case .strumenti: return "Strumenti"
         }
     }

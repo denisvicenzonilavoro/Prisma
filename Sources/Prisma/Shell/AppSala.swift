@@ -329,17 +329,19 @@ private struct PalcoSala: View {
             .lineLimit(1)
             Spacer(minLength: P.spazioTestata)
             HStack(spacing: P.spazioPulsanti) {
+                // Il tavolo e il Prisma del cliente non sono ancora pronti per nessuna esperienza (decisioni 7 e 111):
+                // i pulsanti restano spenti anche dove l'esperienza c'è già
                 if esperienza.mostraSulTavolo {
                     Button { } label: { Text("▣ Mostra sul tavolo") }
                         .buttonStyle(.apple)
-                        .disabled(!esperienza.disponibile)
-                        .help("Sull'iPad del tavolo: arriva insieme all'esperienza")
+                        .disabled(!esperienza.disponibile || !EsperienzaSala.tavoloPronto)
+                        .help("Sull'iPad del tavolo: arriva con un prossimo aggiornamento")
                 }
                 if esperienza.aggiungeAlPrisma {
                     Button { } label: { Text("✦ Aggiungi al Prisma di \(nome)") }
                         .buttonStyle(.apple)
-                        .disabled(!esperienza.disponibile)
-                        .help("Nel file personale del cliente: arriva insieme all'esperienza. Prisma non manda nulla da solo")
+                        .disabled(!esperienza.disponibile || !EsperienzaSala.prismaCliente.disponibile)
+                        .help("Nel file personale del cliente: arriva con «Il Prisma del cliente». Prisma non manda nulla da solo")
                 }
                 Button { stato.presentaEsperienza(esperienza) } label: { Text("▶︎ Presenta") }
                     .buttonStyle(.applePrimario)
@@ -351,13 +353,36 @@ private struct PalcoSala: View {
 }
 
 /// Dentro la card del palco: la vista dell'esperienza. Finché un'esperienza non c'è, lo stato «in arrivo».
-private struct ContenutoPalco: View {
+/// `inSala`: sulla sala opaca della presentazione (si guarda e si gioca, senza i comandi del consulente).
+struct ContenutoPalco: View {
+    @EnvironmentObject var stato: StatoShell
     let esperienza: EsperienzaSala
     let cliente: Cliente
+    var inSala = false
+
+    @Environment(\.modoIstantanea) private var istantanea
 
     var body: some View {
-        // Ogni giro aggiunge qui la sua esperienza (switch su `esperienza`)
-        InArrivoEsperienza(esperienza: esperienza)
+        // Ogni giro aggiunge qui la sua esperienza (switch su `esperienza`); un cambio di cliente la rifà da capo
+        switch esperienza {
+        case .giornataPensione:
+            // Giro 4: una giornata della pensione (Shell/SalaGiornataPensione.swift)
+            GiornataPensioneVista(cliente: cliente, conPiano: stato.sala.giornataConPiano, modificabile: !inSala)
+                .id(cliente.id)
+        case .giocoRischio:
+            // Giro 4: il gioco del rischio (Shell/SalaGiocoRischio.swift)
+            GiocoRischioVista(cliente: cliente, ultima: MotoreGiocoRischio.ultima(stato.dati.partiteRischio, cliente: cliente.id),
+                              punto: istantanea ? stato.sala.rischioIstantanea : nil, consulente: !inSala)
+                .id(cliente.id)
+        case .prismaLuce:
+            // Giro 4: il prisma di luce (Shell/SalaLuce.swift)
+            PalcoLuce(cliente: cliente)
+        case .disegna:
+            // Giro 4: disegna il tuo futuro (Shell/SalaDisegna.swift)
+            DisegnaIlFuturo(cliente: cliente)
+        default:
+            InArrivoEsperienza(esperienza: esperienza, inSala: inSala)
+        }
     }
 }
 
@@ -413,8 +438,17 @@ struct VistaPresentazioneEsperienza: View {
                     .foregroundColor(s.coloreCliente)
                     .lineLimit(1)
                     .frame(height: s.margine)
-                InArrivoEsperienza(esperienza: esperienza, inSala: true)
-                    .environment(\.colorScheme, .dark)
+                if esperienza.disponibile, let cliente = stato.clienteAttivo {
+                    // L'esperienza vera, nella sua card, sulla sala opaca (sempre scura)
+                    ContenutoPalco(esperienza: esperienza, cliente: cliente, inSala: true)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .superficieApple(Tema.Apple.SalaEsperienze.Scheda.superficie, raggio: Tema.Apple.SalaEsperienze.Scheda.raggio)
+                        .clipShape(RoundedRectangle(cornerRadius: Tema.Apple.SalaEsperienze.Scheda.raggio, style: .continuous))
+                        .environment(\.colorScheme, .dark)
+                } else {
+                    InArrivoEsperienza(esperienza: esperienza, inSala: true)
+                        .environment(\.colorScheme, .dark)
+                }
                 HStack {
                     Spacer()
                     Button("Chiudi") { stato.chiudiSovrapposizione() }

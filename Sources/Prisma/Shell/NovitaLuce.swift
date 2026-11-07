@@ -215,6 +215,10 @@ enum NovitaLuce: String, CaseIterable, Identifiable {
     var disponibile: Bool {
         switch self {
         case .radar, .smontaggio: return true   // giro 2: Posizioni › Radar e Smontaggio
+        case .dopoLaFirma: return true          // giro 3: Pratiche › Dopo la firma
+        case .propostaDaSola: return true        // giro 3: Pratiche › Proposta
+        case .prismaLuce, .disegna: return true  // giro 4: Sala › Il prisma di luce, Disegna il tuo futuro
+        case .giornataPensione, .giocoRischio: return true   // giro 4: Sala › Una giornata della pensione, Il gioco del rischio
         default: return false
         }
     }

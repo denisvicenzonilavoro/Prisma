@@ -14,6 +14,8 @@ enum TipoOccasioneMessaggio: String, Codable, CaseIterable, Identifiable {
     case provaFuoco
     /// Chiesto a Vera a parole («sposta l'incontro e avvisala»: «Fallo tu»): una bozza, mai un invio.
     case richiestaVera
+    /// Il sollecito di una pratica ferma o in attesa (Pratiche › Dopo la firma, «Luce» giro 3): il passo che manca.
+    case pratica
 
     var id: String { rawValue }
 
@@ -29,6 +31,7 @@ enum TipoOccasioneMessaggio: String, Codable, CaseIterable, Identifiable {
         case .avvisoMercato: return "Avviso di mercato"
         case .provaFuoco: return "Prova del fuoco"
         case .richiestaVera: return "Chiesto a Vera"
+        case .pratica: return "Pratica"
         }
     }
 
@@ -36,7 +39,7 @@ enum TipoOccasioneMessaggio: String, Codable, CaseIterable, Identifiable {
     var commerciale: Bool {
         switch self {
         case .riesame, .occasioneAgenda, .avvisoMercato, .provaFuoco: return true
-        case .riepilogoIncontro, .scadenzaPosizione, .compleanno, .consenso, .parcella, .richiestaVera: return false
+        case .riepilogoIncontro, .scadenzaPosizione, .compleanno, .consenso, .parcella, .richiestaVera, .pratica: return false
         }
     }
 
@@ -136,6 +139,8 @@ enum VoceCifraMessaggio: String, CaseIterable {
     case coperturaOggi = "Copertura dell'obiettivo oggi"
     case coperturaDopo = "Copertura dopo lo scenario"
     case perditaScenario = "Patrimonio perso nello scenario"
+    case passoPratica = "Passo che manca"
+    case giorniPratica = "Giorni senza passi nuovi"
 }
 
 /// A che punto è un messaggio. Prisma non spedisce: «aperto» vuol dire aperto già compilato nell'app del Mac

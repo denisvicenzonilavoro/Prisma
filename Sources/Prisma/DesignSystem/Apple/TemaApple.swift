@@ -235,6 +235,8 @@ extension Tema.Apple {
     /// per `OmbraVetroPronta`, oppure si applica a una vista qualsiasi con `.ombraApple(_:)`.
     enum Ombra: CaseIterable {
         case card, vetro, finestra, inclinata, dettaglio, carta, pillola, manopolaInterruttore, manopolaCursore, sfera
+        /// Il tassello delle scene della giornata della pensione (Sala, «Luce» giro 4): 0 10 20 −10 nero al 40%.
+        case tasselloScena
 
         private static func blu(_ a: Double) -> Color { Color(r: 8, g: 40, b: 60, a: a) }
         private static func nero(_ a: Double) -> Color { Color(r: 0, g: 0, b: 0, a: a) }
@@ -271,6 +273,8 @@ extension Tema.Apple {
                 return [S(colore: Self.nero(0.28), y: 3, sfocatura: 10)]
             case .sfera:
                 return [S(colore: Color(r: 40, g: 90, b: 170, a: 0.6), y: 4, sfocatura: 12, espansione: -4)]
+            case .tasselloScena:
+                return [S(colore: Self.nero(0.40), y: 10, sfocatura: 20, espansione: -10)]
             }
         }
 

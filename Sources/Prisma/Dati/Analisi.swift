@@ -192,6 +192,9 @@ struct Analisi360: Codable, Equatable {
     var confermate: [AreaAnalisi] = []
     var note = ""
     var aggiornataIl: Date?
+    /// Una giornata della pensione (Sala, versione 27, «Luce» giro 4): le voci e i costi scritti con il cliente,
+    /// accanto alle ipotesi di previdenza. nil = mai compilata (Prisma non inventa costi).
+    var giornata: GiornataPensione?
 
     init() {}
 
@@ -239,6 +242,7 @@ struct Analisi360: Codable, Equatable {
 
     private enum CodingKeys: String, CodingKey {
         case previdenza, protezione, investimenti, risparmio, confermate, note, aggiornataIl
+        case giornata
     }
 
     init(from decoder: Decoder) throws {
@@ -250,5 +254,7 @@ struct Analisi360: Codable, Equatable {
         confermate = try c.decodeIfPresent([AreaAnalisi].self, forKey: .confermate) ?? []
         note = try c.decodeIfPresent(String.self, forKey: .note) ?? ""
         aggiornataIl = try c.decodeIfPresent(Date.self, forKey: .aggiornataIl)
+        // La giornata della pensione (versione 27, giro 4): illeggibile = mai compilata, il resto dell'analisi resta
+        giornata = (try? c.decodeIfPresent(GiornataPensione.self, forKey: .giornata)) ?? nil
     }
 }

@@ -1,0 +1,36 @@
+{
+  "versione": "prova-2026-11",
+  "testiDiProva": true,
+  "nota": "TESTI DI PROVA: scenari, risposte, avvertenze e soglie sono il fac-simile del template (Design/template-luce.html, righe 1325-1346). Vanno approvati dall'utente (decisioni 59 e 84 di Design/template-luce-specifica.md) prima dell'uso con i clienti; fino ad allora il gioco mostra l'etichetta «testi di prova». Ogni partita salva la versione.",
+  "avvertenza": "Il gioco prepara il questionario di adeguatezza, non lo sostituisce",
+  "notaFinale": "Le decisioni rapide davanti al calo dicono più di qualsiasi risposta su carta. Il profilo ufficiale resta quello del questionario di adeguatezza firmato: questo gioco lo prepara e lo rende comprensibile.",
+  "soglie": { "prudenteFino": 1, "moderataFino": 3, "dinamicaFino": 5 },
+  "scenari": [
+    {
+      "id": "calo",
+      "domanda": "Il tuo portafoglio di 100.000 € scende del 20% in tre mesi.",
+      "etichetta": "Davanti al calo",
+      "valoreIniziale": 100000,
+      "andamento": [100, 98, 95, 97, 91, 88, 90, 85, 82, 84, 80],
+      "risposte": ["Vendo tutto, non voglio perdere altro", "Aspetto: è già successo e poi è risalito", "Compro ancora: adesso costa meno"]
+    },
+    {
+      "id": "risalita",
+      "domanda": "Un anno dopo è risalito: +12% rispetto all’inizio.",
+      "etichetta": "Quando è risalito",
+      "valoreIniziale": 100000,
+      "andamento": [80, 83, 86, 85, 90, 94, 97, 101, 105, 108, 112],
+      "risposte": ["Incasso il guadagno e mi fermo", "Lascio tutto com’è", "Aumento la parte in azioni"]
+    },
+    {
+      "id": "strade",
+      "domanda": "Due strade per i prossimi dieci anni: un rendimento sicuro del 2% l’anno, o un portafoglio misto che rende in media il 5% ma un anno su cinque perde.",
+      "etichetta": "Tra sicurezza e rendimento",
+      "strade": [
+        { "nome": "sicuro 2%", "rendimenti": [2, 2, 2, 2, 2, 2, 2, 2, 2, 2] },
+        { "nome": "misto 5%", "rendimenti": [9, 7, -6, 10, 5, -4, 8, 6, -7, 9] }
+      ],
+      "risposte": ["Il 2% sicuro", "Metà e metà", "Il portafoglio misto"]
+    }
+  ]
+}

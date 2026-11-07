@@ -194,6 +194,22 @@ enum ModelliMessaggi {
             // Le bozze di «Fallo tu» hanno già il loro testo: il modello fisso serve solo da ripiego
             return lei ? ["le scrivo per un breve aggiornamento.", "Resto a disposizione per qualsiasi chiarimento."]
                 : ["ti scrivo per un breve aggiornamento.", "Scrivimi pure quando vuoi."]
+        case .pratica:
+            // Il sollecito di una pratica (Pratiche › Dopo la firma): il passo che manca, mai una cifra in più
+            let nome = v(.posizione).map { "«\($0)»" } ?? (lei ? "la sua pratica" : "la tua pratica")
+            let passo = v(.passoPratica) ?? "un ultimo passo"
+            if compagnia(o) {
+                return lei
+                    ? ["la aggiorno sulla pratica di \(nome): la compagnia deve ancora completare \(passo) e la sto seguendo io. Le scriverò appena è pronta.",
+                       "Resto a disposizione per qualsiasi chiarimento."]
+                    : ["ti aggiorno sulla pratica di \(nome): la compagnia deve ancora completare \(passo) e la sto seguendo io. Ti scrivo appena è pronta.",
+                       "Per qualsiasi domanda scrivimi pure."]
+            }
+            return lei
+                ? ["per completare la pratica di \(nome) \(mancaAncora(passo)). Quando le è comodo, possiamo occuparcene insieme.",
+                   "Resto a disposizione per qualsiasi chiarimento."]
+                : ["per completare la pratica di \(nome) \(mancaAncora(passo)). Quando ti è comodo ce ne occupiamo insieme.",
+                   "Scrivimi pure per qualsiasi cosa."]
         }
     }
 
@@ -248,6 +264,13 @@ enum ModelliMessaggi {
         case .richiestaVera:
             // Le bozze di «Fallo tu» hanno già il loro testo: il modello fisso serve solo da ripiego
             return (["ti scrivo per un breve aggiornamento."], ["A presto."])
+        case .pratica:
+            let nome = v(.posizione).map { "«\($0)»" } ?? "la tua pratica"
+            let passo = v(.passoPratica) ?? "un ultimo passo"
+            if compagnia(o) {
+                return (["per \(nome) la compagnia deve ancora completare \(passo): ti scrivo appena è pronta."], [])
+            }
+            return (["per \(nome) \(mancaAncora(passo)): ce ne occupiamo insieme?"], ["Scrivimi quando ti è comodo."])
         }
     }
 
@@ -265,6 +288,16 @@ enum ModelliMessaggi {
     }
 
     // MARK: - Aiuti
+
+    /// «manca ancora il primo premio», «mancano ancora i documenti informativi».
+    static func mancaAncora(_ passo: String) -> String {
+        (passo.hasPrefix("i ") || passo.hasPrefix("gli ") ? "mancano ancora " : "manca ancora ") + passo
+    }
+
+    /// Il sollecito di una pratica che aspetta la compagnia (l'emissione o la conferma dell'investimento).
+    static func compagnia(_ o: OccasioneMessaggio) -> Bool {
+        o.tipo == .pratica && o.origine.riferimento.hasSuffix("-" + PassoPratica.polizzaEmessa.rawValue)
+    }
 
     /// Con il punto finale se manca.
     static func frase(_ s: String) -> String {

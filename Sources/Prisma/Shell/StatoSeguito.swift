@@ -71,6 +71,8 @@ extension StatoShell {
         // Scritta direttamente: `salvaPosizione` rifarebbe `registraCambio`
         let nuova = MotoreSeguitoProposte.applica(esito, a: &p, appuntamentoId: appuntamentoId, adesso: Posizione.oggiArrotondato)
         dati.posizioni[i] = p
+        // «Luce» giro 3: una proposta accettata adesso apre la sua pratica dopo la firma (solo le nuove accettazioni)
+        if case .accettata = esito { apriPraticaSeServe(p) }
         // Track record: registrata se è la prima presentazione, e la scelta del cliente con l'esito
         registraRaccomandazioneSeServe(prima: prima, dopo: p)
         if let t = nuova { dati.attivita.append(t) }

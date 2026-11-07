@@ -132,6 +132,7 @@ extension SchedaImpostazioni {
         case .studio: return .app(.studio)
         case .mercato: return .app(.mercato)
         case .portafogliModello: return .app(.posizioni)
+        case .pratiche: return .app(.pratiche)
         case .strumenti: return .simbolo("wrench.and.screwdriver.fill", c.strumenti)
         }
     }
