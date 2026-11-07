@@ -1273,6 +1273,11 @@ enum ProvaCalcoli {
         // «Luce», giro 4: la Sala, una giornata della pensione (resto, priorità, voci senza importo, senza e con il piano)
         // e il gioco del rischio (soglie, confronto con il dichiarato, testi di prova dalla risorsa, partite incomplete)
         ProvaCalcoliSala.esegui(verificaEsterna)
+        // «Luce», giro 5: la tua settimana e il tuo anno (pagine solo con i dati, settimana lun-dom, la firma, in arrivo
+        // per giorno, famiglie una volta, primo anno, momento senza cifre) e i traguardi festeggiati (una volta, anniversari,
+        // mutuo, studi, festeggiati e scartati, idea solo dalle note, «Da festeggiare», lettura tollerante)
+        ProvaCalcoliStorie.esegui(verificaEsterna)
+        ProvaCalcoliTraguardi.esegui(verificaEsterna)
 
         // Giro 7: glossario e guida. Ogni chiave ha la sua voce, le etichette puntano a voci vere, ogni app ha 3 passi
         verifica("Glossario: voci per ogni chiave", Double(VoceGlossario.Chiave.allCases.filter { Glossario.voce($0) == nil }.count), 0)

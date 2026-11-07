@@ -314,17 +314,29 @@ private struct TestataScrivania: View {
         return "\(parola), \(stato.nomeUtente)."
     }
 
-    /// «▶︎ La tua settimana» e «⌕ Cerca ovunque» (versione «Luce», §1.2.1). «Nuovo cliente» è nella testata di Clienti;
+    /// «▶︎ La tua settimana» (con l'invito del lunedì, giro 5) e «⌕ Cerca ovunque» (versione «Luce», §1.2.1). «Nuovo cliente» è nella testata di Clienti;
     /// «☾ Stanotte» resta nascosto finché non c'è il lavoro della notte (giro 14, decisione 30).
     private var pulsanti: some View {
         HStack(spacing: Tema.Apple.Scrivania.Saluto.spazioPulsanti) {
+            // Il lunedì, finché la storia della settimana non è vista: l'invito (giro 5, StoriaLuce.swift)
+            if stato.invitoSettimana() {
+                let i = Tema.Apple.Storia.Invito.self
+                HStack(spacing: i.spazio) {
+                    Circle().fill(i.colore).frame(width: i.pallino, height: i.pallino)
+                    Text(TestiStorie.invito)
+                        .carattereApple(i.testo)
+                        .foregroundColor(i.coloreTesto)
+                        .lineLimit(1)
+                }
+                .accessibilityElement(children: .combine)
+            }
             Button {
-                stato.apriVoceNovita(NovitaLuce.settimanaAnno)
+                stato.apriStoria(.settimana)
             } label: {
                 Label("La tua settimana", systemImage: "play.fill")
             }
             .disabled(stato.inModoCliente)
-            .help("La tua settimana in trenta secondi: arriva con un prossimo aggiornamento")
+            .help("La tua settimana in trenta secondi: incontri, incassi, chi chiamare e i traguardi")
             Button {
                 stato.cercaOvunque()
             } label: {

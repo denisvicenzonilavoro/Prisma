@@ -129,7 +129,11 @@ struct DatiPrisma: Codable, Equatable {
     ///     le pratiche dopo la firma (`pratiche`, lette con tolleranza: una pratica senza id o posizione si scarta) e
     ///     la soglia delle pratiche ferme (`Impostazioni.pratiche`, 7 giorni se manca o è illeggibile). Giro 4: la
     ///     giornata della pensione nell'Analisi 360 (`Analisi360.giornata`, voci lette con tolleranza) e le partite del
-    ///     gioco del rischio salvate nel dossier (`partiteRischio`, lette con tolleranza).
+    ///     gioco del rischio salvate nel dossier (`partiteRischio`, lette con tolleranza). Giro 5: la storia della
+    ///     settimana e dell'anno (`Impostazioni.storie`: apertura del lunedì, settimana e anno visti), i traguardi
+    ///     festeggiati (`Impostazioni.traguardi`: tipi spenti, anniversari, festeggiati, scartati) e il giorno in cui un
+    ///     obiettivo è stato raggiunto (`Obiettivo.raggiuntoIl`); i messaggi con il tipo nuovo `traguardo` sono letti con
+    ///     tolleranza (un Prisma di prima li salta).
     static let versioneAttuale = 27
 
     init(clienti: [Cliente], appuntamenti: [Appuntamento], attivita: [Attivita], posizioni: [Posizione],
@@ -175,6 +179,8 @@ struct DatiPrisma: Codable, Equatable {
         PortafogliModelloDiProva.applica(&d)
         // Le pratiche dopo la firma («Luce» giro 3): le quattro del template, segnate «dati di prova»
         d.pratiche = PraticheDiProva.pratiche()
+        // I traguardi festeggiati («Luce» giro 5): Sofia e Giulia, segnati «dati di prova»
+        TraguardiDiProva.applica(&d)
         return d
     }
 
@@ -318,6 +324,12 @@ struct Impostazioni: Codable, Equatable {
     /// Le pratiche dopo la firma: dopo quanti giorni senza un passo nuovo una pratica è ferma (Impostazioni › Pratiche).
     /// Versione 27 («Luce» giro 3), letta con tolleranza: senza, 7 giorni.
     var pratiche = ImpostazioniPratiche()
+    /// «La tua settimana, il tuo anno» (versione 27, «Luce» giro 5): l'apertura da sola del lunedì (accesa di base) e
+    /// la settimana e l'anno già visti. Letta con tolleranza.
+    var storie = ImpostazioniStorie()
+    /// I traguardi festeggiati (versione 27, «Luce» giro 5): tipi spenti, anniversari, festeggiati e scartati. Letta
+    /// con tolleranza.
+    var traguardi = ImpostazioniTraguardi()
 
     init() {}
 
@@ -333,6 +345,7 @@ struct Impostazioni: Codable, Equatable {
         case ovunque, mercato
         case tolleranzaRadar
         case pratiche
+        case storie, traguardi
     }
 
     init(from decoder: Decoder) throws {
@@ -384,6 +397,9 @@ struct Impostazioni: Codable, Equatable {
         tolleranzaRadar = ((try? c.decodeIfPresent(Double.self, forKey: .tolleranzaRadar)) ?? nil).flatMap { $0 >= 0 ? $0 : nil }
         // Pratiche (versione 27, giro 3): senza o illeggibili, ferma dopo 7 giorni
         pratiche = ((try? c.decodeIfPresent(ImpostazioniPratiche.self, forKey: .pratiche)) ?? nil) ?? ImpostazioniPratiche()
+        // Storie e traguardi (versione 27, giro 5): senza o illeggibili, i valori di base
+        storie = ((try? c.decodeIfPresent(ImpostazioniStorie.self, forKey: .storie)) ?? nil) ?? ImpostazioniStorie()
+        traguardi = ((try? c.decodeIfPresent(ImpostazioniTraguardi.self, forKey: .traguardi)) ?? nil) ?? ImpostazioniTraguardi()
     }
 }
 

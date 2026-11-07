@@ -48,7 +48,7 @@ final class SessioneMessaggi: ObservableObject {
     /// Le occasioni da mostrare: quelle dello stato, con in testa il messaggio riaperto dal dossier (se non c'è già).
     func elenco(_ base: OccasioniMessaggi) -> OccasioniMessaggi {
         guard let d = dalDossier, base.occasione(d.id) == nil else { return base }
-        return OccasioniMessaggi(oggi: [d] + base.oggi, settimana: base.settimana)
+        return OccasioniMessaggi(festeggiare: base.festeggiare, oggi: [d] + base.oggi, settimana: base.settimana)
     }
 
     /// L'occasione scelta, o la prima.

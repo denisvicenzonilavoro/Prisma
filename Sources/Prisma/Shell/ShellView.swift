@@ -123,6 +123,15 @@ struct CorpoShell: View {
                         .transition(modoIstantanea ? AnyTransition.identity : AnyTransition.opacity)
                 }
 
+                // «Luce» giro 5: la storia della settimana e dell'anno, sopra barra, finestre e dock (StoriaLuce.swift)
+                if sistema.sovrapposizione?.storiaAperta != nil {
+                    StoriaLuce(storia: stato.storia)
+                        .frame(width: geo.size.width, height: geo.size.height)
+                        .transition(modoIstantanea ? AnyTransition.identity
+                            : AnyTransition.asymmetric(insertion: .opacity.animation(Tema.Apple.Moto.Storia.animazioneApre),
+                                                       removal: .opacity.animation(Tema.Apple.Moto.Storia.animazioneChiude)))
+                }
+
                 if sistema.bloccato {
                     // L'uscita ha una curva sua: nelle istantanee e nelle prove la schermata se ne va di colpo
                     SchermataBenvenuto()

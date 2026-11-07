@@ -67,6 +67,8 @@ extension Istantanee {
         switch nome {
         case "617-icone-luce": return AnyView(TavolaIconeLuce())
         case "619-glifi-luce": return AnyView(TavolaGlifiIstantanea())
+        // «Luce» giro 5: il biglietto del traguardo da solo (IstantaneeTraguardi.swift)
+        case "735-biglietto-traguardo": return tavolaBiglietto()
         default: return nil
         }
     }

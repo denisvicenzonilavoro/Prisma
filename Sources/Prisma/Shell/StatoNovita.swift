@@ -218,6 +218,12 @@ extension StatoShell {
     func apriVoceNovita(_ voce: NovitaLuce) {
         chiudiNovita()
         if pannelloNotifiche { pannelloNotifiche = false }
+        if voce == .settimanaAnno {
+            // La storia della settimana sopra la scrivania (giro 5, StoriaLuce.swift)
+            mostraScrivania()
+            apriStoria(.settimana)
+            return
+        }
         guard let app = voce.app else {
             mostraScrivania()
             if let avviso = voce.avvisoInArrivo { mostraAvviso(avviso) }
@@ -240,6 +246,9 @@ extension StatoShell {
         } else if voce == .smontaggio {
             // Posizioni › Smontaggio (giro 2, SmontaggioApple.swift)
             apriSmontaggio()
+        } else if voce == .traguardi {
+            // Messaggi sul primo traguardo da festeggiare (giro 5, PannelloTraguardo.swift)
+            apriTraguardo(nil, clienteId: nil)
         } else if app == .studio {
             apriStudio(.cruscotto)
         } else {

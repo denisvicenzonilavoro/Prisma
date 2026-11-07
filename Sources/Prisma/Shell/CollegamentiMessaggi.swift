@@ -79,7 +79,7 @@ extension StatoShell {
             return copia
         }
         guard !extra.isEmpty else { return base }
-        return OccasioniMessaggi(oggi: extra + base.oggi, settimana: base.settimana)
+        return OccasioniMessaggi(festeggiare: base.festeggiare, oggi: extra + base.oggi, settimana: base.settimana)
     }
 
     /// L'occasione di una parcella per «Manda con Messaggi»: quella del motore se c'è (da mandare o da saldare),

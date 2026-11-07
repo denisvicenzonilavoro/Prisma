@@ -347,10 +347,14 @@ extension StatoShell {
     func dopoSblocco() {
         guard persistente, !solaLettura, modoCliente == nil, presentazione == nil,
               sistema.guida == nil, !bloccato else { return }
+        // «Luce» giro 5: gli obiettivi raggiunti prendono la loro data (i traguardi, StatoTraguardi.swift)
+        segnaObiettiviRaggiunti()
         if !dati.impostazioni.introduzioneVista {
             apriGuida(.introduzione(0))
         } else {
             proponiNovitaDopoSblocco()
+            // «Luce» giro 5: il lunedì la storia della settimana si apre da sola, una volta (StoriaLuce.swift)
+            proponiStoriaDopoSblocco()
         }
     }
 }

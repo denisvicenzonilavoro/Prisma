@@ -62,7 +62,7 @@ struct MessaggiTelefono: View {
     private func menu(_ elenco: OccasioniMessaggi, scelta: String?) -> some View {
         Menu {
             ForEach(GruppoMessaggio.allCases, id: \.self) { g in
-                let voci = g == .oggi ? elenco.oggi : elenco.settimana
+                let voci = elenco.voci(g)
                 if !voci.isEmpty {
                     Section(g.titolo) {
                         ForEach(voci) { o in

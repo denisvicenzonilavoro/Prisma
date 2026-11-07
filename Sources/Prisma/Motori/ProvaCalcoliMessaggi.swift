@@ -321,6 +321,13 @@ enum ProvaCalcoliMessaggi {
                                                         CifraMessaggio(.canale, "Alleanza"), CifraMessaggio(.giorniPratica, "9")],
                                                 priorita: .alta, data: oggi, inRitardo: true))
         }
+        // Un traguardo da festeggiare («Luce» giro 5): il fatto, mai una cifra in più né una proposta
+        occasioni.append(OccasioneMessaggio(origine: OrigineMessaggio(tipo: .traguardo, riferimento: "obiettivoRaggiunto-sofia-prova"),
+                                            clienteId: "sofia", canale: nil, gruppo: .festeggiare,
+                                            titolo: "Ha raggiunto «Rendita integrativa»", perche: "Obiettivo raggiunto ieri",
+                                            oggetto: "Ha raggiunto «Rendita integrativa»",
+                                            cifre: [CifraMessaggio(.traguardo, "Ha raggiunto «Rendita integrativa»")],
+                                            priorita: .alta, data: oggi))
         return (x, occasioni)
     }
 

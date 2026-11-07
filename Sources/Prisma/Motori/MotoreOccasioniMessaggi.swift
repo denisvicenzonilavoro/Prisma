@@ -44,14 +44,16 @@ enum RegoleMessaggi {
     static let caratteriPasso = 200
 }
 
-/// In quale gruppo dell'elenco di Messaggi cade un'occasione.
+/// In quale gruppo dell'elenco di Messaggi cade un'occasione. «Da festeggiare» (i traguardi, «Luce» giro 5) sta in cima;
+/// il valore grezzo non si salva, quindi l'ordine si può cambiare senza toccare l'archivio.
 enum GruppoMessaggio: Int, Comparable, CaseIterable {
-    case oggi, settimana
+    case festeggiare, oggi, settimana
 
     static func < (a: Self, b: Self) -> Bool { a.rawValue < b.rawValue }
 
     var titolo: String {
         switch self {
+        case .festeggiare: return "Da festeggiare"
         case .oggi: return "Da mandare oggi"
         case .settimana: return "Questa settimana"
         }
@@ -121,21 +123,39 @@ struct OccasioneMessaggio: Identifiable, Hashable {
     }
 }
 
-/// Le occasioni divise nei due gruppi di Messaggi, già ordinate.
+/// Le occasioni divise nei gruppi di Messaggi, già ordinate: «Da festeggiare» (i traguardi), «Da mandare oggi» e
+/// «Questa settimana».
 struct OccasioniMessaggi: Equatable {
+    let festeggiare: [OccasioneMessaggio]
     let oggi: [OccasioneMessaggio]
     let settimana: [OccasioneMessaggio]
 
+    init(festeggiare: [OccasioneMessaggio] = [], oggi: [OccasioneMessaggio], settimana: [OccasioneMessaggio]) {
+        self.festeggiare = festeggiare
+        self.oggi = oggi
+        self.settimana = settimana
+    }
+
     static let vuote = OccasioniMessaggi(oggi: [], settimana: [])
 
-    var tutte: [OccasioneMessaggio] { oggi + settimana }
-    var nessuna: Bool { oggi.isEmpty && settimana.isEmpty }
+    var tutte: [OccasioneMessaggio] { festeggiare + oggi + settimana }
+    var nessuna: Bool { festeggiare.isEmpty && oggi.isEmpty && settimana.isEmpty }
+
+    /// Le occasioni di un gruppo.
+    func voci(_ g: GruppoMessaggio) -> [OccasioneMessaggio] {
+        switch g {
+        case .festeggiare: return festeggiare
+        case .oggi: return oggi
+        case .settimana: return settimana
+        }
+    }
 
     func occasione(_ id: String) -> OccasioneMessaggio? { tutte.first { $0.id == id } }
 
     /// Solo quelle di un cliente (modalità cliente).
     func soloCliente(_ id: String) -> OccasioniMessaggi {
-        OccasioniMessaggi(oggi: oggi.filter { $0.clienteId == id }, settimana: settimana.filter { $0.clienteId == id })
+        OccasioniMessaggi(festeggiare: festeggiare.filter { $0.clienteId == id }, oggi: oggi.filter { $0.clienteId == id },
+                          settimana: settimana.filter { $0.clienteId == id })
     }
 }
 
@@ -159,6 +179,8 @@ enum MotoreOccasioniMessaggi {
         elenco += occasioniAgenda(dati, clienti: clienti, inizio: inizio, oggi: oggi, cal: cal)
         elenco += parcelle(dati.parcelle, clienti: clienti, oggi: oggi, cal: cal)
         elenco += avvisiMercato(dati.mercato.avvisi, clienti: clienti, posizioni: posizioni, oggi: oggi, cal: cal)
+        // I traguardi da festeggiare («Luce» giro 5, MotoreTraguardi)
+        elenco += MotoreTraguardi.occasioni(MotoreTraguardi.calcola(dati: dati, oggi: oggi, cal: cal), oggi: oggi, cal: cal)
         return dividi(elenco, messaggi: dati.messaggi, clienti: clienti, oggi: oggi, cal: cal)
     }
 
@@ -426,7 +448,8 @@ enum MotoreOccasioniMessaggi {
             if na != nb { return na.localizedCompare(nb) == .orderedAscending }
             return a.id < b.id
         }
-        return OccasioniMessaggi(oggi: Array(ordinate.filter { $0.gruppo == .oggi }.prefix(RegoleMessaggi.massimoPerGruppo)),
+        return OccasioniMessaggi(festeggiare: Array(ordinate.filter { $0.gruppo == .festeggiare }.prefix(RegoleMessaggi.massimoPerGruppo)),
+                                 oggi: Array(ordinate.filter { $0.gruppo == .oggi }.prefix(RegoleMessaggi.massimoPerGruppo)),
                                  settimana: Array(ordinate.filter { $0.gruppo == .settimana }.prefix(RegoleMessaggi.massimoPerGruppo)))
     }
 

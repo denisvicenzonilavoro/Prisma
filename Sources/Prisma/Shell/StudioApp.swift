@@ -157,13 +157,26 @@ extension StatoShell {
 
 // MARK: - Il segmentato della testata
 
-/// Il segmentato a pillola delle quattro schede, a destra nella testata della finestra.
+/// «▶︎ Il tuo anno» e il segmentato a pillola delle quattro schede, a destra nella testata della finestra.
 struct AzioniStudio: View {
     @EnvironmentObject var stato: StatoShell
 
     var body: some View {
-        SegmentatoPillola(selezione: $stato.schedaStudio, valori: SchedaStudio.allCases, titolo: { $0.titolo })
-            .fixedSize()
+        HStack(spacing: Tema.Apple.Scrivania.Saluto.spazioPulsanti) {
+            // «▶︎ Il tuo anno» in tutte le schede (Luce giro 5, StoriaLuce.swift); non in modalità cliente
+            if !stato.inModoCliente {
+                Button {
+                    stato.apriStoria(.anno)
+                } label: {
+                    Label("Il tuo anno", systemImage: "play.fill")
+                }
+                .buttonStyle(.appleVetro)
+                .fixedSize()
+                .help("Il tuo anno da consulente, in un minuto")
+            }
+            SegmentatoPillola(selezione: $stato.schedaStudio, valori: SchedaStudio.allCases, titolo: { $0.titolo })
+                .fixedSize()
+        }
     }
 }
 

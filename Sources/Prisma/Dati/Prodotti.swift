@@ -189,6 +189,10 @@ struct Obiettivo: Identifiable, Codable, Hashable {
     /// Versamento mensile previsto per l'obiettivo, oltre ai premi delle posizioni collegate: si sceglie con il
     /// cursore del dettaglio («Salva nel dossier») e va al rendimento dell'obiettivo. 0 = nessuno (archivi di prima).
     var versamentoMensile: Double = 0
+    /// Il giorno in cui Prisma ha trovato l'obiettivo raggiunto per la prima volta (I traguardi festeggiati, «Luce»
+    /// giro 5): lo scrive lo stato, non il motore (`StatoShell.segnaObiettiviRaggiunti`). nil = non ancora raggiunto
+    /// o archivi di prima. Versione 27, letto con tolleranza.
+    var raggiuntoIl: Date?
 
     init(clienteId: String, titolo: String, area: AreaBisogno, importo: Double, scadenza: Date) {
         self.clienteId = clienteId
@@ -209,6 +213,7 @@ struct Obiettivo: Identifiable, Codable, Hashable {
     private enum CodingKeys: String, CodingKey {
         case id, clienteId, titolo, area, importo, scadenza, priorita, accantonato, posizioniCollegate, rendimento, note, creatoIl
         case versamentoMensile
+        case raggiuntoIl
     }
 
     init(from decoder: Decoder) throws {
@@ -226,6 +231,8 @@ struct Obiettivo: Identifiable, Codable, Hashable {
         note = try c.decodeIfPresent(String.self, forKey: .note) ?? ""
         creatoIl = try c.decodeIfPresent(Date.self, forKey: .creatoIl) ?? Date()
         versamentoMensile = try c.decodeIfPresent(Double.self, forKey: .versamentoMensile) ?? 0
+        // I traguardi (versione 27, «Luce» giro 5): illeggibile = non ancora raggiunto
+        raggiuntoIl = (try? c.decodeIfPresent(Date.self, forKey: .raggiuntoIl)) ?? nil
     }
 }
 

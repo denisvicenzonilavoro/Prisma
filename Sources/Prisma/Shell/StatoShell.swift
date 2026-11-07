@@ -150,6 +150,9 @@ final class StatoShell: ObservableObject {
     let inquadra = StatoInquadra()
     /// La Sala di «Luce» (StatoSala.swift): l'esperienza sul palco, osservata solo dalla Sala.
     let sala = StatoSala()
+    /// La storia della settimana e dell'anno di «Luce» (giro 5, StoriaLuce.swift): le pagine e quella in corso,
+    /// osservate solo dalla storia. Non si salva.
+    let storia = StatoStoria()
     /// Prisma ovunque (giro 8, StatoOvunque.swift): lo stato della pagina Impostazioni › iPhone e iPad, la chiave dello
     /// spazio in memoria e i lavori della sincronizzazione. Un oggetto a parte: i pallini e i controlli non pubblicano
     /// StatoShell. Non si salva (le impostazioni dello spazio stanno in `dati.impostazioni.ovunque`).

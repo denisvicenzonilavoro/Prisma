@@ -165,6 +165,8 @@ enum ProvaBackup {
             ProvaBackup.aggiungiPraticheDiProva(&originale)
             // «Luce», giro 4: giornata della pensione e partite del gioco del rischio (ProvaBackupSala.swift)
             ProvaBackup.aggiungiSalaDiProva(&originale)
+            // «Luce», giro 5: storie della settimana e dell'anno, traguardi, obiettivo raggiunto (ProvaBackupRelazione.swift)
+            ProvaBackup.aggiungiRelazioneDiProva(&originale)
             // Il versamento mensile previsto dell'obiettivo (cursore del dettaglio nel tema Apple)
             if !originale.obiettivi.isEmpty { originale.obiettivi[0].versamentoMensile = 350 }
             guard !originale.simulazioni.isEmpty, !originale.incontri.isEmpty, !originale.prodotti.isEmpty, !originale.obiettivi.isEmpty, !originale.documenti.isEmpty, !originale.valutazioni.isEmpty, originale.clienti.contains(where: { !$0.bisogni.eventi.isEmpty }) else {
@@ -267,6 +269,11 @@ enum ProvaBackup {
             }
             // La giornata della pensione e le partite del gioco del rischio (versione 27, «Luce» giro 4) (ProvaBackupSala.swift)
             if let e = try verificaSala(originale: originale, estratto: estratto.dati) {
+                print("ERRORE: \(e)")
+                return 1
+            }
+            // Le storie e i traguardi festeggiati (versione 27, «Luce» giro 5), e un archivio senza (ProvaBackupRelazione.swift)
+            if let e = try verificaRelazione(originale: originale, estratto: estratto.dati) {
                 print("ERRORE: \(e)")
                 return 1
             }

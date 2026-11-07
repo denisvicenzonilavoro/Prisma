@@ -206,6 +206,14 @@ enum ModelliMessaggi {
                    "Resto a disposizione per qualsiasi chiarimento."]
                 : ["per completare la pratica di \(nome) \(mancaAncora(passo)). Quando ti è comodo ce ne occupiamo insieme.",
                    "Scrivimi pure per qualsiasi cosa."]
+        case .traguardo:
+            // Un traguardo da festeggiare: il fatto, mai una cifra in più né una proposta (decisione 87)
+            let cosa = v(.traguardo).map { " («\(minuscolaIniziale($0))»)" } ?? ""
+            return lei
+                ? ["oggi è un giorno da ricordare\(cosa) e volevo farle i miei complimenti. Grazie per la fiducia di questi anni.",
+                   "Un caro saluto."]
+                : ["oggi è un giorno da ricordare\(cosa) e volevo farti i miei complimenti. Grazie per la fiducia di questi anni.",
+                   "Un abbraccio."]
         }
     }
 
@@ -264,6 +272,9 @@ enum ModelliMessaggi {
                 return (["per \(nome) la compagnia deve ancora completare \(passo): ti scrivo appena è pronta."], [])
             }
             return (["per \(nome) \(mancaAncora(passo)): ce ne occupiamo insieme?"], ["Scrivimi quando ti è comodo."])
+        case .traguardo:
+            let cosa = v(.traguardo).map { " («\(minuscolaIniziale($0))»)" } ?? ""
+            return (["oggi è un giorno da ricordare\(cosa): complimenti!"], ["Grazie per la fiducia."])
         }
     }
 

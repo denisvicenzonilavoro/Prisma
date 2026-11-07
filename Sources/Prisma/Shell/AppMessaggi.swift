@@ -122,7 +122,11 @@ struct AppMessaggi: View {
             }
             .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
         }
-        .onAppear { prendiRichiesta() }
+        .onAppear {
+            // Gli obiettivi raggiunti prendono la loro data: i traguardi entrano in «Da festeggiare» (StatoTraguardi.swift)
+            stato.segnaObiettiviRaggiunti()
+            prendiRichiesta()
+        }
         .onChange(of: stato.richiestaMessaggi) { r in
             if r != nil { prendiRichiesta() }
         }
@@ -131,7 +135,14 @@ struct AppMessaggi: View {
 
     @ViewBuilder private func pannello(_ o: OccasioneMessaggio?, richiesta: RichiestaIstantaneaMessaggi?, compatto: Bool,
                                        voci: Int) -> some View {
-        if let o, let c = stato.cliente(o.clienteId) {
+        if let o, o.tipo == .traguardo, let c = stato.cliente(o.clienteId) {
+            // Un traguardo da festeggiare: il biglietto e «Il momento, già pronto» (Luce giro 5, PannelloTraguardo.swift)
+            PannelloTraguardo(occasione: o, cliente: c, base: cambiato ? M.baseCambio : M.baseApertura,
+                              primoIndice: cambiato ? 0 : voci)
+                .id(o.id)
+                .opacity(esce ? 0 : 1)
+                .offset(x: esce ? M.spostamentoCambio : 0)
+        } else if let o, let c = stato.cliente(o.clienteId) {
             let tono: Binding<TonoMessaggio> = richiesta.map { r in Binding.constant(r.tono) } ?? $sessione.tono
             let canale: Binding<CanaleMessaggio> = richiesta.map { r in Binding.constant(r.canale) } ?? $sessione.canale
             PannelloMessaggio(sessione: sessione, occasione: o, cliente: c, tono: tono, canale: canale,
@@ -205,8 +216,8 @@ struct ColonnaOccasioniMessaggi: View {
 
     var body: some View {
         let forma = RoundedRectangle(cornerRadius: C.raggio, style: .continuous)
-        let gruppi: [(String, [OccasioneMessaggio])] = [(GruppoMessaggio.oggi.titolo, elenco.oggi),
-                                                        (GruppoMessaggio.settimana.titolo, elenco.settimana)]
+        // «Da festeggiare» in cima (i traguardi, Luce giro 5), poi «Da mandare oggi» e «Questa settimana»
+        let gruppi: [(String, [OccasioneMessaggio])] = GruppoMessaggio.allCases.map { g in (g.titolo, elenco.voci(g)) }
         return VStack(alignment: .leading, spacing: 0) {
             if elenco.nessuna {
                 occhiello(GruppoMessaggio.oggi.titolo, primo: true)
@@ -227,6 +238,7 @@ struct ColonnaOccasioniMessaggi: View {
                                 VoceOccasioneMessaggio(occasione: o, cliente: stato.cliente(o.clienteId), scelta: o.id == scelta) {
                                     tocca(o.id)
                                 }
+                                .contextMenu { menuTraguardo(o) }
                                 .entrataCascata(min(i, M.voceMassima), base: base, sfocatura: false)
                             }
                         }
@@ -248,6 +260,16 @@ struct ColonnaOccasioniMessaggi: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .clipShape(forma)
         .superficieApple(C.superficie, raggio: C.raggio)
+    }
+
+    /// Il menu di una voce «Da festeggiare»: «Segna come festeggiato» e «Non è un traguardo» (Luce giro 5).
+    @ViewBuilder private func menuTraguardo(_ o: OccasioneMessaggio) -> some View {
+        if o.tipo == .traguardo, let t = stato.traguardo(o.origine.riferimento) {
+            if t.festeggiatoIl == nil {
+                Button("Segna come festeggiato") { stato.segnaFesteggiato(t) }
+            }
+            Button("Non è un traguardo") { stato.scartaTraguardo(t) }
+        }
     }
 
     private func indice(_ o: OccasioneMessaggio) -> Int {
@@ -302,7 +324,8 @@ struct VoceOccasioneMessaggio: View {
                         .truncationMode(.tail)
                         .frame(maxWidth: V.larghezzaTitolo, alignment: .leading)
                     if let p = occasione.preparatoIl {
-                        Text(TestiMessaggi.preparato(p))
+                        // Un traguardo festeggiato oggi (telefonata messa o segnato a mano) resta con la spunta fino a domani
+                        Text(occasione.tipo == .traguardo ? TestiTraguardi.festeggiato : TestiMessaggi.preparato(p))
                             .carattereApple(V.preparato)
                             .foregroundColor(V.colorePreparato)
                             .lineLimit(1)

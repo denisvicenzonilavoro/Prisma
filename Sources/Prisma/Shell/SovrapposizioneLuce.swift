@@ -6,7 +6,8 @@ import SwiftUI
 // Novità, notifiche, spazi, ricerca e guida (un pannello alla volta). Il blocco e il riposo del Mac le chiudono tutte
 // (decisione 53, al contrario del template). Ordine di Esc: storia → notte → scena del telefono → Novità →
 // presentazione → dettaglio → palco della Sala → notifiche → finestra.
-// Nel giro 1 c'è solo la presentazione dell'esperienza; le altre arrivano con i loro giri (5, 13, 14).
+// Nel giro 1 c'era solo la presentazione dell'esperienza; la storia arriva con il giro 5 (StoriaLuce.swift), le altre
+// con i loro giri (13, 14).
 
 /// La storia a tutto palco (giro 5).
 enum TipoStoria: String, CaseIterable {
@@ -35,6 +36,12 @@ enum SovrapposizioneLuce: Equatable {
     /// L'esperienza presentata sulla sala opaca (nil per le altre sovrapposizioni).
     var esperienzaPresentata: EsperienzaSala? {
         if case .presentazioneEsperienza(let e) = self { return e }
+        return nil
+    }
+
+    /// La storia aperta (nil per le altre sovrapposizioni).
+    var storiaAperta: TipoStoria? {
+        if case .storia(let t) = self { return t }
         return nil
     }
 
