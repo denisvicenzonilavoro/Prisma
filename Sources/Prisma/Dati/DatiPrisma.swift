@@ -68,6 +68,9 @@ struct DatiPrisma: Codable, Equatable {
     /// L'allenamento per l'esame OCF (Studio › Esame OCF, versione 26, giro 6): materie, domande, storico delle
     /// risposte e data dell'esame. Le domande le importa il consulente; Prisma ne ha solo poche di esempio.
     var ocf = ArchivioOCF()
+    /// I portafogli modello del radar (Posizioni › Radar, versione 27, «Luce» giro 2): li scrive l'utente in
+    /// Impostazioni › Portafogli modello. Vuoto finché non ne scrive uno.
+    var portafogliModello: [PortafoglioModello] = []
     var clienteAttivoId: String
     var impostazioni: Impostazioni
 
@@ -113,7 +116,9 @@ struct DatiPrisma: Codable, Equatable {
     /// 27: «Luce» (Design/template-luce-specifica.md, decisione 103: una sola versione per tutta Luce, campi nuovi letti
     ///     con `decodeIfPresent`). Giro 1: le app nuove Territorio, Pratiche, Sala e Biblioteca negli spazi di lavoro,
     ///     letti con tolleranza (una finestra di un'app che questo Prisma non conosce si salta, uno spazio illeggibile
-    ///     non fa perdere gli altri: decisione 104), e le novità viste «luce» (`Impostazioni.novitaViste`).
+    ///     non fa perdere gli altri: decisione 104), e le novità viste «luce» (`Impostazioni.novitaViste`). Giro 2: i
+    ///     portafogli modello (`portafogliModello`), la tolleranza del radar (`Impostazioni.tolleranzaRadar`), il modello
+    ///     di ogni cliente (`Cliente.modelloId`) e il segno delle bozze di riequilibrio (`Posizione.riequilibrio`).
     static let versioneAttuale = 27
 
     init(clienti: [Cliente], appuntamenti: [Appuntamento], attivita: [Attivita], posizioni: [Posizione],
@@ -155,6 +160,8 @@ struct DatiPrisma: Codable, Equatable {
         // La linea della vita (giro 4): eventi e risparmio libero dei clienti di prova (DatiDemoLineaVita.swift)
         d.eventiVita = DatiDemo.eventiVita()
         DatiDemo.aggiungiRisparmiLiberi(&d.clienti)
+        // Il radar del portafoglio («Luce» giro 2): i tre modelli del template, segnati «dati di prova»
+        PortafogliModelloDiProva.applica(&d)
         return d
     }
 
@@ -168,6 +175,7 @@ struct DatiPrisma: Codable, Equatable {
         case sessioniCopilota
         case giornaleOvunque, conflittiOvunque, arriviOvunque, inquadratureDaConfermare
         case mercato, famiglie, ocf
+        case portafogliModello
     }
 
     /// Lettura tollerante: gli archivi delle versioni precedenti non hanno tutte le sezioni.
@@ -215,6 +223,8 @@ struct DatiPrisma: Codable, Equatable {
         // Tabelle delle famiglie e allenamento OCF (versione 26, giro 6): illeggibili = tavole incluse e archivio OCF vuoto
         famiglie = (try? c.decodeIfPresent(FamiglieCaricate.self, forKey: .famiglie)) ?? nil
         ocf = (try? c.decodeIfPresent(ArchivioOCF.self, forKey: .ocf)) ?? ArchivioOCF()
+        // Portafogli modello del radar (versione 27, giro 2): un modello illeggibile si scarta, gli altri restano
+        portafogliModello = ((try? c.decodeIfPresent(ElencoTollerante<PortafoglioModello>.self, forKey: .portafogliModello)) ?? nil)?.elementi ?? []
         clienteAttivoId = try c.decodeIfPresent(String.self, forKey: .clienteAttivoId) ?? (clienti.first?.id ?? "")
         impostazioni = try c.decodeIfPresent(Impostazioni.self, forKey: .impostazioni) ?? Impostazioni()
     }
@@ -283,6 +293,9 @@ struct Impostazioni: Codable, Equatable {
     /// scaricare e le soglie degli avvisi, vuote finché l'utente non le sceglie (Impostazioni › Mercato). Dalla
     /// versione 26 (giro 7), letto con tolleranza.
     var mercato = ImpostazioniMercato()
+    /// La tolleranza generale del radar del portafoglio, in punti di distanza dal modello (Impostazioni › Portafogli
+    /// modello). nil = non ancora scritta: Prisma non ne inventa una, e senza nessun cliente è «fuori». Versione 27.
+    var tolleranzaRadar: Double?
 
     init() {}
 
@@ -296,6 +309,7 @@ struct Impostazioni: Codable, Equatable {
         case studio, novitaViste
         case messaggi
         case ovunque, mercato
+        case tolleranzaRadar
     }
 
     init(from decoder: Decoder) throws {
@@ -343,6 +357,8 @@ struct Impostazioni: Codable, Equatable {
         ovunque = ((try? c.decodeIfPresent(ImpostazioniOvunque.self, forKey: .ovunque)) ?? nil) ?? ImpostazioniOvunque()
         // Giro 7 di Orizzonte (sempre versione 26): gli archivi di prima non hanno Mercato, che resta spento
         mercato = ((try? c.decodeIfPresent(ImpostazioniMercato.self, forKey: .mercato)) ?? nil) ?? ImpostazioniMercato()
+        // Tolleranza del radar (versione 27, giro 2): illeggibile o negativa = non scritta
+        tolleranzaRadar = ((try? c.decodeIfPresent(Double.self, forKey: .tolleranzaRadar)) ?? nil).flatMap { $0 >= 0 ? $0 : nil }
     }
 }
 

@@ -108,6 +108,8 @@ final class StatoShell: ObservableObject {
     @Published var posizioneInDettaglio: String?
     /// Il pannello del dossier Posizioni a cui scorrere ("resistenza", "costi"); si consuma appena raggiunto.
     @Published var ancoraPosizioni: String?
+    /// Solo per le istantanee: il cliente del radar con il dettaglio già aperto (Posizioni › Radar, «Luce» giro 2).
+    var radarDettaglioIstantanea: String?
     /// Il gruppo delle Impostazioni a cui scorrere dentro la pagina (`"impostazioni-occasioni"` in Promemoria e
     /// occasioni; `"impostazioni-conformita"` porta alla pagina Conformità); si consuma appena raggiunto.
     @Published var ancoraImpostazioni: String?
@@ -126,6 +128,8 @@ final class StatoShell: ObservableObject {
     /// Posizioni › Portafoglio: la vista (Portafoglio o Prova del fuoco), lo scenario e i cursori della prova del fuoco
     /// (StatoProvaFuoco.swift). Un oggetto a parte: trascinare il cursore non pubblica StatoShell. Non si salva.
     let provaFuoco = StatoProvaFuoco()
+    /// Posizioni › Smontaggio («Luce» giro 2): il documento letto e le scelte, finché Prisma è aperta (SmontaggioApple.swift).
+    let smontaggio = StatoSmontaggio()
     /// Mercato (giro 7, StatoMercato.swift): il campo e il risultato della ricerca per ISIN, lo scaricamento in corso, il
     /// foglio aperto. Un oggetto a parte: scrivere nel campo non pubblica StatoShell. Non si salva.
     let sessioneMercato = SessioneMercato()
@@ -3044,7 +3048,10 @@ final class StatoShell: ObservableObject {
                 switch esito {
                 case .success:
                     var demo = completi ? ClientiFittizi.completi() : DatiPrisma.demo()
+                    let tolleranzaProva = demo.impostazioni.tolleranzaRadar
                     demo.impostazioni = self.dati.impostazioni
+                    // La tolleranza del radar di prova, se l'utente non ne ha scritta una
+                    if demo.impostazioni.tolleranzaRadar == nil { demo.impostazioni.tolleranzaRadar = tolleranzaProva }
                     self.dati = demo
                     self.azzeraNote()
                     // I file dei clienti veri restano nel backup appena fatto, non nell'archivio
@@ -3159,6 +3166,8 @@ enum SchedaImpostazioni: String, CaseIterable, Hashable, Identifiable {
     case studio
     /// Mercato (giro 7): l'interruttore «Dati di mercato», le serie, le soglie degli avvisi, i dati importati.
     case mercato
+    /// I portafogli modello e la tolleranza del radar di Posizioni («Luce» giro 2, ImpostazioniModelli.swift).
+    case portafogliModello
     /// Dati di prova, confronto dei modelli, prove di promemoria e voce.
     case strumenti
 
@@ -3180,6 +3189,7 @@ enum SchedaImpostazioni: String, CaseIterable, Hashable, Identifiable {
         case .scorciatoie: return "Scorciatoie"
         case .studio: return "Studio"
         case .mercato: return "Mercato"
+        case .portafogliModello: return "Portafogli modello"
         case .strumenti: return "Strumenti"
         }
     }

@@ -80,7 +80,8 @@ struct EsitoSostituzione {
 /// sul netto incassabile anno per anno (dopo penali, bollo e imposte).
 enum MotoreSostituzione {
     static func calcola(attuale a: Posizione, alternativa b: Posizione, prodotti: [Prodotto] = [],
-                        anni anniScelti: Int? = nil, orizzonteCliente: Int? = nil, data: Date = Date()) -> EsitoSostituzione {
+                        anni anniScelti: Int? = nil, orizzonteCliente: Int? = nil, data: Date = Date(),
+                        penaleIndicata: Double? = nil) -> EsitoSostituzione {
         let prodottoA = a.prodottoId.flatMap { id in prodotti.first { $0.id == id } }
         let prodottoB = b.prodottoId.flatMap { id in prodotti.first { $0.id == id } }
         let anni = max(1, min(50, anniScelti ?? b.anniAllaScadenza ?? orizzonteCliente ?? IpotesiCalcolo.orizzontePredefinito))
@@ -112,7 +113,11 @@ enum MotoreSostituzione {
                 imposta = riscatto?.imposta ?? 0
                 note.append("Uscire da un fondo pensione verso un prodotto non previdenziale è un riscatto per altre cause: 23% sui contributi dedotti, possibile solo se si perdono i requisiti di partecipazione.")
             } else {
-                penale = f.penale
+                // La penale delle condizioni; se non ce n'è e il documento ne scrive una (lo smontaggio), quella
+                penale = f.penale > 0 ? f.penale : MotoreFiscale.centesimi(max(0, penaleIndicata ?? 0))
+                if f.penale <= 0, (penaleIndicata ?? 0) > 0 {
+                    note.append("Penale d'uscita di \(CifreDoc.euro(penale)) letta dal documento.")
+                }
                 bollo = f.bolloMaturato
                 imposta = f.imposta
             }

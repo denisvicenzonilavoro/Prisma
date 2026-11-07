@@ -64,6 +64,9 @@ struct Cliente: Identifiable, Codable, Hashable {
     /// Il consenso all'ascolto del copilota dell'incontro: data, modo (a voce o per iscritto) e nota (versione 26,
     /// «Orizzonte» giro 5). nil = non registrato: il copilota non parte (`GuardiaCopilota`).
     var consensoCopilota: ConsensoCopilota?
+    /// Il portafoglio modello del cliente (`PortafoglioModello.id`), scelto dall'utente per il radar di Posizioni
+    /// (versione 27, «Luce» giro 2). nil = nessun modello: il cliente non va sul radar.
+    var modelloId: String?
 
     init(id: String, nome: String, iniziali: String, tinta: TintaAvatar, tema: String, email: String,
          telefono: String, preferito: Bool, nota: String, creatoIl: Date) {
@@ -103,6 +106,7 @@ struct Cliente: Identifiable, Codable, Hashable {
         case conformita
         case fiscale
         case consensoCopilota
+        case modelloId
     }
 
     /// Lettura tollerante: i campi aggiunti nelle versioni successive possono mancare.
@@ -136,6 +140,8 @@ struct Cliente: Identifiable, Codable, Hashable {
         fiscale = (try? c.decodeIfPresent(DatiFiscaliCliente.self, forKey: .fiscale)) ?? nil
         // Consenso all'ascolto del copilota (versione 26, giro 5): illeggibile = non registrato, mai il contrario
         consensoCopilota = (try? c.decodeIfPresent(ConsensoCopilota.self, forKey: .consensoCopilota)) ?? nil
+        // Portafoglio modello (versione 27, giro 2): illeggibile o vuoto = nessun modello
+        modelloId = ((try? c.decodeIfPresent(String.self, forKey: .modelloId)) ?? nil).flatMap { $0.isEmpty ? nil : $0 }
     }
 }
 

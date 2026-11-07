@@ -301,6 +301,10 @@ struct Posizione: Identifiable, Codable, Hashable {
     var numeroQuote: Double?
     /// La cedola del titolo (tasso, volte all'anno, prossima data), per l'avviso della cedola in arrivo.
     var cedola: CedolaTitolo?
+    // Versione 27, «Luce» giro 2 (radar del portafoglio)
+    /// Per una bozza preparata da «Riequilibra» o da «Prepara la proposta» del radar: il modello e la distanza da cui è
+    /// nata. Il radar mostra «proposta pronta» finché la posizione resta una bozza.
+    var riequilibrio: OrigineRiequilibrio?
 
     /// Premi o versamenti dell'anno.
     var premioAnnuo: Double { premio * Double(frequenza.volteAllAnno) }

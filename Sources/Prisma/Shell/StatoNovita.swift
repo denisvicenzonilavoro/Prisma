@@ -234,6 +234,12 @@ extension StatoShell {
             apriPratiche(scheda)
         } else if voce == .territorio {
             apriTerritorio(.oggi)
+        } else if voce == .radar {
+            // Posizioni › Radar (giro 2, RadarPortafoglio.swift)
+            apriRadar()
+        } else if voce == .smontaggio {
+            // Posizioni › Smontaggio (giro 2, SmontaggioApple.swift)
+            apriSmontaggio()
         } else if app == .studio {
             apriStudio(.cruscotto)
         } else {

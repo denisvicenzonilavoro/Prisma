@@ -1256,6 +1256,10 @@ enum ProvaCalcoli {
         ProvaCalcoliOCF.esegui(verificaEsterna)
         // «Luce», giro 1: la pensione comune delle esperienze della Sala (adattatore su MotorePrevidenza, niente 3% fisso)
         ProvaCalcoliPensioneEsperienze.esegui(verificaEsterna)
+        // «Luce», giro 2: il radar del portafoglio (distanza dal modello, spostamenti nei canali, costi dai motori, bozze)
+        ProvaCalcoliRadar.esegui(verificaEsterna)
+        // e lo smontaggio (voci di costo dalle righe, cifre con la fonte, confronto con MotoreSostituzione)
+        ProvaCalcoliSmontaggio.esegui(verificaEsterna)
 
         // Giro 7: glossario e guida. Ogni chiave ha la sua voce, le etichette puntano a voci vere, ogni app ha 3 passi
         verifica("Glossario: voci per ogni chiave", Double(VoceGlossario.Chiave.allCases.filter { Glossario.voce($0) == nil }.count), 0)

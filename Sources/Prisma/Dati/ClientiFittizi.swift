@@ -14,6 +14,8 @@ enum ClientiFittizi {
     static func completi() -> DatiPrisma {
         var d = DatiPrisma.demo()
         aggiungi(a: &d)
+        // Il radar: anche i clienti fittizi hanno il loro modello di prova
+        PortafogliModelloDiProva.applica(&d)
         return d
     }
 

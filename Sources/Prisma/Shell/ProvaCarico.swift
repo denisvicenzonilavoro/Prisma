@@ -8,7 +8,7 @@ import PDFKit
 @MainActor
 enum ProvaCarico {
     /// Copie dei clienti di prova: 40 copie dei 5 clienti = 200 clienti.
-    static let copie = 40
+    nonisolated static let copie = 40
     #if os(macOS)
     /// Sul Mac i limiti di tempo valgono come sono scritti.
     nonisolated static let fattoreTempo = 1.0
@@ -207,6 +207,13 @@ enum ProvaCarico {
         print("INFO Riesami del mese: \(riesamiMese?.daFissare.count ?? 0) da fissare in \(secondi(riesamiTempo))")
         controlla(riesamiTempo < 0.5 * fattoreTempo, "Riesami del mese con \(stato.dati.clienti.count) clienti sotto 0,5 s")
 
+        // Il radar del portafoglio («Luce» giro 2): tutti i clienti con un modello, in un passaggio
+        var radar: RadarPortafoglio?
+        let tempoRadar = tempo { radar = MotoreRadar.calcola(stato.dati) }
+        print("INFO Radar: \(radar?.voci.count ?? 0) clienti sul radar, \(radar?.fuori.count ?? 0) fuori tolleranza, in \(secondi(tempoRadar))")
+        controlla((radar?.voci.count ?? 0) >= stato.dati.clienti.count / 2, "Radar: i clienti con un modello sono sul radar")
+        controlla(tempoRadar < 0.5 * fattoreTempo, "Radar con \(stato.dati.clienti.count) clienti sotto 0,5 s")
+
         // Memoria
         let mb = memoriaMB()
         print("INFO Memoria occupata: \(Int(mb)) MB")
@@ -222,7 +229,7 @@ enum ProvaCarico {
 
     /// I clienti di prova copiati più volte, con tutti i loro dati: in ogni copia l'identificativo
     /// del cliente prende un suffisso ("giulia" → "giulia-7"), e con lui posizioni, agenda e documenti.
-    static func moltiplica(_ base: DatiPrisma, copie: Int) throws -> DatiPrisma {
+    nonisolated static func moltiplica(_ base: DatiPrisma, copie: Int) throws -> DatiPrisma {
         var dati = base
         let testo = String(decoding: try Archivio.codificatore.encode(base), as: UTF8.self)
         for k in 1..<max(1, copie) {

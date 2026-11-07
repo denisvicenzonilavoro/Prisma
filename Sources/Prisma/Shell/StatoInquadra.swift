@@ -272,6 +272,13 @@ extension StatoShell {
         $inquadratureInArrivo
             .receive(on: DispatchQueue.main)
             .sink { [weak self] elenco in
+                // Con lo Smontaggio davanti le righe le legge MotoreSmontaggio («Luce» giro 2)
+                if let self, let ultima = elenco.last, self.appAttiva == .posizioni, self.provaFuoco.vista == .smontaggio,
+                   !self.inquadra.aperto, self.smontaggio.ultimaInquadratura != ultima.id {
+                    self.smontaggio.ultimaInquadratura = ultima.id
+                    self.prendiInquadraturaSmontaggio(ultima)
+                    return
+                }
                 guard let self, let ultima = elenco.last, self.inquadra.aperto,
                       self.inquadra.fase == .attesa || self.inquadra.fase == .trascina,
                       self.inquadra.inquadraturaId != ultima.id else { return }

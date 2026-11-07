@@ -212,7 +212,12 @@ enum NovitaLuce: String, CaseIterable, Identifiable {
 
     /// Vero per le funzioni già in Prisma. Nel giro 1 (le fondamenta) nessuna delle 29 è ancora fatta: le voci portano
     /// all'app che le ospiterà. Ogni giro accende qui le sue.
-    var disponibile: Bool { false }
+    var disponibile: Bool {
+        switch self {
+        case .radar, .smontaggio: return true   // giro 2: Posizioni › Radar e Smontaggio
+        default: return false
+        }
+    }
 
     /// L'avviso per una funzione che arriva più avanti (nil se c'è già, o se l'app stessa lo dice: le esperienze della
     /// Sala, Territorio, Pratiche e Biblioteca hanno la loro schermata «in arrivo»).

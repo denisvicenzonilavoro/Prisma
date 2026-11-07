@@ -154,6 +154,7 @@ struct AppImpostazioni: View {
         case .scorciatoie: scorciatoie
         case .studio: PaginaImpostazioniStudio()
         case .mercato: PaginaImpostazioniMercato()
+        case .portafogliModello: PaginaImpostazioniModelli()
         case .strumenti: strumenti
         }
     }
