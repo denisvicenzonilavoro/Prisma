@@ -580,6 +580,10 @@ final class StatoShell: ObservableObject {
 
     /// Elimina un cliente con i suoi appuntamenti e attività.
     func eliminaCliente(_ id: String) {
+        // Una risposta di Vera ancora in arrivo non deve ricreare dati del cliente tolto
+        compitoVera?.cancel()
+        compitoVera = nil
+        veraInCorso = false
         dati.clienti.removeAll { $0.id == id }
         dati.appuntamenti.removeAll { $0.clienteId == id }
         dati.attivita.removeAll { $0.clienteId == id }
@@ -588,6 +592,10 @@ final class StatoShell: ObservableObject {
         dati.analisi[id] = nil
         // Le partite del gioco del rischio della Sala («Luce» giro 4)
         dati.partiteRischio.removeAll { $0.clienteId == id }
+        // Vera, fase 3: promesse, confronti e coperture del cliente
+        dati.promesse.removeAll { $0.clienteId == id }
+        dati.confrontiDocumenti.removeAll { $0.clienteId == id }
+        dati.coperture.removeAll { $0.clienteId == id }
         dati.conversazioni[id] = nil
         dati.commenti.removeAll { $0.clienteId == id }
         dati.note.removeAll { $0.clienteId == id }
@@ -1072,6 +1080,9 @@ final class StatoShell: ObservableObject {
         guard let d = documento(id) else { return }
         rimuoviFile(d)
         dati.documenti.removeAll { $0.id == id }
+        // Vera, fase 3: le coperture e i confronti di quel documento vanno con lui
+        dati.coperture.removeAll { $0.documentoId == id }
+        dati.confrontiDocumenti.removeAll { $0.primaId == id || $0.oraId == id }
         testiDocumenti[id] = nil
         if documentoSelezionato == id { documentoSelezionato = nil }
     }
@@ -1587,11 +1598,14 @@ final class StatoShell: ObservableObject {
     func salvaIncontro(_ i: Incontro) {
         var x = i
         x.aggiornatoIl = Appuntamento.alMinuto(Date())
+        let concluso = x.stato == .concluso && dati.incontri.first(where: { $0.id == x.id })?.stato != .concluso
         if let k = dati.incontri.firstIndex(where: { $0.id == x.id }) {
             dati.incontri[k] = x
         } else {
             dati.incontri.append(x)
         }
+        // «Le promesse» (fase 3 di Vera): alla chiusura dell'incontro gli impegni presi entrano nell'elenco
+        if concluso { raccogliPromesse(cliente: x.clienteId) }
     }
 
     func eliminaIncontro(_ id: String) {
@@ -1897,6 +1911,8 @@ final class StatoShell: ObservableObject {
         scenarioInSospeso = nil
         compitoVera?.cancel()
         compitoVera = nil
+        // Il compito fermato non torna a rimettere Vera libera: lo si fa qui
+        veraInCorso = false
         dati.conversazioni[id] = nil
         conversazioniTemporanee[id] = nil
         // Il riassunto del filo lungo va con la conversazione

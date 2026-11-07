@@ -78,6 +78,11 @@ struct DatiPrisma: Codable, Equatable {
     /// Le partite del gioco del rischio (Sala, versione 27, «Luce» giro 4): solo quelle salvate con «Salva nel
     /// dossier» (decisione 52). Non cambiano mai la propensione del cliente e non entrano in «Prisma ovunque».
     var partiteRischio: [PartitaRischio] = []
+    /// Vera, fase 3 (Vera/BRIEF.md): le promesse ai clienti con la loro frase (8), i confronti tra due documenti salvati
+    /// nella scheda (11) e le coperture lette dalle polizze (12). Versione 27, campi letti con tolleranza.
+    var promesse: [PromessaCliente] = []
+    var confrontiDocumenti: [ConfrontoDocumenti] = []
+    var coperture: [CoperturaPolizza] = []
     var clienteAttivoId: String
     var impostazioni: Impostazioni
 
@@ -137,6 +142,9 @@ struct DatiPrisma: Codable, Equatable {
     ///     Giro 5 anche: il registro della
     ///     palestra della trattativa (`Impostazioni.palestra`: data, cliente, difficoltà e punteggio, al massimo 50,
     ///     letti con tolleranza; mai le conversazioni).
+    ///     Vera, fase 3: le promesse ai
+    ///     clienti (`promesse`), i confronti tra documenti (`confrontiDocumenti`), le coperture delle polizze
+    ///     (`coperture`) e il resoconto dell'incontro (`Incontro.resoconto`), tutti letti con tolleranza.
     static let versioneAttuale = 27
 
     init(clienti: [Cliente], appuntamenti: [Appuntamento], attivita: [Attivita], posizioni: [Posizione],
@@ -200,6 +208,7 @@ struct DatiPrisma: Codable, Equatable {
         case portafogliModello
         case pratiche
         case partiteRischio
+        case promesse, confrontiDocumenti, coperture
     }
 
     /// Lettura tollerante: gli archivi delle versioni precedenti non hanno tutte le sezioni.
@@ -253,6 +262,10 @@ struct DatiPrisma: Codable, Equatable {
         pratiche = ((try? c.decodeIfPresent(ElencoTollerante<Pratica>.self, forKey: .pratiche)) ?? nil)?.elementi ?? []
         // Partite del gioco del rischio (versione 27, giro 4): una partita illeggibile si scarta, le altre restano
         partiteRischio = ((try? c.decodeIfPresent(ElencoTollerante<PartitaRischio>.self, forKey: .partiteRischio)) ?? nil)?.elementi ?? []
+        // Vera, fase 3: promesse, confronti tra documenti e coperture delle polizze (versione 27, letti con tolleranza)
+        promesse = ((try? c.decodeIfPresent(ElencoTollerante<PromessaCliente>.self, forKey: .promesse)) ?? nil)?.elementi ?? []
+        confrontiDocumenti = ((try? c.decodeIfPresent(ElencoTollerante<ConfrontoDocumenti>.self, forKey: .confrontiDocumenti)) ?? nil)?.elementi ?? []
+        coperture = ((try? c.decodeIfPresent(ElencoTollerante<CoperturaPolizza>.self, forKey: .coperture)) ?? nil)?.elementi ?? []
         clienteAttivoId = try c.decodeIfPresent(String.self, forKey: .clienteAttivoId) ?? (clienti.first?.id ?? "")
         impostazioni = try c.decodeIfPresent(Impostazioni.self, forKey: .impostazioni) ?? Impostazioni()
     }

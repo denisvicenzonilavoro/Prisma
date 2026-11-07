@@ -17,6 +17,8 @@ struct AppProspetti: View {
     @State var moduloAppuntamento: Appuntamento?
     /// Il PDF da salvare, prima del foglio con la password.
     @State var daSalvare: PDFDaSalvare?
+    /// «La seconda lettura» (fase 3 di Vera) prima di salvare o archiviare il PDF: avvisa, decide il consulente.
+    @State var letturaProspetto: LetturaInAttesa?
     /// La pagina mostrata nell'anteprima e il verso dell'ultimo cambio (ProspettiApple.swift).
     @State var paginaAnteprima = PaginaAnteprimaProspetto()
     @State var direzioneAnteprima = 1
@@ -31,6 +33,9 @@ struct AppProspetti: View {
             .sheet(item: $stato.valutazioneInModifica) { v in
                 ModuloValutazione(bozza: v, nuova: stato.valutazione(v.id) == nil)
                     .environmentObject(stato)
+            }
+            .sheet(item: $letturaProspetto) { l in
+                FoglioSecondaLettura(esito: l.esito, avanti: "Continua lo stesso", continua: l.continua)
             }
             .sheet(item: $daSalvare) { p in
                 ModuloSalvaPDF(pdf: p, impostazioni: stato.dati.impostazioni.pdf)

@@ -33,6 +33,13 @@ struct MessaggioVera: Identifiable, Codable, Equatable {
     var trenta: SchedaTrentaSecondi?
     /// «Il codice in tasca»: gli articoli citati dalla biblioteca delle norme (NormeVera.swift).
     var norme: RispostaNorme?
+    /// Fase 3: «Le promesse» (gli id, lo stato si legge sempre aggiornato), «La seconda lettura» (gli avvisi), «Trova
+    /// le differenze» (il confronto salvato), «Cosa non copre» (la polizza letta) e il resoconto (l'incontro).
+    var promesse: [String]?
+    var lettura: EsitoSecondaLettura?
+    var confronto: String?
+    var copertura: String?
+    var resoconto: String?
 
     init(autore: Autore, testo: String, titolo: String? = nil, motore: String? = nil, proposte: [PropostaVera]? = nil) {
         self.autore = autore
@@ -43,7 +50,9 @@ struct MessaggioVera: Identifiable, Codable, Equatable {
         data = Appuntamento.alMinuto(Date())
     }
 
-    private enum CodingKeys: String, CodingKey { case id, autore, testo, titolo, motore, data, proposte, azione, modalita, scenario, conferma, clientela, fonti, voto, trenta, norme }
+    private enum CodingKeys: String, CodingKey { case id, autore, testo, titolo, motore, data, proposte, azione, modalita, scenario, conferma, clientela, fonti, voto, trenta, norme
+        case promesse, lettura, confronto, copertura, resoconto
+    }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -63,6 +72,11 @@ struct MessaggioVera: Identifiable, Codable, Equatable {
         voto = try? c.decodeIfPresent(Bool.self, forKey: .voto)
         trenta = try? c.decodeIfPresent(SchedaTrentaSecondi.self, forKey: .trenta)
         norme = try? c.decodeIfPresent(RispostaNorme.self, forKey: .norme)
+        promesse = try? c.decodeIfPresent([String].self, forKey: .promesse)
+        lettura = try? c.decodeIfPresent(EsitoSecondaLettura.self, forKey: .lettura)
+        confronto = try? c.decodeIfPresent(String.self, forKey: .confronto)
+        copertura = try? c.decodeIfPresent(String.self, forKey: .copertura)
+        resoconto = try? c.decodeIfPresent(String.self, forKey: .resoconto)
     }
 }
 

@@ -348,6 +348,13 @@ extension AppProspetti {
         .padding(b.padding)
     }
 
+    /// La seconda lettura del PDF (parole a rischio): se è pulito si va avanti, altrimenti il foglio con gli avvisi.
+    private func rileggiPoi(_ d: DocumentoStampabile, dati: Data, _ poi: @escaping () -> Void) {
+        let testo = StampaCarta.testo(dati).joined(separator: "\n")
+        let e = stato.secondaLetturaProspetto(testo, titolo: "\(d.genere) «\(d.titolo)»", cliente: scelta.tipo == .portafoglio ? nil : stato.clienteAttivoId)
+        if e.pulito { poi() } else { letturaProspetto = LetturaInAttesa(esito: e, continua: poi) }
+    }
+
     private func azioniApple(_ d: DocumentoStampabile, soloIcona: Bool) -> some View {
         let b = Tema.Apple.Prospetti.Barra.self
         return HStack(spacing: b.spazioAzioni) {
@@ -399,7 +406,7 @@ extension AppProspetti {
             // Il portafoglio riguarda tutti i clienti: non va nei documenti di uno di loro
             if scelta.tipo != .portafoglio {
                 Button {
-                    if let dati = pdf(d) { archiviato = stato.archiviaProspetto(dati, documento: d) }
+                    if let dati = pdf(d) { rileggiPoi(d, dati: dati) { archiviato = stato.archiviaProspetto(dati, documento: d) } }
                 } label: {
                     etichettaAzione("Archivia nei Documenti", simbolo: "archivebox", soloIcona: soloIcona)
                 }
@@ -411,7 +418,9 @@ extension AppProspetti {
             Button {
                 // Il portafoglio è per te: il foglio della password resta, senza proposta dai dati di un cliente
                 if let dati = pdf(d) {
-                    daSalvare = PDFDaSalvare(dati: dati, nome: StampaCarta.nomeFile(d), cliente: scelta.tipo == .portafoglio ? nil : stato.clienteAttivo)
+                    rileggiPoi(d, dati: dati) {
+                        daSalvare = PDFDaSalvare(dati: dati, nome: StampaCarta.nomeFile(d), cliente: scelta.tipo == .portafoglio ? nil : stato.clienteAttivo)
+                    }
                 }
             } label: {
                 Label("Salva PDF…", systemImage: "square.and.arrow.down")

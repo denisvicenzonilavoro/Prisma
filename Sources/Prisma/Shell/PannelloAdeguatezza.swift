@@ -163,6 +163,10 @@ struct PannelloAdeguatezza: View {
                     .font(Tipo.kpiNota)
                     .foregroundColor(K.nota)
             }
+            // «La seconda lettura» (fase 3 di Vera): gli avvisi e la bozza della motivazione, che entra solo con «Inserisci»
+            LetturaAdeguatezzaVista(posizione: posizione, firmata: firmata)
+                // Una proposta diversa: avvisi e bozza ripartono da capo (mai la bozza di A nella scheda di B)
+                .id(posizione.id)
             pulsantiPDF
             firma(esito, scheda: scheda)
         }

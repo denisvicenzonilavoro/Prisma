@@ -59,7 +59,7 @@ enum NormeVera {
     // MARK: - Dividere per articolo
 
     private static let schemaArticolo = try? NSRegularExpression(
-        pattern: #"(?m)^[ \t]*(?:Art\.|Articolo|ART\.|ARTICOLO)[ \t]*(\d{1,4}(?:[ \t]*-?[ \t]*(?:bis|ter|quater|quinquies|sexies|septies|octies|novies|decies))?)[ \t]*\.?[ \t]*(?:[-–—][ \t]*)?(.*)$"#)
+        pattern: #"(?m)^[ \t]*(?:Art\.|Articolo|ART\.|ARTICOLO)[ \t]*(\d{1,4}(?:\.\d{1,3})*(?:[ \t]*-?[ \t]*(?:bis|ter|quater|quinquies|sexies|septies|octies|novies|decies))?)[ \t]*\.?[ \t]*(?:[-–—][ \t]*)?(.*)$"#)
 
     /// Gli articoli di un testo, pagina per pagina: comincia un articolo a ogni «Art. N» a inizio riga.
     static func articoli(_ pagine: [String], testoId: String) -> [ArticoloNorma] {

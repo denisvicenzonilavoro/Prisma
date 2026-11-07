@@ -43,6 +43,8 @@ struct PannelloMessaggio: View {
 
     @Environment(\.prismaScatto) private var scatto
     @State private var chiediConsenso = false
+    /// «La seconda lettura» (fase 3 di Vera): gli avvisi prima di aprire Mail o Messaggi; decide il consulente.
+    @State private var lettura: EsitoSecondaLettura?
 
     private typealias P = Tema.Apple.Messaggi.Pannello
     private typealias T = Tema.Apple.Messaggi.Testo
@@ -95,6 +97,11 @@ struct PannelloMessaggio: View {
                 // Nelle istantanee il testo è già pronto: nessuna scrittura, nessuna verifica di Qwen
                 guard scrittoIstantanea == nil, !scatto else { return }
                 sessione.prepara(occasione, stato: stato)
+            }
+            .sheet(item: $lettura) { e in
+                FoglioSecondaLettura(esito: e, avanti: "Apri lo stesso", correggi: { e in
+                    if let s = pronto { sessione.correggi(chiave, e.corretto(s.testo)) }
+                }, continua: { apri(riletto: true) })
             }
             .alert(TestiMessaggi.confermaConsensoTitolo, isPresented: $chiediConsenso) {
                 Button(TestiMessaggi.confermaConsensoApri) { apri() }
@@ -406,9 +413,17 @@ struct PannelloMessaggio: View {
     }
 
     /// Apre Mail o Messaggi già compilati (mai un invio) e ricorda il messaggio segnato nel dossier.
-    private func apri() {
+    private func apri(riletto: Bool = false) {
         let k = chiave
         guard let s = pronto else { return }
+        // La seconda lettura: parole a rischio e cifre senza fonte (anche nel testo corretto a mano)
+        if !riletto {
+            let e = stato.secondaLetturaMessaggio(occasione, testo: s.testo)
+            if !e.pulito {
+                lettura = e
+                return
+            }
+        }
         let prima = sessione.idSalvato(k)
         let esito = stato.apriMessaggio(occasione, tono: k.tono, canale: k.canale, scritto: s, id: prima)
         stato.mostraAvviso(esito.messaggio)

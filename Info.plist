@@ -28,11 +28,11 @@
         <true/>
     </dict>
     <key>NSMicrophoneUsageDescription</key>
-    <string>Ruby ti ascolta quando le parli e, con il consenso del cliente, il copilota ascolta l'incontro. L'audio resta sul Mac e non si registra.</string>
+    <string>Vera ti ascolta quando le parli e, con il consenso del cliente, il copilota ascolta l'incontro. L'audio resta sul Mac e non si registra.</string>
     <key>NSSpeechRecognitionUsageDescription</key>
-    <string>Ruby trasforma in testo quello che le dici, solo sul Mac: l'audio non viene mai inviato fuori dal computer.</string>
+    <string>Vera trasforma in testo quello che le dici e le note vocali degli incontri, solo sul Mac: l'audio non viene mai inviato fuori dal computer né conservato.</string>
     <key>NSLocalNetworkUsageDescription</key>
-    <string>Ruby usa Qwen del tuo Mac e il tavolo con l'iPad mostra al cliente ciò che scegli sul Mac, attraverso la rete di casa o dello studio, cifrati con il codice di abbinamento. Nessun dato va su internet.</string>
+    <string>Vera usa Qwen del tuo Mac e il tavolo con l'iPad mostra al cliente ciò che scegli sul Mac, attraverso la rete di casa o dello studio, cifrati con il codice di abbinamento. Nessun dato va su internet.</string>
     <key>NSBonjourServices</key>
     <array>
         <string>_prisma-eve._tcp</string>
