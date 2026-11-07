@@ -698,7 +698,7 @@ private struct CardDomandaOCFVista: View {
                 .padding(.bottom, Dm.testoSotto)
             VStack(alignment: .leading, spacing: O.fraOpzioni) {
                 ForEach(Array(d.risposte.enumerated()), id: \.offset) { i, testo in
-                    OpzioneOCFVista(lettera: i < O.lettere.count ? O.lettere[i] : String(i + 1), testo: testo,
+                    OpzioneLettera(lettera: i < O.lettere.count ? O.lettere[i] : String(i + 1), testo: testo,
                                     esito: esito(i, d: d, scelta: scelta),
                                     tremolio: (scelta == i && i != d.corretta) ? sessione.tremolio : 0) {
                         rispondi(d, i)
@@ -716,7 +716,7 @@ private struct CardDomandaOCFVista: View {
         .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
-    private func esito(_ i: Int, d: DomandaOCF, scelta: Int?) -> OpzioneOCFVista.Esito {
+    private func esito(_ i: Int, d: DomandaOCF, scelta: Int?) -> OpzioneLettera.Esito {
         guard let s = scelta else { return .aperta }
         if i == d.corretta { return .giusta }
         if i == s { return .sbagliata }
@@ -1013,102 +1013,6 @@ private struct CardDomandaOCFVista: View {
         #else
         stato.mostraAvviso(StatoShell.soloSulMacPerOra)
         #endif
-    }
-}
-
-// MARK: - Opzione
-
-/// Una delle quattro risposte (`.opz`): cerchio della lettera e testo. Aperta, si sposta di 4 al passaggio del
-/// puntatore; chiusa, la giusta è verde, la sbagliata scelta rossa (e trema), le altre al 50%.
-private struct OpzioneOCFVista: View {
-    enum Esito: Equatable { case aperta, giusta, sbagliata, attenuata }
-
-    let lettera: String
-    let testo: String
-    let esito: Esito
-    let tremolio: CGFloat
-    let azione: () -> Void
-
-    @Environment(\.prismaCalmo) private var calmo
-    @Environment(\.modoIstantanea) private var istantanea
-    @State private var sopra = false
-
-    private typealias O = Tema.Apple.Studio.OCF.Opzione
-    private typealias K = Tema.Apple.Studio.OCF.Colore
-
-    var body: some View {
-        let forma = RoundedRectangle(cornerRadius: O.raggio, style: .continuous)
-        let aperta = esito == .aperta
-        let piena = esito == .giusta || esito == .sbagliata
-        return Button(action: { if aperta { azione() } }) {
-            HStack(alignment: .center, spacing: O.spazio) {
-                Text(lettera)
-                    .carattereApple(O.carattereLettera)
-                    .foregroundColor(piena ? K.letteraPiena : O.coloreLettera)
-                    .frame(width: O.lettera, height: O.lettera)
-                    .background(Circle().fill(fondoLettera))
-                Text(testo)
-                    .carattereApple(O.testo)
-                    .foregroundColor(O.coloreTesto)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 0)
-            }
-            .padding(O.padding)
-            .frame(maxWidth: O.larghezza, alignment: .leading)
-            .background(forma.fill(fondo))
-            .overlay(forma.strokeBorder(bordo, lineWidth: O.bordo))
-            .contentShape(forma)
-        }
-        .buttonStyle(.plain)
-        .opacity(esito == .attenuata ? K.opacitaAttenuata : 1)
-        .offset(x: aperta && sopra && !calmo && !istantanea ? O.spostamentoPassaggio : 0)
-        .modifier(TremolioOCF(fase: tremolio))
-        .animation(calmo || istantanea ? nil : Tema.Apple.Studio.OCF.Moto.opzione, value: esito)
-        .animation(calmo || istantanea ? nil : Tema.Apple.Studio.OCF.Moto.opzione, value: sopra)
-        .onHover { dentro in
-            guard !istantanea, sopra != dentro else { return }
-            sopra = dentro
-        }
-        .accessibilityLabel(Text("\(lettera). \(testo)"))
-    }
-
-    private var fondo: Color {
-        switch esito {
-        case .giusta: return K.fondoGiusta
-        case .sbagliata: return K.fondoSbagliata
-        case .aperta, .attenuata: return O.fondo
-        }
-    }
-
-    private var bordo: Color {
-        switch esito {
-        case .giusta: return K.bordoGiusta
-        case .sbagliata: return K.bordoSbagliata
-        case .aperta, .attenuata: return O.coloreBordo
-        }
-    }
-
-    private var fondoLettera: Color {
-        switch esito {
-        case .giusta: return K.bordoGiusta
-        case .sbagliata: return K.bordoSbagliata
-        case .aperta, .attenuata: return O.fondoLettera
-        }
-    }
-}
-
-/// Il tremolio della risposta sbagliata: x 0 → −8 → +8 → −5 → 0 lungo la fase 0…1 (animata in modo lineare).
-private struct TremolioOCF: GeometryEffect {
-    var fase: CGFloat
-
-    var animatableData: CGFloat {
-        get { fase }
-        set { fase = newValue }
-    }
-
-    func effectValue(size: CGSize) -> ProjectionTransform {
-        ProjectionTransform(CGAffineTransform(translationX: Tema.Apple.Studio.OCF.Moto.spostamentoTremolio(fase: fase), y: 0))
     }
 }
 

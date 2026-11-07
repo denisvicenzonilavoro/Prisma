@@ -571,6 +571,8 @@ final class StatoShell: ObservableObject {
         dati.posizioni.removeAll { $0.clienteId == id }
         dati.simulazioni.removeAll { $0.clienteId == id }
         dati.analisi[id] = nil
+        // Le partite del gioco del rischio della Sala («Luce» giro 4)
+        dati.partiteRischio.removeAll { $0.clienteId == id }
         dati.conversazioni[id] = nil
         dati.commenti.removeAll { $0.clienteId == id }
         dati.note.removeAll { $0.clienteId == id }

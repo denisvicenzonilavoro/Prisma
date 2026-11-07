@@ -58,8 +58,11 @@ enum EsperienzaSala: String, CaseIterable, Identifiable {
     /// «✦ Aggiungi al Prisma di …»: lettera, film, prisma di luce, giornata e disegno.
     var aggiungeAlPrisma: Bool { [.lettera, .film, .prismaLuce, .giornataPensione, .disegna].contains(self) }
 
-    /// L'esperienza è già in Prisma. Nel giro 1 nessuna: il palco dice «Arriva con un prossimo aggiornamento».
+    /// L'esperienza è già in Prisma (il palco la mostra); le altre dicono «Arriva con un prossimo aggiornamento».
     var disponibile: Bool { novita.disponibile }
+
+    /// «▣ Mostra sul tavolo» per le esperienze: arriva con l'immagine del palco sull'iPad (decisione 111).
+    static let tavoloPronto = false
 
     /// Le dieci schede piccole della griglia (la prima, grande, è il Prisma del cliente).
     static var piccole: [EsperienzaSala] { allCases.filter { $0 != .prismaCliente } }
@@ -115,6 +118,10 @@ final class StatoSala: ObservableObject {
     /// (punti 0…1 nell'area del grafico, x = età da oggi a 90 anni, y = patrimonio da 0 al massimo dell'asse).
     var provaLuce: ProvaLuce?
     var provaDisegno: [CGPoint]?
+    /// Una giornata della pensione: «Senza piano» o «Con il piano», ricordato tra un'apertura e l'altra (§4.2.1).
+    var giornataConPiano = false
+    /// Istantanee: il punto del gioco del rischio da disegnare (scenario e risposte già date). Non pubblicato.
+    var rischioIstantanea: PuntoGiocoRischio?
 }
 
 extension StatoShell {

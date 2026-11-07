@@ -213,6 +213,9 @@ struct TracciatoGrafico: View {
     let puntoFinale: Bool
     let indice: Int
     let ritardo: Double
+    /// Durata del disegno della linea (nil = `Moto.Linea`, 1,5 s con ritardo 0,15 + indice·0,12); data, la linea parte
+    /// subito (gioco del rischio: 2,2 s).
+    let durata: Double?
 
     @Environment(\.prismaStatoFinale) private var statoFinale
     /// Istantanee: lo stato finale è per sempre, niente da scrivere alla comparsa (`prismaScatto`).
@@ -235,7 +238,8 @@ struct TracciatoGrafico: View {
          opacitaArea: Double = Tema.Apple.Grafico.Tracciato.opacitaArea,
          puntoFinale: Bool = false,
          indice: Int = 0,
-         ritardo: Double = 0) {
+         ritardo: Double = 0,
+         durata: Double? = nil) {
         self.punti = punti
         self.colore = colore
         self.spessore = spessore
@@ -245,6 +249,7 @@ struct TracciatoGrafico: View {
         self.puntoFinale = puntoFinale
         self.indice = indice
         self.ritardo = ritardo
+        self.durata = durata
     }
 
     var body: some View {
@@ -280,7 +285,9 @@ struct TracciatoGrafico: View {
         guard disegno < 1 else { return }
         let linea = Tema.Apple.Moto.Linea.self
         let fondo = Tema.Apple.Moto.Area.self
-        withAnimation(linea.animazione.delay(ritardo + linea.ritardo(indice: indice))) {
+        let animazione = durata.map { Tema.Apple.Moto.Curva.uscita.animazione($0).delay(ritardo) }
+            ?? linea.animazione.delay(ritardo + linea.ritardo(indice: indice))
+        withAnimation(animazione) {
             disegno = 1
         }
         withAnimation(fondo.animazione.delay(ritardo + fondo.ritardo)) {

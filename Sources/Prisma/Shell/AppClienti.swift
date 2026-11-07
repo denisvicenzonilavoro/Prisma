@@ -249,6 +249,12 @@ struct AppClienti: View {
                 OcchielloSezione(titolo: "Profilo dell'investitore",
                                  nota: c.profilo.aggiornatoIl.map { "Aggiornato il \(Formati.dataEstesa.string(from: $0))" })
                 RigaCampo(etichetta: "Propensione al rischio", valore: c.profilo.propensione?.nome ?? "")
+                // Il gioco del rischio della Sala («Luce» giro 4): la partita salvata accanto al dichiarato, mai al suo posto
+                if let p = MotoreGiocoRischio.ultima(stato.dati.partiteRischio, cliente: c.id), let s = MotoreGiocoRischio.caricati,
+                   let emerso = MotoreGiocoRischio.profilo(p, scenari: s) {
+                    RigaCampo(etichetta: "Gioco del rischio",
+                              valore: "\(emerso.nome) (\(Formati.dataEstesa.string(from: p.data))) · non cambia la propensione")
+                }
                 RigaCampo(etichetta: "Orizzonte temporale", valore: c.profilo.orizzonteAnni.map { "\($0) anni" } ?? "")
                 RigaCampo(etichetta: "Esperienza finanziaria", valore: c.profilo.esperienza?.nome ?? "")
                 RigaCampo(etichetta: "Reddito lordo annuo", valore: c.profilo.redditoLordoAnnuo.map { Formati.euro($0) } ?? "")

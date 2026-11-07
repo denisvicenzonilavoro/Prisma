@@ -16,6 +16,8 @@ enum ClientiFittizi {
         aggiungi(a: &d)
         // Il radar: anche i clienti fittizi hanno il loro modello di prova
         PortafogliModelloDiProva.applica(&d)
+        // Il gioco del rischio della Sala («Luce» giro 4): una partita già fatta per due clienti fittizi (dati di prova)
+        d.partiteRischio += MotoreGiocoRischio.partiteDiProva(clienti: d.clienti.filter { $0.id.hasPrefix(prefisso) }.prefix(2).map(\.id))
         return d
     }
 
