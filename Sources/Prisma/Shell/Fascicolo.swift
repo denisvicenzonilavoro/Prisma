@@ -20,7 +20,7 @@ extension TipoProspetto {
         case .revisione: scelti = [.annoInsieme, .resoconto, .patrimonio, .resistenza, .costi, .successione]
         case .proposta: scelti = [.resoconto, .patrimonio, .costi]
         case .firma: scelti = [.resoconto]
-        case .telefonata, .altro: scelti = fascicoloPredefinito
+        case .telefonata, .altro, .nonDisponibile: scelti = fascicoloPredefinito
         }
         if let p = posizione {
             // Una scadenza vicina: il capitale da destinare e chi lo riceverebbe

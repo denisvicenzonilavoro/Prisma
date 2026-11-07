@@ -25,7 +25,7 @@ struct FornitoreOllama: FornitoreModello {
         if let n = opzioni.massimoToken { opzioniOllama["num_predict"] = n }
         var c: [String: Any] = [
             "model": modello,
-            "messages": messaggi.map { ["role": $0.ruolo.rawValue, "content": $0.testo] },
+            "messages": messaggi.map(\.jsonOllama),
             "stream": true,
             "think": opzioni.pensa,
             "options": opzioniOllama,
@@ -51,7 +51,11 @@ struct FornitoreOllama: FornitoreModello {
                 if let t = m["content"] as? String, !t.isEmpty { pezzi.append(.testo(t)) }
                 for chiamata in (m["tool_calls"] as? [[String: Any]]) ?? [] {
                     guard let f = chiamata["function"] as? [String: Any], let n = f["name"] as? String else { continue }
-                    pezzi.append(.strumento(ChiamataStrumento(nome: n, argomenti: f["arguments"] as? [String: Any] ?? [:])))
+                    // Gli argomenti arrivano come oggetto; alcuni modelli li scrivono come stringa JSON
+                    var argomenti = f["arguments"] as? [String: Any] ?? [:]
+                    if let testo = f["arguments"] as? String, let d = testo.data(using: .utf8),
+                       let j = try? JSONSerialization.jsonObject(with: d) as? [String: Any] { argomenti = j }
+                    pezzi.append(.strumento(ChiamataStrumento(nome: n, argomenti: argomenti)))
                 }
             }
             if (j["done"] as? Bool) == true {

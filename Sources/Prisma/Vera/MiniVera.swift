@@ -75,6 +75,10 @@ struct AzioneMiniVera: Identifiable, Equatable {
         /// Lo scenario «E se…?» della risposta (il messaggio di Vera): nel dossier o nel simulatore.
         case salvaScenario(String)
         case apriScenario(String)
+        /// «Fallo tu»: conferma la scheda della risposta (il messaggio di Vera) senza aprire l'app.
+        case confermaVera(String)
+        /// La scheda o la tabella si rivedono per intero nell'app Vera.
+        case rivediInVera
     }
 
     var titolo: String

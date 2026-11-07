@@ -1167,7 +1167,8 @@ struct DettaglioAppuntamento: View {
 
     private var azioneVera: some View {
         PulsanteAzione(titolo: "Prepara con Vera", simbolo: "sparkles") {
-            stato.clienteAttivoId = evento.clienteId
+            // Un blocco «Non disponibile» non ha cliente: Vera si apre su quello di prima
+            if !evento.clienteId.isEmpty { stato.clienteAttivoId = evento.clienteId }
             stato.apri(.vera)
         }
     }
@@ -1190,7 +1191,7 @@ struct DettaglioAppuntamento: View {
         return PulsanteAzione(titolo: archiviato == nil ? "Prepara il fascicolo" : "Apri il fascicolo",
                               simbolo: "doc.text") {
             if let d = stato.fascicoloArchiviato(per: evento) {
-                stato.clienteAttivoId = evento.clienteId
+                if !evento.clienteId.isEmpty { stato.clienteAttivoId = evento.clienteId }
                 stato.documentoSelezionato = d.id
                 stato.apri(.documenti)
             } else {

@@ -22,5 +22,9 @@ L'assistente si chiama Vera (prima si chiamava Ruby, e prima ancora Eve). Le ist
 
 - `verbale-copilota.md`: istruzioni per riscrivere in poche frasi il verbale dell'incontro ascoltato dal copilota, a partire dai punti fissi che Prisma compone dalle schede (`ApplicaCopilota.punto`). Se compare un numero che non è nei punti, l'app tiene il verbale di Prisma (`CommentoVera.numeriConservati`). Se Qwen non è pronto il verbale è quello di Prisma; il consulente conferma comunque voce per voce cosa entra nel dossier.
 
+- `fallo-tu.md`: istruzioni di «Fallo tu» (Vera/BRIEF.md, funzione 1): con la chiamata di strumenti di Ollama («tools») Qwen sceglie le azioni del registro (`RegistroStrumenti`: agenda, attività, note, clienti, messaggi, posizioni, simulatore; Pratiche e i chilometri di Studio sono registrati ma «in attesa»). Prisma risolve gli argomenti e mostra la scheda di conferma: niente si esegue prima di «Conferma».
+
+- `clientela.md`: istruzioni di «Chiedi alla tua clientela» (funzione 2): la domanda su tutti i clienti diventa filtri JSON con lo schema fisso `Vera/Schemi/clientela.json` (in «format» di Ollama). A Qwen va solo la domanda; le regole di Prisma rileggono numeri e mesi della frase e vincono, la ricerca la fa `ClientelaVera` sui dati.
+
 Modificare qui il testo cambia il comportamento di Vera alla build successiva, senza toccare il codice.
 Tenere il testo ragionevolmente corto: la finestra di Qwen sul Mac è di 8.192 token per istruzioni, scheda, storia e risposta.

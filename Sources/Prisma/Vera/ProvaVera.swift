@@ -949,27 +949,34 @@ enum ProvaVera {
         let domandaQuando = e.conversazione("giulia").last?.testo ?? ""
         controlla(chiesto && e.appuntamentoInSospeso != nil && domandaQuando.hasPrefix("Per quando"), "Eseguiti: l'incontro senza giorno, Vera chiede per quando")
         let completato = e.eseguiComandoVera("giovedì alle 11", oggi: martedi)
-        controlla(completato && e.dati.appuntamenti.count == appuntamentiPrima + 1, "Eseguiti: «giovedì alle 11» completa l'appuntamento")
+        // Dal brief di Vera (regola 2): le azioni passano dalla scheda di conferma, e si eseguono solo dopo «Conferma»
+        let scheda = e.conversazione("giulia").last
+        controlla(completato && e.dati.appuntamenti.count == appuntamentiPrima && scheda?.conferma?.stato == .daConfermare,
+                  "Eseguiti: «giovedì alle 11» completa l'appuntamento nella scheda di conferma, l'agenda non cambia ancora")
+        controlla(scheda?.conferma?.azioni.first?.dettaglio.contains("giovedì 29 ottobre, 11:00") == true,
+                  "Eseguiti: la scheda dice quando («\(scheda?.conferma?.azioni.first?.dettaglio ?? "-")»)")
+        if let scheda { e.confermaSchedaVera(messaggio: scheda.id) }
         let fissato = e.dati.appuntamenti.last
-        let fissatoOk: Bool = fissato.map { $0.clienteId == "marco" && $0.inizio == dataProva(29, 10, 11) && $0.titolo == "Incontro con Marco Bianchi" } ?? false
-        controlla(fissatoOk, "Eseguiti: incontro con Marco Bianchi giovedì 29 alle 11 (\(fissato?.titolo ?? "-"))")
-        if let m = e.conversazione("giulia").last, let a = m.azione {
-            controlla(a.tipo == .appuntamento && m.testo.contains("giovedì 29 ottobre alle 11:00"), "Eseguiti: la risposta dice quando («\(m.testo)»)")
-            e.annullaAzioneVera(a, messaggio: m.id)
-            let annullata: Bool = e.conversazione("giulia").last?.azione?.annullata ?? false
-            controlla(e.dati.appuntamenti.count == appuntamentiPrima && annullata, "Eseguiti: annullato, l'appuntamento sparisce")
-        } else {
-            controlla(false, "Eseguiti: la risposta porta l'appuntamento da aprire o annullare")
+        let fissatoOk: Bool = e.dati.appuntamenti.count == appuntamentiPrima + 1
+            && fissato.map { $0.clienteId == "marco" && $0.inizio == dataProva(29, 10, 11) && $0.titolo == "Incontro con Marco Bianchi" } ?? false
+        controlla(fissatoOk, "Eseguiti: dopo «Conferma» incontro con Marco Bianchi giovedì 29 alle 11 (\(fissato?.titolo ?? "-"))")
+        if let scheda {
+            e.annullaSchedaVera(messaggio: scheda.id)
+            controlla(e.dati.appuntamenti.count == appuntamentiPrima && e.messaggioVera(scheda.id)?.conferma?.stato == .annullata,
+                      "Eseguiti: annullato, l'appuntamento sparisce")
         }
         let attivitaPrima = e.dati.attivita.count
         let promemoria = e.eseguiComandoVera("ricordami di mandare il KID a Giulia domani", oggi: martedi)
+        if let m = e.conversazione("giulia").last { e.confermaSchedaVera(messaggio: m.id) }
         let nuova = e.dati.attivita.count == attivitaPrima + 1 ? e.dati.attivita.last : nil
         let promemoriaOk: Bool = promemoria && nuova.map { $0.titolo == "Mandare il KID a Giulia" && $0.scadenza == dataProva(28) } ?? false
-        controlla(promemoriaOk, "Eseguiti: promemoria «Mandare il KID a Giulia» per domani")
+        controlla(promemoriaOk, "Eseguiti: promemoria «Mandare il KID a Giulia» per domani, dopo «Conferma»")
         let notePrima = e.dati.note.count
         let annotato = e.eseguiComandoVera("prendi nota: vuole aumentare il versamento del PIP", oggi: martedi)
-        let notaOk: Bool = annotato && e.dati.note.count == notePrima + 1 && (e.dati.note.last?.clienteId ?? "") == "giulia"
-        controlla(notaOk, "Eseguiti: la nota va nel taccuino di Giulia")
+        let notaInAttesa = e.dati.note.count == notePrima
+        if let m = e.conversazione("giulia").last { e.confermaSchedaVera(messaggio: m.id) }
+        let notaOk: Bool = annotato && notaInAttesa && e.dati.note.count == notePrima + 1 && (e.dati.note.last?.clienteId ?? "") == "giulia"
+        controlla(notaOk, "Eseguiti: la nota va nel taccuino di Giulia, dopo «Conferma»")
         let preparato = e.eseguiComandoVera("Ok Vera, preparami il report del patrimonio di Marco", oggi: martedi)
         let reportOk: Bool = preparato && e.prospetto == SceltaProspetto.patrimonio(report: true) && e.clienteAttivoId == "marco"
         controlla(reportOk && e.aperta(.presentazioni), "Eseguiti: il report del patrimonio di Marco aperto in Prospetti e report")
@@ -989,6 +996,8 @@ enum ProvaVera {
         ProvaMessaggiVera.esegui(controlla)
         // Il copilota dell'incontro (giro 5 di Orizzonte): consenso, regole, Qwen finto, conferma, archivio, ponte (ProvaCopilota.swift)
         ProvaCopilota.esegui(controlla)
+        // La fase 1 del brief: strumenti, scheda di conferma, «Fallo tu», «Chiedi alla tua clientela», «Mai a caso» (ProvaFalloTu.swift)
+        ProvaFalloTu.esegui(controlla)
         #if os(macOS)
         // La mini finestra: ⌥ Spazio, i cinque stati, cifre e canali, «non pronta» (ProvaMiniVera.swift)
         ProvaMiniVera.esegui(controlla)

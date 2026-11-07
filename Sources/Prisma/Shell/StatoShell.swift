@@ -1878,12 +1878,13 @@ final class StatoShell: ObservableObject {
     /// Una domanda a Vera sul portafoglio (tutti i clienti). Le cifre sono quelle della vista Portafoglio;
     /// Qwen le racconta senza cambiarle (se cambia una cifra restano quelle di Prisma).
     @discardableResult
-    func chiediVeraPortafoglio(_ domanda: String, spunto: SpuntoPortafoglio? = nil, breve: Bool = false, scenari: Bool = true) -> Bool {
+    func chiediVeraPortafoglio(_ domanda: String, spunto: SpuntoPortafoglio? = nil, breve: Bool = false, scenari: Bool = true, smista: Bool = true) -> Bool {
         let testo = domanda.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !testo.isEmpty, !veraInCorso else { return false }
         // La domanda parte da tastiera o da uno spunto: la dettatura del Mac si spegne (anche per i comandi)
         if dettaturaAttiva { chiudiDettatura() }
-        if spunto == nil, eseguiComandoVera(testo) { return true }
+        // Comandi, «sì»/«no» alla scheda, domande su tutti i clienti, «Fallo tu» (FalloTuShell.swift)
+        if spunto == nil, smista, smistaVera(testo, chiave: VeraPortafoglio.chiave) { return true }
         // «E se Marco va in pensione a 63 anni?»: lo scenario di un cliente nominato lo calcola Prisma (ScenariVeraShell.swift)
         if spunto == nil, scenari, chiediScenarioVera(testo, chiave: VeraPortafoglio.chiave, breve: breve) { return true }
         let id = VeraPortafoglio.chiave
@@ -1907,8 +1908,14 @@ final class StatoShell: ObservableObject {
                     let pulito = t.replacingOccurrences(of: "**", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
                     // Ogni cifra della risposta deve venire dalla scheda o dalla bozza: altrimenti restano le cifre di Prisma
                     let fedele = !pulito.isEmpty && CommentoVera.numeriConservati(bozza: scheda + "\n" + bozza.testo, testo: pulito)
-                    self.aggiungiMessaggio(MessaggioVera(autore: .vera, testo: fedele ? pulito : bozza.testo, titolo: bozza.titolo,
-                                                        motore: fedele ? modello.nome : MotoriVera.sintesi.nome), cliente: id)
+                    var m = MessaggioVera(autore: .vera, testo: fedele ? pulito : bozza.testo, titolo: bozza.titolo,
+                                          motore: fedele ? modello.nome : MotoriVera.sintesi.nome)
+                    // «Mai a caso»: le fonti delle cifre scritte da Qwen (FontiVera.swift)
+                    if fedele {
+                        let f = FontiVera.fonti(pulito, fonte: nil, richiesta: richiesta)
+                        if !f.isEmpty { m.fonti = f }
+                    }
+                    self.aggiungiMessaggio(m, cliente: id)
                 } catch {
                     self.aggiungiMessaggio(MessaggioVera(autore: .vera, testo: error.localizedDescription,
                                                         titolo: "Vera non ha potuto rispondere", motore: modello.nome), cliente: id)
@@ -2076,12 +2083,13 @@ final class StatoShell: ObservableObject {
 
     /// Manda una domanda a Vera per il cliente attivo.
     @discardableResult
-    func chiediVera(_ domanda: String, spunto: SpuntoVera? = nil, breve: Bool = false, scenari: Bool = true) -> Bool {
+    func chiediVera(_ domanda: String, spunto: SpuntoVera? = nil, breve: Bool = false, scenari: Bool = true, smista: Bool = true) -> Bool {
         let testo = domanda.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !testo.isEmpty, !veraInCorso else { return false }
         // La domanda parte da tastiera o da uno spunto: la dettatura del Mac si spegne (anche per i comandi)
         if dettaturaAttiva { chiudiDettatura() }
-        if spunto == nil, eseguiComandoVera(testo) { return true }
+        // Comandi, «sì»/«no» alla scheda, domande su tutti i clienti, «Fallo tu» (FalloTuShell.swift)
+        if spunto == nil, smista, smistaVera(testo, chiave: clienteAttivoId) { return true }
         // «E se Marco va in pensione a 63 anni?»: lo scenario lo calcola Prisma, Vera lo racconta (ScenariVeraShell.swift)
         if spunto == nil, scenari, chiediScenarioVera(testo, chiave: clienteAttivoId, breve: breve) { return true }
         let id = clienteAttivoId
@@ -2115,6 +2123,11 @@ final class StatoShell: ObservableObject {
                     }
                     var m = MessaggioVera(autore: .vera, testo: r.testo, motore: motore.nome, proposte: proposte)
                     m.modalita = piano.scelta.modalita
+                    // «Mai a caso»: in lavoro ogni cifra ha la sua fonte, o resta «non trovata» (FontiVera.swift)
+                    if piano.scelta.conScheda {
+                        let f = FontiVera.fonti(r.testo, fonte: fonte, richiesta: piano.messaggi.last?.testo ?? "")
+                        if !f.isEmpty { m.fonti = f }
+                    }
                     self.aggiungiMessaggio(m, cliente: id)
                 } catch is CancellationError {
                     // Nuova conversazione: la risposta interrotta non resta

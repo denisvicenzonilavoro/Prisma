@@ -418,10 +418,24 @@ final class ServerFintoScenari: URLProtocol {
         String(data: (try? JSONSerialization.data(withJSONObject: o)) ?? Data(), encoding: .utf8) ?? ""
     }
 
+    /// Una risposta preparata fatta di chiamate a strumenti (come le manda Ollama con «tools»): da passare a `prepara`.
+    static func strumenti(_ chiamate: [(String, [String: Any])], testo: String = "") -> String {
+        prefissoStrumenti + json(["testo": testo, "chiamate": chiamate.map { ["function": ["name": $0.0, "arguments": $0.1] as [String: Any]] }])
+    }
+
+    private static let prefissoStrumenti = "§STRUMENTI§"
+
     override func startLoading() {
-        let risposta = Self.prossima(Self.corpo(request))
-        // La risposta in pezzi da 9 caratteri, una riga NDJSON per pezzo, poi la riga finale
+        var risposta = Self.prossima(Self.corpo(request))
         var righe: [String] = []
+        // Le chiamate a strumenti arrivano in una riga sola, con il contenuto vuoto (come da Ollama)
+        if risposta.hasPrefix(Self.prefissoStrumenti),
+           let d = risposta.dropFirst(Self.prefissoStrumenti.count).data(using: .utf8),
+           let j = try? JSONSerialization.jsonObject(with: d) as? [String: Any] {
+            righe.append(Self.json(["message": ["role": "assistant", "content": "", "tool_calls": j["chiamate"] ?? []] as [String: Any], "done": false]))
+            risposta = j["testo"] as? String ?? ""
+        }
+        // La risposta in pezzi da 9 caratteri, una riga NDJSON per pezzo, poi la riga finale
         var resto = Substring(risposta)
         while !resto.isEmpty {
             let pezzo = resto.prefix(9)

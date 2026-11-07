@@ -21,6 +21,12 @@ struct MessaggioVera: Identifiable, Codable, Equatable {
     var modalita: ModalitaVera?
     /// Lo scenario «E se…?» calcolato da Prisma: la scheda prima/dopo sotto la risposta (ScenariVera, MotoreScenari).
     var scenario: SchedaScenarioVera?
+    /// «Fallo tu»: le azioni proposte da Vera, eseguite solo dopo «Conferma» (ConfermaVera.swift).
+    var conferma: SchedaConfermaVera?
+    /// «Chiedi alla tua clientela»: i filtri capiti e la tabella dei clienti (ClientelaVera.swift).
+    var clientela: RisultatoClientela?
+    /// «Mai a caso»: la fonte di ogni cifra della risposta (FontiVera.swift).
+    var fonti: [FonteCifra]?
 
     init(autore: Autore, testo: String, titolo: String? = nil, motore: String? = nil, proposte: [PropostaVera]? = nil) {
         self.autore = autore
@@ -31,7 +37,7 @@ struct MessaggioVera: Identifiable, Codable, Equatable {
         data = Appuntamento.alMinuto(Date())
     }
 
-    private enum CodingKeys: String, CodingKey { case id, autore, testo, titolo, motore, data, proposte, azione, modalita, scenario }
+    private enum CodingKeys: String, CodingKey { case id, autore, testo, titolo, motore, data, proposte, azione, modalita, scenario, conferma, clientela, fonti }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -45,6 +51,9 @@ struct MessaggioVera: Identifiable, Codable, Equatable {
         azione = try? c.decodeIfPresent(AzioneVera.self, forKey: .azione)
         modalita = try? c.decodeIfPresent(ModalitaVera.self, forKey: .modalita)
         scenario = try? c.decodeIfPresent(SchedaScenarioVera.self, forKey: .scenario)
+        conferma = try? c.decodeIfPresent(SchedaConfermaVera.self, forKey: .conferma)
+        clientela = try? c.decodeIfPresent(RisultatoClientela.self, forKey: .clientela)
+        fonti = try? c.decodeIfPresent([FonteCifra].self, forKey: .fonti)
     }
 }
 

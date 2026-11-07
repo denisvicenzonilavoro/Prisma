@@ -190,6 +190,10 @@ enum ModelliMessaggi {
                    "Se lo desidera, possiamo esaminarla insieme con calma."]
                 : ["ho messo alla prova il tuo portafoglio con uno scenario difficile\(scenario)\(effetto). Non è una previsione: serve a capire se i tuoi obiettivi reggono anche in un momento sfavorevole.",
                    "Ti va di guardarla insieme con calma?"]
+        case .richiestaVera:
+            // Le bozze di «Fallo tu» hanno già il loro testo: il modello fisso serve solo da ripiego
+            return lei ? ["le scrivo per un breve aggiornamento.", "Resto a disposizione per qualsiasi chiarimento."]
+                : ["ti scrivo per un breve aggiornamento.", "Scrivimi pure quando vuoi."]
         }
     }
 
@@ -241,6 +245,9 @@ enum ModelliMessaggi {
             let scenario = v(.scenario).map { " («\($0)»)" } ?? ""
             return (["ho messo alla prova il tuo portafoglio con uno scenario difficile\(scenario): ti va di guardarlo insieme?"],
                     ["Non è una previsione."])
+        case .richiestaVera:
+            // Le bozze di «Fallo tu» hanno già il loro testo: il modello fisso serve solo da ripiego
+            return (["ti scrivo per un breve aggiornamento."], ["A presto."])
         }
     }
 

@@ -1,0 +1,53 @@
+{
+  "type": "object",
+  "properties": {
+    "capito": {
+      "type": "boolean"
+    },
+    "filtri": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "tipo"
+        ],
+        "properties": {
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "liquidita_mesi_minimo",
+              "senza_incontro_da_giorni",
+              "compie_anni_entro",
+              "eta_minima",
+              "eta_massima",
+              "coniuge_senza_protezione",
+              "polizze_in_scadenza_entro",
+              "posizioni_in_scadenza_entro",
+              "canale",
+              "consenso_privacy_mancante",
+              "senza_consenso_marketing",
+              "senza_area",
+              "con_area",
+              "patrimonio_minimo",
+              "senza_appuntamenti_futuri",
+              "figli_a_carico"
+            ]
+          },
+          "numero": {
+            "type": "number"
+          },
+          "data": {
+            "type": "string"
+          },
+          "testo": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "capito",
+    "filtri"
+  ]
+}
