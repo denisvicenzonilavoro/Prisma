@@ -110,6 +110,8 @@ final class StatoShell: ObservableObject {
     @Published var ancoraPosizioni: String?
     /// Solo per le istantanee: il cliente del radar con il dettaglio già aperto (Posizioni › Radar, «Luce» giro 2).
     var radarDettaglioIstantanea: String?
+    /// Solo per le istantanee: la pratica con il dettaglio già aperto (Pratiche › Dopo la firma, «Luce» giro 3).
+    var praticaDettaglioIstantanea: String?
     /// Il gruppo delle Impostazioni a cui scorrere dentro la pagina (`"impostazioni-occasioni"` in Promemoria e
     /// occasioni; `"impostazioni-conformita"` porta alla pagina Conformità); si consuma appena raggiunto.
     @Published var ancoraImpostazioni: String?
@@ -3155,6 +3157,8 @@ enum SchedaImpostazioni: String, CaseIterable, Hashable, Identifiable {
     case mercato
     /// I portafogli modello e la tolleranza del radar di Posizioni («Luce» giro 2, ImpostazioniModelli.swift).
     case portafogliModello
+    /// La soglia delle pratiche ferme di Pratiche › Dopo la firma («Luce» giro 3, ImpostazioniPraticheVista.swift).
+    case pratiche
     /// Dati di prova, confronto dei modelli, prove di promemoria e voce.
     case strumenti
 
@@ -3177,6 +3181,7 @@ enum SchedaImpostazioni: String, CaseIterable, Hashable, Identifiable {
         case .studio: return "Studio"
         case .mercato: return "Mercato"
         case .portafogliModello: return "Portafogli modello"
+        case .pratiche: return "Pratiche"
         case .strumenti: return "Strumenti"
         }
     }

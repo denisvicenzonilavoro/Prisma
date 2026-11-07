@@ -312,6 +312,15 @@ enum ProvaCalcoliMessaggi {
                                             perdita: 12_500, voci: [], collegateAssenti: false)
         occasioni.append(MotoreProvaFuoco.occasioneMessaggio(senzaObiettivo, scenario: .tassi(punti: 2.5), canale: nil,
                                                              oggi: oggi, calendario: cal))
+        // Il sollecito di una pratica dopo la firma («Luce» giro 3): il passo che manca, al cliente o per la compagnia
+        for (passo, rif) in [("il primo premio", "pratica-prova-primoPremio"), ("l'emissione della polizza", "pratica-prova-polizzaEmessa")] {
+            occasioni.append(OccasioneMessaggio(origine: OrigineMessaggio(tipo: .pratica, riferimento: rif), clienteId: "marco",
+                                                canale: .alleanza, gruppo: .oggi, titolo: "Sollecito: «Infortuni famiglia»",
+                                                perche: "Fermo da 9 giorni", oggetto: "La pratica di «Infortuni famiglia»",
+                                                cifre: [CifraMessaggio(.posizione, "Infortuni famiglia"), CifraMessaggio(.passoPratica, passo),
+                                                        CifraMessaggio(.canale, "Alleanza"), CifraMessaggio(.giorniPratica, "9")],
+                                                priorita: .alta, data: oggi, inRitardo: true))
+        }
         return (x, occasioni)
     }
 

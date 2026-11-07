@@ -71,6 +71,10 @@ struct DatiPrisma: Codable, Equatable {
     /// I portafogli modello del radar (Posizioni › Radar, versione 27, «Luce» giro 2): li scrive l'utente in
     /// Impostazioni › Portafogli modello. Vuoto finché non ne scrive uno.
     var portafogliModello: [PortafoglioModello] = []
+    /// Le pratiche dopo la firma (Pratiche › Dopo la firma, versione 27, «Luce» giro 3): nascono dalle proposte
+    /// accettate; dentro ci sono solo i segni a mano, le note e il sollecito (i passi riconosciuti li calcola
+    /// MotorePratiche).
+    var pratiche: [Pratica] = []
     var clienteAttivoId: String
     var impostazioni: Impostazioni
 
@@ -118,7 +122,9 @@ struct DatiPrisma: Codable, Equatable {
     ///     letti con tolleranza (una finestra di un'app che questo Prisma non conosce si salta, uno spazio illeggibile
     ///     non fa perdere gli altri: decisione 104), e le novità viste «luce» (`Impostazioni.novitaViste`). Giro 2: i
     ///     portafogli modello (`portafogliModello`), la tolleranza del radar (`Impostazioni.tolleranzaRadar`), il modello
-    ///     di ogni cliente (`Cliente.modelloId`) e il segno delle bozze di riequilibrio (`Posizione.riequilibrio`).
+    ///     di ogni cliente (`Cliente.modelloId`) e il segno delle bozze di riequilibrio (`Posizione.riequilibrio`). Giro 3:
+    ///     le pratiche dopo la firma (`pratiche`, lette con tolleranza: una pratica senza id o posizione si scarta) e
+    ///     la soglia delle pratiche ferme (`Impostazioni.pratiche`, 7 giorni se manca o è illeggibile).
     static let versioneAttuale = 27
 
     init(clienti: [Cliente], appuntamenti: [Appuntamento], attivita: [Attivita], posizioni: [Posizione],
@@ -162,6 +168,8 @@ struct DatiPrisma: Codable, Equatable {
         DatiDemo.aggiungiRisparmiLiberi(&d.clienti)
         // Il radar del portafoglio («Luce» giro 2): i tre modelli del template, segnati «dati di prova»
         PortafogliModelloDiProva.applica(&d)
+        // Le pratiche dopo la firma («Luce» giro 3): le quattro del template, segnate «dati di prova»
+        d.pratiche = PraticheDiProva.pratiche()
         return d
     }
 
@@ -176,6 +184,7 @@ struct DatiPrisma: Codable, Equatable {
         case giornaleOvunque, conflittiOvunque, arriviOvunque, inquadratureDaConfermare
         case mercato, famiglie, ocf
         case portafogliModello
+        case pratiche
     }
 
     /// Lettura tollerante: gli archivi delle versioni precedenti non hanno tutte le sezioni.
@@ -225,6 +234,8 @@ struct DatiPrisma: Codable, Equatable {
         ocf = (try? c.decodeIfPresent(ArchivioOCF.self, forKey: .ocf)) ?? ArchivioOCF()
         // Portafogli modello del radar (versione 27, giro 2): un modello illeggibile si scarta, gli altri restano
         portafogliModello = ((try? c.decodeIfPresent(ElencoTollerante<PortafoglioModello>.self, forKey: .portafogliModello)) ?? nil)?.elementi ?? []
+        // Pratiche dopo la firma (versione 27, giro 3): una pratica illeggibile si scarta, le altre restano
+        pratiche = ((try? c.decodeIfPresent(ElencoTollerante<Pratica>.self, forKey: .pratiche)) ?? nil)?.elementi ?? []
         clienteAttivoId = try c.decodeIfPresent(String.self, forKey: .clienteAttivoId) ?? (clienti.first?.id ?? "")
         impostazioni = try c.decodeIfPresent(Impostazioni.self, forKey: .impostazioni) ?? Impostazioni()
     }
@@ -296,6 +307,9 @@ struct Impostazioni: Codable, Equatable {
     /// La tolleranza generale del radar del portafoglio, in punti di distanza dal modello (Impostazioni › Portafogli
     /// modello). nil = non ancora scritta: Prisma non ne inventa una, e senza nessun cliente è «fuori». Versione 27.
     var tolleranzaRadar: Double?
+    /// Le pratiche dopo la firma: dopo quanti giorni senza un passo nuovo una pratica è ferma (Impostazioni › Pratiche).
+    /// Versione 27 («Luce» giro 3), letta con tolleranza: senza, 7 giorni.
+    var pratiche = ImpostazioniPratiche()
 
     init() {}
 
@@ -310,6 +324,7 @@ struct Impostazioni: Codable, Equatable {
         case messaggi
         case ovunque, mercato
         case tolleranzaRadar
+        case pratiche
     }
 
     init(from decoder: Decoder) throws {
@@ -359,6 +374,8 @@ struct Impostazioni: Codable, Equatable {
         mercato = ((try? c.decodeIfPresent(ImpostazioniMercato.self, forKey: .mercato)) ?? nil) ?? ImpostazioniMercato()
         // Tolleranza del radar (versione 27, giro 2): illeggibile o negativa = non scritta
         tolleranzaRadar = ((try? c.decodeIfPresent(Double.self, forKey: .tolleranzaRadar)) ?? nil).flatMap { $0 >= 0 ? $0 : nil }
+        // Pratiche (versione 27, giro 3): senza o illeggibili, ferma dopo 7 giorni
+        pratiche = ((try? c.decodeIfPresent(ImpostazioniPratiche.self, forKey: .pratiche)) ?? nil) ?? ImpostazioniPratiche()
     }
 }
 

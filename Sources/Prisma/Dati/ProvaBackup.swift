@@ -161,6 +161,8 @@ enum ProvaBackup {
             originale.ocf = ProvaBackup.ocfDiProva()
             // «Luce», giro 2: portafogli modello, tolleranza, modello dei clienti, bozze di riequilibrio (ProvaBackupRadar.swift)
             ProvaBackup.aggiungiRadarDiProva(&originale)
+            // «Luce», giro 3: pratiche dopo la firma e soglia delle pratiche ferme (ProvaBackupPratiche.swift)
+            ProvaBackup.aggiungiPraticheDiProva(&originale)
             // Il versamento mensile previsto dell'obiettivo (cursore del dettaglio nel tema Apple)
             if !originale.obiettivi.isEmpty { originale.obiettivi[0].versamentoMensile = 350 }
             guard !originale.simulazioni.isEmpty, !originale.incontri.isEmpty, !originale.prodotti.isEmpty, !originale.obiettivi.isEmpty, !originale.documenti.isEmpty, !originale.valutazioni.isEmpty, originale.clienti.contains(where: { !$0.bisogni.eventi.isEmpty }) else {
@@ -253,6 +255,11 @@ enum ProvaBackup {
             }
             // Il radar del portafoglio (versione 27, «Luce» giro 2), e un archivio senza (ProvaBackupRadar.swift)
             if let e = try verificaRadar(originale: originale, estratto: estratto.dati) {
+                print("ERRORE: \(e)")
+                return 1
+            }
+            // Le pratiche dopo la firma (versione 27, «Luce» giro 3), e un archivio senza (ProvaBackupPratiche.swift)
+            if let e = try verificaPratiche(originale: originale, estratto: estratto.dati) {
                 print("ERRORE: \(e)")
                 return 1
             }

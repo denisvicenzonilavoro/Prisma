@@ -243,6 +243,17 @@ enum MotoreNotifiche {
                                    canale: incomplete.count == 1 ? p.canale : nil,
                                    destinazione: destinazioneAdeguatezza))
         }
+        // Pratiche dopo la firma ferme da più dei giorni scelti («Luce» giro 3): una voce sola, solo dentro Prisma
+        // (nessuna notifica di macOS). Solo i clienti visibili: in modalità cliente non escono gli altri nomi
+        let praticheFerme = MotorePratiche.stati(dati, oggi: oggi).filter { $0.ferma && nomi[$0.clienteId] != nil }
+        if let prima = praticheFerme.first {
+            elenco.append(Notifica(id: "pratiche-" + praticheFerme.map(\.id).joined(separator: ","),
+                                   gruppo: .daSistemare, app: .pratiche,
+                                   titolo: TestiPratiche.titoloNotifica(praticheFerme),
+                                   dettaglio: praticheFerme.count == 1 ? "\(nome(prima.clienteId)) · \(TestiPratiche.manca(prima.mancante ?? .moduli, canale: prima.canale))"
+                                                               : praticheFerme.map { nome($0.clienteId) }.joined(separator: ", "),
+                                   data: inizio, canale: praticheFerme.count == 1 ? prima.canale : nil))
+        }
         // Fine anno: clienti che possono ancora dedurre versando alla previdenza (negli ultimi due mesi dell'anno)
         let deducibili = stato.deducibiliFineAnno(oggi: oggi)
         if let primo = deducibili.first {
@@ -459,6 +470,9 @@ extension StatoShell {
             portafoglio = true
             posizioneInDettaglio = nil
             apri(.posizioni)
+        } else if n.id.hasPrefix("pratiche-") {
+            // Le pratiche ferme: Pratiche › Dopo la firma, con le ferme in testa
+            apriPratiche(.dopoLaFirma)
         } else if n.id.hasPrefix("occasione-") {
             // Un'occasione: la vista «Occasioni» dell'Agenda con l'occasione selezionata
             mostraOccasione(String(n.id.dropFirst("occasione-".count)))

@@ -457,6 +457,10 @@ extension DatiPrisma {
         a.confrontiTFR = [:]; b.confrontiTFR = [:]
         // L'allenamento OCF (giro 6) non entra in nessun calcolo in cache: una risposta non rifà le cache dei clienti
         b.ocf = a.ocf
+        // Le pratiche dopo la firma («Luce» giro 3) si calcolano nella vista e nelle notifiche, senza cache: segnare un
+        // passo non rifà le cache dei clienti
+        a.pratiche = []; b.pratiche = []
+        b.impostazioni.pratiche = a.impostazioni.pratiche
         return a == b
     }
 }
