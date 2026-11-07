@@ -1,0 +1,155 @@
+#if os(macOS)
+import AppKit
+#elseif os(iOS)
+import UIKit
+#endif
+import SwiftUI
+
+extension Tema.Misura.Componenti {
+    /// Menu a tendina: alto come i pulsanti normali e i campi (32), margini della capsula.
+    static let altezzaTendina: CGFloat = 32
+    static let margineSinistroTendina: CGFloat = 14
+    static let margineDestroTendina: CGFloat = 11
+    static let spazioTendina: CGFloat = 8
+}
+
+extension Tema.Testo.Componenti {
+    /// Le frecce su e giù a destra dell'etichetta del menu a tendina.
+    static let frecciaTendina = Font.system(size: 9, weight: .bold)
+}
+
+/// Il menu a tendina di Prisma: l'etichetta è una capsula come i pulsanti del tema e il clic apre
+/// il menu del Mac con la voce scelta spuntata, nella posizione del puntatore.
+/// Al posto del `Picker` di sistema.
+///
+///     MenuTendina(selezione: $canale, opzioni: [(.alleanza, "Alleanza"), (.indipendente, "Indipendente")])
+///     MenuTendina(selezione: $area, opzioni: AreaPosizione.allCases.map { ($0, $0.nome) }, stile: .carta, larghezza: 160)
+struct MenuTendina<Valore: Hashable>: View {
+    /// `vetro`: capsula di vetro chiaro (.btn); `carta`: pozzetto come i campi (.field);
+    /// `scuro`: capsula di vetro più coprente, per i fondi scuri.
+    enum Stile { case vetro, carta, scuro }
+
+    @Binding var selezione: Valore
+    let opzioni: [(Valore, String)]
+    var stile: Stile = .vetro
+    /// Larghezza fissa (nil: quanto serve all'etichetta più lunga, dentro lo spazio disponibile).
+    var larghezza: CGFloat? = nil
+    @Environment(\.isEnabled) private var attivo
+    /// Nel tema Apple (`.altreAppApple()`) la capsula è quella del pulsante secondario.
+    @Environment(\.altreAppApple) private var apple
+
+    private var etichetta: String { opzioni.first { $0.0 == selezione }?.1 ?? "" }
+
+    var body: some View {
+        #if os(macOS)
+        Button(action: apri) {
+            capsula
+        }
+        .buttonStyle(.plain)
+        .opacity(attivo ? 1 : 0.5)
+        .accessibilityLabel(etichetta)
+        #elseif os(iOS)
+        // Su iPhone e iPad non c'è il menu del Mac: un `Menu` di sistema con le voci in un Picker
+        // (la scelta è spuntata), aperto dalla stessa capsula
+        Menu {
+            Picker(selection: $selezione) {
+                ForEach(Array(opzioni.enumerated()), id: \.offset) { voce in
+                    Text(verbatim: voce.element.1).tag(voce.element.0)
+                }
+            } label: {
+                Text(verbatim: etichetta)
+            }
+            .pickerStyle(.inline)
+        } label: {
+            capsula
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .opacity(attivo ? 1 : 0.5)
+        .accessibilityLabel(etichetta)
+        #endif
+    }
+
+    /// L'etichetta in capsula con le frecce: la stessa sul Mac e su iPhone e iPad.
+    private var capsula: some View {
+        let m = Tema.Misura.Componenti.self
+        return fondo(
+            HStack(spacing: m.spazioTendina) {
+                Text(verbatim: etichetta)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: larghezza == nil ? nil : .infinity, alignment: .leading)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(apple ? Tema.Apple.AltreApp.Tendina.carattereFreccia.fontLeggibile : Tema.Testo.Componenti.frecciaTendina)
+                    .foregroundColor(apple ? Tema.Apple.AltreApp.Tendina.freccia : Tema.Colore.inchiostroSecondario)
+            }
+            .font(apple ? Tema.Apple.AltreApp.Tendina.carattere.fontLeggibile : Tema.Testo.pulsante)
+            .foregroundColor(apple ? Tema.Apple.AltreApp.Tendina.testo : Tema.Colore.inchiostro)
+            .padding(.leading, m.margineSinistroTendina)
+            .padding(.trailing, m.margineDestroTendina)
+            .frame(width: larghezza)
+            .frame(minHeight: m.altezzaTendina)
+        )
+        .contentShape(FormaVetro.capsula)
+    }
+
+    @ViewBuilder private func fondo<V: View>(_ contenuto: V) -> some View {
+        if apple && stile != .scuro {
+            // Tema Apple: la capsula del pulsante secondario (`.btn`), anche al posto del pozzetto dei moduli
+            let a = Tema.Apple.AltreApp.Tendina.self
+            contenuto
+                .background { Capsule(style: .continuous).fill(a.fondo) }
+                .overlay {
+                    Capsule(style: .continuous)
+                        .strokeBorder(a.bordo, lineWidth: Tema.Apple.Misura.bordo)
+                        .allowsHitTesting(false)
+                }
+        } else {
+            fondoDiSempre(contenuto)
+        }
+    }
+
+    @ViewBuilder private func fondoDiSempre<V: View>(_ contenuto: V) -> some View {
+        switch stile {
+        case .vetro:
+            // Come i pulsanti di vetro: pozzetto, filo e ombra corta, visibili anche sulle schede bianche
+            contenuto.vetro(.chip, forma: .capsula, interattivo: true)
+        case .scuro:
+            contenuto.vetro(.chip, forma: .capsula, riempimento: Tema.Colore.chipSopra)
+        case .carta:
+            contenuto
+                .background { FormaVetro.capsula.fill(Tema.Colore.pozzetto) }
+                .overlay {
+                    FormaVetro.capsula.strokeBorder(Tema.Colore.separatore, lineWidth: Tema.Misura.filo).allowsHitTesting(false)
+                }
+        }
+    }
+
+    #if os(macOS)
+    /// Il menu del Mac: modale finché non si sceglie, quindi il bersaglio delle voci vive abbastanza.
+    private func apri() {
+        let menu = NSMenu()
+        let bersaglio = BersaglioMenu { i in if i < opzioni.count { selezione = opzioni[i].0 } }
+        var scelta: NSMenuItem?
+        for (i, o) in opzioni.enumerated() {
+            let voce = NSMenuItem(title: o.1, action: #selector(BersaglioMenu.scegli(_:)), keyEquivalent: "")
+            voce.target = bersaglio
+            voce.tag = i
+            voce.state = o.0 == selezione ? .on : .off
+            if o.0 == selezione { scelta = voce }
+            menu.addItem(voce)
+        }
+        withExtendedLifetime(bersaglio) {
+            menu.popUp(positioning: scelta, at: NSEvent.mouseLocation, in: nil)
+        }
+    }
+    #endif
+}
+
+#if os(macOS)
+private final class BersaglioMenu: NSObject {
+    let scelto: (Int) -> Void
+    init(_ scelto: @escaping (Int) -> Void) { self.scelto = scelto }
+    @objc func scegli(_ voce: NSMenuItem) { scelto(voce.tag) }
+}
+#endif

@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Info.plist di Prisma per iPhone e iPad (scritto a mano: niente Xcode, niente asset catalog).
+  Lo copia Supporto/iOS/assembla.sh nella radice di Prisma.app.
+  - MinimumOSVersion deve coincidere con .iOS(.v17) di Package.swift.
+  - CFBundleSupportedPlatforms: qui il simulatore; assembla.sh lo cambia in iPhoneOS per Prisma.ipa,
+    da installare su iPhone e iPad con AltStore o Sideloadly (che firmano con l'ID Apple).
+  - Le icone AppIcon*.png le genera assembla.sh da Design/Icone/AppIcon.png.
+  - Il tipo local.prisma.backup è il backup cifrato (.zip.cifrato) creato da Prisma sul Mac.
+  - La fotocamera (NSCameraUsageDescription) serve solo a Inquadra e capisci: al Mac va il testo letto, mai l'immagine.
+-->
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>it</string>
+    <key>CFBundleName</key>
+    <string>Prisma</string>
+    <key>CFBundleDisplayName</key>
+    <string>Prisma</string>
+    <key>CFBundleExecutable</key>
+    <string>Prisma</string>
+    <key>CFBundleIdentifier</key>
+    <string>local.prisma</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>CFBundleSupportedPlatforms</key>
+    <array>
+        <string>iPhoneSimulator</string>
+    </array>
+    <key>LSRequiresIPhoneOS</key>
+    <true/>
+    <key>MinimumOSVersion</key>
+    <string>17.0</string>
+    <key>UIDeviceFamily</key>
+    <array>
+        <integer>1</integer>
+        <integer>2</integer>
+    </array>
+    <key>UILaunchScreen</key>
+    <dict/>
+    <key>UIApplicationSupportsIndirectInputEvents</key>
+    <true/>
+    <key>UIApplicationSceneManifest</key>
+    <dict>
+        <key>UIApplicationSupportsMultipleScenes</key>
+        <false/>
+    </dict>
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+    </array>
+    <key>UISupportedInterfaceOrientations~ipad</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationPortraitUpsideDown</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+    <key>CFBundleIcons</key>
+    <dict>
+        <key>CFBundlePrimaryIcon</key>
+        <dict>
+            <key>CFBundleIconFiles</key>
+            <array>
+                <string>AppIcon60x60</string>
+            </array>
+        </dict>
+    </dict>
+    <key>CFBundleIcons~ipad</key>
+    <dict>
+        <key>CFBundlePrimaryIcon</key>
+        <dict>
+            <key>CFBundleIconFiles</key>
+            <array>
+                <string>AppIcon60x60</string>
+                <string>AppIcon76x76</string>
+                <string>AppIcon83.5x83.5</string>
+            </array>
+        </dict>
+    </dict>
+    <key>UTExportedTypeDeclarations</key>
+    <array>
+        <dict>
+            <key>UTTypeIdentifier</key>
+            <string>local.prisma.backup</string>
+            <key>UTTypeDescription</key>
+            <string>Backup cifrato di Prisma</string>
+            <key>UTTypeConformsTo</key>
+            <array>
+                <string>public.data</string>
+            </array>
+            <key>UTTypeTagSpecification</key>
+            <dict>
+                <key>public.filename-extension</key>
+                <array>
+                    <string>cifrato</string>
+                </array>
+            </dict>
+        </dict>
+    </array>
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>Backup cifrato di Prisma</string>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+            <key>LSHandlerRank</key>
+            <string>Owner</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>local.prisma.backup</string>
+            </array>
+        </dict>
+    </array>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Prisma usa il microfono per le domande a Ruby e, con il consenso del cliente, per il copilota dell’incontro. L’audio resta sul dispositivo e non si registra.</string>
+    <key>NSCameraUsageDescription</key>
+    <string>Prisma usa la fotocamera solo per inquadrare polizze e documenti: il testo letto va al tuo Mac in rete locale, cifrato. L'immagine resta sul telefono e non si salva.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>Prisma trascrive la voce solo sul dispositivo: le domande a Ruby e, con il consenso del cliente, il copilota dell’incontro. Al Mac arriva solo il testo, mai l’audio.</string>
+    <key>LSSupportsOpeningDocumentsInPlace</key>
+    <false/>
+    <key>UIFileSharingEnabled</key>
+    <false/>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>Ruby usa Qwen del tuo Mac e il tavolo con l'iPad mostra al cliente ciò che scegli sul Mac, attraverso la rete di casa o dello studio, cifrati con il codice di abbinamento. Nessun dato va su internet.</string>
+    <key>NSBonjourServices</key>
+    <array>
+        <string>_prisma-eve._tcp</string>
+        <string>_prisma-tavolo._tcp</string>
+    </array>
+</dict>
+</plist>

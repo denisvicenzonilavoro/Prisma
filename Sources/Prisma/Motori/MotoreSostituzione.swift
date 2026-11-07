@@ -1,0 +1,270 @@
+import Foundation
+
+/// Un anno del confronto: valore e netto incassabile delle due strade.
+struct AnnoSostituzione: Identifiable {
+    let anno: Int
+    let lordoResto: Double
+    let nettoResto: Double
+    let lordoCambio: Double
+    let nettoCambio: Double
+    var id: Int { anno }
+    var differenza: Double { nettoCambio - nettoResto }
+}
+
+/// Le due strade a fine periodo con rendimenti più bassi, attesi o più alti.
+struct ScenarioSostituzione: Identifiable {
+    let nome: String
+    /// Punti aggiunti al rendimento ipotizzato di entrambe le strade.
+    let scarto: Double
+    let nettoResto: Double
+    let nettoCambio: Double
+    var id: String { nome }
+    var differenza: Double { nettoCambio - nettoResto }
+}
+
+/// Una delle due strade: la posizione, le ipotesi di calcolo e i costi.
+struct LatoSostituzione {
+    let posizione: Posizione
+    let prodotto: Prodotto?
+    let rendimento: Double
+    let costoIngresso: Double
+    /// Costo annuo complessivo usato nel calcolo: gestione + trattenuto + bollo.
+    let costoAnnuo: Double
+    let bollo: Bool
+    let aliquota: Double
+    /// Costi pagati nel periodo (ingresso e costi annui), in euro.
+    let costiPeriodo: Double
+    /// Costi del primo anno, in euro.
+    let costiPrimoAnno: Double
+}
+
+/// Il confronto tra tenere una posizione e passare a un'alternativa (o tra due proposte).
+struct EsitoSostituzione {
+    let resto: LatoSostituzione
+    let cambio: LatoSostituzione
+    let anni: Int
+    /// true se la prima voce è in essere: si confronta il restare con l'uscire oggi.
+    let sostituzione: Bool
+    /// Trasferimento tra due forme di previdenza complementare: niente imposte, anni conservati.
+    let trasferimento: Bool
+    /// L'uscita dalla posizione in essere (se è una sostituzione).
+    let uscita: EsitoFiscale?
+    /// Previdenza verso un prodotto non previdenziale: riscatto per altre cause (23%).
+    let riscattoPrevidenza: UscitaPrevidenza?
+    /// Valore di partenza: il valore di oggi della posizione (o il capitale della proposta).
+    let valoreOggi: Double
+    let penaleUscita: Double
+    let bolloUscita: Double
+    let impostaUscita: Double
+    /// Quanto si reinveste nell'alternativa, prima del suo costo d'ingresso.
+    let reinvestito: Double
+    let ingressoCambio: Double
+    var investitoCambio: Double { reinvestito - ingressoCambio }
+    /// Costo dell'uscita oggi: penale, bollo, imposte anticipate e ingresso nel nuovo prodotto.
+    var costoUscita: Double { penaleUscita + bolloUscita + impostaUscita + ingressoCambio }
+    /// Versamenti futuri uguali per le due strade.
+    let versamento: Double
+    let frequenza: Frequenza
+    let serie: [AnnoSostituzione]
+    let scenari: [ScenarioSostituzione]
+    /// Primo anno in cui la strada del cambio dà un netto almeno pari (nil se non accade nel periodo).
+    let pareggio: Int?
+    let note: [String]
+
+    var finale: AnnoSostituzione? { serie.last }
+    var versamentoAnnuo: Double { versamento * Double(frequenza.volteAllAnno) }
+    var versatoFuturo: Double { versamentoAnnuo * Double(anni) }
+}
+
+/// Calcoli della sostituzione: le due strade ricevono gli stessi versamenti futuri e si confrontano
+/// sul netto incassabile anno per anno (dopo penali, bollo e imposte).
+enum MotoreSostituzione {
+    static func calcola(attuale a: Posizione, alternativa b: Posizione, prodotti: [Prodotto] = [],
+                        anni anniScelti: Int? = nil, orizzonteCliente: Int? = nil, data: Date = Date()) -> EsitoSostituzione {
+        let prodottoA = a.prodottoId.flatMap { id in prodotti.first { $0.id == id } }
+        let prodottoB = b.prodottoId.flatMap { id in prodotti.first { $0.id == id } }
+        let anni = max(1, min(50, anniScelti ?? b.anniAllaScadenza ?? orizzonteCliente ?? IpotesiCalcolo.orizzontePredefinito))
+        let sostituzione = a.stato == .inEssere
+        var note: [String] = []
+
+        // Versamenti futuri: quelli della proposta, uguali per le due strade
+        let conVersamento = b.frequenza != .unica && b.premio > 0 ? b : a
+        let versamento = conVersamento.frequenza != .unica ? conVersamento.premio : 0
+        let frequenza = conVersamento.frequenza
+        if versamento > 0 {
+            note.append("Entrambe le strade ricevono gli stessi versamenti futuri: \(CifreDoc.euro(versamento)) \(frequenza.nome.lowercased()).")
+        }
+
+        // Uscita oggi dalla posizione in essere
+        let trasferimento = sostituzione && a.regime == .previdenza && b.regime == .previdenza
+        var uscita: EsitoFiscale?
+        var riscatto: UscitaPrevidenza?
+        let valoreOggi: Double
+        var penale = 0.0, bollo = 0.0, imposta = 0.0
+        if sostituzione {
+            let f = MotoreFiscale.calcola(a, prodotto: prodottoA, data: data)
+            uscita = f
+            valoreOggi = f.valore
+            if trasferimento {
+                note.append("Trasferimento tra forme di previdenza complementare: nessuna imposta, gli anni di partecipazione restano.")
+            } else if f.regime == .previdenza {
+                riscatto = f.uscite.first { $0.causa == .riscattoAltreCause }
+                imposta = riscatto?.imposta ?? 0
+                note.append("Uscire da un fondo pensione verso un prodotto non previdenziale è un riscatto per altre cause: 23% sui contributi dedotti, possibile solo se si perdono i requisiti di partecipazione.")
+            } else {
+                penale = f.penale
+                bollo = f.bolloMaturato
+                imposta = f.imposta
+            }
+            if let s = a.scadenza, let fine = Calendar.current.date(byAdding: .year, value: anni, to: data), s < fine {
+                note.append("\(a.nome) scade il \(CifreDoc.dataBreve(s)): restando si ipotizza che il capitale rimanga investito alle stesse condizioni fino alla fine del periodo.")
+            }
+        } else {
+            valoreOggi = max(a.versamentoIniziale, b.versamentoIniziale)
+            note.append("Confronto tra due proposte: entrambe partono dallo stesso capitale di \(CifreDoc.euro(valoreOggi)).")
+        }
+        let reinvestito = MotoreFiscale.centesimi(valoreOggi - penale - bollo - imposta)
+        let ingressoB = MotoreFiscale.centesimi(reinvestito * (b.costoIngresso ?? 0) / 100)
+
+        // Base imponibile di partenza: per chi resta il versato di sempre, per chi cambia il capitale reinvestito
+        let baseResto = sostituzione ? (a.totaleVersato ?? a.versamentoIniziale) : valoreOggi
+        let baseCambio = trasferimento ? baseResto : reinvestito
+        let anniPrevidenza = trasferimento || a.regime == .previdenza ? MotoreFiscale.anniPartecipazione(a, data: data) : 0
+        let anniContrattoA = sostituzione ? a.decorrenza.map { Calendar.current.dateComponents([.year], from: $0, to: data).year ?? 0 } ?? 0 : 0
+
+        func lato(_ p: Posizione, prodotto: Prodotto?, capitale: Double, ingressoSulCapitale: Bool, scarto: Double)
+            -> (punti: [PuntoProiezione], costi: Double, rendimento: Double, costoAnnuo: Double) {
+            if p.multiramoDivisa {
+                // Multiramo a due parti: gestione separata e fondi dalla posizione, lo scenario sposta i fondi
+                // di `scarto` e la gestione separata della metà. La garanzia senza consolidamento resta alla
+                // scadenza del contratto (`mesiGaranzia` di `init(posizione:)`), non alla fine del confronto
+                var par = ParametriProiezione(posizione: p).conScarto(scarto)
+                par.capitaleIniziale = capitale; par.versatoIniziale = nil
+                par.versamento = versamento; par.frequenza = frequenza
+                par.anni = anni; par.mesiEsatti = nil
+                par.aliquotaFiscale = 0; par.gestione?.aliquota = 0; par.inflazione = 0
+                par.ingressoSulCapitale = ingressoSulCapitale; par.costoIngresso = p.costoIngresso ?? 0
+                let e = MotoreProiezione.calcola(par)
+                // Rendimento e costo equivalenti dei parametri già spostati (la GS si sposta meno dei fondi)
+                return (e.punti, e.costi, par.rendimentoEquivalente, par.costoAnnuoEquivalente)
+            }
+            // Bollo dello 0,20% sulla parte soggetta (il conto corrente paga il fisso di 34,20 €, trascurabile qui)
+            let testo = (p.nome + " " + p.tipologia).lowercased()
+            let contoCorrente = p.regime == .deposito && testo.contains("corrente") && !testo.contains("deposito")
+            let bolloAnnuo = contoCorrente ? 0 : RegoleFiscali.bollo * p.quotaBollo
+            let costo = (p.costoComplessivo ?? 0) + bolloAnnuo
+            let rendimento = (p.rendimentoAtteso ?? IpotesiCalcolo.rendimentoPredefinito) + scarto
+            var par = ParametriProiezione(capitaleIniziale: capitale, versamento: versamento, frequenza: frequenza, anni: anni,
+                                          rendimento: rendimento, costoIngresso: p.costoIngresso ?? 0, costoAnnuo: costo,
+                                          aliquotaFiscale: 0, inflazione: 0, ingressoSulCapitale: ingressoSulCapitale)
+            switch p.regime {
+            // Interessi dei depositi tassati all'accredito, rendimenti dei fondi pensione tassati ogni anno nel fondo
+            case .deposito: par.tassazioneAnnua = p.aliquotaFiscale ?? RegoleFiscali.ordinaria
+            case .previdenza: par.tassazioneAnnua = RegoleFiscali.aliquotaRendimentiPrevidenza(quotaTitoliStato: p.quotaTitoliStato)
+            case .polizza, .fondo, .esente: break
+            }
+            par.capitaleGarantito = p.gestioneSeparata
+            let e = MotoreProiezione.calcola(par)
+            return (e.punti, e.costi, rendimento, costo)
+        }
+
+        /// Netto incassabile in un anno: valore − penale − imposta, secondo il regime della posizione.
+        func netto(_ p: Posizione, prodotto: Prodotto?, lordo: Double, base: Double, annoContratto: Int, anniPartecipazione: Int) -> Double {
+            let penale = (p.regime == .polizza ? prodotto?.condizioni?.penale(anno: annoContratto) ?? 0 : 0) / 100 * lordo
+            switch p.regime {
+            case .esente, .deposito:
+                return lordo - penale
+            case .previdenza:
+                // In un trasferimento i contributi non dedotti sono quelli del fondo di partenza
+                let nonDedotti = (trasferimento && p.id == b.id ? a.contributiNonDedotti : p.contributiNonDedotti) ?? 0
+                let dedotti = max(0, min(lordo, base) - nonDedotti)
+                return lordo - dedotti * RegoleFiscali.aliquotaPrevidenza(anni: anniPartecipazione) / 100
+            case .polizza, .fondo:
+                let imposta = max(0, lordo - penale - base) * MotoreFiscale.aliquotaGuadagno(p) / 100
+                return lordo - penale - imposta
+            }
+        }
+
+        func percorso(scarto: Double) -> [AnnoSostituzione] {
+            let r = lato(a, prodotto: prodottoA, capitale: valoreOggi, ingressoSulCapitale: !sostituzione, scarto: scarto)
+            let c = lato(b, prodotto: prodottoB, capitale: reinvestito, ingressoSulCapitale: true, scarto: scarto)
+            return (0...anni).map { y in
+                let pr = r.punti[min(y, r.punti.count - 1)], pc = c.punti[min(y, c.punti.count - 1)]
+                let futuriResto = pr.versato - valoreOggi, futuriCambio = pc.versato - reinvestito
+                // Il bollo già maturato nella polizza resta da pagare al riscatto anche restando
+                // Nel trasferimento anche oggi le due strade si misurano allo stesso modo (nessuna imposta all'uscita)
+                let nettoResto = y == 0 && sostituzione && !trasferimento ? reinvestito
+                    : netto(a, prodotto: prodottoA, lordo: pr.valore, base: baseResto + futuriResto,
+                            annoContratto: anniContrattoA + y + 1, anniPartecipazione: anniPrevidenza + y) - bollo
+                let nettoCambio = netto(b, prodotto: prodottoB, lordo: pc.valore, base: baseCambio + futuriCambio,
+                                        annoContratto: y + 1, anniPartecipazione: trasferimento ? anniPrevidenza + y : y)
+                return AnnoSostituzione(anno: y, lordoResto: pr.valore, nettoResto: MotoreFiscale.centesimi(nettoResto),
+                                        lordoCambio: pc.valore, nettoCambio: MotoreFiscale.centesimi(nettoCambio))
+            }
+        }
+
+        let serie = percorso(scarto: 0)
+        let ampiezza = IpotesiCalcolo.ampiezzaScenari
+        let scenari = [("Prudente", -ampiezza), ("Atteso", 0.0), ("Favorevole", ampiezza)].map { voce -> ScenarioSostituzione in
+            let (nome, scarto) = voce
+            let ultimo = (scarto == 0 ? serie : percorso(scarto: scarto)).last
+            return ScenarioSostituzione(nome: nome, scarto: scarto, nettoResto: ultimo?.nettoResto ?? 0, nettoCambio: ultimo?.nettoCambio ?? 0)
+        }
+        let pareggio = serie.first { $0.anno >= 1 && $0.differenza >= 0 }?.anno
+
+        let r = lato(a, prodotto: prodottoA, capitale: valoreOggi, ingressoSulCapitale: !sostituzione, scarto: 0)
+        let c = lato(b, prodotto: prodottoB, capitale: reinvestito, ingressoSulCapitale: true, scarto: 0)
+        let primoResto = r.punti.count > 1 ? valoreOggi * r.costoAnnuo / 100 : 0
+        let primoCambio = c.punti.count > 1 ? investitoCambio(reinvestito, ingressoB) * c.costoAnnuo / 100 + ingressoB : ingressoB
+        if senzaRendimento(b) || senzaRendimento(a) {
+            note.append("Dove manca il rendimento atteso si usa il \(CifreDoc.condizione(IpotesiCalcolo.rendimentoPredefinito)) annuo.")
+        }
+        let puntiGestione = a.multiramoDivisa || b.multiramoDivisa
+            ? ", per la gestione separata delle multiramo \(Formati.numeroFormatter.string(from: NSNumber(value: IpotesiCalcolo.ampiezzaScenariGestione)) ?? "1") punto"
+            : ""
+        note.append("Rendimenti ipotetici, non garantiti: scenari prudente e favorevole con \(Formati.numeroFormatter.string(from: NSNumber(value: ampiezza)) ?? "2") punti in meno e in più per entrambe le strade\(puntiGestione).")
+
+        return EsitoSostituzione(
+            resto: LatoSostituzione(posizione: a, prodotto: prodottoA, rendimento: r.rendimento, costoIngresso: a.costoIngresso ?? 0,
+                                    costoAnnuo: r.costoAnnuo, bollo: a.soggettaBollo, aliquota: aliquotaFinale(a),
+                                    costiPeriodo: r.costi, costiPrimoAnno: primoResto),
+            cambio: LatoSostituzione(posizione: b, prodotto: prodottoB, rendimento: c.rendimento, costoIngresso: b.costoIngresso ?? 0,
+                                     costoAnnuo: c.costoAnnuo, bollo: b.soggettaBollo, aliquota: aliquotaFinale(b),
+                                     costiPeriodo: c.costi, costiPrimoAnno: primoCambio),
+            anni: anni, sostituzione: sostituzione, trasferimento: trasferimento, uscita: uscita, riscattoPrevidenza: riscatto,
+            valoreOggi: valoreOggi, penaleUscita: penale, bolloUscita: bollo, impostaUscita: imposta,
+            reinvestito: reinvestito, ingressoCambio: ingressoB, versamento: versamento, frequenza: frequenza,
+            serie: serie, scenari: scenari, pareggio: pareggio, note: note + Semplificazioni.comuni)
+    }
+
+    /// true se il calcolo usa il rendimento predefinito: senza rendimento atteso o, per una multiramo a due
+    /// parti, senza complessivo e senza il rendimento di una delle parti.
+    private static func senzaRendimento(_ p: Posizione) -> Bool {
+        p.multiramoDivisa ? p.rendimentoAtteso == nil && p.rendimentiPartiStimati : p.rendimentoAtteso == nil
+    }
+
+    private static func investitoCambio(_ reinvestito: Double, _ ingresso: Double) -> Double { reinvestito - ingresso }
+
+    /// Aliquota sul guadagno alla fine (per la previdenza quella della prestazione di oggi).
+    static func aliquotaFinale(_ p: Posizione) -> Double {
+        switch p.regime {
+        case .polizza, .fondo: return MotoreFiscale.aliquotaGuadagno(p)
+        case .previdenza: return RegoleFiscali.aliquotaPrevidenza(anni: MotoreFiscale.anniPartecipazione(p))
+        case .deposito: return RegoleFiscali.ordinaria
+        case .esente: return 0
+        }
+    }
+
+    /// La coppia predefinita di un cliente: una proposta contro la posizione in essere da sostituire
+    /// (prima quelle che scadono entro un anno, poi quelle della stessa area).
+    static func coppia(_ posizioni: [Posizione]) -> (String, String)? {
+        let proposte = posizioni.filter { $0.stato == .proposta && $0.area.proiettabile && $0.esito != .rifiutata }
+        let inEssere = posizioni.filter { $0.stato == .inEssere && $0.area.proiettabile }
+        guard let proposta = proposte.first else {
+            return inEssere.count > 1 ? (inEssere[0].id, inEssere[1].id) : nil
+        }
+        let inScadenza = inEssere.filter { $0.scadeEntro(365) }.sorted { ($0.scadenza ?? .distantFuture) < ($1.scadenza ?? .distantFuture) }
+        let attuale = inScadenza.first ?? inEssere.first(where: { $0.area == proposta.area }) ?? inEssere.first
+        return attuale.map { ($0.id, proposta.id) } ?? (proposte.count > 1 ? (proposte[0].id, proposte[1].id) : nil)
+    }
+}

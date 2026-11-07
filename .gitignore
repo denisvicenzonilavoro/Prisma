@@ -1,0 +1,4 @@
+.build/
+Prisma.app/
+.DS_Store
+.swiftpm/

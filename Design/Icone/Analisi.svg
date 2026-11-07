@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <title>Posizioni</title>
+  <defs>
+    <linearGradient id="lgGlass" x1="0" y1="0" x2=".45" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity=".8"/></linearGradient>
+    <linearGradient id="lgBeam" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff"/></linearGradient>
+    <radialGradient id="lgRubyOrb" cx="35%" cy="25%" r="80%"><stop offset="0" stop-color="#F3D7FF"/><stop offset=".35" stop-color="#B28DF4"/><stop offset=".72" stop-color="#6964D8"/><stop offset="1" stop-color="#3C3D92"/></radialGradient>
+    <linearGradient id="fondo" x1="0.342" y1="-0.092" x2="0.658" y2="1.092"><stop offset="0" stop-color="#5F8FC9"/><stop offset="1" stop-color="#2C5389"/></linearGradient>
+    <linearGradient id="riflesso" x1="0.399" y1="-0.07" x2="0.601" y2="1.07"><stop offset="0" stop-color="#fff" stop-opacity=".36"/><stop offset=".42" stop-color="#fff" stop-opacity=".07"/><stop offset=".62" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <clipPath id="forma"><rect x="16" y="12" width="480" height="480" rx="112.8"/></clipPath>
+    <linearGradient id="sfumaX" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="0.031" stop-color="#fff"/><stop offset="0.969" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <linearGradient id="sfumaY" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="0.023" stop-color="#fff"/><stop offset="0.961" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <mask id="bordoX" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><rect width="512" height="512" fill="url(#sfumaX)"/></mask>
+    <mask id="bordoY" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><rect width="512" height="512" fill="url(#sfumaY)"/></mask>
+    <filter id="sfocaOmbra" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="33.6"/></filter>
+    <mask id="luce" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><rect x="16" y="12" width="480" height="480" rx="112.8" fill="#fff"/><rect x="16" y="12" width="480" height="480" rx="112.8" transform="translate(0 9.6)" fill="#000"/></mask>
+    <mask id="buio" maskUnits="userSpaceOnUse" x="-50" y="-50" width="612" height="612"><rect x="-50" y="-50" width="612" height="612" fill="#fff"/><rect x="16" y="12" width="480" height="480" rx="112.8" transform="translate(0 -9.6)" fill="#000"/></mask>
+    <filter id="sfocaBuio" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="4.8"/></filter>
+    <filter id="ombraGlifo" x="-25%" y="-25%" width="150%" height="150%"><feDropShadow dx="0" dy="7.2" stdDeviation="4.8" flood-color="#000" flood-opacity=".22"/></filter>
+  </defs>
+  <style>
+    .g1 { fill: url(#lgGlass); }
+    .g2 { fill: #fff; fill-opacity: .5; }
+    .gs { stroke: #fff; }
+    .g3 { fill: #FF3B30; }
+    .gk { fill: #1C1C1E; }
+    .gl { stroke: rgba(0,0,0,.2); fill: none; }
+    .gt { fill: #fff; font: 800 13px/1 ui-rounded, 'SF Pro Rounded', -apple-system, 'Inter Display', Inter, sans-serif; letter-spacing: -.4px; }
+    .gtk { fill: #1C1C1E; font: 600 7.5px/1 ui-rounded, 'SF Pro Rounded', -apple-system, 'Inter Display', Inter, sans-serif; }
+    .gt-mon { font: 700 10.5px/1 -apple-system, 'SF Pro Text', 'Helvetica Neue', Inter, sans-serif; letter-spacing: .08em; }
+    .gt-day { font: 300 30px/1 -apple-system, 'SF Pro Display', 'Helvetica Neue', 'Inter Display', Inter, sans-serif; letter-spacing: -1px; }
+    .gw { fill: #fff; }
+    .gws { stroke: #fff; }
+  </style>
+  <g mask="url(#bordoX)"><g mask="url(#bordoY)"><rect x="30.4" y="50.4" width="451.2" height="451.2" rx="98.4" fill="#000" fill-opacity=".32" filter="url(#sfocaOmbra)"/></g></g>
+  <rect x="16" y="12" width="480" height="480" rx="112.8" fill="url(#fondo)"/>
+  <g clip-path="url(#forma)">
+    <rect x="0" y="0" width="512" height="512" fill="#fff" fill-opacity=".55" mask="url(#luce)"/>
+    <rect x="16" y="12" width="480" height="480" rx="112.8" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width="9.6"/>
+    <g filter="url(#sfocaBuio)"><rect x="-50" y="-50" width="612" height="612" fill="#000" fill-opacity=".14" mask="url(#buio)"/></g>
+  </g>
+  <g filter="url(#ombraGlifo)"><g transform="translate(16 12) scale(7.5)"><rect class="g2" x="12" y="38" width="7" height="13" rx="2.2"/><rect class="g2" x="22" y="31" width="7" height="20" rx="2.2"/><rect class="g2" x="32" y="35" width="7" height="16" rx="2.2"/><rect class="g2" x="42" y="25" width="7" height="26" rx="2.2"/><path class="gs" d="M11 32.5 22.5 24.5l10 4.5L50 14.5" fill="none" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/><circle class="g1" cx="50" cy="14.5" r="4.2"/></g></g>
+  <rect x="16" y="12" width="480" height="480" rx="112.8" fill="url(#riflesso)"/>
+</svg>

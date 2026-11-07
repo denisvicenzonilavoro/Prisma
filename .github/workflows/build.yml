@@ -1,0 +1,628 @@
+name: Build Prisma
+
+# Una sola build per commit: il push sul branch basta anche per la pull request (i suoi controlli compaiono
+# nella PR). Prima c'era anche «pull_request», che rifaceva la stessa build e raddoppiava i Mac in coda.
+on:
+  push:
+    branches: ['**', '!anteprime']
+  workflow_dispatch:
+
+# Un nuovo push sullo stesso branch annulla la build ancora in corso del commit precedente (non su main,
+# dove ogni commit unito deve arrivare in fondo e aggiornare la release).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  build:
+    permissions:
+      contents: read
+    # Non usare macos-latest: le code dei runner Apple Silicon gratuiti vanno in timeout.
+    runs-on: macos-15-intel
+    # La pubblicazione sul branch anteprime la fa il job «pubblica» (Mac e iOS insieme)
+    outputs:
+      anteprime: ${{ steps.anteprime.outputs.ok }}
+    steps:
+      - uses: actions/checkout@v6
+
+      # L'ascolto di Ruby usa SpeechAnalyzer, che si compila solo con l'SDK di macOS 26:
+      # si sceglie l'Xcode 26 più recente installato sul runner (il predefinito è il 16).
+      - name: Seleziona Xcode 26
+        run: |
+          ls -d /Applications/Xcode*.app
+          XC="$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)"
+          if [ -n "$XC" ]; then
+            echo "DEVELOPER_DIR=$XC/Contents/Developer" >> "$GITHUB_ENV"
+            echo "Uso $XC"
+          else
+            echo "Xcode 26 non trovato: Ruby verrà compilata senza il modello Apple"
+          fi
+
+      - name: Strumenti disponibili
+        run: |
+          xcode-select -p
+          echo "DEVELOPER_DIR=$DEVELOPER_DIR"
+          swift --version
+          xcrun --show-sdk-version
+
+      - name: Compila (Apple Silicon + Intel)
+        run: swift build -c release --arch arm64 --arch x86_64
+
+      - name: Genera AppIcon.icns
+        run: |
+          if [ -f Design/Icone/AppIcon.png ]; then
+            ICONSET=AppIcon.iconset
+            mkdir -p "$ICONSET"
+            for s in 16 32 128 256 512; do
+              sips -z $s $s Design/Icone/AppIcon.png --out "$ICONSET/icon_${s}x${s}.png" > /dev/null
+              d=$((s * 2))
+              sips -z $d $d Design/Icone/AppIcon.png --out "$ICONSET/icon_${s}x${s}@2x.png" > /dev/null
+            done
+            iconutil -c icns "$ICONSET" -o AppIcon.icns
+            ls -la AppIcon.icns
+          else
+            echo "Design/Icone/AppIcon.png assente: nessuna icona"
+          fi
+
+      - name: Crea Prisma.app
+        run: |
+          BIN_DIR="$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)"
+          APP=Prisma.app
+          mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+          cp "$BIN_DIR/Prisma" "$APP/Contents/MacOS/Prisma"
+          cp Info.plist "$APP/Contents/Info.plist"
+          # Il commit nella diagnostica di Ruby: si sa quale versione gira sul Mac
+          /usr/libexec/PlistBuddy -c "Add :PrismaCommit string ${GITHUB_SHA::7}" "$APP/Contents/Info.plist"
+          if [ -f AppIcon.icns ]; then
+            cp AppIcon.icns "$APP/Contents/Resources/"
+            /usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string AppIcon" "$APP/Contents/Info.plist"
+          fi
+          # Bundle delle risorse SwiftPM: va in Contents/Resources (non nella
+          # radice del .app, che romperebbe la firma).
+          for b in "$BIN_DIR"/*.bundle; do
+            [ -e "$b" ] || continue
+            echo "Copio $(basename "$b")"
+            ditto "$b" "$APP/Contents/Resources/$(basename "$b")"
+          done
+          # Istruzioni di Ruby: vivono in Ruby/Istruzioni e si leggono dal pacchetto
+          if [ -d Ruby/Istruzioni ]; then
+            mkdir -p "$APP/Contents/Resources/Ruby"
+            ditto Ruby/Istruzioni "$APP/Contents/Resources/Ruby/Istruzioni"
+          fi
+          # Schemi dei dati da estrarre (scenari «E se…?») ed esempi per le prove di Ruby
+          for cartella in Schemi Esempi; do
+            if [ -d "Ruby/$cartella" ]; then
+              mkdir -p "$APP/Contents/Resources/Ruby"
+              ditto "Ruby/$cartella" "$APP/Contents/Resources/Ruby/$cartella"
+            fi
+          done
+          codesign --force --deep --sign - "$APP"
+
+      - name: Verifica Prisma.app
+        run: |
+          APP=Prisma.app
+          set -e
+          test -x "$APP/Contents/MacOS/Prisma"
+          lipo -info "$APP/Contents/MacOS/Prisma" | tee /dev/stderr | grep -q arm64
+          lipo -info "$APP/Contents/MacOS/Prisma" | grep -q x86_64
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP/Contents/Info.plist")" = Prisma
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Contents/Info.plist")" = local.prisma
+          if [ -f Design/Icone/AppIcon.png ]; then
+            test -f "$APP/Contents/Resources/AppIcon.icns"
+            test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconFile' "$APP/Contents/Info.plist")" = AppIcon
+          fi
+          if [ -d Sources/Prisma/Risorse ]; then
+            BUNDLE="$APP/Contents/Resources/Prisma_Prisma.bundle"
+            test -d "$BUNDLE"
+            # Su macOS il bundle SwiftPM ha la struttura Contents/Resources
+            RIS="$BUNDLE/Contents/Resources/Risorse"
+            [ -d "$RIS" ] || { echo "Struttura inattesa del bundle:"; find "$BUNDLE" | head -40; exit 1; }
+            ( cd Sources/Prisma/Risorse && find . -type f ! -name '.*' ) | while read -r f; do
+              test -f "$RIS/$f" || { echo "Manca Risorse/$f nel .app"; exit 1; }
+            done
+            # Controllo a runtime: l'app deve trovare le risorse dal .app
+            "$APP/Contents/MacOS/Prisma" --verifica-risorse
+          fi
+          # Prova reale di backup, rotazione e ripristino in cartelle temporanee
+          "$APP/Contents/MacOS/Prisma" --prova-backup
+          # Prova dei motori di calcolo contro risultati calcolati a parte
+          "$APP/Contents/MacOS/Prisma" --prova-calcoli
+          # Prova di Ruby: istruzioni, scheda del cliente, sintesi dai dati
+          test -f "$APP/Contents/Resources/Ruby/Istruzioni/chat.md"
+          test -f "$APP/Contents/Resources/Ruby/Istruzioni/commento.md"
+          test -f "$APP/Contents/Resources/Ruby/Istruzioni/conversazione.md"
+          test -f "$APP/Contents/Resources/Ruby/Istruzioni/mini.md"
+          test -f "$APP/Contents/Resources/Ruby/Istruzioni/scenari.md"
+          test -f "$APP/Contents/Resources/Ruby/Istruzioni/messaggi.md"
+          test -f "$APP/Contents/Resources/Ruby/Schemi/scenario.json"
+          test -f "$APP/Contents/Resources/Ruby/Esempi/scenari.json"
+          test -f "$APP/Contents/Resources/Ruby/Istruzioni/copilota.md"
+          test -f "$APP/Contents/Resources/Ruby/Schemi/copilota.json"
+          test -f "$APP/Contents/Resources/Ruby/Esempi/copilota.json"
+          test -f "$APP/Contents/Resources/Ruby/Istruzioni/verbale-copilota.md"
+          "$APP/Contents/MacOS/Prisma" --prova-ruby
+          # Prova del tavolo con l'iPad: Mac e iPad nello stesso processo su 127.0.0.1 (abbinamento, pagine, cursore,
+          # presa visione nel PDF, caduta della connessione con la schermata neutra)
+          "$APP/Contents/MacOS/Prisma" --prova-tavolo
+          # Prova dei prospetti: cifre, impaginazione A4 e PDF
+          "$APP/Contents/MacOS/Prisma" --prova-prospetti
+          # Prova di carico: 200 clienti, velocità e memoria (il Mac dell'utente ha 8 GB)
+          "$APP/Contents/MacOS/Prisma" --prova-carico
+          # Prova della fluidità: tempi di apertura, chiusura, cambio app, blocco e aspetto (confronto prima/dopo)
+          "$APP/Contents/MacOS/Prisma" --prova-fluidita "$PWD/fluidita.md"
+          cat fluidita.md >> "$GITHUB_STEP_SUMMARY" || true
+          # Prova di Prisma ovunque: due archivi e una cartella locale che finge iCloud Drive (ritardi, file non scaricato,
+          # copia «nome 2», file troncato, conflitti da decidere, passphrase sbagliata e cambiata, niente dati in chiaro)
+          "$APP/Contents/MacOS/Prisma" --prova-ovunque
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          echo "Prisma.app verificata"
+
+      # Mercato (giro 7): SOLO informativo. Scarica una volta le serie pubbliche configurate (BCE ed Eurostat,
+      # Risorse/Mercato/serie-mercato.json) per controllare che le chiavi esistano davvero e che il lettore le legga.
+      # Non apre l'archivio: nessun dato dei clienti. Le prove vere (--prova-calcoli) non escono su internet.
+      - name: "Mercato: chiavi BCE ed Eurostat (informativo)"
+        continue-on-error: true
+        timeout-minutes: 10
+        run: |
+          set -o pipefail
+          if Prisma.app/Contents/MacOS/Prisma --controlla-mercato 2>&1 | tee mercato.log; then
+            echo "Serie di mercato configurate scaricate e lette"
+          else
+            grep '^ERRORE' mercato.log | while read -r riga; do echo "::warning::Mercato: $riga"; done
+            echo "::warning::Mercato: una o più serie configurate non si scaricano o non si leggono (passo informativo, la build resta verde)"
+          fi
+          exit 0
+
+      # Le due fatture di esempio (dati fittizi, solo il file: nessun invio allo SdI) contro lo schema ufficiale
+      # FatturaPA 1.2.2. Se lo schema non si scarica il passo fallisce: niente validazione finta.
+      - name: "Fattura elettronica: XML contro lo schema ufficiale"
+        run: |
+          APP=Prisma.app
+          set -eo pipefail
+          FATTURE="$RUNNER_TEMP/fattura"
+          SCHEMI="$RUNNER_TEMP/schemi-fatturapa"
+          rm -rf "$FATTURE" "$SCHEMI"
+          mkdir -p "$SCHEMI"
+          "$APP/Contents/MacOS/Prisma" --prova-fattura "$FATTURE"
+
+          # Scarica un file con qualche tentativo; controlla che sia davvero uno schema XML
+          scarica() {
+            local url="$1" destinazione="$2" tentativo
+            for tentativo in 1 2 3 4 5; do
+              if curl -fsSL --connect-timeout 20 --max-time 120 -o "$destinazione" "$url" \
+                && grep -q '<[A-Za-z]*:\{0,1\}schema' "$destinazione"; then
+                return 0
+              fi
+              echo "Tentativo $tentativo non riuscito per $url"
+              rm -f "$destinazione"
+              sleep $((tentativo * 10))
+            done
+            return 1
+          }
+          XSD_FATTURA="$SCHEMI/Schema_del_file_xml_FatturaPA_v1.2.2.xsd"
+          XSD_FIRMA="$SCHEMI/xmldsig-core-schema.xsd"
+          scarica "https://www.fatturapa.gov.it/export/documenti/fatturapa/v1.2.2/Schema_del_file_xml_FatturaPA_v1.2.2.xsd" "$XSD_FATTURA" \
+            || { echo "::error::Schema FatturaPA 1.2.2 non raggiungibile da fatturapa.gov.it: XML non verificato"; exit 1; }
+          scarica "https://www.w3.org/TR/2002/REC-xmldsig-core-20020212/xmldsig-core-schema.xsd" "$XSD_FIRMA" \
+            || { echo "::error::Schema delle firme (xmldsig) non raggiungibile da w3.org: XML non verificato"; exit 1; }
+
+          # L'import di xmldsig punta al file locale (con o senza schemaLocation nell'originale), così xmllint lavora con --nonet
+          sed -E \
+            -e '/<[A-Za-z]*:?import[^>]*xmldsig#/ s|[[:space:]]+schemaLocation="[^"]*"||' \
+            -e 's|(<[A-Za-z]*:?import[^>]*namespace="http://www.w3.org/2000/09/xmldsig#")|\1 schemaLocation="xmldsig-core-schema.xsd"|' \
+            "$XSD_FATTURA" > "$SCHEMI/fatturapa-locale.xsd"
+          grep -q 'schemaLocation="xmldsig-core-schema.xsd"' "$SCHEMI/fatturapa-locale.xsd" \
+            || { echo "::error::Import di xmldsig non trovato nello schema FatturaPA: impossibile renderlo locale"; grep -n 'import' "$XSD_FATTURA" || true; exit 1; }
+
+          shopt -s nullglob
+          FILE_XML=("$FATTURE"/*.xml)
+          [ "${#FILE_XML[@]}" -gt 0 ] || { echo "::error::--prova-fattura non ha prodotto file XML in $FATTURE"; exit 1; }
+          ERRORI=0
+          for f in "${FILE_XML[@]}"; do
+            if xmllint --noout --nonet --schema "$SCHEMI/fatturapa-locale.xsd" "$f"; then
+              echo "Valido  $(basename "$f")"
+            else
+              echo "::error::$(basename "$f") non rispetta lo schema FatturaPA 1.2.2"
+              ERRORI=1
+            fi
+          done
+          [ "$ERRORI" -eq 0 ] || exit 1
+          echo "Fatture di esempio valide contro lo schema FatturaPA 1.2.2 (${#FILE_XML[@]} file)"
+
+      # Facoltative: se nessun metodo di disegno funziona sul runner, la build resta verde.
+      - name: Anteprime (istantanee delle schermate)
+        id: anteprime
+        run: |
+          for metodo in finestra livello renderer; do
+            rm -rf anteprime && mkdir anteprime
+            if "Prisma.app/Contents/MacOS/Prisma" --istantanee "$PWD/anteprime" --metodo "$metodo"; then
+              echo "Anteprime create con il metodo $metodo"
+              echo "ok=1" >> "$GITHUB_OUTPUT"
+              # La tabella della fluidità accanto alle schermate: si confrontano due commit senza leggere i log
+              cp fluidita.md anteprime/fluidita.md 2>/dev/null || true
+              "Prisma.app/Contents/MacOS/Prisma" --prova-prospetti "$PWD/anteprime/prospetti" > /dev/null || true
+              # Alcune schermate con il testo «molto grande» (Impostazioni → Dimensione del testo)
+              "Prisma.app/Contents/MacOS/Prisma" --istantanee "$PWD/anteprime/testo-grande" --metodo "$metodo" --testo 1.2 \
+                --solo 1-scrivania,5-clienti-panoramica,8-posizioni-dettaglio,11-agenda,11a-agenda-mese,65-portafoglio,220-avvio-benvenuto,222-introduzione,225-guida-posizioni,234-posizioni-finestra-stretta > /dev/null || true
+              ls -la anteprime anteprime/prospetti || true
+              break
+            fi
+            echo "Metodo $metodo non riuscito"
+          done
+
+      # Le anteprime Mac passano al job «pubblica», che le mette sul branch anteprime così come sono oggi
+      - name: Carica le anteprime Mac
+        if: github.event_name == 'push' && steps.anteprime.outputs.ok == '1'
+        uses: actions/upload-artifact@v6
+        with:
+          name: anteprime-mac
+          path: anteprime/
+          retention-days: 7
+
+      - name: Crea zip
+        run: ditto -c -k --keepParent Prisma.app Prisma.zip
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: Prisma
+          path: Prisma.zip
+          retention-days: 7
+
+  # Prisma per iPhone e iPad: compilazione per il simulatore, prove e istantanee.
+  # Niente .xcodeproj: xcodebuild apre Package.swift, il .app si assembla con Supporto/iOS/assembla.sh.
+  # Bloccante dal giro 2: tutto il target compila su iOS, e da qui vale «iOS rosso = niente merge».
+  ios:
+    permissions:
+      contents: read
+    # Non usare macos-latest: le code dei runner Apple Silicon gratuiti vanno in timeout.
+    runs-on: macos-15-intel
+    # Compilazione (fino a 40 min sui runner Intel lenti) più prove e istantanee di iPhone e iPad, che crescono a ogni giro
+    timeout-minutes: 180
+    env:
+      BID: local.prisma
+    steps:
+      - uses: actions/checkout@v6
+
+      # Serve l'SDK iOS 26 (vetro nativo): senza Xcode 26 il job fallisce, nessun ripiego su Xcode 16.
+      - name: Seleziona Xcode 26
+        run: |
+          ls -d /Applications/Xcode*.app
+          XC="$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)"
+          if [ -z "$XC" ]; then
+            echo "::error::Xcode 26 non trovato sul runner: Prisma per iOS ha bisogno dell'SDK iOS 26"
+            exit 1
+          fi
+          echo "DEVELOPER_DIR=$XC/Contents/Developer" >> "$GITHUB_ENV"
+          echo "Uso $XC"
+
+      - name: Strumenti disponibili
+        run: |
+          xcodebuild -version
+          xcrun --sdk iphonesimulator --show-sdk-version
+          swift --version
+          xcrun simctl list runtimes
+          # Deve comparire lo schema Prisma (generato da Package.swift)
+          xcodebuild -list
+
+      # Release (le soglie di ProvaCarico sono tarate su codice ottimizzato), solo l'architettura del runner
+      # (x86_64 sui Mac Intel, arm64 sugli Apple Silicon),
+      # senza firma (si firma ad-hoc il .app assemblato). Il log completo va in build/ios.log;
+      # a schermo restano errori e riepiloghi, l'elenco completo degli errori è nel passo finale.
+      - name: Compila per il simulatore iOS
+        id: compila
+        run: |
+          mkdir -p build
+          SIM_ARCH="$(uname -m)"
+          # Dove xcodebuild mette l'eseguibile nudo e Prisma_Prisma.bundle (i passi seguenti leggono PROD)
+          PROD=build/ios/Build/Products/Release-iphonesimulator
+          echo "PROD=$PROD" >> "$GITHUB_ENV"
+          set +e
+          xcodebuild build \
+            -scheme Prisma \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -configuration Release \
+            -derivedDataPath build/ios \
+            -showBuildTimingSummary \
+            ARCHS="$SIM_ARCH" ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee build/ios.log | grep --line-buffered -E 'error:|warning: unre|BUILD|Build Timing Summary|^[A-Za-z]+ \([0-9]+ tasks?\) \|'
+          stato=${PIPESTATUS[0]}
+          set -e
+          if [ "$stato" -ne 0 ]; then
+            echo "::error::xcodebuild per iOS non riuscito ($(grep -cE '(^|: )error:' build/ios.log) righe di errore, elenco completo nel passo «Errori di compilazione iOS»)"
+            exit "$stato"
+          fi
+          echo "Prodotti:"
+          find "$PROD" -maxdepth 2 | head -40 || true
+          # Ripiego: se xcodebuild non desse l'eseguibile nudo, swift build con la tripla del simulatore
+          if [ ! -x "$PROD/Prisma" ]; then
+            echo "::warning::xcodebuild non ha prodotto $PROD/Prisma: ripiego su swift build"
+            SDK="$(xcrun --sdk iphonesimulator --show-sdk-path)"
+            swift build -c release --triple "$SIM_ARCH"-apple-ios17.0-simulator --sdk "$SDK" 2>&1 | tee -a build/ios.log
+            PROD="$(swift build -c release --triple "$SIM_ARCH"-apple-ios17.0-simulator --sdk "$SDK" --show-bin-path)"
+            echo "PROD=$PROD" >> "$GITHUB_ENV"
+            find "$PROD" -maxdepth 2 | head -40 || true
+          fi
+          test -x "$PROD/Prisma"
+
+      - name: Assembla Prisma.app per iOS
+        id: assembla
+        run: bash Supporto/iOS/assembla.sh "$PROD" build/Prisma-iOS/Prisma.app
+
+      # Il runtime iOS più recente presente sul runner e dispositivi creati qui: i nomi cambiano con le immagini
+      - name: Crea i simulatori iPhone e iPad
+        id: simulatori
+        run: |
+          RUNTIME="$(xcrun simctl list runtimes -j | jq -r '[.runtimes[] | select(.platform=="iOS" and .isAvailable)] | sort_by(.version|split(".")|map(tonumber)) | last | .identifier')"
+          if [ -z "$RUNTIME" ] || [ "$RUNTIME" = null ]; then
+            echo "::error::Nessun runtime iOS disponibile sul runner"
+            exit 1
+          fi
+          echo "Runtime: $RUNTIME"
+          tipo() {
+            for n in "$@"; do
+              id="$(xcrun simctl list devicetypes -j | jq -r --arg n "$n" '.devicetypes[] | select(.name==$n) | .identifier')"
+              [ -n "$id" ] && { echo "$id"; return 0; }
+            done
+            return 1
+          }
+          TIPO_PHONE="$(tipo 'iPhone 17 Pro' 'iPhone 16 Pro' 'iPhone 15 Pro')" || { echo "::error::Nessun tipo di iPhone"; exit 1; }
+          TIPO_PAD="$(tipo 'iPad Pro 13-inch (M5)' 'iPad Pro 13-inch (M4)' 'iPad Pro (12.9-inch) (6th generation)')" || { echo "::error::Nessun tipo di iPad"; exit 1; }
+          PHONE="$(xcrun simctl create prisma-iphone "$TIPO_PHONE" "$RUNTIME")"
+          PAD="$(xcrun simctl create prisma-ipad "$TIPO_PAD" "$RUNTIME")"
+          echo "iPhone: $TIPO_PHONE → $PHONE"
+          echo "iPad: $TIPO_PAD → $PAD"
+          echo "PHONE=$PHONE" >> "$GITHUB_ENV"
+          echo "PAD=$PAD" >> "$GITHUB_ENV"
+
+      # Un dispositivo alla volta (memoria del runner): avvio, installazione, prove, istantanee, spegnimento
+      - name: iPhone · avvio e installazione
+        id: avvio-iphone
+        if: steps.assembla.outcome == 'success' && steps.simulatori.outcome == 'success'
+        timeout-minutes: 15
+        run: |
+          xcrun simctl bootstatus "$PHONE" -b || xcrun simctl bootstatus "$PHONE" -b
+          xcrun simctl install "$PHONE" build/Prisma-iOS/Prisma.app
+          xcrun simctl get_app_container "$PHONE" "$BID" data
+
+      - name: iPhone · prove
+        if: steps.avvio-iphone.outcome == 'success'
+        timeout-minutes: 40
+        run: bash Supporto/iOS/prove.sh "$PHONE"
+
+      - name: iPhone · istantanee
+        if: always() && steps.avvio-iphone.outcome == 'success'
+        timeout-minutes: 25
+        run: bash Supporto/iOS/istantanee.sh "$PHONE" anteprime-ios/iphone
+
+      - name: iPhone · spegni
+        if: always() && env.PHONE != ''
+        run: xcrun simctl shutdown "$PHONE" || true
+
+      - name: iPad · avvio e installazione
+        id: avvio-ipad
+        if: always() && steps.assembla.outcome == 'success' && steps.simulatori.outcome == 'success'
+        timeout-minutes: 20
+        run: |
+          xcrun simctl bootstatus "$PAD" -b || xcrun simctl bootstatus "$PAD" -b
+          xcrun simctl install "$PAD" build/Prisma-iOS/Prisma.app
+          xcrun simctl get_app_container "$PAD" "$BID" data
+
+      # Sull'iPad le prove di calcolo sono le stesse dell'iPhone: basta controllare le risorse
+      - name: iPad · prove
+        if: always() && steps.avvio-ipad.outcome == 'success'
+        timeout-minutes: 10
+        run: bash Supporto/iOS/prove.sh "$PAD" verifica-risorse
+
+      # Più scene che sull'iPhone (tutte le app, in verticale e in orizzontale): 92 istantanee, fino a 35 min sui runner Intel lenti
+      - name: iPad · istantanee
+        if: always() && steps.avvio-ipad.outcome == 'success'
+        timeout-minutes: 45
+        run: bash Supporto/iOS/istantanee.sh "$PAD" anteprime-ios/ipad
+
+      - name: iPad · spegni
+        if: always() && env.PAD != ''
+        run: xcrun simctl shutdown "$PAD" || true
+
+      # Se l'app si è chiusa di colpo nel simulatore, il rapporto di crash dice dove
+      - name: Rapporti di crash
+        if: failure()
+        run: |
+          ls -t ~/Library/Logs/DiagnosticReports/ 2>/dev/null | grep -i prisma | head -5 | while read -r f; do
+            echo "::group::$f"
+            head -120 ~/Library/Logs/DiagnosticReports/"$f"
+            echo "::endgroup::"
+          done || true
+
+      # L'elenco completo degli errori di compilazione, non solo il primo: ogni giro di CI costa 30-45 minuti
+      - name: Errori di compilazione iOS
+        if: always() && steps.compila.outcome != 'skipped'
+        run: |
+          LOG=build/ios.log
+          [ -f "$LOG" ] || { echo "Nessun log di compilazione"; exit 0; }
+          # Percorsi relativi alla radice del repository, righe uguali una volta sola
+          grep -E '(^|: )(fatal )?error:' "$LOG" | sed "s#$GITHUB_WORKSPACE/##g" | sort | uniq -c | sort -k2 > build/errori-ios.txt || true
+          N="$(wc -l < build/errori-ios.txt | tr -d ' ')"
+          if [ "$N" = 0 ]; then
+            echo "Nessun errore di compilazione iOS"
+            exit 0
+          fi
+          echo "=== Errori per file ==="
+          sed -E 's/^ *[0-9]+ //' build/errori-ios.txt | grep -oE '^[^:]+\.swift' | sort | uniq -c | sort -rn || true
+          echo
+          echo "=== Comandi falliti ==="
+          sed -n '/The following build commands failed/,/^\*\*/p' "$LOG" || true
+          echo
+          echo "=== Elenco completo degli errori ($N righe distinte) ==="
+          cat build/errori-ios.txt
+          {
+            echo "### Errori di compilazione iOS ($N righe distinte)"
+            echo
+            echo '```'
+            head -300 build/errori-ios.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Carica il log di compilazione iOS
+        if: always() && steps.compila.outcome != 'skipped'
+        uses: actions/upload-artifact@v6
+        with:
+          name: log-ios
+          path: |
+            build/ios.log
+            build/errori-ios.txt
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Carica le anteprime iOS
+        if: always() && github.event_name == 'push'
+        uses: actions/upload-artifact@v6
+        with:
+          name: anteprime-ios
+          path: anteprime-ios/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # Prisma per iPhone e iPad VERI, da installare con AltStore o Sideloadly (firma con l'ID Apple gratuito).
+  # Compila per iphoneos (arm64) senza firma, assembla il .app e lo impacchetta in Prisma.ipa (Payload/Prisma.app).
+  ipa:
+    permissions:
+      contents: read
+    # Non usare macos-latest: le code dei runner Apple Silicon gratuiti vanno in timeout.
+    runs-on: macos-15-intel
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Seleziona Xcode 26
+        run: |
+          XC="$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)"
+          if [ -z "$XC" ]; then
+            echo "::error::Xcode 26 non trovato sul runner: Prisma per iOS ha bisogno dell'SDK iOS 26"
+            exit 1
+          fi
+          echo "DEVELOPER_DIR=$XC/Contents/Developer" >> "$GITHUB_ENV"
+          echo "Uso $XC"
+
+      - name: Compila per iPhone e iPad
+        run: |
+          mkdir -p build
+          PROD=build/ipa/Build/Products/Release-iphoneos
+          echo "PROD=$PROD" >> "$GITHUB_ENV"
+          set +e
+          xcodebuild build \
+            -scheme Prisma \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -configuration Release \
+            -derivedDataPath build/ipa \
+            ARCHS=arm64 ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee build/ipa.log | grep --line-buffered -E 'error:|BUILD'
+          stato=${PIPESTATUS[0]}
+          set -e
+          if [ "$stato" -ne 0 ]; then
+            grep -E '(^|: )error:' build/ipa.log | sed "s#$GITHUB_WORKSPACE/##g" | sort -u | head -100
+            exit "$stato"
+          fi
+          test -x "$PROD/Prisma"
+
+      - name: Assembla Prisma.ipa
+        run: |
+          bash Supporto/iOS/assembla.sh "$PROD" build/Payload/Prisma.app dispositivo
+          (cd build && ditto -c -k --sequesterRsrc --keepParent Payload Prisma.ipa)
+          ls -la build/Prisma.ipa
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: Prisma-iOS
+          path: build/Prisma.ipa
+          retention-days: 30
+
+  # Un solo push -f sul branch anteprime: le PNG del Mac dove sono sempre state, quelle di iOS in ios/.
+  # Aspetta entrambi i job (Mac e iOS). Parte anche se iOS è rosso (le anteprime Mac, e le PNG iOS scattate
+  # prima dell'errore, servono a capire il problema), purché la build Mac sia riuscita: il rosso di iOS
+  # blocca comunque il merge, perché il job ios ora è bloccante.
+  pubblica:
+    needs: [build, ios]
+    if: always() && github.event_name == 'push' && needs.build.result == 'success' && needs.build.outputs.anteprime == '1'
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Scarica le anteprime Mac
+        uses: actions/download-artifact@v6
+        with:
+          name: anteprime-mac
+          path: anteprime
+
+      - name: Scarica le anteprime iOS
+        id: ios
+        continue-on-error: true
+        uses: actions/download-artifact@v6
+        with:
+          name: anteprime-ios
+          path: anteprime/ios
+
+      - name: Pubblica le anteprime sul branch anteprime
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd anteprime
+          IOS=no
+          [ -d ios ] && [ -n "$(find ios -name '*.png' -print -quit)" ] && IOS=sì
+          printf 'branch: %s\ncommit: %s\ndata: %s\nios: %s\n' "$GITHUB_REF_NAME" "$GITHUB_SHA" "$(date -u +%FT%TZ)" "$IOS" > INFO.txt
+          ls -la . ios 2>/dev/null || true
+          git init -q -b anteprime
+          git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -qm "Anteprime di $GITHUB_SHA"
+          # Due build che finiscono insieme (main appena unito e il branch) si contendono il ref: si riprova
+          for tentativo in 1 2 3; do
+            git push -fq "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" anteprime && exit 0
+            echo "Pubblicazione non riuscita (tentativo $tentativo), riprovo"
+            sleep $((tentativo * 10))
+          done
+          exit 1
+
+  # Il link fisso per scaricare Prisma: a ogni push su main con Mac e .ipa verdi, la release «ultima»
+  # viene rifatta. Non aspetta il job ios (prove e istantanee, quasi 2 ore sui runner Intel): quelle prove
+  # sono già passate sulla pull request prima dell'unione, e su main continuano per le anteprime.
+  # La release contiene Prisma.zip (Mac) e Prisma.ipa (iPhone e iPad). Link sempre uguali:
+  #   https://github.com/<repo>/releases/download/ultima/Prisma.zip
+  #   https://github.com/<repo>/releases/download/ultima/Prisma.ipa
+  rilascio:
+    needs: [build, ipa]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Scarica Prisma per Mac
+        uses: actions/download-artifact@v6
+        with:
+          name: Prisma
+          path: rilascio
+
+      - name: Scarica Prisma per iPhone e iPad
+        uses: actions/download-artifact@v6
+        with:
+          name: Prisma-iOS
+          path: rilascio
+
+      - name: Pubblica la release «ultima»
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          ls -la rilascio
+          test -f rilascio/Prisma.zip
+          test -f rilascio/Prisma.ipa
+          NOTE="Prisma al commit ${GITHUB_SHA::7} del $(date -u '+%d/%m/%Y %H:%M') UTC.
+
+          - Prisma.zip: Prisma per Mac (Apple Silicon e Intel). Si apre il zip, si trascina Prisma.app in Applicazioni; la prima volta clic destro → Apri.
+          - Prisma.ipa: Prisma per iPhone e iPad, da installare con AltStore o Sideloadly (ID Apple gratuito)."
+          gh release delete ultima --yes --cleanup-tag 2>/dev/null || true
+          gh release create ultima rilascio/Prisma.zip rilascio/Prisma.ipa \
+            --target "$GITHUB_SHA" --title "Prisma · ultima versione" --notes "$NOTE" --latest

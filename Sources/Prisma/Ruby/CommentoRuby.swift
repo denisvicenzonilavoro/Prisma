@@ -1,0 +1,88 @@
+import Foundation
+
+/// Il commento del consulente nei report: una lettera breve al cliente che accompagna il documento.
+/// La bozza la compone Prisma con le stesse frasi e cifre del report; Qwen
+/// la rende più discorsiva senza toccare i numeri. Il consulente la rilegge sempre prima di stampare.
+enum CommentoRuby {
+    /// Limite del testo nella pagina del report.
+    static let limite = 1_400
+
+    /// La bozza composta dai testi del documento (sempre disponibile, numeri esatti).
+    static func bozza(nome: String, apertura: String, punti: [(String, String)], passo: String?) -> String {
+        var parti = ["Gentile \(primoNome(nome)),", apertura]
+        let elenco = punti.prefix(4).map { "• \($0.0): \(dopoDuePunti(minuscola($0.1)))" }
+        if !elenco.isEmpty { parti.append(elenco.joined(separator: "\n")) }
+        // Il primo passo, se non è già detto nell'elenco
+        if let passo, !passo.isEmpty {
+            let frase = dopoDuePunti(minuscola(passo))
+            if !elenco.contains(where: { $0.contains(frase) }) {
+                parti.append("Il primo passo che ti propongo: \(frase)")
+            }
+        }
+        parti.append("Ne parliamo con calma al prossimo incontro: per ogni domanda sono a disposizione.")
+        return String(parti.joined(separator: "\n\n").prefix(limite))
+    }
+
+    static var istruzioni: String {
+        IstruzioniRuby.testo("commento") ?? "Riscrivi in italiano la lettera del consulente al cliente: tono cordiale, dai del tu, al massimo 140 parole, testo semplice. Non cambiare né aggiungere numeri, prodotti o promesse."
+    }
+
+    /// Scrive il commento con Qwen: riscrive la bozza; se cambia una cifra, resta la bozza.
+    /// Restituisce il testo e il nome di chi l'ha scritto.
+    static func scrivi(bozza: String, modello: MotoreGenerativo?) async -> (testo: String, motore: String) {
+        guard let modello else { return (bozza, MotoriRuby.sintesi.nome) }
+        let richiesta = "BOZZA PREPARATA DA PRISMA (numeri esatti: non cambiarli e non aggiungerne)\n" + bozza
+            + "\n\nRiscrivi la lettera in modo naturale e personale, con le stesse cifre. Inizia con «Gentile» e il nome."
+        if let testo = try? await modello.genera(istruzioni: istruzioni, richiesta: richiesta) {
+            let pulito = testo.replacingOccurrences(of: "**", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+            if !pulito.isEmpty, numeriConservati(bozza: bozza, testo: pulito) {
+                return (String(pulito.prefix(limite)), modello.nome)
+            }
+        }
+        return (bozza, MotoriRuby.sintesi.nome)
+    }
+
+    /// Ogni cifra in euro o in percentuale del testo riscritto deve stare anche nella bozza:
+    /// se il modello ne inventa una, si tiene la bozza.
+    static func numeriConservati(bozza: String, testo: String) -> Bool {
+        // Cifre in parole ("55 mila euro", "due milioni"): non si possono controllare, si tiene la bozza
+        if testo.range(of: #"\d\s*(mila|milion|miliard)|\b(mille|milioni|miliardi)\b"#, options: [.regularExpression, .caseInsensitive]) != nil { return false }
+        return cifre(testo).isSubset(of: cifre(bozza))
+    }
+
+    /// Tutti i numeri di un testo con il loro segno ("−4,5", "50.000", "2026"), comunque scritti:
+    /// "€ 50.000", "50.000 €" e "50.000 euro" danno lo stesso numero.
+    static func cifre(_ s: String) -> Set<String> {
+        guard let re = try? NSRegularExpression(pattern: "([+\\-−]\\s?)?[0-9][0-9.,]*") else { return [] }
+        let r = NSRange(s.startIndex..., in: s)
+        return Set(re.matches(in: s, range: r).compactMap { m in
+            Range(m.range, in: s).map {
+                s[$0].replacingOccurrences(of: " ", with: "").replacingOccurrences(of: "−", with: "-").replacingOccurrences(of: "+", with: "")
+                    .trimmingCharacters(in: CharacterSet(charactersIn: ".,"))
+            }
+        })
+    }
+
+    private static func primoNome(_ nome: String) -> String {
+        // "Marco ed Elena Bianchi" → "Marco ed Elena"; "Giulia Rossi" → "Giulia"
+        let parole = nome.split(separator: " ").map(String.init)
+        if let i = parole.firstIndex(where: { $0 == "e" || $0 == "ed" }), i + 1 < parole.count {
+            return parole[0...(i + 1)].joined(separator: " ")
+        }
+        return parole.first ?? nome
+    }
+
+    /// "protezione della famiglia: Valutare un capitale" → "…: valutare un capitale" (le sigle restano).
+    private static func dopoDuePunti(_ s: String) -> String {
+        guard let r = s.range(of: ": ") else { return s }
+        return String(s[..<r.upperBound]) + minuscola(String(s[r.upperBound...]))
+    }
+
+    private static func minuscola(_ s: String) -> String {
+        guard let primo = s.first else { return s }
+        // Lascia la maiuscola ai nomi propri e alle sigle ("INPS", "Fondo …")
+        let seconda = s.dropFirst().first
+        if seconda.map({ $0.isUppercase }) == true { return s }
+        return primo.lowercased() + s.dropFirst()
+    }
+}

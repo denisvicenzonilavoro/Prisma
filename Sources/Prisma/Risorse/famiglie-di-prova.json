@@ -1,0 +1,702 @@
+{
+ "formato": "prisma-famiglie",
+ "versione": 1,
+ "diProva": true,
+ "fonte": "DATI DI PROVA - valori segnaposto, non sono statistiche vere",
+ "licenza": "Nessuna: file di prova scritto a mano per Prisma, senza dati di nessuna indagine.",
+ "note": "ATTENZIONE: tutti i numeri di questo file sono segnaposto tondi e uguali in ogni cella, scritti solo per provare il formato e il caricamento. Non descrivono nessuna famiglia reale. Per il confronto vero carica da Impostazioni le tabelle preparate dalla fonte ufficiale (vedi Design/famiglie-formato.md).",
+ "sogliaFamiglie": 30,
+ "descrizioni": {
+  "tassoRisparmio": "PROVA - risparmio annuo in percentuale del reddito familiare netto",
+  "ricchezzaFinanziaria": "PROVA - attività finanziarie della famiglia, in euro",
+  "protezione": "PROVA - quota delle famiglie con almeno una polizza vita o danni, in percentuale",
+  "previdenzaComplementare": "PROVA - quota delle famiglie con almeno un iscritto alla previdenza complementare, in percentuale"
+ },
+ "classiEta": [
+  {
+   "id": "e1",
+   "nome": "fino a 34 anni",
+   "a": 34
+  },
+  {
+   "id": "e2",
+   "nome": "35-44 anni",
+   "da": 35,
+   "a": 44
+  },
+  {
+   "id": "e3",
+   "nome": "45-54 anni",
+   "da": 45,
+   "a": 54
+  },
+  {
+   "id": "e4",
+   "nome": "55-64 anni",
+   "da": 55,
+   "a": 64
+  },
+  {
+   "id": "e5",
+   "nome": "65 anni e più",
+   "da": 65
+  }
+ ],
+ "classiReddito": [
+  {
+   "id": "r1",
+   "nome": "primo quinto (prova)",
+   "a": 10000
+  },
+  {
+   "id": "r2",
+   "nome": "secondo quinto (prova)",
+   "da": 10000,
+   "a": 20000
+  },
+  {
+   "id": "r3",
+   "nome": "terzo quinto (prova)",
+   "da": 20000,
+   "a": 30000
+  },
+  {
+   "id": "r4",
+   "nome": "quarto quinto (prova)",
+   "da": 30000,
+   "a": 40000
+  },
+  {
+   "id": "r5",
+   "nome": "quinto quinto (prova)",
+   "da": 40000
+  }
+ ],
+ "celle": [
+  {
+   "eta": "e1",
+   "reddito": "r1",
+   "famiglie": 10,
+   "tassoRisparmio": {
+    "p10": 0,
+    "p25": 10,
+    "p50": 20,
+    "p75": 30,
+    "p90": 40
+   },
+   "ricchezzaFinanziaria": {
+    "p10": 10000,
+    "p25": 20000,
+    "p50": 50000,
+    "p75": 100000,
+    "p90": 200000
+   },
+   "protezione": {
+    "quota": 50
+   },
+   "previdenzaComplementare": {
+    "quota": 50
+   }
+  },
+  {
+   "eta": "e1",
+   "reddito": "r2",
+   "famiglie": 100,
+   "tassoRisparmio": {
+    "p10": 0,
+    "p25": 10,
+    "p50": 20,
+    "p75": 30,
+    "p90": 40
+   },
+   "ricchezzaFinanziaria": {
+    "p10": 10000,
+    "p25": 20000,
+    "p50": 50000,
+    "p75": 100000,
+    "p90": 200000
+   },
+   "protezione": {
+    "quota": 50
+   },
+   "previdenzaComplementare": {
+    "quota": 50
+   }
+  },
+  {
+   "eta": "e1",
+   "reddito": "r3",
+   "famiglie": 100,
+   "tassoRisparmio": {
+    "p10": 0,
+    "p25": 10,
+    "p50": 20,
+    "p75": 30,
+    "p90": 40
+   },
+   "ricchezzaFinanziaria": {
+    "p10": 10000,
+    "p25": 20000,
+    "p50": 50000,
+    "p75": 100000,
+    "p90": 200000
+   },
+   "protezione": {
+    "quota": 50
+   },
+   "previdenzaComplementare": {
+    "quota": 50
+   }
+  },
+  {
+   "eta": "e1",
+   "reddito": "r4",
+   "famiglie": 100,
+   "tassoRisparmio": {
+    "p10": 0,
+    "p25": 10,
+    "p50": 20,
+    "p75": 30,
+    "p90": 40
+   },
+   "ricchezzaFinanziaria": {
+    "p10": 10000,
+    "p25": 20000,
+    "p50": 50000,
+    "p75": 100000,
+    "p90": 200000
+   },
+   "protezione": {
+    "quota": 50
+   },
+   "previdenzaComplementare": {
+    "quota": 50
+   }
+  },
+  {
+   "eta": "e1",
+   "reddito": "r5",
+   "famiglie": 100,
+   "tassoRisparmio": {
+    "p10": 0,
+    "p25": 10,
+    "p50": 20,
+    "p75": 30,
+    "p90": 40
+   },
+   "ricchezzaFinanziaria": {
+    "p10": 10000,
+    "p25": 20000,
+    "p50": 50000,
+    "p75": 100000,
+    "p90": 200000
+   },
+   "protezione": {
+    "quota": 50
+   },
+   "previdenzaComplementare": {
+    "quota": 50
+   }
+  },
+  {
+   "eta": "e2",
+   "reddito": "r1",
+   "famiglie": 100,
+   "tassoRisparmio": {
+    "p10": 0,
+    "p25": 10,
+    "p50": 20,
+    "p75": 30,
+    "p90": 40
+   },
+   "ricchezzaFinanziaria": {
+    "p10": 10000,
+    "p25": 20000,
+    "p50": 50000,
+    "p75": 100000,
+    "p90": 200000
+   },
+   "protezione": {
+    "quota": 50
+   },
+   "previdenzaComplementare": {
+    "quota": 50
+   }
+  },
+  {
+   "eta": "e2",
+   "reddito": "r2",
+   "famiglie": 100,
+   "tassoRisparmio": {
+    "p10": 0,
+    "p25": 10,
+    "p50": 20,
+    "p75": 30,
+    "p90": 40
+   },
+   "ricchezzaFinanziaria": {
+    "p10": 10000,
+    "p25": 20000,
+    "p50": 50000,
+    "p75": 100000,
+    "p90": 200000
+   },
+   "protezione": {
+    "quota": 50
+   },
+   "previdenzaComplementare": {
+    "quota": 50
+   }
+  },
+  {
+   "eta": "e2",
+   "reddito": "r3",
+   "famiglie": 100,
+   "tassoRisparmio": {
+    "p10": 0,
+    "p25": 10,
+    "p50": 20,
+    "p75": 30,
+    "p90": 40
+   },
+   "ricchezzaFinanziaria": {
+    "p10": 10000,
+    "p25": 20000,
+    "p50": 50000,
+    "p75": 100000,
+    "p90": 200000
+   },
+   "protezione": {
+    "quota": 50
+   },
+   "previdenzaComplementare": {
+    "quota": 50
+   }
+  },
+  {
+   "eta": "e2",
+   "reddito": "r4",
+   "famiglie": 100,
+   "tassoRisparmio": {
+    "p10": 0,
+    "p25": 10,
+    "p50": 20,
+    "p75": 30,
+    "p90": 40
+   },
+   "ricchezzaFinanziaria": {
+    "p10": 10000,
+    "p25": 20000,
+    "p50": 50000,
+    "p75": 100000,
+    "p90": 200000
+   },
+   "protezione": {
+    "quota": 50
+   },
+   "previdenzaComplementare": {
+    "quota": 50
+   }
+  },
+  {
+   "eta": "e2",
+   "reddito": "r5",
+   "famiglie": 100,
+   "tassoRisparmio": {
+    "p10": 0,
+    "p25": 10,
+    "p50": 20,
+    "p75": 30,
+    "p90": 40
+   },
+   "ricchezzaFinanziaria": {
+    "p10": 10000,
+    "p25": 20000,
+    "p50": 50000,
+    "p75": 100000,
+    "p90": 200000
+   },
+   "protezione": {
+    "quota": 50
+   },
+   "previdenzaComplementare": {
+    "quota": 50
+   }
+  },
+  {
+   "eta": "e3",
+   "reddito": "r1",
+   "famiglie": 100,
+   "tassoRisparmio": {
+    "p10": 0,
+    "p25": 10,
+    "p50": 20,
+    "p75": 30,
+    "p90": 40
+   },
+   "ricchezzaFinanziaria": {
+    "p10": 10000,
+    "p25": 20000,
+    "p50": 50000,
+    "p75": 100000,
+    "p90": 200000
+   },
+   "protezione": {
+    "quota": 50
+   },
+   "previdenzaComplementare": {
+    "quota": 50
+   }
+  },
+  {
+   "eta": "e3",
+   "reddito": "r2",
+   "famiglie": 100,
+   "tassoRisparmio": {
+    "p10": 0,
+    "p25": 10,
+    "p50": 20,
+    "p75": 30,
+    "p90": 40
+   },
+   "ricchezzaFinanziaria": {
+    "p10": 10000,
+    "p25": 20000,
+    "p50": 50000,
+    "p75": 100000,
+    "p90": 200000
+   },
+   "protezione": {
+    "quota": 50
+   },
+   "previdenzaComplementare": {
+    "quota": 50
+   }
+  },
+  {
+   "eta": "e3",
+   "reddito": "r3",
+   "famiglie": 100,
+   "tassoRisparmio": {
+    "p10": 0,
+    "p25": 10,
+    "p50": 20,
+    "p75": 30,
+    "p90": 40
+   },
+   "ricchezzaFinanziaria": {
+    "p10": 10000,
+    "p25": 20000,
+    "p50": 50000,
+    "p75": 100000,
+    "p90": 200000
+   },
+   "protezione": {
+    "quota": 50
+   },
+   "previdenzaComplementare": {
+    "quota": 50
+   }
+  },
+  {
+   "eta": "e3",
+   "reddito": "r4",
+   "famiglie": 100,
+   "tassoRisparmio": {
+    "p10": 0,
+    "p25": 10,
+    "p50": 20,
+    "p75": 30,
+    "p90": 40
+   },
+   "ricchezzaFinanziaria": {
+    "p10": 10000,
+    "p25": 20000,
+    "p50": 50000,
+    "p75": 100000,
+    "p90": 200000
+   },
+   "protezione": {
+    "quota": 50
+   },
+   "previdenzaComplementare": {
+    "quota": 50
+   }
+  },
+  {
+   "eta": "e3",
+   "reddito": "r5",
+   "famiglie": 100,
+   "tassoRisparmio": {
+    "p10": 0,
+    "p25": 10,
+    "p50": 20,
+    "p75": 30,
+    "p90": 40
+   },
+   "ricchezzaFinanziaria": {
+    "p10": 10000,
+    "p25": 20000,
+    "p50": 50000,
+    "p75": 100000,
+    "p90": 200000
+   },
+   "protezione": {
+    "quota": 50
+   },
+   "previdenzaComplementare": {
+    "quota": 50
+   }
+  },
+  {
+   "eta": "e4",
+   "reddito": "r1",
+   "famiglie": 100,
+   "tassoRisparmio": {
+    "p10": 0,
+    "p25": 10,
+    "p50": 20,
+    "p75": 30,
+    "p90": 40
+   },
+   "ricchezzaFinanziaria": {
+    "p10": 10000,
+    "p25": 20000,
+    "p50": 50000,
+    "p75": 100000,
+    "p90": 200000
+   },
+   "protezione": {
+    "quota": 50
+   },
+   "previdenzaComplementare": {
+    "quota": 50
+   }
+  },
+  {
+   "eta": "e4",
+   "reddito": "r2",
+   "famiglie": 100,
+   "tassoRisparmio": {
+    "p10": 0,
+    "p25": 10,
+    "p50": 20,
+    "p75": 30,
+    "p90": 40
+   },
+   "ricchezzaFinanziaria": {
+    "p10": 10000,
+    "p25": 20000,
+    "p50": 50000,
+    "p75": 100000,
+    "p90": 200000
+   },
+   "protezione": {
+    "quota": 50
+   },
+   "previdenzaComplementare": {
+    "quota": 50
+   }
+  },
+  {
+   "eta": "e4",
+   "reddito": "r3",
+   "famiglie": 100,
+   "tassoRisparmio": {
+    "p10": 0,
+    "p25": 10,
+    "p50": 20,
+    "p75": 30,
+    "p90": 40
+   },
+   "ricchezzaFinanziaria": {
+    "p10": 10000,
+    "p25": 20000,
+    "p50": 50000,
+    "p75": 100000,
+    "p90": 200000
+   },
+   "protezione": {
+    "quota": 50
+   },
+   "previdenzaComplementare": {
+    "quota": 50
+   }
+  },
+  {
+   "eta": "e4",
+   "reddito": "r4",
+   "famiglie": 100,
+   "tassoRisparmio": {
+    "p10": 0,
+    "p25": 10,
+    "p50": 20,
+    "p75": 30,
+    "p90": 40
+   },
+   "ricchezzaFinanziaria": {
+    "p10": 10000,
+    "p25": 20000,
+    "p50": 50000,
+    "p75": 100000,
+    "p90": 200000
+   },
+   "protezione": {
+    "quota": 50
+   },
+   "previdenzaComplementare": {
+    "quota": 50
+   }
+  },
+  {
+   "eta": "e4",
+   "reddito": "r5",
+   "famiglie": 100,
+   "tassoRisparmio": {
+    "p10": 0,
+    "p25": 10,
+    "p50": 20,
+    "p75": 30,
+    "p90": 40
+   },
+   "ricchezzaFinanziaria": {
+    "p10": 10000,
+    "p25": 20000,
+    "p50": 50000,
+    "p75": 100000,
+    "p90": 200000
+   },
+   "protezione": {
+    "quota": 50
+   },
+   "previdenzaComplementare": {
+    "quota": 50
+   }
+  },
+  {
+   "eta": "e5",
+   "reddito": "r1",
+   "famiglie": 100,
+   "tassoRisparmio": {
+    "p10": 0,
+    "p25": 10,
+    "p50": 20,
+    "p75": 30,
+    "p90": 40
+   },
+   "ricchezzaFinanziaria": {
+    "p10": 10000,
+    "p25": 20000,
+    "p50": 50000,
+    "p75": 100000,
+    "p90": 200000
+   },
+   "protezione": {
+    "quota": 50
+   },
+   "previdenzaComplementare": {
+    "quota": 50
+   }
+  },
+  {
+   "eta": "e5",
+   "reddito": "r2",
+   "famiglie": 100,
+   "tassoRisparmio": {
+    "p10": 0,
+    "p25": 10,
+    "p50": 20,
+    "p75": 30,
+    "p90": 40
+   },
+   "ricchezzaFinanziaria": {
+    "p10": 10000,
+    "p25": 20000,
+    "p50": 50000,
+    "p75": 100000,
+    "p90": 200000
+   },
+   "protezione": {
+    "quota": 50
+   },
+   "previdenzaComplementare": {
+    "quota": 50
+   }
+  },
+  {
+   "eta": "e5",
+   "reddito": "r3",
+   "famiglie": 100,
+   "tassoRisparmio": {
+    "p10": 0,
+    "p25": 10,
+    "p50": 20,
+    "p75": 30,
+    "p90": 40
+   },
+   "ricchezzaFinanziaria": {
+    "p10": 10000,
+    "p25": 20000,
+    "p50": 50000,
+    "p75": 100000,
+    "p90": 200000
+   },
+   "protezione": {
+    "quota": 50
+   },
+   "previdenzaComplementare": {
+    "quota": 50
+   }
+  },
+  {
+   "eta": "e5",
+   "reddito": "r4",
+   "famiglie": 100,
+   "tassoRisparmio": {
+    "p10": 0,
+    "p25": 10,
+    "p50": 20,
+    "p75": 30,
+    "p90": 40
+   },
+   "ricchezzaFinanziaria": {
+    "p10": 10000,
+    "p25": 20000,
+    "p50": 50000,
+    "p75": 100000,
+    "p90": 200000
+   },
+   "protezione": {
+    "quota": 50
+   },
+   "previdenzaComplementare": {
+    "quota": 50
+   }
+  },
+  {
+   "eta": "e5",
+   "reddito": "r5",
+   "famiglie": 100,
+   "tassoRisparmio": {
+    "p10": 0,
+    "p25": 10,
+    "p50": 20,
+    "p75": 30,
+    "p90": 40
+   },
+   "ricchezzaFinanziaria": {
+    "p10": 10000,
+    "p25": 20000,
+    "p50": 50000,
+    "p75": 100000,
+    "p90": 200000
+   },
+   "protezione": {
+    "quota": 50
+   },
+   "previdenzaComplementare": {
+    "quota": 50
+   }
+  }
+ ]
+}

@@ -1,0 +1,25 @@
+{
+  "version": "2.0",
+  "class": "dataset",
+  "label": "HICP - monthly data (annual rate of change)",
+  "source": "ESTAT",
+  "updated": "2026-10-31T11:00:00+0100",
+  "value": { "0": 1.6, "1": 1.7, "2": 1.2, "3": 1.3 },
+  "status": { "3": "p" },
+  "id": ["freq", "unit", "coicop", "geo", "time"],
+  "size": [1, 1, 1, 1, 4],
+  "dimension": {
+    "freq": { "label": "Time frequency", "category": { "index": { "M": 0 }, "label": { "M": "Monthly" } } },
+    "unit": { "label": "Unit of measure", "category": { "index": { "RCH_A": 0 }, "label": { "RCH_A": "Annual rate of change" } } },
+    "coicop": { "label": "Classification of individual consumption by purpose (COICOP)", "category": { "index": { "CP00": 0 }, "label": { "CP00": "All-items HICP" } } },
+    "geo": { "label": "Geopolitical entity (reporting)", "category": { "index": { "IT": 0 }, "label": { "IT": "Italy" } } },
+    "time": {
+      "label": "Time",
+      "category": {
+        "index": { "2026-06": 0, "2026-07": 1, "2026-08": 2, "2026-09": 3 },
+        "label": { "2026-06": "2026-06", "2026-07": "2026-07", "2026-08": "2026-08", "2026-09": "2026-09" }
+      }
+    }
+  },
+  "extension": { "lang": "EN", "id": "PRC_HICP_MANR", "status": { "label": { "p": "provisional" } } }
+}

@@ -1,0 +1,57 @@
+{
+  "title": "Scenario «E se…?»",
+  "description": "I parametri di uno scenario su un cliente, estratti da Qwen dalla frase del consulente (Ruby/Istruzioni/scenari.md). Lo schema va a Ollama nel campo «format»: la risposta è sempre un oggetto JSON con questi campi. I numeri li calcola Prisma (MotoreScenari), mai il modello.",
+  "type": "object",
+  "properties": {
+    "scenario": {
+      "type": "boolean",
+      "description": "true se la frase chiede cosa succederebbe a un cliente se cambiasse qualcosa"
+    },
+    "cliente": {
+      "type": "string",
+      "description": "Il cliente come è scritto nella frase (nome, cognome o tutti e due); vuoto se non è nominato"
+    },
+    "area": {
+      "type": "string",
+      "enum": ["previdenza", "investimenti", "risparmio", "protezione", "nessuna"],
+      "description": "L'area dell'analisi che lo scenario cambia; «nessuna» se non si capisce"
+    },
+    "etaPensione": {
+      "type": "integer",
+      "description": "L'età, in anni, a cui il cliente va in pensione nello scenario"
+    },
+    "versamentoMensile": {
+      "type": "number",
+      "description": "Il nuovo versamento al mese, in euro"
+    },
+    "variazioneVersamento": {
+      "type": "number",
+      "description": "Di quanto cambia il versamento al mese, in euro (positivo in più, negativo in meno), se la frase non dice il nuovo valore"
+    },
+    "smetteDiVersare": {
+      "type": "boolean",
+      "description": "true se il cliente smette di versare o mette in pausa i versamenti"
+    },
+    "capitale": {
+      "type": "number",
+      "description": "Un capitale in più (positivo) o in meno (negativo), in euro; in protezione il capitale caso morte in più o in meno"
+    },
+    "rendimento": {
+      "type": "number",
+      "description": "Il rendimento annuo ipotizzato, in percentuale"
+    },
+    "durata": {
+      "type": "integer",
+      "description": "Gli anni dell'orizzonte (in protezione gli anni di sostegno alla famiglia)"
+    },
+    "mancanti": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["cliente", "area", "cambiamento"]
+      },
+      "description": "I dati indispensabili che mancano per fare il conto"
+    }
+  },
+  "required": ["scenario", "cliente", "area", "smetteDiVersare", "mancanti"]
+}

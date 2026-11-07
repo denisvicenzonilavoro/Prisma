@@ -1,0 +1,381 @@
+#if os(macOS)
+import AppKit
+#endif
+import SwiftUI
+import UniformTypeIdentifiers
+
+/// App Documenti (.os-app-documents), rifatta nel giro 5 come un Finder con l'Anteprima: a sinistra le raccolte, i tipi
+/// e i canali; al centro l'elenco a gruppi con lo stato di ogni documento; a destra il foglio accanto a una scheda
+/// leggibile, con le azioni in alto e il confronto «Nel documento / In Prisma». Tutto si legge sul Mac (PDFKit, Vision).
+struct AppDocumenti: View {
+    @EnvironmentObject var stato: StatoShell
+    /// La ricerca è della vista: scrivere non ridisegna le altre finestre.
+    @State private var ricerca = ""
+    @State private var daEliminare: Documento?
+    /// Il pannello di sistema per scegliere i file da importare su iPhone e iPad (File, iCloud Drive).
+    @State private var sceltaFile = false
+
+    private var cliente: String { stato.clienteAttivoId }
+
+    private var filtro: MotoreDocumenti.Filtro {
+        var f = MotoreDocumenti.Filtro()
+        f.raccolta = stato.vistaDocumenti.raccolta
+        f.categoria = stato.vistaDocumenti.categoria
+        f.canale = stato.vistaDocumenti.canale
+        f.testo = ricerca
+        return f
+    }
+
+    private var filtroAttivo: Bool {
+        let v = stato.vistaDocumenti
+        let conFiltri: Bool = v.raccolta != .tutti || v.categoria != nil || v.canale != nil
+        let conRicerca: Bool = !ricerca.trimmingCharacters(in: .whitespaces).isEmpty
+        return conFiltri || conRicerca
+    }
+
+    /// I gruppi dell'elenco. Il testo dei documenti si legge dal disco senza tenerlo in memoria, e solo se serve.
+    private func raggruppa(_ voci: [MotoreDocumenti.Voce]) -> [MotoreDocumenti.Gruppo] {
+        MotoreDocumenti.elenco(voci, filtro: filtro, pagine: { stato.testoDocumento($0, memorizza: false) })
+    }
+
+    var body: some View {
+        let voci = stato.vociDocumenti(cliente)
+        let gruppi = raggruppa(voci)
+        let mostrate = gruppi.flatMap { $0.voci.map(\.voce) }
+        // Il documento scelto se è tra quelli mostrati, altrimenti il primo: documentoSelezionato non si riscrive
+        let scelta = mostrate.first { $0.id == stato.documentoSelezionato } ?? mostrate.first
+        let nome = stato.clienteAttivo?.nome ?? "questo cliente"
+        CorniceStrumento(
+            notaStato: ImportaDocumenti.notaStato,
+            notaDestra: voci.count == 1 ? "1 documento di \(nome)" : "\(voci.count) documenti di \(nome)"
+        ) {
+            rail(voci)
+        } contenuto: {
+            if voci.isEmpty {
+                VuotoDocumenti(nome: nome, importa: importa)
+            } else {
+                ColonneAffiancate(larghezza: Misure.ColonneStrumento.elenco) {
+                    ElencoDocumenti(gruppi: gruppi, scelta: scelta?.id, totale: voci.count, ricerca: $ricerca,
+                                    filtrato: filtroAttivo, importa: importa, mostraTutti: mostraTutti, elimina: chiedi)
+                        .entrataCascata(0, base: Tema.Apple.Moto.Cascata.baseDentroApp)
+                } flessibile: {
+                    if let v = scelta {
+                        DettaglioDocumento(voce: v, chiediEliminazione: chiedi)
+                            .entrataCascata(1, base: Tema.Apple.Moto.Cascata.baseDentroApp, sfocatura: false)
+                    } else {
+                        Text("Nessun documento con questi filtri")
+                            .font(Tema.Apple.AltreApp.corpoPiccolo.fontLeggibile)
+                            .foregroundColor(Tema.Apple.Colore.inchiostro2)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                }
+            }
+        }
+        // Tema Apple: barra laterale `.side`, card piatta, pulsanti, tendine ed etichette del canale
+        .altreAppApple()
+        .gestioneDocumenti(nome: nome, scelta: $sceltaFile, daEliminare: $daEliminare, allinea: allinea)
+    }
+
+    /// Un documento scelto da fuori (⌘K, notifiche, Ruby, Prodotti) che i filtri nasconderebbero: i filtri tornano a
+    /// «Tutti» e la ricerca si svuota, così si vede nell'elenco.
+    private func allinea() {
+        guard let id = stato.documentoSelezionato, let d = stato.documento(id), d.clienteId == cliente else { return }
+        let visibili = raggruppa(stato.vociDocumenti(cliente)).flatMap { $0.voci.map(\.id) }
+        guard !visibili.contains(id) else { return }
+        mostraTutti()
+    }
+
+    private func mostraTutti() {
+        stato.vistaDocumenti.raccolta = .tutti
+        stato.vistaDocumenti.categoria = nil
+        stato.vistaDocumenti.canale = nil
+        ricerca = ""
+    }
+
+    private func chiedi(_ d: Documento) {
+        daEliminare = d
+    }
+
+    /// Sul Mac il pannello dei file; su iPhone e iPad il `.fileImporter` di `gestioneDocumenti`.
+    private func importa() {
+        ImportaDocumenti.scegli(stato, scelta: $sceltaFile)
+    }
+
+    // MARK: - Barra laterale
+
+    @ViewBuilder private func rail(_ voci: [MotoreDocumenti.Voce]) -> some View {
+        let conti = MotoreDocumenti.conteggi(voci)
+        let vista = stato.vistaDocumenti
+        DossierRail()
+        EtichettaRail(testo: "Raccolte")
+        ForEach(RaccoltaDocumenti.allCases) { r in
+            VoceNavigazione(titolo: r.nome, conteggio: conti.raccolte[r], attiva: vista.raccolta == r) {
+                stato.vistaDocumenti.raccolta = r
+            }
+        }
+        EtichettaRail(testo: "Tipi")
+        VoceNavigazione(titolo: "Tutti i tipi", attiva: vista.categoria == nil) {
+            stato.vistaDocumenti.categoria = nil
+        }
+        ForEach(CategoriaDocumento.ordine.filter { (conti.categorie[$0] ?? 0) > 0 }) { c in
+            VoceNavigazione(titolo: c.breve, conteggio: conti.categorie[c], attiva: vista.categoria == c) {
+                stato.vistaDocumenti.categoria = c
+            }
+        }
+        EtichettaRail(testo: "Canale")
+        ForEach(Canale.allCases) { c in
+            // Un secondo clic toglie il filtro
+            VoceNavigazione(titolo: c.nomeBreve,
+                            colore: c == .alleanza ? Tema.Apple.Colore.canaleAlleanza : Tema.Apple.Colore.canaleIndipendente,
+                            conteggio: conti.canali[c], attiva: vista.canale == c) {
+                stato.vistaDocumenti.canale = stato.vistaDocumenti.canale == c ? nil : c
+            }
+        }
+        CollegatiRail(app: [.posizioni, .prodotti, .ruby])
+    }
+}
+
+// MARK: - Elenco
+
+/// L'elenco dei documenti del cliente: ricerca e «+» in testata, gruppi per tipo, righe con stato e collegamento,
+/// frecce ↑ ↓ e ⌫ da tastiera, piede con il conteggio.
+struct ElencoDocumenti: View {
+    @EnvironmentObject var stato: StatoShell
+    let gruppi: [MotoreDocumenti.Gruppo]
+    let scelta: String?
+    let totale: Int
+    @Binding var ricerca: String
+    let filtrato: Bool
+    let importa: () -> Void
+    let mostraTutti: () -> Void
+    let elimina: (Documento) -> Void
+    /// Nella scheda del cliente: stringe l'elenco alle sole tessere, per lasciare spazio al documento.
+    var comprimi: (() -> Void)? = nil
+
+    var body: some View {
+        let m = Tema.Misura.Documenti.self
+        let mostrate = gruppi.flatMap(\.voci)
+        VStack(spacing: 0) {
+            HStack(spacing: Misure.ColonneStrumento.spazioTestata) {
+                CampoRicerca(testo: $ricerca, segnaposto: "Cerca nei documenti")
+                PulsanteIcona(simbolo: "plus", aiuto: "Aggiungi documenti (anche trascinandoli qui)", azione: importa)
+                if let comprimi {
+                    PulsanteIcona(simbolo: "sidebar.left", aiuto: "Stringi l'elenco: più spazio al documento", azione: comprimi)
+                }
+            }
+            .testataColonna()
+            if mostrate.isEmpty {
+                VStack(spacing: m.spazioNessuno) {
+                    Text("Nessun documento con questi filtri")
+                        .font(Tema.Apple.AltreApp.corpoPiccolo.fontLeggibile)
+                        .foregroundColor(Tema.Apple.Colore.inchiostro2)
+                        .multilineTextAlignment(.center)
+                    Button(action: mostraTutti) { Label("Mostra tutti", systemImage: "line.3.horizontal.decrease.circle") }
+                        .buttonStyle(StileVetro())
+                        .fixedSize()
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(Array(gruppi.enumerated()), id: \.element.id) { i, g in
+                            // Nella scheda del cliente i gruppi dei prodotti stanno sotto una sezione comune
+                            if let sezione = g.sezione {
+                                if i == 0 || gruppi[i - 1].sezione != sezione {
+                                    TestataGruppoDocumenti(titolo: sezione,
+                                                           conteggio: gruppi.filter { $0.sezione == sezione }.reduce(0) { $0 + $1.voci.count })
+                                }
+                                TestataProdottoDocumenti(titolo: g.titolo ?? g.categoria.nome, canale: g.canale, conteggio: g.voci.count)
+                            } else {
+                                TestataGruppoDocumenti(titolo: g.titolo ?? g.categoria.nome, conteggio: g.voci.count)
+                            }
+                            ForEach(g.voci) { t in riga(t) }
+                        }
+                    }
+                    .padding(.vertical, Tema.Misura.Strumenti.margineElenco)
+                }
+                #if os(macOS)
+                .focusable()
+                .onMoveCommand { direzione in muovi(direzione, mostrate) }
+                .onDeleteCommand {
+                    if !stato.solaLettura, let v = mostrate.first(where: { $0.id == scelta }) { elimina(v.voce.documento) }
+                }
+                #endif
+            }
+            Text(piede(mostrate.count))
+                .font(Tema.Apple.AltreApp.nota.fontLeggibile)
+                .foregroundColor(Colori.ColonneStrumento.piedeTesto)
+                .lineLimit(1)
+                .piedeColonna()
+        }
+    }
+
+    private func piede(_ n: Int) -> String {
+        if filtrato { return "\(n) di \(totale) \(totale == 1 ? "documento" : "documenti")" }
+        return "\(n) \(n == 1 ? "documento" : "documenti") · trascina qui per aggiungerne"
+    }
+
+    private func riga(_ t: MotoreDocumenti.VoceTrovata) -> some View {
+        let d = t.voce.documento
+        let file = stato.urlDocumento(d).flatMap { FileManager.default.fileExists(atPath: $0.path) ? $0 : nil }
+        return Button {
+            stato.documentoSelezionato = d.id
+        } label: {
+            RigaDocumento(voce: t.voce, nelTesto: t.nelTesto, attiva: t.id == scelta,
+                          daLeggere: MotoreDocumenti.appartiene(t.voce, a: .daLeggere))
+        }
+        .buttonStyle(StileSemplice())
+        .contextMenu {
+            #if os(macOS)
+            Button("Apri in Anteprima") { if let file { ApriFile.apri(file) } }
+                .disabled(file == nil)
+            Button("Mostra nel Finder") { stato.mostraNelFinder(d) }
+                .disabled(file == nil)
+            #elseif os(iOS)
+            // Su iPhone e iPad: condivisione (AirDrop, Mail, Salva su File) e stampa con AirPrint
+            if let file {
+                Button { StampaCarta.condividi(file, nome: d.titolo) } label: {
+                    Label("Condividi…", systemImage: "square.and.arrow.up")
+                }
+                Button { StampaCarta.stampa(file: file) } label: { Label("Stampa…", systemImage: "printer") }
+            }
+            #endif
+            Button("Rileggi") {
+                TestiRinviati.scriviOra()
+                stato.leggiDocumento(d.id)
+            }
+            .disabled(file == nil || d.tipo.creatoDaPrisma || stato.solaLettura || stato.documentiInLettura.contains(d.id))
+            Button("Apri con Ruby") {
+                TestiRinviati.scriviOra()
+                stato.spiegaDocumentoConRuby(d.id)
+            }
+            .disabled(d.tipo.creatoDaPrisma || stato.rubyInCorso || stato.documentiInLettura.contains(d.id))
+            Divider()
+            Button("Elimina…") { elimina(d) }
+                .disabled(stato.solaLettura)
+        }
+        // Trascinato nel Finder o in Mail: il file del documento
+        .onDrag { file.flatMap { NSItemProvider(contentsOf: $0) } ?? NSItemProvider() }
+    }
+
+    #if os(macOS)
+    private func muovi(_ direzione: MoveCommandDirection, _ elenco: [MotoreDocumenti.VoceTrovata]) {
+        guard !elenco.isEmpty else { return }
+        let i = elenco.firstIndex { $0.id == scelta } ?? 0
+        switch direzione {
+        case .up: stato.documentoSelezionato = elenco[max(i - 1, 0)].id
+        case .down: stato.documentoSelezionato = elenco[min(i + 1, elenco.count - 1)].id
+        default: break
+        }
+    }
+    #endif
+}
+
+#if os(iOS)
+/// I documenti che arrivano da fuori su iPhone e iPad: dal pannello `.fileImporter` (file con accesso a tempo, anche su
+/// iCloud Drive non ancora scaricati) o trascinati sull'app (rappresentazioni temporanee). In entrambi i casi si fa
+/// prima una copia locale in tmp/, poi Prisma la copia nel suo archivio (`aggiungiDocumenti`) e la copia locale
+/// si cancella subito: i documenti dei clienti non restano in giro.
+enum ImportaDocumentiMobile {
+    /// I tipi del pannello di scelta: quelli che Prisma sa leggere (`LetturaDocumenti.estensioniAccettate`).
+    static let tipiScelta: [UTType] = [.pdf, .png, .jpeg, .tiff, .heic]
+    /// I tipi accettati nel trascinamento: PDF e qualunque immagine (i formati non letti li segnala `aggiungiDocumenti`).
+    static let tipiRilascio: [UTType] = [.pdf, .image]
+
+    /// Una cartella nuova per ogni importazione, sotto tmp/documenti-in-arrivo.
+    private static func nuovaCartella() -> URL? {
+        let cartella = FileManager.default.temporaryDirectory
+            .appendingPathComponent("documenti-in-arrivo", isDirectory: true)
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        do {
+            try FileManager.default.createDirectory(at: cartella, withIntermediateDirectories: true)
+            return cartella
+        } catch {
+            return nil
+        }
+    }
+
+    /// I file scelti con il pannello: accesso a tempo, lettura coordinata (scarica da iCloud Drive se serve),
+    /// copia locale fuori dal thread principale; poi `aggiungi` sul thread principale e pulizia.
+    static func importa(_ urls: [URL], avviso: @escaping (String) -> Void, aggiungi: @escaping ([URL]) -> Void) {
+        guard !urls.isEmpty, let cartella = Self.nuovaCartella() else { return }
+        DispatchQueue.global(qos: .userInitiated).async {
+            var copie: [URL] = []
+            var mancati: [String] = []
+            for url in urls {
+                // `false` per i file già copiati dal sistema: non è un errore
+                let accesso = url.startAccessingSecurityScopedResource()
+                defer { if accesso { url.stopAccessingSecurityScopedResource() } }
+                var erroreCoordinamento: NSError?
+                var copia: URL?
+                NSFileCoordinator().coordinate(readingItemAt: url, options: .withoutChanges,
+                                               error: &erroreCoordinamento) { letto in
+                    copia = Self.copiaLocale(letto, nome: url.lastPathComponent, in: cartella)
+                }
+                if let copia { copie.append(copia) } else { mancati.append(url.lastPathComponent) }
+            }
+            let pronte = copie
+            let saltati = mancati
+            DispatchQueue.main.async {
+                if !pronte.isEmpty { aggiungi(pronte) }
+                if let primo = saltati.first {
+                    avviso(saltati.count == 1 ? "Non riesco a leggere \(primo)" : "Non riesco a leggere \(saltati.count) file")
+                }
+                try? FileManager.default.removeItem(at: cartella)
+            }
+        }
+    }
+
+    /// I file trascinati: ogni rappresentazione temporanea si copia dentro il suo gestore (dopo non esiste più).
+    static func rilascia(_ fornitori: [NSItemProvider], aggiungi: @escaping ([URL]) -> Void) {
+        guard !fornitori.isEmpty, let cartella = Self.nuovaCartella() else { return }
+        let raccolta = RaccoltaRilascio()
+        let gruppo = DispatchGroup()
+        for (indice, f) in fornitori.enumerated() {
+            guard let tipo = f.registeredTypeIdentifiers.first(where: { id in
+                guard let t = UTType(id) else { return false }
+                return Self.tipiRilascio.contains { t.conforms(to: $0) }
+            }) else { continue }
+            gruppo.enter()
+            _ = f.loadFileRepresentation(forTypeIdentifier: tipo) { url, _ in
+                var copia: URL?
+                if let url {
+                    var nome = url.lastPathComponent
+                    if let suggerito = f.suggestedName, !suggerito.isEmpty {
+                        let estensione = url.pathExtension.isEmpty
+                            ? (UTType(tipo)?.preferredFilenameExtension ?? "") : url.pathExtension
+                        nome = estensione.isEmpty ? suggerito : "\(suggerito).\(estensione)"
+                    }
+                    // Una sottocartella per file: due rilasci con lo stesso nome non si sovrascrivono
+                    let posto = cartella.appendingPathComponent("\(indice)", isDirectory: true)
+                    try? FileManager.default.createDirectory(at: posto, withIntermediateDirectories: true)
+                    copia = Self.copiaLocale(url, nome: nome, in: posto)
+                }
+                let pronta = copia
+                DispatchQueue.main.async {
+                    if let pronta { raccolta.urls.append(pronta) }
+                    gruppo.leave()
+                }
+            }
+        }
+        gruppo.notify(queue: .main) {
+            if !raccolta.urls.isEmpty { aggiungi(raccolta.urls) }
+            try? FileManager.default.removeItem(at: cartella)
+        }
+    }
+
+    /// Copia `url` in `cartella` con il nome dato (protetta come il resto dei dati del dispositivo).
+    private static func copiaLocale(_ url: URL, nome: String, in cartella: URL) -> URL? {
+        let pulito = nome.replacingOccurrences(of: "/", with: "-")
+        let destinazione = cartella.appendingPathComponent(pulito.isEmpty ? UUID().uuidString : pulito)
+        do {
+            try? FileManager.default.removeItem(at: destinazione)
+            try FileManager.default.copyItem(at: url, to: destinazione)
+            try? (destinazione as NSURL).setResourceValue(FileProtectionType.complete, forKey: .fileProtectionKey)
+            return destinazione
+        } catch {
+            return nil
+        }
+    }
+}
+#endif

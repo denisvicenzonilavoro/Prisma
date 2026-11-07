@@ -1,0 +1,96 @@
+{
+  "formato": "prisma-domande-ocf",
+  "versione": 1,
+  "fonte": "Domande di esempio scritte per Prisma (non tratte da manuali o quiz ufficiali)",
+  "materie": [
+    { "id": "mercato", "nome": "Diritto del mercato finanziario" },
+    { "id": "matematica", "nome": "Matematica finanziaria" },
+    { "id": "previdenza", "nome": "Previdenza", "caso": "previdenzaComplementare" },
+    { "id": "assicurazioni", "nome": "Assicurazioni", "caso": "casoMorte" }
+  ],
+  "domande": [
+    {
+      "id": "esempio-mercato-1",
+      "materia": "mercato",
+      "testo": "Prima di raccomandare un prodotto a un cliente, che cosa deve verificare il consulente?",
+      "risposte": [
+        "Solo il rendimento atteso del prodotto",
+        "Che il prodotto sia adatto al profilo, agli obiettivi e alla situazione del cliente",
+        "Solo che i costi siano i più bassi del mercato",
+        "Che il prodotto sia il più richiesto del momento"
+      ],
+      "corretta": 1,
+      "spiegazione": "Una raccomandazione personalizzata parte dal cliente: conoscenze ed esperienza, situazione finanziaria, obiettivi e tolleranza al rischio. Rendimento e costi contano, ma vengono dopo."
+    },
+    {
+      "id": "esempio-mercato-2",
+      "materia": "mercato",
+      "testo": "A che cosa serve il KID di un prodotto d'investimento?",
+      "risposte": [
+        "A descrivere in poche pagine rischi, costi e scenari del prodotto",
+        "A registrare le operazioni fatte dal cliente",
+        "A stabilire le provvigioni del distributore",
+        "A sostituire il contratto firmato dal cliente"
+      ],
+      "corretta": 0,
+      "spiegazione": "Il KID è un documento breve e standard: serve a capire e confrontare i prodotti prima di decidere.",
+      "caso": "kid"
+    },
+    {
+      "id": "esempio-matematica-1",
+      "materia": "matematica",
+      "testo": "1.000 € investiti al 4% annuo con capitalizzazione composta, quanto valgono dopo 2 anni?",
+      "risposte": ["1.080,00 €", "1.081,60 €", "1.040,00 €", "1.160,00 €"],
+      "corretta": 1,
+      "spiegazione": "1.000 × 1,04 × 1,04 = 1.081,60 €: nel secondo anno l'interesse si calcola anche sui 40 € maturati nel primo."
+    },
+    {
+      "id": "esempio-matematica-2",
+      "materia": "matematica",
+      "testo": "Un investimento rende il 2% nominale in un anno in cui l'inflazione è del 2%. Il rendimento reale è circa:",
+      "risposte": ["4%", "2%", "0%", "-2%"],
+      "corretta": 2,
+      "spiegazione": "Il rendimento reale toglie l'inflazione dal nominale: circa 2% - 2% = 0%. Il potere d'acquisto resta più o meno lo stesso."
+    },
+    {
+      "id": "esempio-previdenza-1",
+      "materia": "previdenza",
+      "testo": "Che trattamento fiscale hanno, in generale, i contributi versati dall'iscritto a una forma di previdenza complementare?",
+      "risposte": [
+        "Non danno nessun vantaggio fiscale",
+        "Si deducono dal reddito senza alcun limite",
+        "Si deducono dal reddito entro un limite annuo stabilito dalla legge",
+        "Si tassano due volte, al versamento e alla prestazione"
+      ],
+      "corretta": 2,
+      "spiegazione": "I contributi si deducono dal reddito complessivo fino a un tetto annuo: per questo conviene sapere quanto spazio resta al cliente prima di proporre un versamento in più."
+    },
+    {
+      "id": "esempio-assicurazioni-1",
+      "materia": "assicurazioni",
+      "testo": "Che cosa prevede una polizza temporanea caso morte?",
+      "risposte": [
+        "Un capitale ai beneficiari se l'assicurato muore durante la durata del contratto",
+        "Un capitale all'assicurato alla scadenza, in ogni caso",
+        "Una rendita vitalizia dall'età della pensione",
+        "Il rimborso delle spese mediche dell'assicurato"
+      ],
+      "corretta": 0,
+      "spiegazione": "È una copertura pura: se l'assicurato è in vita alla scadenza non è dovuto nulla, per questo il premio è contenuto."
+    },
+    {
+      "id": "esempio-assicurazioni-2",
+      "materia": "assicurazioni",
+      "testo": "In una polizza rivalutabile collegata a una gestione separata, che cosa vuol dire «consolidamento» del rendimento?",
+      "risposte": [
+        "Che il rendimento accreditato ogni anno resta acquisito e non si perde più",
+        "Che il capitale può scendere ogni anno con il mercato",
+        "Che il premio si riduce ogni anno",
+        "Che la polizza si chiude da sola alla prima perdita"
+      ],
+      "corretta": 0,
+      "spiegazione": "Con il consolidamento ciò che è stato accreditato entra nel capitale garantito: gli anni buoni non si perdono negli anni cattivi.",
+      "caso": "gestioneSeparata"
+    }
+  ]
+}

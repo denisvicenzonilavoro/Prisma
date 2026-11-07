@@ -1,0 +1,88 @@
+{
+  "versione": 1,
+  "serie": [
+    {
+      "id": "bce-depositi",
+      "nome": "Tasso BCE sui depositi",
+      "fonte": "bce",
+      "codice": "FM.D.U2.EUR.4F.KR.DFR.LEV",
+      "unita": "percentuale",
+      "frequenza": "giornaliera",
+      "tipo": "tassoUfficiale",
+      "nota": "Deposit facility: la serie ha un valore per ogni data di variazione del tasso."
+    },
+    {
+      "id": "euribor-3m",
+      "nome": "Euribor 3 mesi",
+      "fonte": "bce",
+      "codice": "FM.M.U2.EUR.RT.MM.EURIBOR3MD_.HSTA",
+      "unita": "percentuale",
+      "frequenza": "mensile",
+      "tipo": "tassoInterbancario",
+      "terzi": "EMMI",
+      "nota": "Media mensile. Dato di EMMI (European Money Markets Institute) ridistribuito dalla BCE."
+    },
+    {
+      "id": "rendimento-it-lungo",
+      "nome": "Rendimento dei titoli di Stato italiani a lungo termine",
+      "fonte": "bce",
+      "codice": "IRS.M.IT.L.L40.CI.0000.EUR.N.Z",
+      "unita": "percentuale",
+      "frequenza": "mensile",
+      "tipo": "rendimentoStato",
+      "nota": "Tasso di convergenza (circa 10 anni), media mensile."
+    },
+    {
+      "id": "rendimento-de-lungo",
+      "nome": "Rendimento dei titoli di Stato tedeschi a lungo termine",
+      "fonte": "bce",
+      "codice": "IRS.M.DE.L.L40.CI.0000.EUR.N.Z",
+      "unita": "percentuale",
+      "frequenza": "mensile",
+      "tipo": "rendimentoStato",
+      "nota": "Tasso di convergenza (circa 10 anni), media mensile: serve per lo spread."
+    },
+    {
+      "id": "inflazione-it-bce",
+      "nome": "Inflazione IPCA Italia (BCE)",
+      "fonte": "bce",
+      "codice": "ICP.M.IT.N.000000.4.ANR",
+      "unita": "percentuale",
+      "frequenza": "mensile",
+      "tipo": "inflazione",
+      "nota": "Indice armonizzato dei prezzi al consumo, variazione annua."
+    },
+    {
+      "id": "euro-stoxx-50",
+      "nome": "Euro Stoxx 50",
+      "fonte": "bce",
+      "codice": "FM.M.U2.EUR.DS.EI.DJES50I.HSTA",
+      "unita": "punti",
+      "frequenza": "mensile",
+      "tipo": "indiceAzionario",
+      "terzi": "STOXX",
+      "nota": "Media mensile. Dato di STOXX ridistribuito dalla BCE."
+    },
+    {
+      "id": "inflazione-it",
+      "nome": "Inflazione IPCA Italia",
+      "fonte": "eurostat",
+      "codice": "prc_hicp_manr",
+      "filtri": { "geo": "IT", "coicop": "CP00" },
+      "unita": "percentuale",
+      "frequenza": "mensile",
+      "tipo": "inflazione",
+      "nota": "HICP, tutte le voci, variazione annua mensile."
+    }
+  ],
+  "calcolate": [
+    {
+      "id": "spread-it-de",
+      "nome": "Spread Italia–Germania",
+      "da": "rendimento-it-lungo",
+      "meno": "rendimento-de-lungo",
+      "unita": "percentuale",
+      "tipo": "spread"
+    }
+  ]
+}

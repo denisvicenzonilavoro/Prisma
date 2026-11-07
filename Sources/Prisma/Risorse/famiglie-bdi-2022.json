@@ -1,0 +1,433 @@
+{
+ "formato": "prisma-famiglie",
+ "versione": 2,
+ "diProva": false,
+ "fonte": "Banca d'Italia, Indagine sui bilanci delle famiglie italiane, edizione 2022 (tavole pubblicate, aggiornamento ottobre 2025)",
+ "edizione": 2022,
+ "aggiornamento": "ottobre 2025",
+ "licenza": "Dati pubblicati dalla Banca d'Italia sul suo sito, ripresi citando la fonte. Le cifre sono quelle delle tavole, tranne il tasso di risparmio, calcolato come 100 − propensione al consumo (T4).",
+ "note": "Tavole pubblicate, una caratteristica del capofamiglia alla volta (età oppure quinto di reddito), non incrociate. Il capofamiglia è il maggior percettore di reddito della famiglia. Redditi, consumi e ricchezza in euro dell'anno 2022, non rivalutati; reddito familiare netto. Famiglie: quelle intervistate in ogni classe (tavola T29). Convertite con Supporto/famiglie/converti_bdi.py.",
+ "sogliaFamiglie": 30,
+ "descrizioni": {
+  "tassoRisparmio": "risparmio in % del reddito familiare netto: 100 − propensione al consumo (T4), cioè il rapporto tra il risparmio medio e il reddito medio del gruppo",
+  "ricchezzaFinanziaria": "mediana delle attività finanziarie della famiglia (depositi, titoli di Stato, azioni, ecc.), euro (T17)",
+  "ricchezzaNetta": "ricchezza netta: attività reali e finanziarie meno i debiti, euro; mediana per gruppo (T17) e decimi di tutte le famiglie (T15)",
+  "protezione": "% di famiglie con polizze vita (T23); le tavole non hanno le polizze danni",
+  "previdenzaComplementare": "% di famiglie con pensioni integrative (T23)"
+ },
+ "gruppi": [
+  {
+   "id": "eta",
+   "dimensione": "eta",
+   "nome": "Età del capofamiglia",
+   "nota": "Classi d'età delle tavole T4, T17, T23 e T29.",
+   "classi": [
+    {
+     "id": "eta-1",
+     "nome": "fino a 34 anni",
+     "a": 34,
+     "famiglie": 452,
+     "voci": {
+      "tassoRisparmio": {
+       "statistica": "rapportoTraMedie",
+       "valore": 26.4,
+       "tavola": "T4",
+       "nota": "100 − propensione al consumo (73,6%): reddito medio 33.760 €, consumi medi 24.834 €"
+      },
+      "ricchezzaFinanziaria": {
+       "statistica": "mediana",
+       "valore": 5000,
+       "tavola": "T17"
+      },
+      "ricchezzaNetta": {
+       "statistica": "mediana",
+       "valore": 48005,
+       "tavola": "T17"
+      },
+      "protezione": {
+       "statistica": "quota",
+       "valore": 15.1,
+       "tavola": "T23",
+       "nota": "famiglie con polizze vita (le tavole non hanno le polizze danni)"
+      },
+      "previdenzaComplementare": {
+       "statistica": "quota",
+       "valore": 11.2,
+       "tavola": "T23",
+       "nota": "famiglie con pensioni integrative"
+      }
+     }
+    },
+    {
+     "id": "eta-2",
+     "nome": "35-44 anni",
+     "da": 35,
+     "a": 44,
+     "famiglie": 860,
+     "voci": {
+      "tassoRisparmio": {
+       "statistica": "rapportoTraMedie",
+       "valore": 28.7,
+       "tavola": "T4",
+       "nota": "100 − propensione al consumo (71,3%): reddito medio 37.121 €, consumi medi 26.466 €"
+      },
+      "ricchezzaFinanziaria": {
+       "statistica": "mediana",
+       "valore": 8500,
+       "tavola": "T17"
+      },
+      "ricchezzaNetta": {
+       "statistica": "mediana",
+       "valore": 114000,
+       "tavola": "T17"
+      },
+      "protezione": {
+       "statistica": "quota",
+       "valore": 20.0,
+       "tavola": "T23",
+       "nota": "famiglie con polizze vita (le tavole non hanno le polizze danni)"
+      },
+      "previdenzaComplementare": {
+       "statistica": "quota",
+       "valore": 17.0,
+       "tavola": "T23",
+       "nota": "famiglie con pensioni integrative"
+      }
+     }
+    },
+    {
+     "id": "eta-3",
+     "nome": "45-54 anni",
+     "da": 45,
+     "a": 54,
+     "famiglie": 1580,
+     "voci": {
+      "tassoRisparmio": {
+       "statistica": "rapportoTraMedie",
+       "valore": 32.1,
+       "tavola": "T4",
+       "nota": "100 − propensione al consumo (67,9%): reddito medio 42.662 €, consumi medi 28.980 €"
+      },
+      "ricchezzaFinanziaria": {
+       "statistica": "mediana",
+       "valore": 9995,
+       "tavola": "T17"
+      },
+      "ricchezzaNetta": {
+       "statistica": "mediana",
+       "valore": 150000,
+       "tavola": "T17"
+      },
+      "protezione": {
+       "statistica": "quota",
+       "valore": 20.0,
+       "tavola": "T23",
+       "nota": "famiglie con polizze vita (le tavole non hanno le polizze danni)"
+      },
+      "previdenzaComplementare": {
+       "statistica": "quota",
+       "valore": 13.6,
+       "tavola": "T23",
+       "nota": "famiglie con pensioni integrative"
+      }
+     }
+    },
+    {
+     "id": "eta-4",
+     "nome": "55-64 anni",
+     "da": 55,
+     "a": 64,
+     "famiglie": 2209,
+     "voci": {
+      "tassoRisparmio": {
+       "statistica": "rapportoTraMedie",
+       "valore": 35.4,
+       "tavola": "T4",
+       "nota": "100 − propensione al consumo (64,6%): reddito medio 43.313 €, consumi medi 27.979 €"
+      },
+      "ricchezzaFinanziaria": {
+       "statistica": "mediana",
+       "valore": 11858,
+       "tavola": "T17"
+      },
+      "ricchezzaNetta": {
+       "statistica": "mediana",
+       "valore": 190616,
+       "tavola": "T17"
+      },
+      "protezione": {
+       "statistica": "quota",
+       "valore": 17.3,
+       "tavola": "T23",
+       "nota": "famiglie con polizze vita (le tavole non hanno le polizze danni)"
+      },
+      "previdenzaComplementare": {
+       "statistica": "quota",
+       "valore": 15.0,
+       "tavola": "T23",
+       "nota": "famiglie con pensioni integrative"
+      }
+     }
+    },
+    {
+     "id": "eta-5",
+     "nome": "65 anni e più",
+     "da": 65,
+     "famiglie": 4540,
+     "voci": {
+      "tassoRisparmio": {
+       "statistica": "rapportoTraMedie",
+       "valore": 31.8,
+       "tavola": "T4",
+       "nota": "100 − propensione al consumo (68,2%): reddito medio 32.899 €, consumi medi 22.428 €"
+      },
+      "ricchezzaFinanziaria": {
+       "statistica": "mediana",
+       "valore": 10000,
+       "tavola": "T17"
+      },
+      "ricchezzaNetta": {
+       "statistica": "mediana",
+       "valore": 163115,
+       "tavola": "T17"
+      },
+      "protezione": {
+       "statistica": "quota",
+       "valore": 6.9,
+       "tavola": "T23",
+       "nota": "famiglie con polizze vita (le tavole non hanno le polizze danni)"
+      },
+      "previdenzaComplementare": {
+       "statistica": "quota",
+       "valore": 1.5,
+       "tavola": "T23",
+       "nota": "famiglie con pensioni integrative"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "reddito",
+   "dimensione": "reddito",
+   "nome": "Quinti di reddito familiare netto",
+   "nota": "Estremi dei quinti: valori di ripartizione della tavola T7 (euro del 2022, da incluso, a escluso).",
+   "classi": [
+    {
+     "id": "quinto-1",
+     "nome": "1° quinto",
+     "a": 17809,
+     "famiglie": 1514,
+     "voci": {
+      "tassoRisparmio": {
+       "statistica": "rapportoTraMedie",
+       "valore": -5.2,
+       "tavola": "T4",
+       "nota": "100 − propensione al consumo (105,2%): reddito medio 12.287 €, consumi medi 12.929 €"
+      },
+      "ricchezzaFinanziaria": {
+       "statistica": "mediana",
+       "valore": 1300,
+       "tavola": "T17"
+      },
+      "ricchezzaNetta": {
+       "statistica": "mediana",
+       "valore": 15700,
+       "tavola": "T17"
+      },
+      "protezione": {
+       "statistica": "quota",
+       "valore": 2.8,
+       "tavola": "T23",
+       "nota": "famiglie con polizze vita (le tavole non hanno le polizze danni)"
+      },
+      "previdenzaComplementare": {
+       "statistica": "quota",
+       "valore": 1.2,
+       "tavola": "T23",
+       "nota": "famiglie con pensioni integrative"
+      }
+     }
+    },
+    {
+     "id": "quinto-2",
+     "nome": "2° quinto",
+     "da": 17809,
+     "a": 26005,
+     "famiglie": 1541,
+     "voci": {
+      "tassoRisparmio": {
+       "statistica": "rapportoTraMedie",
+       "valore": 17.1,
+       "tavola": "T4",
+       "nota": "100 − propensione al consumo (82,9%): reddito medio 21.937 €, consumi medi 18.181 €"
+      },
+      "ricchezzaFinanziaria": {
+       "statistica": "mediana",
+       "valore": 5000,
+       "tavola": "T17"
+      },
+      "ricchezzaNetta": {
+       "statistica": "mediana",
+       "valore": 103020,
+       "tavola": "T17"
+      },
+      "protezione": {
+       "statistica": "quota",
+       "valore": 6.6,
+       "tavola": "T23",
+       "nota": "famiglie con polizze vita (le tavole non hanno le polizze danni)"
+      },
+      "previdenzaComplementare": {
+       "statistica": "quota",
+       "valore": 3.6,
+       "tavola": "T23",
+       "nota": "famiglie con pensioni integrative"
+      }
+     }
+    },
+    {
+     "id": "quinto-3",
+     "nome": "3° quinto",
+     "da": 26005,
+     "a": 35594,
+     "famiglie": 1534,
+     "voci": {
+      "tassoRisparmio": {
+       "statistica": "rapportoTraMedie",
+       "valore": 24.0,
+       "tavola": "T4",
+       "nota": "100 − propensione al consumo (76,0%): reddito medio 30.557 €, consumi medi 23.235 €"
+      },
+      "ricchezzaFinanziaria": {
+       "statistica": "mediana",
+       "valore": 10000,
+       "tavola": "T17"
+      },
+      "ricchezzaNetta": {
+       "statistica": "mediana",
+       "valore": 161757,
+       "tavola": "T17"
+      },
+      "protezione": {
+       "statistica": "quota",
+       "valore": 11.8,
+       "tavola": "T23",
+       "nota": "famiglie con polizze vita (le tavole non hanno le polizze danni)"
+      },
+      "previdenzaComplementare": {
+       "statistica": "quota",
+       "valore": 8.7,
+       "tavola": "T23",
+       "nota": "famiglie con pensioni integrative"
+      }
+     }
+    },
+    {
+     "id": "quinto-4",
+     "nome": "4° quinto",
+     "da": 35594,
+     "a": 51543,
+     "famiglie": 1925,
+     "voci": {
+      "tassoRisparmio": {
+       "statistica": "rapportoTraMedie",
+       "valore": 31.3,
+       "tavola": "T4",
+       "nota": "100 − propensione al consumo (68,7%): reddito medio 42.651 €, consumi medi 29.310 €"
+      },
+      "ricchezzaFinanziaria": {
+       "statistica": "mediana",
+       "valore": 16000,
+       "tavola": "T17"
+      },
+      "ricchezzaNetta": {
+       "statistica": "mediana",
+       "valore": 200340,
+       "tavola": "T17"
+      },
+      "protezione": {
+       "statistica": "quota",
+       "valore": 18.2,
+       "tavola": "T23",
+       "nota": "famiglie con polizze vita (le tavole non hanno le polizze danni)"
+      },
+      "previdenzaComplementare": {
+       "statistica": "quota",
+       "valore": 9.8,
+       "tavola": "T23",
+       "nota": "famiglie con pensioni integrative"
+      }
+     }
+    },
+    {
+     "id": "quinto-5",
+     "nome": "5° quinto",
+     "da": 51543,
+     "famiglie": 3127,
+     "voci": {
+      "tassoRisparmio": {
+       "statistica": "rapportoTraMedie",
+       "valore": 44.8,
+       "tavola": "T4",
+       "nota": "100 − propensione al consumo (55,2%): reddito medio 81.519 €, consumi medi 44.966 €"
+      },
+      "ricchezzaFinanziaria": {
+       "statistica": "mediana",
+       "valore": 45000,
+       "tavola": "T17"
+      },
+      "ricchezzaNetta": {
+       "statistica": "mediana",
+       "valore": 388800,
+       "tavola": "T17"
+      },
+      "protezione": {
+       "statistica": "quota",
+       "valore": 32.3,
+       "tavola": "T23",
+       "nota": "famiglie con polizze vita (le tavole non hanno le polizze danni)"
+      },
+      "previdenzaComplementare": {
+       "statistica": "quota",
+       "valore": 25.7,
+       "tavola": "T23",
+       "nota": "famiglie con pensioni integrative"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "tutte",
+   "dimensione": "tutte",
+   "nome": "Tutte le famiglie italiane",
+   "nota": "Solo la ricchezza netta: decimi di tutte le famiglie (tavola T15), non per età né per reddito.",
+   "classi": [
+    {
+     "id": "tutte",
+     "nome": "tutte le famiglie",
+     "famiglie": 9641,
+     "voci": {
+      "ricchezzaNetta": {
+       "statistica": "quantili",
+       "quantili": {
+        "p10": 2200,
+        "p20": 20000,
+        "p30": 75000,
+        "p40": 113800,
+        "p50": 152051,
+        "p60": 195000,
+        "p70": 253400,
+        "p80": 347348,
+        "p90": 545150
+       },
+       "tavola": "T15",
+       "nota": "valori di ripartizione dei decimi di famiglie rispetto alla ricchezza netta"
+      }
+     }
+    }
+   ]
+  }
+ ]
+}
