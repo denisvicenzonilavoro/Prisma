@@ -158,6 +158,9 @@ enum SpazioOvunque {
             return d
         }
         x.documenti = x.documenti.filter { $0.tipo != .modulo && $0.modulo == nil }
+        // La posizione a mano del cliente (`Cliente.luogo`) e le impostazioni del Territorio (`Impostazioni.territorio`)
+        // restano nell'istantanea («Luce» giro 11, decisione 44): l'iPad fa la stessa stima, ma non le modifica (non
+        // sono campi sincronizzati)
         x.giornaleOvunque = []
         x.impostazioni.ovunque = ImpostazioniOvunque()
         x.impostazioni.vera = ImpostazioniVera()

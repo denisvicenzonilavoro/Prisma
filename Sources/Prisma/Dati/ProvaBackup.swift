@@ -175,6 +175,8 @@ enum ProvaBackup {
             ProvaBackup.aggiungiRaccontiDiProva(&originale)
             // «Luce», giro 9: spese, scadenze, corsi, impostazioni dei km e luogo degli appuntamenti (ProvaBackupSpese.swift)
             ProvaBackup.aggiungiSpeseDiProva(&originale)
+            // «Luce», giro 11: posizione a mano, appuntamento da confermare e impostazioni del Territorio (ProvaBackupTerritorio.swift)
+            ProvaBackup.aggiungiTerritorioDiProva(&originale)
             // Vera, fase 3: promesse, confronti, coperture e un resoconto (ProvaBackupFaseTreVera.swift)
             ProvaBackup.aggiungiFaseTreVeraDiProva(&originale)
             // Il versamento mensile previsto dell'obiettivo (cursore del dettaglio nel tema Apple)
@@ -305,6 +307,12 @@ enum ProvaBackup {
             }
             // Chilometri, spese e scadenze (versione 27, «Luce» giro 9), e un archivio senza (ProvaBackupSpese.swift)
             if let e = try verificaSpese(originale: originale, estratto: estratto.dati) {
+                print("ERRORE: \(e)")
+                return 1
+            }
+            // Posizione a mano, appuntamento da confermare e impostazioni del Territorio (versione 27, «Luce» giro 11),
+            // un archivio senza e la lettura tollerante (ProvaBackupTerritorio.swift)
+            if let e = try verificaTerritorio(originale: originale, estratto: estratto.dati) {
                 print("ERRORE: \(e)")
                 return 1
             }

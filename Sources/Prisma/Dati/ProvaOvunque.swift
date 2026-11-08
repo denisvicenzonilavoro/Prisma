@@ -119,6 +119,7 @@ enum ProvaOvunque {
             try provaAziende()
             try provaRacconti()
             try provaSpese()
+            try provaTerritorio()
             try provaModuliIban()
             try provaSpazio(radice: radice)
             print("Prova di Prisma ovunque riuscita")
@@ -319,6 +320,39 @@ enum ProvaOvunque {
             let esito = MotoreUnioneOvunque.applica(op, a: &mac)
             try controlla(mac.appuntamenti[i].presso == .cliente,
                           "il luogo scelto sul dispositivo non arriva sul Mac (esito \(esito))")
+        }
+    }
+
+    /// Territorio («Luce» giro 11, decisione 44): la posizione a mano del cliente e le impostazioni del Territorio entrano
+    /// nell'istantanea cifrata e ne tornano uguali; la conferma di un appuntamento proposto dal Territorio, fatta sul
+    /// dispositivo, arriva al Mac (`daConfermare` è fra i campi sincronizzati dell'appuntamento).
+    private static func provaTerritorio() throws {
+        var dati = DatiPrisma.demo()
+        guard !dati.clienti.isEmpty else { throw Fallita(motivo: "nessun cliente nei dati di prova") }
+        dati.clienti[0].luogo = LuogoManuale(coordinata: Coordinata(lat: 44.5, lon: 11.35), nota: "Posizione di prova")
+        dati.impostazioni.territorio.fattoreStrada = 1.5
+        let istantanea = SpazioOvunque.datiIstantanea(dati)
+        try controlla(istantanea.clienti[0].luogo == dati.clienti[0].luogo && istantanea.impostazioni.territorio.fattoreStrada == 1.5,
+                      "la posizione a mano o le impostazioni del Territorio non entrano nell'istantanea di Prisma ovunque")
+        let letta = try JSONOvunque.decodificatore().decode(DatiPrisma.self, from: JSONOvunque.codificatore().encode(istantanea))
+        try controlla(letta.clienti[0].luogo == dati.clienti[0].luogo && letta.impostazioni.territorio == dati.impostazioni.territorio,
+                      "la posizione a mano o le impostazioni del Territorio non tornano uguali dall'istantanea")
+        try controlla(CampiOvunque.regole(.appuntamento).campi.contains("daConfermare"),
+                      "la conferma dell'appuntamento proposto dal Territorio non si sincronizza")
+        var mac = DatiPrisma.demo()
+        guard let i = mac.appuntamenti.indices.first else { throw Fallita(motivo: "nessun appuntamento nei dati di prova") }
+        mac.appuntamenti[i].daConfermare = true
+        var dispositivo = mac
+        dispositivo.appuntamenti[i].daConfermare = nil
+        let differenze = RegistroOvunque.differenze(da: mac, a: dispositivo)
+        try controlla(differenze.count == 1 && differenze.first?.campo == "daConfermare",
+                      "confermare sul dispositivo non registra un'operazione sulla conferma dell'appuntamento")
+        if let d = differenze.first {
+            let op = OperazioneOvunque(id: "op-conferma", dispositivo: "ipad-prova", lamport: 1, seq: 1, data: Date(), base: 1,
+                                       entita: d.entita, entitaId: d.entitaId, tipo: d.tipo, campo: d.campo, prima: d.prima, dopo: d.dopo)
+            let esito = MotoreUnioneOvunque.applica(op, a: &mac)
+            try controlla(mac.appuntamenti[i].daConfermare == nil,
+                          "la conferma fatta sul dispositivo non arriva sul Mac (esito \(esito))")
         }
     }
 
