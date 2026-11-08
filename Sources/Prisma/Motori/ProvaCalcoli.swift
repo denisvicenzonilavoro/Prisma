@@ -1282,6 +1282,10 @@ enum ProvaCalcoli {
         // «Luce», giro 10: «Compila da solo» sui fac-simile di Prisma (campi AcroForm ed etichette del PDF piatto, compilazione,
         // rilettura, IBAN mod 97 e interruttore, nessuna risposta del cliente compilata, Vera che propone solo dati ammessi)
         ProvaCalcoliModuli.esegui(verificaEsterna)
+        // «Luce», giro 11: il Territorio (tabella di prova senza codici catastali, comune senza CAP, luoghi e sparpaglio,
+        // distanze stimate, giro e «Lungo la strada» a date fisse, criterio dell'anello, Oggi, crescita senza fattori,
+        // raggio della luce, proiezione, 200 clienti, voci di MotoreDaFare, ordine della partenza)
+        ProvaCalcoliTerritorio.esegui(verificaEsterna)
         // «Luce», giro 4: il prisma di luce (quote per vista, canali distinti, obiettivi senza il 20% del template,
         // anni dalla linea della vita, geometria, shader) e «Disegna il tuo futuro» (versamento in più verificato)
         ProvaCalcoliLuce.esegui(verificaEsterna)

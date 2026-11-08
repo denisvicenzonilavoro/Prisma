@@ -202,14 +202,14 @@ enum MotoreTerritorio {
         var perComune: [String: [String]] = [:]
         var comuneDi: [String: ComuneTabella] = [:]
         for c in clienti {
-            let esito = esitoComune(c, tabella: tabella)
             if let manuale = c.luogo, manuale.coordinata.valida {
-                var comune: ComuneTabella?
-                if case .trovato(let t) = esito.esito { comune = t }
+                // La zona di una posizione a mano è il comune in cui cade il punto (non quello dell'indirizzo)
+                let comune = comuneVicino(manuale.coordinata, tabella: tabella)
                 risultato[c.id] = LuogoCliente(clienteId: c.id, coordinata: manuale.coordinata, precisione: .manuale,
                                                comune: comune, zona: zona(comune))
                 continue
             }
+            let esito = esitoComune(c, tabella: tabella)
             switch esito.esito {
             case .trovato(let t):
                 perComune[t.codice, default: []].append(c.id)
@@ -232,6 +232,18 @@ enum MotoreTerritorio {
         }
         senza.sort { $0.cliente.nome.localizedCompare($1.cliente.nome) == .orderedAscending }
         return (risultato, senza)
+    }
+
+    /// Il comune il cui centro è più vicino al punto, se il punto cade entro 1,5 volte il suo raggio (un ciclo sui comuni
+    /// della tabella per ogni posizione a mano); nil se il punto è lontano da ogni comune noto.
+    static func comuneVicino(_ p: Coordinata, tabella: TabellaComuni) -> ComuneTabella? {
+        var migliore: (comune: ComuneTabella, km: Double)?
+        for c in tabella.comuni {
+            let km = distanzaKm(p, c.centro)
+            guard km <= max(1, c.raggioKm * 1.5) else { continue }
+            if migliore.map({ km < $0.km }) ?? true { migliore = (c, km) }
+        }
+        return migliore?.comune
     }
 
     /// L'esito del comune di un cliente e il testo da cui viene (per «comune non riconosciuto: …»).
