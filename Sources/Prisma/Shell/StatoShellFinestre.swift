@@ -501,6 +501,12 @@ extension StatoShell {
     /// (una parte passa all'entrata della scrivania).
     func sblocca(velocita: Double = 0) {
         guard bloccato else { return }
+        // Avvio a due tempi: l'archivio non è ancora tutto in memoria. Lo sblocco parte appena arriva (di solito
+        // pochi decimi di secondo, meno del gesto), mai su una scrivania con i dati a metà
+        guard archivioPronto else {
+            sbloccoInAttesa = velocita
+            return
+        }
         let giro = sistema.giroBlocco &+ 1
         sistema.giroBlocco = giro
         Movimenti.anima(Tema.Moto.Sblocco.entrata(velocita: velocita), durata: Tema.Moto.Sblocco.durataEntrata,

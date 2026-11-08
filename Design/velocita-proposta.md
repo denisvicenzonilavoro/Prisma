@@ -217,3 +217,56 @@ subito e le voci orfane si riconoscono dalle chiavi, non dai conteggi. Prove in 
 fluidità dopo le correzioni (stesse azioni, un giro, carico medio 14-22), «aggiornamento» con 200 clienti: aprire
 Posizioni 483 ms, aspetto scuro 1.053 ms, aprire il radar 283 ms, tornare dal radar 208 ms, tasto in una nota 39 ms;
 con 5 clienti: 289 · 466 · 64 · 86 · 2 ms. Nessun peggioramento oltre l'oscillazione del Mac carico.
+
+## Tappa 3: l'archivio a pezzi (8 novembre 2026, branch giro-0-archivio)
+
+Fatto: l'archivio è la cartella `Archivio/` (ArchivioPezzi.swift) con `indice.json` (formato su disco 1, generazione,
+versione dei dati, cliente attivo, impostazioni, elenco dei clienti con il nome, ordine degli elenchi), un file per
+cliente in `Archivio/Clienti/` (tutto ciò che ha il suo `clienteId`) e nove sezioni comuni (agenda, attività,
+conversazioni, prodotti, spazi, pratiche, mercato, ovunque, studio). Agenda e attività stanno a sé, come proposto:
+si spostano spesso fra clienti diversi e servono all'avvio tutte insieme. I pezzi sono oggetti JSON con le chiavi di
+`DatiPrisma` e la sua stessa lettura tollerante; l'ordine degli elenchi divisi è nell'indice, quindi l'archivio
+rimesso insieme è identico (`==`). Quali clienti sono cambiati lo dice il confronto sulla coda dell'archivio (un
+elenco non toccato si confronta in un colpo): nessuna strada di modifica può dimenticare di segnarlo. Scrittura
+atomica (temporaneo e rinomina), indice per ultimo, generazione nei pezzi per riprendere un salvataggio interrotto.
+Avvio a due tempi sul Mac: l'indice basta per la schermata di benvenuto; se il resto non è ancora letto, StatoShell
+parte con lo scheletro (niente salvataggi, niente notifiche, Vera, ovunque, pulizia) e lo sblocco aspetta l'archivio.
+Il vecchio `archivio.json` e i vecchi backup si convertono da soli (copia `archivio.json.vecchio` fino alla
+riapertura verificata). I backup copiano la cartella a pezzi a salvataggi fermi.
+
+Prova di carico (200 clienti, build di sviluppo, Mac carico), sul disco:
+
+| | Prima (archivio.json) | Dopo (a pezzi) |
+|---|---:|---:|
+| Scrittura intera | 57 ms (2,6 MB) | 67 ms (210 file, 2,7 MB) |
+| Fino alla schermata di benvenuto | 71 ms (tutto) | 1 ms (indice, 67 KB) |
+| Lettura intera | 71 ms | 46 ms (in parallelo) |
+| Salvataggio di una nota | 60 ms (2,6 MB) | 9 ms (1 file, 22 KB) |
+
+Dopo le correzioni della revisione (8 novembre 2026): un giro che tocca più file (una nota spostata da un cliente a un
+altro, un cliente nuovo o tolto, la scrittura intera) è una transazione: i file nuovi in `Archivio/in-corso/`, ognuno
+portato sul disco (`F_BARRIERFSYNC`), poi la conferma `conferma.json` con `F_FULLFSYNC`, poi le rinomine con l'indice
+per ultimo; una transazione confermata e interrotta si completa all'avvio, una non confermata si scarta. Un file che
+c'è ma adesso non si legge (disco, permessi, iPad bloccato) e un indice di un Prisma più recente (anche se non si
+decodifica) aprono in sola lettura senza toccare nulla. Misure, stessa prova: scrittura intera 198 ms (era 67: il
+prezzo della sincronizzazione, solo alla conversione, dopo un ripristino o una ricostruzione), indice 2 ms, lettura
+intera 51 ms, salvataggio di una nota 9 ms (1 file, invariato).
+
+La prova della fluidità non legge il disco (stato non persistente): avvio e tasto nella nota restano quelli della
+tappa 1 (tasto 4 → 3 ms con 5 clienti; avvio 341 → 721 ms con 5 e 1.467 → 747 ms con 200, oscillazioni del Mac con
+carico medio 12-40, non del codice). Con il Mac così carico la riga del tasto con 200 clienti non è arrivata nel
+tempo limite in nessuna delle due misure.
+
+Seconda revisione (8 novembre 2026): l'indice si scrive sempre insieme a `indice-riserva.json` (stessi byte, prima di
+lui): se l'indice si rovina si ricostruisce dalla riserva, quindi impostazioni, ordine e contatori di Prisma ovunque
+(`vistoFinoA`, `lamport`, `prossimoSeq`) sono quelli di adesso e un cliente tolto nella sessione non torna; solo con
+indice e riserva rovinati insieme si torna alla copia d'avvio, e l'avviso lo dice. La conversione di archivio.json
+lascia il segno `conversione-da-verificare.json` prima di confermare la cartella: finché c'è vale archivio.json (anche
+nei backup) e all'avvio la verifica si rifà. Un archivio.json scritto da una versione di prima dopo la conversione non
+prende più il posto della cartella: si mette da parte con il suo nome e l'avviso. Una conversione non verificata toglie
+la cartella a pezzi con una rinomina (niente pezzi sciolti) e la copia d'avvio. Il backup prende sempre l'archivio che
+varrebbe all'avvio, mai la copia d'avvio o il segno, e senza archivio non si fa. Una copia d'avvio che non si apre
+(più recente) apre in sola lettura, mai i dati di prova sopra. Misure, prova di carico (build di sviluppo, carico medio
+24): scrittura intera 198 ms, indice 2 ms, lettura intera 75 ms, salvataggio di una nota 14 ms (1 file, invariato);
+un cambio delle sole impostazioni scrive due file da 67 KB (riserva e indice) invece di uno. La prova della fluidità
+non legge il disco e con il Mac a carico 24-26 non ha dato numeri utili (disegni da 2 a 16 s, 62 azioni non misurate).

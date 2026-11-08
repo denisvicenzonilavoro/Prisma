@@ -179,7 +179,8 @@ enum ProvaBackup {
                 print("ERRORE: i dati di prova non hanno scenari del simulatore")
                 return 1
             }
-            try Archivio.codificatore.encode(originale).write(to: dati.appendingPathComponent("archivio.json"))
+            // L'archivio nel formato a pezzi (Archivio/): backup, rotazione, protetti e ripristino lo provano come l'app
+            try Archivio.salva(originale, in: dati)
             try Data("documento di prova".utf8).write(to: dati.appendingPathComponent("Documenti/prova.txt"))
 
             // Rotazione: dopo 10 backup ne restano 8
@@ -428,7 +429,7 @@ enum ProvaBackup {
             try GestoreBackup.sostituisci(cartellaDati: destinazione, con: estratto.cartella)
             let documento = try String(contentsOf: destinazione.appendingPathComponent("Documenti/prova.txt"), encoding: .utf8)
             guard documento == "documento di prova",
-                  fm.fileExists(atPath: destinazione.appendingPathComponent("archivio.json").path) else {
+                  ArchivioPezzi.presente(in: destinazione), !fm.fileExists(atPath: destinazione.appendingPathComponent("archivio.json").path) else {
                 print("ERRORE: dopo il ripristino mancano dei file")
                 return 1
             }
@@ -583,6 +584,11 @@ enum ProvaBackup {
                 print("ERRORE: \(errore)")
                 return 1
             }
+            // L'archivio a pezzi su disco: conversione, backup, file rovinati, soli file cambiati, interruzioni (ProvaBackupArchivioPezzi.swift)
+            if let errore = try provaArchivioPezzi(radice: radice, originale: originale) {
+                print("ERRORE: \(errore)")
+                return 1
+            }
             // I dati a pezzi: istantanea completa, modifiche annidate salvate, contatori delle cache, carica (ProvaBackupDatiVivi.swift)
             if let errore = provaDatiVivi() {
                 print("ERRORE: \(errore)")
@@ -631,7 +637,8 @@ enum ProvaBackup {
         let nomi = (try? fm.contentsOfDirectory(atPath: protetti.path)) ?? []
         guard cifrato.lastPathComponent.hasSuffix(".zip." + GestoreBackup.estensioneCifrata), CifraturaBackup.cifrato(cifrato),
               CifraturaBackup.iterazioni(in: cifrato) == CifraturaBackup.iterazioniPredefinite,
-              contenuto.range(of: Data("archivio.json".utf8)) == nil, contenuto.range(of: Data("prova.txt".utf8)) == nil,
+              contenuto.range(of: Data("archivio.json".utf8)) == nil, contenuto.range(of: Data("indice.json".utf8)) == nil,
+              contenuto.range(of: Data("prova.txt".utf8)) == nil,
               nomi == [cifrato.lastPathComponent], temporaneiInChiaro() == primaTemporanei else {
             return "il backup protetto non è cifrato o ha lasciato file in chiaro (\(nomi))"
         }
@@ -752,9 +759,10 @@ enum ProvaBackup {
     /// Restituisce il motivo dell'errore (nil = tutto bene).
     private static func provaSalvataggio(radice: URL, originale: DatiPrisma) throws -> String? {
         let cartella = radice.appendingPathComponent("Salvataggio/Prisma", isDirectory: true)
-        let file = cartella.appendingPathComponent("archivio.json")
-        let salvataggio = SalvataggioArchivio(file: file, coda: DispatchQueue(label: "prisma.prova-salvataggio", qos: .utility))
-        func letto() -> DatiPrisma? { (try? Data(contentsOf: file)).flatMap { try? Archivio.decodifica($0) } }
+        let salvataggio = SalvataggioArchivio(cartella: cartella, coda: DispatchQueue(label: "prisma.prova-salvataggio", qos: .utility))
+        // L'archivio a pezzi sul disco (giro 0, tappa 3), riletto per intero senza toccarlo (una transazione rimasta non
+        // si completa: la prova la vede)
+        func letto() -> DatiPrisma? { archivioSulDisco(cartella) }
 
         // Generazione 1: i dati di partenza, scritti in background
         guard salvataggio.accoda(originale, generazione: 1, fallito: { _ in }) else { return "salvataggio: la prima scrittura non è partita" }
