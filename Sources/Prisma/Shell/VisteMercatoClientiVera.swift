@@ -92,13 +92,16 @@ struct SchedaMercatoClientiVeraVista: View {
 
     var body: some View {
         let _ = ContaCorpi.segna()
-        let pronte = stato.messaggioVera(messaggio)?.mercatoBozze != nil
+        let pronte = stato.messaggioVera(messaggio).map(stato.bozzeMercatoPronte) ?? false
+        // In modalità cliente si vede solo la riga del cliente presente (anche nelle conversazioni già salvate)
+        let modo = stato.modoCliente
+        let righe = modo.map { id in esito.toccati.filter { $0.clienteId == id } } ?? esito.toccati
         VStack(alignment: .leading, spacing: K.spazioRighe) {
-            ForEach(Array(esito.toccati.enumerated()), id: \.element.id) { i, t in
+            ForEach(Array(righe.enumerated()), id: \.element.id) { i, t in
                 RigaMercatoClienteVera(toccato: t, lato: K.avatarChat, superficie: Tema.Apple.Vera.SchedaCalcoli.superficie)
                     .entrataLaterale(i)
             }
-            if esito.oltre > 0 {
+            if esito.oltre > 0, modo == nil {
                 Text(esito.oltre == 1 ? "E un altro cliente, meno toccato." : "E altri \(esito.oltre) clienti, meno toccati.")
                     .carattereApple(K.nota)
                     .foregroundColor(Tema.Apple.Colore.inchiostro2)
@@ -305,7 +308,10 @@ private struct ModificatoreScenaMercatoClientiVera: ViewModifier {
 
     func body(content: Content) -> some View {
         let scena = stato.scenaMercatoClientiVera
-        let aperta = Binding<Bool>(get: { scena != nil && !scatto }, set: { if !$0 { stato.chiudiMercatoClientiVera() } })
+        // In modalità cliente il foglio si chiude: la scena elenca tutto il portafoglio, con nomi e cifre
+        let riservata = stato.inModoCliente
+        let aperta = Binding<Bool>(get: { scena != nil && !scatto && !riservata },
+                                   set: { if !$0 { stato.chiudiMercatoClientiVera() } })
         return content
             .overlay {
                 if scatto, let s = scena, !stato.inModoCliente {

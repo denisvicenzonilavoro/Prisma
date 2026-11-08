@@ -18,6 +18,7 @@ enum ProvaRoutineVera {
         nuoveARegole(controlla)
         nuoveConQwen(controlla)
         archivio(controlla)
+        correzioniRevisione(controlla)
     }
 
     private static let cal = Calendar.current
@@ -403,5 +404,36 @@ enum ProvaRoutineVera {
         let tornata = salva.argomenti["routine"].flatMap { try? decodificatore.decode(RoutineVera.self, from: Data($0.utf8)) }
         controlla(salva.strumento == RoutineVera.strumentoSalva && tornata?.id == nuova.id && tornata?.passi == nuova.passi,
                   "Archivio: salvare una routine nuova passa dalla scheda «Conferma»")
+    }
+
+    // MARK: - Correzioni della revisione
+
+    private static func correzioniRevisione(_ controlla: (Bool, String) -> Void) {
+        let d = DatiPrisma.demo()
+        let tutte = RoutineVera.pronte()
+        // Una routine «dopo la firma» del consulente prende il posto della pronta: niente azioni doppie
+        var mia = routine(RoutineVera.idDopoFirma)
+        mia.id = "routine-mia-firma"
+        mia.pronta = false
+        let perFirma = RoutineVera.perEvento(.dopoFirma, tutte + [mia])
+        controlla(perFirma.map(\.id) == [mia.id], "Revisione: con una sua routine «dopo la firma» parte solo quella: \(perFirma.map(\.id))")
+        controlla(RoutineVera.perEvento(.dopoFirma, tutte).map(\.id) == [RoutineVera.idDopoFirma], "Revisione: senza, parte la pronta")
+        // Con passi sul cliente non parte da sola all'ora
+        let lunedi = RoutineVera.daParole("Ogni lunedì prepara la scaletta e guarda l'agenda della settimana", oggi: oggiDemo)
+        controlla(lunedi != nil && lunedi?.programmazione == nil, "Revisione: una routine all'ora con passi sul cliente non resta programmata")
+        // Frasi che non sono routine
+        for frase in ["quali promesse scadono a fine mese", "Il resoconto dell'incontro con Marco l'ha firmato",
+                      "prepara un messaggio per Federico per spostare l'appuntamento"] {
+            let r = RoutineVera.riconosci(frase, routine: tutte, clienti: noti(d), attivo: nil)
+            controlla(r == nil, "Revisione: «\(frase)» non lancia routine: \(r?.routine.id ?? "nil")")
+        }
+        let firma = RoutineVera.riconosci("Vera, ho firmato con Giulia", routine: tutte, clienti: noti(d), attivo: nil)
+        controlla(firma?.routine.id == RoutineVera.idDopoFirma, "Revisione: «Vera, ho firmato con Giulia» lancia ancora Dopo la firma")
+        let mese = RoutineVera.riconosci("la fine del mese", routine: tutte, clienti: noti(d), attivo: nil)
+        controlla(mese?.routine.id == RoutineVera.idFineMese, "Revisione: «la fine del mese» lancia ancora Fine mese")
+        // «Dopo la firma» ricorda la posizione (per il contratto trascinato dopo)
+        let e = RoutineVera.esegui(routine(RoutineVera.idDopoFirma), richiesta: "ho firmato con Giulia",
+                                   contesto: ContestoRoutine(dati: d, oggi: oggiDemo, clienteId: "giulia"))
+        controlla(e.posizioneId == "pos-giulia-piano-previdenziale-integrativo", "Revisione: l'esito di «Dopo la firma» porta la posizione: \(e.posizioneId ?? "nil")")
     }
 }

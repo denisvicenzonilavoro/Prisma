@@ -14,8 +14,9 @@ extension StatoShell {
     /// Le spiegazioni conservate per cliente (le più vecchie vanno via): poche, l'archivio resta leggero.
     static let trelivelliMassimoPerCliente = 20
 
-    /// Le richieste che vanno alle norme della biblioteca («spiegami l'articolo 8 sul fondo pensione») e non qui.
-    static let trelivelliNorme = #"\b(?:articol\w*|art\.?\s*\d+|comm[ai]|decret\w*|d\.?\s?lgs|legge|norm[ae]|tuir)\b"#
+    /// Le richieste che vanno alle norme della biblioteca («spiegami l'articolo 8 sul fondo pensione», «secondo la COVIP
+    /// conviene riscattare?») e non qui: le stesse parole forti di NormeVera.eUnaDomanda, più commi e TUIR.
+    static let trelivelliNorme = #"\b(?:articol\w*|art\.?\s*\d+|comm[ai]|codice delle|decret\w*|d\.?\s?lgs|legg[ei]|norm[ae]|regolament\w*|tuir|tuf|ivass|consob|covip|mifid|idd)\b"#
 
     /// Le azioni per «Fallo tu» («scrivi a Marco perché il fondo pensione conviene»): «prepara» resta qui («preparami
     /// la pagina del fondo pensione di Marco»).
@@ -40,8 +41,10 @@ extension StatoShell {
     // MARK: - Salvataggio
 
     /// Salva (o sostituisce) una spiegazione; per ogni cliente restano le ultime `trelivelliMassimoPerCliente`.
-    func trelivelliSalva(_ s: SpiegazioneTreLivelli) {
-        guard !solaLettura, cliente(s.clienteId) != nil else { return }
+    /// Restituisce quante spiegazioni vecchie sono uscite (la risposta in chat lo dice: niente potature in silenzio).
+    @discardableResult
+    func trelivelliSalva(_ s: SpiegazioneTreLivelli) -> Int {
+        guard !solaLettura, cliente(s.clienteId) != nil else { return 0 }
         var x = s
         // Al minuto, come i messaggi: la copia riletta dall'archivio è uguale a quella in memoria
         x.creataIl = Appuntamento.alMinuto(s.creataIl)
@@ -49,14 +52,18 @@ extension StatoShell {
         elenco.removeAll { $0.id == x.id }
         elenco.append(x)
         let mie = elenco.filter { $0.clienteId == x.clienteId }
+        var uscite = 0
         if mie.count > Self.trelivelliMassimoPerCliente {
             let via = Set(mie.prefix(mie.count - Self.trelivelliMassimoPerCliente).map(\.id))
             elenco.removeAll { via.contains($0.id) }
+            uscite = via.count
         }
         dati.spiegazioniTreLivelli = elenco
+        return uscite
     }
 
-    /// Toglie una spiegazione (dalla scheda, «Togli»): la risposta in chat resta, senza la scheda.
+    /// Toglie una spiegazione: la risposta in chat resta, senza la scheda. Il pulsante «Togli» della scheda non c'è
+    /// ancora (andrà nel piede di TreLivelliVeraVista, fuori dalla modalità cliente e con una conferma esplicita).
     func trelivelliTogli(_ id: String) {
         guard !solaLettura else { return }
         dati.spiegazioniTreLivelli.removeAll { $0.id == id }
@@ -74,6 +81,8 @@ extension StatoShell {
               TreLivelliVera.eUnaRichiesta(testo),
               DateItaliane.cerca(Self.trelivelliAzioni, t) == nil,
               DateItaliane.cerca(Self.trelivelliNorme, t) == nil,
+              // «Quali dei miei clienti non hanno un fondo pensione e perché?» è una domanda sulla clientela, anche nel dossier
+              !ClientelaVera.eUnaDomanda(testo, clienti: dati.clienti.map { ClienteNoto(id: $0.id, nome: $0.nome) }, soloEspliciti: true),
               let argomento = TreLivelliVera.argomento(testo),
               let id = clienteDellaRichiesta(testo, chiave: chiave), cliente(id) != nil else { return false }
         aggiungiMessaggio(MessaggioVera(autore: .utente, testo: testo), cliente: chiave)
@@ -116,10 +125,15 @@ extension StatoShell {
             aggiungiMessaggio(m, cliente: chiave)
             return m
         }
-        trelivelliSalva(s)
+        let uscite = trelivelliSalva(s)
         var testo = "La stessa spiegazione in tre versioni: per te, per \(nome) e in una pagina da consegnare. I numeri sono di Prisma, uguali in tutte e tre."
         if !TreLivelliVera.stessiNumeri(s) {
             testo += " Attenzione: le cifre dei tre livelli non tornano, rileggi prima di usarle."
+        }
+        if uscite > 0 {
+            testo += " Per \(nome) tengo le ultime \(Self.trelivelliMassimoPerCliente) spiegazioni: "
+                + (uscite == 1 ? "la più vecchia è uscita da Prisma e in chat la sua risposta resta senza scheda."
+                               : "le \(uscite) più vecchie sono uscite da Prisma e in chat le loro risposte restano senza scheda.")
         }
         var m = MessaggioVera(autore: .vera, testo: testo, titolo: r.titolo, motore: motore)
         m.treLivelli = s.id
@@ -137,7 +151,7 @@ extension StatoShell {
         let a = TreLivelliVera.azioneManda(s, cliente: c)
         var m = MessaggioVera(autore: .vera, testo: "Ecco il messaggio per \(c.nome) con la versione semplice: con «Conferma» diventa una bozza in Messaggi, la spedisci tu.",
                               motore: Self.motoreAzioni)
-        m.conferma = SchedaConfermaVera(richiesta: "Manda a \(c.nome) la spiegazione semplice: \(s.argomento.nome.lowercased())", azioni: [a], origine: .regole)
+        m.conferma = self.inStile(SchedaConfermaVera(richiesta: "Manda a \(c.nome) la spiegazione semplice: \(s.argomento.nome.lowercased())", azioni: [a], origine: .regole))
         aggiungiMessaggio(m, cliente: chiave)
         return m
     }
@@ -173,13 +187,19 @@ extension StatoShell {
         guard let pdf = MainActor.assumeIsolated({ StampaCarta.pdf(documento) }) else {
             return no("Non sono riuscita a creare il PDF della pagina: riprova.")
         }
-        guard let documentoId = archiviaProspetto(pdf, documento: documento, cliente: c.id) else {
+        guard let documentoId = trelivelliArchivia(pdf, documento: documento, cliente: c.id) else {
             return no("Non sono riuscita a salvare il PDF nei Documenti di \(c.nome).")
         }
         return EsitoAzioneVera(fatta: true, messaggio: "«\(s.pagina.titolo)» è nei Documenti di \(c.nome).", oggetto: documentoId)
     }
 
-    /// «Annulla» (da `disfaAzioneVera`): il PDF salvato va via. true se c'era ancora.
+    /// Archivia il PDF della pagina SENZA sostituire quelli salvati oggi con lo stesso titolo: ogni «Conferma» aggiunge il
+    /// suo PDF e il suo «Annulla» toglie solo quello.
+    private func trelivelliArchivia(_ pdf: Data, documento: DocumentoStampabile, cliente id: String) -> String? {
+        archiviaProspetto(pdf, documento: documento, cliente: id, sostituisci: false)
+    }
+
+    /// «Annulla» (da `disfaAzioneVera`): va via solo il PDF di questa scheda (gli altri restano). true se c'era ancora.
     func trelivelliDisfaPagina(_ a: AzioneConferma) -> Bool {
         guard let id = a.esito?.oggetto, dati.documenti.contains(where: { $0.id == id }) else { return false }
         eliminaDocumento(id)
@@ -190,6 +210,9 @@ extension StatoShell {
     func trelivelliDocumento(_ id: String) -> String? {
         guard let s = trelivelliSpiegazione(id) else { return nil }
         let titolo = "Prospetto · \(s.pagina.titolo)"
-        return dati.documenti.filter { $0.clienteId == s.clienteId && $0.titolo == titolo }.max { $0.importatoIl < $1.importatoIl }?.id
+        let suoi = dati.documenti.filter { $0.clienteId == s.clienteId && $0.titolo == titolo }
+        guard let recente = suoi.map(\.importatoIl).max() else { return nil }
+        // A parità di minuto vince l'ultimo aggiunto (i documenti si aggiungono in fondo)
+        return suoi.last { $0.importatoIl == recente }?.id
     }
 }

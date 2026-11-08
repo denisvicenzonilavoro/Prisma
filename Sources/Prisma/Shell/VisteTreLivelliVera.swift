@@ -42,6 +42,12 @@ struct TreLivelliVeraVista: View {
             }
             .animation(Tema.Apple.Moto.animazione(Tema.Apple.Moto.Segmentato.animazioneTesto, calmo: calmo, istantanea: istantanea), value: livello)
             .padding(.top, F.sopraScheda)
+        } else {
+            // La spiegazione è uscita dalla potatura (si tengono le ultime 20 per cliente)
+            Text("La spiegazione non è più in Prisma (si tengono le ultime 20 per cliente): chiedila di nuovo a Vera.")
+                .carattereApple(F.nota).foregroundColor(F.coloreDettaglio)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, F.sopraScheda)
         }
     }
 
@@ -108,7 +114,12 @@ struct TreLivelliVeraVista: View {
     private func pagina(_ s: SpiegazioneTreLivelli) -> some View {
         let barre = Self.barre(s)
         return VStack(alignment: .leading, spacing: 0) {
-            Text("Per \(s.nomeCliente)").carattereApple(T.occhielloCarta).foregroundColor(Carta.sopratitolo)
+            // Il canale sempre riconoscibile, come nel PDF: etichetta da stampa (opaca, colori fissi) sulla carta chiara
+            HStack(alignment: .firstTextBaseline, spacing: T.spazioPunto) {
+                Text("Per \(s.nomeCliente)").carattereApple(T.occhielloCarta).foregroundColor(Carta.sopratitolo)
+                Spacer(minLength: 0)
+                if let canale = s.canale { EtichettaCanaleStampa(canale: canale) }
+            }
             Text(s.pagina.titolo).carattereApple(T.titoloCarta).foregroundColor(Carta.testo)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, T.sottoOcchiello)

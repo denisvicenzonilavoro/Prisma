@@ -342,10 +342,25 @@ extension RigaTagliandoVista where Azioni == EmptyView {
 /// Mostra il controllo di adesso (lo stato si legge sempre aggiornato).
 struct TagliandoChatVista: View {
     @Environment(StatoShell.self) var stato
+    @Environment(\.modoIstantanea) private var modoIstantanea
     let clienteId: String
 
     var body: some View {
         let _ = ContaCorpi.segna()
+        VStack(alignment: .leading, spacing: 0) {
+            scheda
+            // L'esito vive solo in memoria: dopo un riavvio (controllo non dovuto) si rifà alla prima apertura della chat,
+            // e segue le correzioni fatte a mano anche a pagina chiusa. Fuori dal body, rinviato e raggruppato.
+            Color.clear.frame(width: 0, height: 0)
+                .accessibilityHidden(true)
+                .onAppear { RinvioEsitoTagliando.rifai(stato, soloSeManca: true, istantanea: modoIstantanea) }
+                .onChange(of: stato.versioneCalcoli) { _ in
+                    if stato.esitoTagliando != nil { RinvioEsitoTagliando.rifai(stato, soloSeManca: false, istantanea: modoIstantanea) }
+                }
+        }
+    }
+
+    @ViewBuilder private var scheda: some View {
         if let e = stato.esitoTagliando, !stato.inModoCliente {
             let tutto = clienteId.isEmpty
             let voci = tutto ? e.voci : e.voci(cliente: clienteId)
@@ -405,14 +420,65 @@ struct TagliandoChatVista: View {
     }
 }
 
+// MARK: - L'esito in memoria, sempre aggiornato
+
+/// Rifà l'esito del tagliando (solo in memoria, il registro non si tocca) fuori dal body: un lavoro sul thread
+/// principale, rinviato e annullabile, così più schede in chat e la card della colonna fanno un solo controllo.
+/// Niente Timer. Non parte in modalità cliente, nelle istantanee né se l'esito è già quello dei dati di adesso.
+enum RinvioEsitoTagliando {
+    /// L'attesa che raggruppa i cambi ravvicinati (più correzioni di fila, più viste che compaiono insieme).
+    static let attesa: TimeInterval = 0.4
+    private nonisolated(unsafe) static var lavoro: DispatchWorkItem?
+    /// true se almeno una richiesta in attesa vuole rifare l'esito anche se c'è già.
+    private nonisolated(unsafe) static var forza = false
+    /// La versione dei dati dei calcoli dell'ultimo esito rifatto qui (per non rifarlo senza motivo).
+    private nonisolated(unsafe) static var versioneFatta: Int?
+
+    /// `istantanea`: nelle istantanee si disegna lo stato preparato, niente lavori rinviati.
+    static func rifai(_ stato: StatoShell, soloSeManca: Bool, istantanea: Bool = false) {
+        guard !istantanea else { return }
+        guard !stato.inModoCliente else { return }
+        forza = forza || !soloSeManca
+        lavoro?.cancel()
+        let w = DispatchWorkItem { [weak stato] in
+            let tutto = forza
+            forza = false
+            lavoro = nil
+            guard let stato, !stato.inModoCliente else { return }
+            if stato.esitoTagliando != nil {
+                guard tutto, versioneFatta != stato.versioneCalcoli else { return }
+            }
+            stato.aggiornaEsitoTagliando()
+            versioneFatta = stato.versioneCalcoli
+        }
+        lavoro = w
+        DispatchQueue.main.asyncAfter(deadline: .now() + attesa, execute: w)
+    }
+}
+
 // MARK: - Nella colonna di Vera
 
 /// La card «Tagliando dei dati» nella colonna di Vera: l'anello piccolo e quante cose da sistemare; apre la pagina.
 /// Legge il registro salvato (nessun calcolo nel body) o, se c'è, il controllo di adesso.
 struct SchedaTagliandoColonnaVera: View {
     @Environment(StatoShell.self) var stato
+    @Environment(\.modoIstantanea) private var modoIstantanea
 
     var body: some View {
+        VStack(spacing: 0) {
+            card
+            // Il conteggio segue anche le correzioni fatte a mano (in Clienti, a pagina chiusa): l'esito in memoria si
+            // rifà all'apertura della colonna e a ogni cambio dei dati dei calcoli, fuori dal body, rinviato e raggruppato.
+            Color.clear.frame(width: 0, height: 0)
+                .accessibilityHidden(true)
+                .onAppear { if stato.esitoTagliando != nil { RinvioEsitoTagliando.rifai(stato, soloSeManca: false, istantanea: modoIstantanea) } }
+                .onChange(of: stato.versioneCalcoli) { _ in
+                    if stato.esitoTagliando != nil { RinvioEsitoTagliando.rifai(stato, soloSeManca: false, istantanea: modoIstantanea) }
+                }
+        }
+    }
+
+    @ViewBuilder private var card: some View {
         let col = Tema.Apple.Vera.Colonna.self
         let registro = stato.dati.tagliando.ultimo
         let esito = stato.esitoTagliando
@@ -471,6 +537,5 @@ struct GruppoTagliandoImpostazioni: View {
                     .disabled(stato.inModoCliente)
             }
         }
-        .onChange(of: stato.dati.impostazioni.tagliando) { _ in stato.programmaTagliando() }
     }
 }

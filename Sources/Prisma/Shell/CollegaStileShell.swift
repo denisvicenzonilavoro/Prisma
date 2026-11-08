@@ -60,6 +60,15 @@ struct SchedaStileVera: Codable, Equatable {
     }
 }
 
+/// Cosa serve a «Annulla» di una scheda `stile_cambia` (in `EsitoAzioneVera.prima`, come JSON): la regola toccata,
+/// l'operazione e il profilo di prima e di dopo la scheda (solo regole, mai testi dei messaggi).
+struct AnnullaStileVera: Codable, Equatable {
+    var regola: ChiaveRegolaStile
+    var operazione: String
+    var prima: ProfiloStile
+    var dopo: ProfiloStile
+}
+
 // MARK: - Lo strumento della scheda
 
 extension RegistroStrumenti {
@@ -78,9 +87,10 @@ extension RegistroStrumenti {
     /// del consulente, via le formule da ufficio e le emoji vietate. Le regole gravi ancora violate diventano l'avviso
     /// della riga (tu al posto del Lei: il codice non cambia le parole del testo).
     static func messaggioInStile(_ testo: String, cliente: Cliente, contesto x: ContestoStrumenti,
-                                 clienteNuovo: Bool = false) -> (testo: String, avviso: String?) {
+                                 clienteNuovo nuovo: Bool? = nil) -> (testo: String, avviso: String?) {
         let p = x.impostazioni.stileVera
         guard !p.vuoto, !testo.isEmpty else { return (testo, nil) }
+        let clienteNuovo = nuovo ?? x.clientiScritti.map { !$0.contains(cliente.id) } ?? false
         let b = StileVera.applica(testo, profilo: p, cliente: cliente, oggi: x.oggi, clienteNuovo: clienteNuovo)
         let v = StileVera.verifica(b.testo, profilo: p, cliente: cliente, oggi: x.oggi, clienteNuovo: clienteNuovo)
         return (b.testo, v.first(where: \.grave).map { "Il tuo stile: \($0.spiegazione)" })
@@ -167,7 +177,7 @@ enum ScritturaStileVera {
         return x == b
     }
 
-    static func json(_ p: ProfiloStile) -> String? {
+    static func json<T: Encodable>(_ p: T) -> String? {
         let e = JSONEncoder()
         e.dateEncodingStrategy = .iso8601
         e.outputFormatting = [.sortedKeys]
@@ -179,6 +189,84 @@ enum ScritturaStileVera {
         let dec = JSONDecoder()
         dec.dateDecodingStrategy = .iso8601
         return try? dec.decode(ProfiloStile.self, from: d)
+    }
+
+    static func annullaDaJSON(_ s: String?) -> AnnullaStileVera? {
+        guard let d = s?.data(using: .utf8) else { return nil }
+        let dec = JSONDecoder()
+        dec.dateDecodingStrategy = .iso8601
+        return try? dec.decode(AnnullaStileVera.self, from: d)
+    }
+
+    /// Il profilo dopo «Annulla» di una scheda `stile_cambia`: solo la regola della scheda torna com'era. nil se la regola
+    /// è cambiata dopo la scheda (niente si tocca) o se il salvataggio non si legge. Le schede salvate prima (con il
+    /// profilo intero in `prima`) rimettono solo la regola indicata da `oggetto`.
+    static func annulla(_ salvato: String?, oggetto: String?, su attuale: ProfiloStile) -> ProfiloStile? {
+        var p = attuale
+        if let u = annullaDaJSON(salvato) {
+            let k = u.regola
+            if u.operazione == "spegni" || u.operazione == "accendi" {
+                // Solo l'interruttore: il valore può averlo aggiornato l'apprendimento, e resta
+                guard attiva(k, attuale) == attiva(k, u.dopo), let era = attiva(k, u.prima) else { return nil }
+                p.imposta(k, attiva: era)
+            } else {
+                guard stessaRegola(k, attuale, u.dopo) else { return nil }
+                rimetti(k, da: u.prima, in: &p)
+            }
+            return p
+        }
+        guard let prima = daJSON(salvato), let k = ChiaveRegolaStile(rawValue: oggetto ?? "") else { return nil }
+        rimetti(k, da: prima, in: &p)
+        return p
+    }
+
+    /// La regola k è la stessa nei due profili (valore, origine e interruttore; il numero di messaggi non conta).
+    static func stessaRegola(_ k: ChiaveRegolaStile, _ a: ProfiloStile, _ b: ProfiloStile) -> Bool {
+        func uguali<V>(_ kp: KeyPath<ProfiloStile, RegolaStile<V>?>) -> Bool {
+            let x = a[keyPath: kp], y = b[keyPath: kp]
+            return x?.valore == y?.valore && x?.origine == y?.origine && x?.attiva == y?.attiva
+        }
+        switch k {
+        case .cortesia: return uguali(\.cortesia)
+        case .lunghezzaFrasi: return uguali(\.lunghezzaFrasi)
+        case .unaCosaPerRiga: return uguali(\.unaCosaPerRiga)
+        case .primaGiornoEOra: return uguali(\.primaGiornoEOra)
+        case .firma: return uguali(\.firma)
+        case .formuleVietate: return uguali(\.formuleVietate)
+        case .emoji: return uguali(\.emoji)
+        case .aperture: return uguali(\.aperture)
+        case .chiusure: return uguali(\.chiusure)
+        }
+    }
+
+    /// L'interruttore della regola k (nil se la regola non c'è).
+    static func attiva(_ k: ChiaveRegolaStile, _ p: ProfiloStile) -> Bool? {
+        switch k {
+        case .cortesia: return p.cortesia?.attiva
+        case .lunghezzaFrasi: return p.lunghezzaFrasi?.attiva
+        case .unaCosaPerRiga: return p.unaCosaPerRiga?.attiva
+        case .primaGiornoEOra: return p.primaGiornoEOra?.attiva
+        case .firma: return p.firma?.attiva
+        case .formuleVietate: return p.formuleVietate?.attiva
+        case .emoji: return p.emoji?.attiva
+        case .aperture: return p.aperture?.attiva
+        case .chiusure: return p.chiusure?.attiva
+        }
+    }
+
+    /// Rimette in p la sola regola k com'era in `prima` (anche nil: la regola non c'era).
+    static func rimetti(_ k: ChiaveRegolaStile, da prima: ProfiloStile, in p: inout ProfiloStile) {
+        switch k {
+        case .cortesia: p.cortesia = prima.cortesia
+        case .lunghezzaFrasi: p.lunghezzaFrasi = prima.lunghezzaFrasi
+        case .unaCosaPerRiga: p.unaCosaPerRiga = prima.unaCosaPerRiga
+        case .primaGiornoEOra: p.primaGiornoEOra = prima.primaGiornoEOra
+        case .firma: p.firma = prima.firma
+        case .formuleVietate: p.formuleVietate = prima.formuleVietate
+        case .emoji: p.emoji = prima.emoji
+        case .aperture: p.aperture = prima.aperture
+        case .chiusure: p.chiusure = prima.chiusure
+        }
     }
 
     /// Un elenco scritto una voce per riga (o separato da «·»).
@@ -207,6 +295,15 @@ enum ScritturaStileVera {
 // MARK: - Lo stato
 
 extension StatoShell {
+    /// Le bozze di una scheda «Conferma» (messaggi_prepara) prendono la forma del profilo di stile, come in «Fallo tu»:
+    /// saluto, chiusura, firma, via emoji e formule vietate; una regola grave ancora violata diventa l'avviso della riga.
+    func inStile(_ scheda: SchedaConfermaVera?) -> SchedaConfermaVera? {
+        guard var s = scheda, !dati.impostazioni.stileVera.vuoto,
+              s.azioni.contains(where: { $0.strumento == RegistroStrumenti.messaggiPrepara }) else { return scheda }
+        Self.bozzeMercatoInStile(&s, clienti: dati.clienti, contesto: contestoStrumenti)
+        return s
+    }
+
     /// L'ancora del gruppo «Il tuo stile» in Impostazioni › Vera.
     static let ancoraStileVera = "impostazioni-stile-vera"
 
@@ -250,12 +347,12 @@ extension StatoShell {
         if p != dati.impostazioni.stileVera { dati.impostazioni.stileVera = p }
     }
 
-    /// Toglie l'eccezione del tu o del Lei di un cliente.
+    /// Toglie l'eccezione del tu o del Lei di un cliente: cambia solo le eccezioni, la regola resta accesa o spenta
+    /// com'era e non diventa «scritta da te» (l'eccezione è del consulente, la regola di base può restare imparata).
     func togliEccezioneStile(_ clienteId: String) {
-        guard !solaLettura, !inModoCliente, var r = dati.impostazioni.stileVera.cortesia else { return }
-        var c = r.valore
-        c.perCliente[clienteId] = nil
-        r.scrivi(c)
+        guard !solaLettura, !inModoCliente, var r = dati.impostazioni.stileVera.cortesia,
+              r.valore.perCliente[clienteId] != nil else { return }
+        r.valore.perCliente[clienteId] = nil
         dati.impostazioni.stileVera.cortesia = r
     }
 
@@ -341,7 +438,9 @@ extension StatoShell {
         let canale = s.canale ?? Self.canaleStile(c)
         let a = AzioneConferma(strumento: RegistroStrumenti.messaggiPrepara, app: .messaggi, titolo: "Preparo un messaggio per \(c.nome)",
                                dettaglio: RegistroStrumenti.dettaglioMessaggio(testo, canale: canale),
-                               argomenti: ["cliente": c.id, "scopo": "altro", "testo": testo, "canale": canale.rawValue])
+                               argomenti: ["cliente": c.id, "scopo": "altro", "testo": testo, "canale": canale.rawValue,
+                                           // Il tu o Lei del profilo (come in schedaBozza): con il tu cordiale, con il Lei formale
+                                           "tono": StileVera.tono(dati.impostazioni.stileVera, cliente: c, oggi: Date(), richiesto: .cordiale).rawValue])
         let k = chiave ?? (veraPortafoglio ? VeraPortafoglio.chiave : c.id)
         var m = MessaggioVera(autore: .vera, testo: "Ti preparo la bozza nel tuo stile: la trovi in Messaggi solo dopo «Conferma», e la spedisci tu.",
                               motore: Self.motoreAzioni)
@@ -356,7 +455,22 @@ extension StatoShell {
 
     // MARK: In chat
 
-    static let richiestaProfiloStile = #"\b(?:il mio stile|mio modo di scrivere|come scrivo|profilo di stile|scrivi come me|scrive come me|regole (?:del|di) stile|che stile ho|il tuo stile)\b"#
+    static let richiestaProfiloStile = #"\b(?:il mio stile|mio modo di scrivere|profilo di stile|scrivi come me|scrive come me|regole (?:del|di) stile|che stile ho|il tuo stile)\b|^(?:(?:dimmi|mostrami|spiegami|fammi vedere)\s+)?come scrivo(?: io)?(?: di solito)?(?: (?:ai|coi|con i) (?:miei )?clienti| i (?:miei )?messaggi)?$"#
+    /// Una richiesta di scrivere qualcosa a qualcuno («mi scrivi la mail per Sofia con il mio stile», «puoi scrivere a
+    /// Giulia con il mio stile che…»): va a «Fallo tu» e alla chat, non alla scheda del profilo.
+    static let richiestaScritturaStile = #"\b(?:scriv\w*|mail|e-mail|email|messaggio|sms|whatsapp|bozza)\b.*(?:\b(?:a|ad|per)\s+\w+|\bche\b)"#
+
+    /// Due righe del profilo dicono la stessa regola (la provenienza «imparata da N messaggi» non conta).
+    static func stessaVoceStile(_ a: VoceStile?, _ b: VoceStile?) -> Bool {
+        a?.testo == b?.testo && a?.attiva == b?.attiva && a?.dettaglio == b?.dettaglio
+    }
+
+    /// La frase chiede di vedere il profilo di stile (e non di scrivere un messaggio).
+    static func chiedeProfiloStile(_ t: String) -> Bool {
+        DateItaliane.cerca(richiestaProfiloStile, t) != nil
+            && DateItaliane.cerca(verboAzione, t) == nil
+            && DateItaliane.cerca(richiestaScritturaStile, t) == nil
+    }
     static let richiestaImparaStile = #"^(?:impara|reimpara|aggiorna|rileggi|ricalcola)\b.{0,40}\b(?:stile|modo di scrivere)\b"#
     static let richiestaRiscriviStile = #"^\s*(?:(?:ehi|ok|senti|ciao|vera|ruby|eve|per favore)[,\s]+)*(?:mi\s+)?(?:riscrivi(?:lo|la|mi)?|scrivi(?:lo|la)?|rifai|sistema|metti)\b[^:\n]{0,80}?(?:nel mio stile|con il mio stile|come (?:lo |la )?(?:scrivo|scriverei|scriveresti) io|come (?:lo |la )?scriverei|come me)\b[^:\n]{0,60}:\s*"#
     static let prefissoDaOra = #"(?:da ora|d'ora in (?:poi|avanti)|da adesso|da oggi)(?: in poi)?[,:]?\s+"#
@@ -399,7 +513,8 @@ extension StatoShell {
             let vociPrima = StileVera.voci(prima, clienti: dati.clienti)
             let vociOra = StileVera.voci(p, clienti: dati.clienti)
             let cambiate = ChiaveRegolaStile.allCases.filter { k in
-                vociPrima.first(where: { $0.id == k }) != vociOra.first(where: { $0.id == k })
+                let a = vociPrima.first(where: { $0.id == k }), b = vociOra.first(where: { $0.id == k })
+                return !Self.stessaVoceStile(a, b)
             }.count
             let detto = cambiate == 0 ? "Riletti i messaggi: il tuo stile è lo stesso." :
                 (cambiate == 1 ? "Riletti i messaggi: una regola è cambiata." : "Riletti i messaggi: \(cambiate) regole sono cambiate.")
@@ -407,7 +522,7 @@ extension StatoShell {
             return true
         }
         // 4. «Mostrami il mio stile», «come scrivo ai clienti?»
-        if DateItaliane.cerca(Self.richiestaProfiloStile, t) != nil, DateItaliane.cerca(Self.verboAzione, t) == nil {
+        if Self.chiedeProfiloStile(t) {
             apriRichiestaStile(testo, chiave: chiave)
             let p = dati.impostazioni.stileVera
             let n = StileVera.voci(p, clienti: dati.clienti).filter(\.attiva).count
@@ -533,7 +648,7 @@ extension StatoShell {
                 return .azione(azioneStile(.cortesia, titolo: "Del \(a.nome) a tutti i clienti", argomenti: ["allocuzione": a.rawValue, "soglia": ""]))
             }
             let nome = resto.replacingOccurrences(of: #"^(?:a|ad)\s+"#, with: "", options: .regularExpression)
-            let noti = dati.clienti.map { ClienteNoto(id: $0.id, nome: $0.nome) }
+            let noti = clientiAttivi.map { ClienteNoto(id: $0.id, nome: $0.nome) }
             let trovati = InterpreteComandi.clientiNominati(InterpreteComandi.pulisci(nome), noti)
             guard trovati.count == 1, let c = cliente(trovati[0].id) else {
                 return .domanda(trovati.isEmpty ? "A quale cliente dai del \(a.nome)?" : "Quale di questi clienti? " + trovati.map(\.nome).joined(separator: ", "))
@@ -590,7 +705,8 @@ extension StatoShell {
 
     // MARK: Esecuzione dopo «Conferma»
 
-    /// Esegue `stile_cambia` (dal caso in `eseguiAzioneVera`). `prima` conserva il profilo di prima per «Annulla».
+    /// Esegue `stile_cambia` (dal caso in `eseguiAzioneVera`). `prima` conserva la regola toccata, com'era e come la
+    /// scheda l'ha scritta (`AnnullaStileVera`), per «Annulla».
     func eseguiStileVera(_ a: AzioneConferma) -> EsitoAzioneVera {
         let no = { (m: String) in EsitoAzioneVera(fatta: false, messaggio: m) }
         guard !solaLettura else { return no("Prisma è in sola lettura: non ho cambiato niente.") }
@@ -606,7 +722,7 @@ extension StatoShell {
         default:
             guard Self.scriviRegolaStile(k, argomenti: arg, in: &p) else { return no("Non ho capito il nuovo valore della regola «\(k.nome)».") }
         }
-        let salvato = ScritturaStileVera.json(prima)
+        let salvato = ScritturaStileVera.json(AnnullaStileVera(regola: k, operazione: arg["operazione"] ?? "scrivi", prima: prima, dopo: p))
         guard p != prima else { return EsitoAzioneVera(fatta: true, messaggio: "Il tuo stile era già così.", oggetto: k.rawValue, prima: salvato) }
         dati.impostazioni.stileVera = p
         let voce = StileVera.voci(p, clienti: dati.clienti).first { $0.id == k }
@@ -617,10 +733,13 @@ extension StatoShell {
         return EsitoAzioneVera(fatta: true, messaggio: detto, oggetto: k.rawValue, prima: salvato)
     }
 
-    /// «Annulla»: il profilo torna com'era prima della scheda.
+    /// «Annulla»: torna com'era solo la regola della scheda; le altre regole, i contatori e ciò che l'apprendimento ha
+    /// imparato dopo restano. Se intanto quella regola è cambiata (un'altra scheda, il foglio, l'interruttore) non si
+    /// tocca niente e la scheda dice che le cose sono già cambiate.
     func disfaStileVera(_ a: AzioneConferma) -> Bool {
-        guard let e = a.esito, e.fatta, !solaLettura, let prima = ScritturaStileVera.daJSON(e.prima) else { return false }
-        dati.impostazioni.stileVera = prima
+        guard let e = a.esito, e.fatta, !solaLettura else { return false }
+        guard let p = ScritturaStileVera.annulla(e.prima, oggetto: e.oggetto ?? a.argomenti["regola"], su: dati.impostazioni.stileVera) else { return false }
+        if p != dati.impostazioni.stileVera { dati.impostazioni.stileVera = p }
         return true
     }
 

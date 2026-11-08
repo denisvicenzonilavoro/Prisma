@@ -7,13 +7,15 @@ import Foundation
 // «Conferma»: bozze in Messaggi e attività in agenda solo dopo la conferma, mai un invio.
 // L'esito vive nel messaggio di Vera (MessaggioVera.mercatoClienti): entra nella conversazione salvata e nei backup,
 // mai nell'istantanea di «Prisma ovunque» (le conversazioni non ci vanno). Nessun dato dei clienti esce dal Mac: Qwen è
-// sul Mac e qui non si scarica niente. In modalità cliente niente: l'evento tocca tutti i clienti.
+// sul Mac e qui non si scarica niente. In modalità cliente niente: l'evento tocca tutti i clienti. Per lo stesso motivo
+// l'elenco e le bozze stanno sempre nella conversazione del portafoglio, mai nel dossier di un cliente (che si vede
+// poi in modalità cliente).
 extension StatoShell {
     // MARK: - I dati del motore
 
     /// I dati del motore dai campi osservati (non l'istantanea intera): clienti, posizioni, obiettivi, agenda e analisi.
     func datiMercatoClientiVera(oggi: Date = Date()) -> DatiMercatoClienti {
-        DatiMercatoClienti(oggi: oggi, clienti: dati.clienti, posizioni: dati.posizioni, obiettivi: dati.obiettivi,
+        DatiMercatoClienti(oggi: oggi, clienti: clientiAttivi, posizioni: dati.posizioni, obiettivi: dati.obiettivi,
                            appuntamenti: dati.appuntamenti, analisi: dati.analisi)
     }
 
@@ -35,10 +37,66 @@ extension StatoShell {
         return elenco.sorted { $0.data != $1.data ? $0.data > $1.data : $0.id < $1.id }
     }
 
-    /// Lo stile delle bozze: oggi le firme di Impostazioni › Messaggi. «Scrive come te» (funzione 15) lo arricchisce
-    /// qui con lo stile imparato (tratti, tono per cliente, chiusura): è l'unico punto da cambiare.
-    func stileBozzeMercatoVera() -> StileBozzeVera {
-        StileBozzeVera(messaggi: dati.impostazioni.messaggi)
+    /// Lo stile delle bozze: le firme di Impostazioni › Messaggi, arricchite dal profilo di «Scrive come te»
+    /// (funzione 15) quando non è vuoto: tu o Lei per ogni cliente, firma, chiusura e tratti da dire a Qwen.
+    func stileBozzeMercatoVera(oggi: Date = Date()) -> StileBozzeVera {
+        Self.stileBozzeMercato(messaggi: dati.impostazioni.messaggi, profilo: dati.impostazioni.stileVera,
+                               clienti: clientiAttivi, oggi: oggi)
+    }
+
+    /// Lo stile delle bozze dai dati (senza lo stato, per le prove).
+    static func stileBozzeMercato(messaggi: ImpostazioniMessaggi, profilo p: ProfiloStile, clienti: [Cliente],
+                                  oggi: Date) -> StileBozzeVera {
+        var s = StileBozzeVera(messaggi: messaggi)
+        guard !p.vuoto else { return s }
+        // Il tu o Lei del profilo, cliente per cliente (cordiale se il profilo non dice niente)
+        if p.cortesia?.attiva == true {
+            for c in clienti { s.toni[c.id] = StileVera.tono(p, cliente: c, oggi: oggi, richiesto: s.tonoPredefinito) }
+        }
+        if let f = StileVera.firma(p) {
+            s.firmaAlleanza = f
+            s.firmaIndipendente = f
+        }
+        if let r = p.chiusure, r.attiva, let prima = r.valore.first?.trimmingCharacters(in: .whitespacesAndNewlines), !prima.isEmpty {
+            s.chiusura = prima
+        }
+        // Le regole di forma per Qwen; il tu o Lei è già nella scheda di ogni cliente
+        s.tratti = StileVera.istruzioni(p, cliente: nil, oggi: oggi, clienteNuovo: false)
+            .components(separatedBy: "\n")
+            .filter { $0.hasPrefix("- ") }
+            .map { String($0.dropFirst(2)) }
+            .filter { !$0.hasPrefix("Dai del") }
+        return s
+    }
+
+    /// Ogni bozza della scheda prende la forma del profilo (saluto, chiusura, firma, via emoji e formule vietate) e
+    /// passa la verifica: una regola grave ancora violata diventa l'avviso della riga. Con il profilo vuoto niente cambia.
+    static func bozzeMercatoInStile(_ scheda: inout SchedaConfermaVera, clienti: [Cliente], contesto x: ContestoStrumenti) {
+        guard !x.impostazioni.stileVera.vuoto else { return }
+        let perId = Dictionary(clienti.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        for i in scheda.azioni.indices where scheda.azioni[i].strumento == RegistroStrumenti.messaggiPrepara {
+            guard let c = scheda.azioni[i].argomenti["cliente"].flatMap({ perId[$0] }),
+                  let testo = scheda.azioni[i].argomenti["testo"], !testo.isEmpty else { continue }
+            let canale = CanaleMessaggio(rawValue: scheda.azioni[i].argomenti["canale"] ?? "") ?? .messaggi
+            let stile = RegistroStrumenti.messaggioInStile(testo, cliente: c, contesto: x)
+            if stile.testo != testo {
+                scheda.azioni[i].argomenti["testo"] = stile.testo
+                scheda.azioni[i].dettaglio = RegistroStrumenti.dettaglioMessaggio(stile.testo, canale: canale)
+            }
+            if scheda.azioni[i].avviso == nil, let avviso = stile.avviso { scheda.azioni[i].avviso = avviso }
+        }
+    }
+
+    /// Le bozze di quell'elenco sono pronte solo se la loro scheda c'è ancora ed è da confermare o eseguita: lasciata
+    /// stare, sostituita, annullata o sparita, le bozze si possono rifare.
+    func bozzeMercatoPronte(_ m: MessaggioVera) -> Bool {
+        guard let id = m.mercatoBozze, let s = messaggioVera(id)?.conferma else { return false }
+        return s.stato == .daConfermare || s.stato == .eseguita
+    }
+
+    /// L'ultimo elenco dello stesso evento nella conversazione del portafoglio (per non rifarlo dalla scena).
+    func elencoMercatoClienti(evento: String) -> MessaggioVera? {
+        conversazione(VeraPortafoglio.chiave).last { $0.autore == .vera && $0.mercatoClienti?.evento.id == evento }
     }
 
     /// Qwen scrive le bozze solo se è pronto (e mai nelle prove e nelle istantanee con le risposte preparate).
@@ -55,12 +113,16 @@ extension StatoShell {
     /// «Le borse hanno perso l'8% in una settimana», «la BCE taglia i tassi di 25 punti base», «l'inflazione sale al 3%»:
     /// le regole riconoscono l'evento, Prisma calcola chi tocca. Un evento a metà («la BCE ha tagliato i tassi») fa la
     /// domanda che manca. true se l'ha gestita.
-    func chiediMercatoClienti(_ testo: String, chiave: String, oggi: Date = Date()) -> Bool {
+    /// La `chiave` ricevuta non conta: l'evento tocca tutti i clienti, quindi domanda e risposta vanno nel portafoglio
+    /// (come «Chiedi alla tua clientela»), mai nel dossier del cliente aperto.
+    func chiediMercatoClienti(_ testo: String, chiave _: String, oggi: Date = Date()) -> Bool {
         guard !inModoCliente, MercatoClientiVera.eUnEvento(testo) else { return false }
         let t = InterpreteComandi.pulisci(testo)
         guard DateItaliane.cerca(Self.verboAzioneMercatoClienti, t) == nil else { return false }
         let riconosciuto = MercatoClientiVera.riconosci(testo, oggi: oggi)
         if case .nessuno = riconosciuto { return false }
+        let chiave = VeraPortafoglio.chiave
+        veraPortafoglio = true
         aggiungiMessaggio(MessaggioVera(autore: .utente, testo: testo), cliente: chiave)
         domandaVera = ""
         switch riconosciuto {
@@ -104,7 +166,7 @@ extension StatoShell {
         let t = InterpreteComandi.pulisci(testo)
         guard DateItaliane.cerca(Self.richiestaBozzeMercatoClienti, t) != nil,
               let ultima = conversazione(chiave).last(where: { $0.autore == .vera }),
-              let esito = ultima.mercatoClienti, !esito.toccati.isEmpty, ultima.mercatoBozze == nil else { return false }
+              let esito = ultima.mercatoClienti, !esito.toccati.isEmpty, !bozzeMercatoPronte(ultima) else { return false }
         aggiungiMessaggio(MessaggioVera(autore: .utente, testo: testo), cliente: chiave)
         domandaVera = ""
         preparaBozzeMercatoClienti(messaggio: ultima.id)
@@ -130,11 +192,11 @@ extension StatoShell {
         guard let m = messaggioVera(id), let esito = m.mercatoClienti, !esito.toccati.isEmpty else {
             return mostraAvviso("L'elenco dei clienti non è più nella conversazione.")
         }
-        guard m.mercatoBozze == nil else { return mostraAvviso("Le bozze per questo evento sono già pronte nella conversazione.") }
+        guard !bozzeMercatoPronte(m) else { return mostraAvviso("Le bozze per questo evento sono già pronte nella conversazione.") }
         guard !veraInCorso else { return mostraAvviso("Vera sta ancora rispondendo: aspetta un attimo.") }
-        let chiave = chiaveMessaggioMercatoClienti(id) ?? chiaveConversazione
-        let clienti = dati.clienti
-        let stile = stileBozzeMercatoVera()
+        let chiave = chiaveMessaggioMercatoClienti(id) ?? VeraPortafoglio.chiave
+        let clienti = clientiAttivi
+        let stile = stileBozzeMercatoVera(oggi: oggi)
         guard let motore = qwenPerMercatoClienti else {
             // Senza Qwen: le bozze fisse di Prisma, subito
             let motivo = rispostePreparate ? nil : MotoriVera.qwen(dati.impostazioni.vera, locale: disponibilitaLocale).disponibilita.motivo
@@ -158,7 +220,7 @@ extension StatoShell {
     @discardableResult
     func rispondiBozzeMercatoClienti(_ esito: EsitoMercatoVera, bozze: [BozzaMercatoVera], stile: StileBozzeVera, origine: String,
                                      chiave: String, motore: String, oggi: Date = Date()) -> MessaggioVera {
-        let clienti = dati.clienti
+        let clienti = clientiAttivi
         var scheda = MercatoClientiVera.scheda(esito, bozze: bozze, clienti: clienti,
                                                richiesta: "\(esito.etichettaBozze) · \(esito.evento.titolo)", oggi: oggi)
         scheda.origine = .mercato
@@ -168,15 +230,30 @@ extension StatoShell {
             guard let c = scheda.azioni[i].argomenti["cliente"].flatMap({ perId[$0] }) else { continue }
             scheda.azioni[i].argomenti["tono"] = stile.tono(c, oggi: oggi).rawValue
         }
+        // «Scrive come te» (funzione 15): ogni bozza segue il profilo, come quelle di «Fallo tu»
+        var x = contestoStrumenti
+        x.oggi = oggi
+        Self.bozzeMercatoInStile(&scheda, clienti: clienti, contesto: x)
+        // Una bozza per lo stesso cliente ed evento già in Messaggi: la riga lo dice, così non si raddoppia senza saperlo
+        for i in scheda.azioni.indices where scheda.azioni[i].strumento == RegistroStrumenti.messaggiPrepara {
+            let arg = scheda.azioni[i].argomenti
+            guard let c = arg["cliente"], let evento = arg["evento"] else { continue }
+            let occasione = "\(TipoOccasioneMessaggio.avvisoMercato.rawValue)-\(c)-\(evento)"
+            if dati.messaggi.contains(where: { $0.occasioneId == occasione && $0.stato == .bozza }) {
+                scheda.azioni[i].avviso = "In Messaggi c'è già una bozza per questo evento: togli la riga con ✕ se non la vuoi doppia."
+            }
+        }
+        let conProfilo = !dati.impostazioni.stileVera.vuoto
         let diVera = bozze.filter { $0.autore == .vera }.count
         let n = bozze.count
         var testo = n == 1 ? "Ho preparato la bozza" : "Ho preparato \(SchedaConfermaVera.numero(n)) bozze"
         if diVera == n {
-            testo += " nel tuo stile, con le cifre di Prisma."
+            testo += conProfilo ? " nel tuo stile, con le cifre di Prisma." : ", scritte da Vera con le cifre di Prisma."
         } else if diVera == 0 {
-            testo += " con il testo di Prisma: le cifre sono esatte, il tono lo puoi ritoccare tu."
+            testo += conProfilo ? " con il testo di Prisma, nella forma del tuo stile: le cifre sono esatte, il tono lo puoi ritoccare tu."
+                                : " con il testo di Prisma: le cifre sono esatte, il tono lo puoi ritoccare tu."
         } else {
-            testo += ": \(diVera) le ha scritte Vera nel tuo stile, le altre restano con il testo di Prisma."
+            testo += ": \(diVera) " + (conProfilo ? "le ha scritte Vera nel tuo stile" : "le ha scritte Vera") + ", le altre restano con il testo di Prisma."
         }
         testo += " Le metto in Messaggi e segno le attività solo con «Conferma»: le apri e le spedisci tu."
         var m = MessaggioVera(autore: .vera, testo: testo, titolo: esito.etichettaBozze, motore: diVera > 0 ? motore : Self.motoreAzioni)
@@ -202,10 +279,18 @@ extension StatoShell {
 
     /// «Prepara N messaggi» dalla scena: l'elenco e le bozze vanno nella conversazione del portafoglio di Vera, dove
     /// c'è la scheda «Conferma».
+    /// Se l'evento ha già un elenco nel portafoglio non lo rifà: con le bozze pronte lo dice, senza le prepara su quello.
     func preparaBozzeMercatoDaScena(_ esito: EsitoMercatoVera) {
         guard !inModoCliente, !solaLettura, !esito.toccati.isEmpty else { return }
         scenaMercatoClientiVera = nil
         veraPortafoglio = true
+        if let gia = elencoMercatoClienti(evento: esito.evento.id) {
+            if !aperta(.vera) { apri(.vera) }
+            if bozzeMercatoPronte(gia) {
+                return mostraAvviso("Le bozze per questo evento sono già pronte nella conversazione.")
+            }
+            return preparaBozzeMercatoClienti(messaggio: gia.id)
+        }
         let m = rispondiMercatoClienti(esito, chiave: VeraPortafoglio.chiave)
         apri(.vera)
         preparaBozzeMercatoClienti(messaggio: m.id)

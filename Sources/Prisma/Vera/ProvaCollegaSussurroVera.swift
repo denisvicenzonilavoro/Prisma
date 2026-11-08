@@ -63,8 +63,9 @@ enum ProvaCollegaSussurroVera {
         s.clienteAttivoId = "sofia"
         s.modoCliente = "sofia"
         controlla(s.vociSussurro(clienteId: "sofia", oggi: oggi).isEmpty, "Sussurro nell'app: in modalità cliente la card non c'è")
-        controlla(s.chiediSussurro("Cosa devo sapere su Sofia?", chiave: "sofia") && s.conversazione("sofia").last?.conferma == nil,
-                  "Sussurro in chat: in modalità cliente Vera dice che resta nascosto, senza scheda")
+        let primaModo = s.conversazione("sofia").count
+        controlla(!s.chiediSussurro("Cosa devo sapere su Sofia?", chiave: "sofia") && s.conversazione("sofia").count == primaModo,
+                  "Sussurro in chat: in modalità cliente la frase passa oltre, senza messaggi né scheda")
         s.modoCliente = nil
         // Spento in Impostazioni › Vera
         s.dati.impostazioni.vera.sussurroNelDossier = false

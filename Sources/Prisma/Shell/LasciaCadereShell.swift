@@ -23,9 +23,10 @@ extension StatoShell {
         guard !documenti.isEmpty else { return }
         guard !solaLettura else { return mostraAvviso("Archivio in sola lettura: aggiorna Prisma per archiviare documenti.") }
         guard !veraInCorso else { return mostraAvviso("Vera sta ancora rispondendo: trascina il documento tra poco.") }
+        // Vera si apre prima di tutto: anche la scheda di «Dopo la firma» deve vedersi (apri non cambia la conversazione)
+        if !aperta(.vera) { apri(.vera) }
         // «Dopo la firma» aspettava il PDF firmato: il documento diventa il contratto del cliente (CollegaRoutineShell.swift)
         if lasciaCadereRoutine(documenti) { return }
-        if !aperta(.vera) { apri(.vera) }
         let chiave = chiaveConversazione
         let fm = FileManager.default
         ripulisciInArrivoVecchi()
@@ -139,6 +140,8 @@ extension StatoShell {
         var d = Documento(clienteId: id, titolo: arg["titolo"] ?? origine.deletingPathExtension().lastPathComponent,
                           tipo: Documento.Tipo(rawValue: arg["tipo"] ?? "") ?? .altro)
         d.importatoIl = Appuntamento.alMinuto(Date())
+        // Il contratto firmato resta legato alla sua posizione, solo se è dello stesso cliente
+        if let p = arg["posizione"], dati.posizioni.contains(where: { $0.id == p && $0.clienteId == id }) { d.posizioneId = p }
         let estensione = origine.pathExtension.lowercased()
         let cartella = Archivio.cartellaDocumenti.appendingPathComponent(id, isDirectory: true)
         let destinazione = cartella.appendingPathComponent("\(d.id).\(estensione)")

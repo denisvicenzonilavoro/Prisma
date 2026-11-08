@@ -19,7 +19,8 @@ struct AppVera: View {
 
     private var cliente: Cliente? { stato.clienteAttivo }
     private var chiave: String { stato.veraPortafoglio ? VeraPortafoglio.chiave : stato.clienteAttivoId }
-    private var messaggi: [MessaggioVera] { stato.conversazione(chiave) }
+    // In modalità cliente senza i messaggi del sussurro (appunti del consulente)
+    private var messaggi: [MessaggioVera] { stato.messaggiPerLoSchermo(stato.conversazione(chiave)) }
 
     /// Il punto in fondo alla chat: a ogni parola la chat scorre lì.
     private static let fondo = "fondo-chat-vera"
@@ -727,6 +728,7 @@ struct NuvolaVera: View {
     var avanza: (() -> Void)? = nil
 
     @Environment(\.prismaStatoFinale) private var fermo
+    @Environment(StatoShell.self) private var stato
     @State private var testoScritto = false
 
     init(messaggio: MessaggioVera, nomeUtente: String, azioniCliente: Bool = true,
@@ -748,6 +750,16 @@ struct NuvolaVera: View {
         self.quadro = quadro
         self.nuova = nuova
         self.avanza = avanza
+    }
+
+    /// L'elenco del mercato da mostrare: in modalità cliente solo la riga del cliente presente (gli altri clienti
+    /// spariscono, anche dalle conversazioni già salvate) e niente «e altri N clienti».
+    static func mercatoVisibile(_ esito: EsitoMercatoVera?, modoCliente: String?) -> EsitoMercatoVera? {
+        guard var e = esito else { return nil }
+        guard let id = modoCliente else { return e }
+        e.toccati = e.toccati.filter { $0.clienteId == id }
+        e.oltre = 0
+        return e
     }
 
     var body: some View {
@@ -820,13 +832,14 @@ struct NuvolaVera: View {
                         AgendaOrganizzaOrariVista(messaggio: messaggio.id, ricerca: o, scelto: messaggio.agendaOrariScelto)
                     }
                     if let s = messaggio.agendaSpostamento, !s.mosse.isEmpty {
-                        AgendaOrganizzaSpostamentoVista(spostamento: s, eseguito: messaggio.conferma?.stato == .eseguita)
+                        AgendaOrganizzaSpostamentoVista(spostamento: s, eseguito: messaggio.conferma?.stato == .eseguita, scheda: messaggio.conferma)
                     }
                     if let p = messaggio.pianoPassi {
                         PianoPassiVeraVista(piano: p, messaggio: messaggio.id)
                     }
                     // «Fallo tu»: la scheda di conferma, niente si esegue prima di «Conferma»
-                    if let c = messaggio.conferma {
+                    // In modalità cliente le bozze e le attività del mercato (fatte per altri clienti) non si vedono
+                    if let c = messaggio.conferma, !(stato.inModoCliente && c.origine == .mercato) {
                         SchedaConfermaVeraVista(scheda: c, messaggio: messaggio.id)
                             .padding(.top, b.sopraScheda)
                     }
@@ -862,7 +875,7 @@ struct NuvolaVera: View {
                     if let t = messaggio.tagliando {
                         TagliandoChatVista(clienteId: t)
                     }
-                    if let e = messaggio.mercatoClienti, !e.toccati.isEmpty {
+                    if let e = Self.mercatoVisibile(messaggio.mercatoClienti, modoCliente: stato.modoCliente), !e.toccati.isEmpty {
                         SchedaMercatoClientiVeraVista(esito: e, messaggio: messaggio.id)
                     }
                     if let s = messaggio.stileVera {
@@ -1021,5 +1034,28 @@ struct OndaVera: View {
     private func altezza(_ h: CGFloat) -> CGFloat {
         if let livello { return max(3, h * (0.15 + 0.85 * CGFloat(livello))) }
         return attiva ? h : max(3, h * 0.35)
+    }
+}
+
+/// In modalità cliente l'elenco del mercato sotto una risposta di Vera mostra solo il cliente presente, senza
+/// «e altri N clienti»; fuori dalla modalità cliente resta intero. Da chiamare in `Prisma --prova-vera`.
+enum ProvaMercatoModoCliente {
+    static func esegui(_ controlla: (Bool, String) -> Void) {
+        let s = StatoShell(persistente: false)
+        guard case .evento(let e) = MercatoClientiVera.riconosci("Le borse hanno perso l'8% in una settimana", oggi: Date(), cal: .current) else {
+            return controlla(false, "Mercato in modalità cliente: evento borse non riconosciuto")
+        }
+        var esito = s.esitoMercatoClientiVera(e)
+        esito.oltre = 2
+        guard esito.toccati.count >= 2, let primo = esito.toccati.first?.clienteId else {
+            return controlla(false, "Mercato in modalità cliente: servono almeno due clienti toccati dai dati di prova")
+        }
+        controlla(NuvolaVera.mercatoVisibile(esito, modoCliente: nil) == esito,
+                  "Mercato in modalità cliente: fuori dalla modalità cliente l'elenco resta intero")
+        let filtrato = NuvolaVera.mercatoVisibile(esito, modoCliente: primo)
+        controlla(filtrato?.toccati.map(\.clienteId) == [primo] && filtrato?.oltre == 0,
+                  "Mercato in modalità cliente: si vede solo il cliente presente, senza «e altri N clienti»")
+        controlla(NuvolaVera.mercatoVisibile(esito, modoCliente: "nessuno-toccato")?.toccati.isEmpty == true,
+                  "Mercato in modalità cliente: un cliente non toccato non vede nessuna riga")
     }
 }

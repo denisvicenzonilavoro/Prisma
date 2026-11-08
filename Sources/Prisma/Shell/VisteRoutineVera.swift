@@ -340,12 +340,13 @@ struct RoutineVeraPagina: View {
                 Spacer()
                 Toggle("Attiva", isOn: Binding(get: { r.attiva }, set: { stato.impostaRoutineAttiva(r.id, $0) }))
                     .toggleStyle(.switch)
-                    .disabled(stato.solaLettura)
+                    // In modalità cliente le routine del consulente non si accendono né si spengono
+                    .disabled(stato.solaLettura || stato.inModoCliente)
                     .help("Spenta, Vera non la riconosce e non la lancia da sola")
             }
             HStack(spacing: 8) {
                 lancia(r)
-                if !r.pronta {
+                if !r.pronta, !stato.inModoCliente {
                     Button("Togli", role: .destructive) { confermaElimina = true }
                         .buttonStyle(.apple).fixedSize()
                         .disabled(stato.solaLettura)

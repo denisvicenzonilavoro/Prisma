@@ -68,6 +68,32 @@ enum AgendaOrganizzaGriglia {
     }
 
     static func maiuscola(_ s: String) -> String { s.prefix(1).uppercased() + String(s.dropFirst()) }
+
+    /// L'etichetta di un orario proposto da mostrare: in modalità cliente non nomina gli altri clienti né i loro
+    /// impegni, anche se la ricerca è nata fuori da quella modalità (la conversazione del dossier è la stessa).
+    static func etichetta(_ p: OrarioProposto, inModoCliente: Bool) -> String {
+        guard inModoCliente, p.attaccato else { return p.etichetta }
+        return p.vicinanza == .prima ? "prima di un altro incontro in studio" : "subito dopo un altro incontro in studio"
+    }
+
+    /// Le mosse dello spostamento davvero avvenute: l'impegno c'è ancora ed è all'orario di arrivo.
+    static func mosseFatte(_ s: SpostamentoBlocco, appuntamenti: [Appuntamento]) -> Set<String> {
+        Set(s.mosse.filter { m in appuntamenti.contains { $0.id == m.appuntamentoId && $0.inizio == m.inizio } }.map(\.appuntamentoId))
+    }
+
+    /// Le mosse il cui impegno è ancora pianificato nel giorno di partenza (tolte, non riuscite o annullate).
+    static func mosseRimaste(_ s: SpostamentoBlocco, appuntamenti: [Appuntamento], cal: Calendar) -> Set<String> {
+        Set(s.mosse.filter { m in
+            appuntamenti.contains { $0.id == m.appuntamentoId && $0.stato == .pianificato && cal.isDate($0.inizio, inSameDayAs: s.da) }
+        }.map(\.appuntamentoId))
+    }
+
+    /// Gli impegni delle mosse tolte con ✕ dalla scheda «Conferma» (non si spostano: non si disegnano come proposte).
+    static func mosseTolte(_ scheda: SchedaConfermaVera?) -> Set<String> {
+        guard let scheda else { return [] }
+        return Set(scheda.azioni.filter { $0.strumento == RegistroStrumenti.agendaSposta && $0.tolta }
+            .compactMap { $0.argomenti["appuntamento"] })
+    }
 }
 
 /// La settimana (o i giorni) con le ore a sinistra e i blocchi posati per giorno e ora.
@@ -260,7 +286,7 @@ struct AgendaOrganizzaOrariVista: View {
         var elenco: [BloccoAgendaOrganizza] = []
         for a in impegni {
             guard let col = AgendaOrganizzaGriglia.colonna(a.inizio, in: giorni, cal: cal) else { continue }
-            let visibile = stato.visibileAlCliente(a.clienteId) && !a.clienteId.isEmpty || !stato.inModoCliente
+            let visibile = !stato.inModoCliente || (stato.visibileAlCliente(a.clienteId) && !a.clienteId.isEmpty)
             let chi = stato.cliente(a.clienteId)
             let daSostituire = a.id == r.daSpostare && a.id != fissato?.id
             let sotto = daSostituire ? "Da spostare" : [chi.map { StatoShell.primoNome($0.nome) }, a.luogo.isEmpty ? nil : a.luogo]
@@ -278,7 +304,8 @@ struct AgendaOrganizzaOrariVista: View {
             if p.id == scelto, fissato != nil { continue }
             let inizio = AgendaOrganizzaVera.minuti(p.inizio, cal: cal)
             let titolo = c.map { RegistroStrumenti.titoloImpegno(r.tipo, cliente: StatoShell.primoNome($0.nome)) + "?" } ?? "Orario libero?"
-            let sotto = [p.etichetta.isEmpty ? nil : AgendaOrganizzaGriglia.maiuscola(p.etichetta), r.modo.luogo.isEmpty ? nil : r.modo.luogo]
+            let etichetta = AgendaOrganizzaGriglia.etichetta(p, inModoCliente: stato.inModoCliente)
+            let sotto = [etichetta.isEmpty ? nil : AgendaOrganizzaGriglia.maiuscola(etichetta), r.modo.luogo.isEmpty ? nil : r.modo.luogo]
                 .compactMap { $0 }.joined(separator: " · ")
             let quando = DateItaliane.descrivi(p.inizio, conOra: true, oggi: Date(), cal: cal)
             elenco.append(BloccoAgendaOrganizza(id: p.id, colonna: col, inizio: inizio,
@@ -287,7 +314,7 @@ struct AgendaOrganizzaOrariVista: View {
                                                 stile: p.id == scelto ? .scelta : .proposta,
                                                 entrata: n,
                                                 tocca: { _ = stato.scegliOrarioAgenda(messaggio: messaggio, orario: p.id) },
-                                                aiuto: "Scegli \(quando)" + (p.etichetta.isEmpty ? "" : ", \(p.etichetta)")))
+                                                aiuto: "Scegli \(quando)" + (etichetta.isEmpty ? "" : ", \(etichetta)")))
         }
         return elenco
     }
@@ -296,12 +323,15 @@ struct AgendaOrganizzaOrariVista: View {
 // MARK: - Lo spostamento in blocco
 
 /// Sotto «Sposto due impegni a venerdì…»: il giorno da liberare e quello di arrivo, con i nuovi orari tratteggiati
-/// finché non confermi; dopo «Conferma» gli impegni sono pieni nel giorno di arrivo.
+/// finché non confermi; dopo «Conferma» sono pieni nel giorno di arrivo solo gli impegni davvero spostati (letti
+/// dall'agenda di adesso): quelli tolti, non riusciti o annullati restano nel giorno di partenza.
 struct AgendaOrganizzaSpostamentoVista: View {
     @Environment(StatoShell.self) var stato
     @Environment(\.modoIstantanea) private var istantanea
     let spostamento: SpostamentoBlocco
     let eseguito: Bool
+    /// La scheda «Conferma» del messaggio: le righe tolte con ✕ non si disegnano come proposte.
+    var scheda: SchedaConfermaVera? = nil
 
     private var cal: Calendar { MotorePianificazione.calendario }
 
@@ -316,7 +346,14 @@ struct AgendaOrganizzaSpostamentoVista: View {
                 .superficieApple(Tema.Apple.Vera.SchedaCalcoli.superficie, raggio: Tema.Apple.Raggio.tile)
             HStack(spacing: G.spazio) {
                 if eseguito {
-                    PillolaFaseTre(testo: "\(AgendaOrganizzaGriglia.maiuscola(Formati.giornoSettimana.string(from: spostamento.da))) è libero ✓", colore: F.verde)
+                    let appuntamenti = stato.dati.appuntamenti
+                    let fatte = AgendaOrganizzaGriglia.mosseFatte(spostamento, appuntamenti: appuntamenti)
+                    let rimaste = AgendaOrganizzaGriglia.mosseRimaste(spostamento, appuntamenti: appuntamenti, cal: cal)
+                    if rimaste.isEmpty, !fatte.isEmpty {
+                        PillolaFaseTre(testo: "\(AgendaOrganizzaGriglia.maiuscola(Formati.giornoSettimana.string(from: spostamento.da))) è libero ✓", colore: F.verde)
+                    } else {
+                        PillolaFaseTre(testo: "Spostati \(fatte.count) di \(spostamento.mosse.count)", colore: F.arancio)
+                    }
                 } else {
                     PillolaFaseTre(testo: "Tratteggiati", colore: Tema.Apple.agendaProposta)
                     Text("i nuovi orari · con «Conferma» li sposto e preparo i messaggi per i clienti")
@@ -339,12 +376,17 @@ struct AgendaOrganizzaSpostamentoVista: View {
     }
 
     private func blocchi(_ giorni: [Date]) -> [BloccoAgendaOrganizza] {
-        let mossi = Set(spostamento.mosse.map(\.appuntamentoId))
+        let appuntamenti = stato.dati.appuntamenti
+        // Le mosse da disegnare nel giorno di arrivo: dopo «Conferma» solo quelle avvenute davvero, prima le righe non tolte
+        let tolte = AgendaOrganizzaGriglia.mosseTolte(scheda)
+        let disegnate: Set<String> = eseguito
+            ? AgendaOrganizzaGriglia.mosseFatte(spostamento, appuntamenti: appuntamenti)
+            : Set(spostamento.mosse.map(\.appuntamentoId)).subtracting(tolte)
         var elenco: [BloccoAgendaOrganizza] = []
-        // Gli altri impegni dei due giorni, letti dall'agenda di adesso
-        for a in stato.dati.appuntamenti where a.stato == .pianificato && !mossi.contains(a.id) {
+        // Gli altri impegni dei due giorni, letti dall'agenda di adesso (anche quelli delle mosse rimaste dove sono)
+        for a in appuntamenti where a.stato == .pianificato && !disegnate.contains(a.id) {
             guard let col = AgendaOrganizzaGriglia.colonna(a.inizio, in: giorni, cal: cal) else { continue }
-            let visibile = stato.visibileAlCliente(a.clienteId)
+            let visibile = !stato.inModoCliente || (stato.visibileAlCliente(a.clienteId) && !a.clienteId.isEmpty)
             let chi = stato.cliente(a.clienteId)
             let inizio = AgendaOrganizzaVera.minuti(a.inizio, cal: cal)
             elenco.append(BloccoAgendaOrganizza(id: a.id, colonna: col, inizio: inizio, fine: inizio + a.durataMinuti,
@@ -352,19 +394,23 @@ struct AgendaOrganizzaSpostamentoVista: View {
                                                 sotto: visibile ? [chi.map { StatoShell.primoNome($0.nome) }, a.luogo.isEmpty ? nil : a.luogo].compactMap { $0 }.joined(separator: " · ") : "",
                                                 colore: visibile ? Tema.Apple.Agenda.colore(chi) : G.occupato, stile: .impegno))
         }
-        for (n, m) in spostamento.mosse.enumerated() {
-            let chi = stato.cliente(m.clienteId)
-            let colore = Tema.Apple.Agenda.colore(chi)
-            let sotto = [chi.map { StatoShell.primoNome($0.nome) }, m.luogo.isEmpty ? nil : m.luogo].compactMap { $0 }.joined(separator: " · ")
+        for (n, m) in spostamento.mosse.enumerated() where disegnate.contains(m.appuntamentoId) {
+            // In modalità cliente le mosse degli altri clienti sono «Occupato», senza nomi né colore del cliente
+            let visibile = !stato.inModoCliente || (stato.visibileAlCliente(m.clienteId) && !m.clienteId.isEmpty)
+            let chi = visibile ? stato.cliente(m.clienteId) : nil
+            let colore = visibile ? Tema.Apple.Agenda.colore(chi) : G.occupato
+            let titolo = visibile ? m.titolo : "Occupato"
+            let sotto = visibile ? [chi.map { StatoShell.primoNome($0.nome) }, m.luogo.isEmpty ? nil : m.luogo].compactMap { $0 }.joined(separator: " · ") : ""
             let prima = AgendaOrganizzaVera.minuti(m.prima, cal: cal)
             let dopo = AgendaOrganizzaVera.minuti(m.inizio, cal: cal)
             if !eseguito {
                 elenco.append(BloccoAgendaOrganizza(id: m.id + "-prima", colonna: 0, inizio: prima, fine: prima + m.durataMinuti,
-                                                    titolo: m.titolo, sotto: sotto, colore: colore, stile: .ombra))
+                                                    titolo: titolo, sotto: sotto, colore: colore, stile: .ombra))
             }
+            let alle = m.stessaOra || !visibile ? sotto : "Alle \(Formati.ora.string(from: m.inizio))" + (sotto.isEmpty ? "" : " · " + sotto)
             elenco.append(BloccoAgendaOrganizza(id: m.id + "-dopo", colonna: 1, inizio: dopo, fine: dopo + m.durataMinuti,
-                                                titolo: m.titolo,
-                                                sotto: m.stessaOra ? sotto : "Alle \(Formati.ora.string(from: m.inizio)) · " + sotto,
+                                                titolo: titolo,
+                                                sotto: alle,
                                                 colore: eseguito ? colore : Tema.Apple.agendaProposta,
                                                 stile: eseguito ? .impegno : .proposta,
                                                 entrata: eseguito ? nil : n))

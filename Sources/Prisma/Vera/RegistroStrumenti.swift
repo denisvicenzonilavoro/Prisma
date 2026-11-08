@@ -19,6 +19,9 @@ struct ContestoStrumenti {
     var impostazioni: Impostazioni
     var inModoCliente = false
     var calendario = Calendar.current
+    /// I clienti a cui è già uscito un messaggio da Prisma (per «Scrive come te»: le emoji solo con i clienti noti).
+    /// nil quando non si sa: nessun cliente conta come nuovo.
+    var clientiScritti: Set<String>? = nil
 
     var nomeUtente: String { impostazioni.nomeUtente }
 }
@@ -630,7 +633,10 @@ enum RegistroStrumenti {
             if let s = spostamenti[id], let inizio = daIso(s.argomenti["inizio"]),
                a.argomenti["scopo"] == "spostamento" || (a.argomenti["testo"] ?? "").isEmpty {
                 let firma = ModelliMessaggi.firma(nil, tono: .formale, impostazioni: x.impostazioni)
-                a.argomenti["testo"] = testoSpostamento(c, inizio: inizio, luogo: s.argomenti["luogo"] ?? "", firma: firma)
+                let fisso = testoSpostamento(c, inizio: inizio, luogo: s.argomenti["luogo"] ?? "", firma: firma)
+                let inStile = messaggioInStile(fisso, cliente: c, contesto: x)
+                a.argomenti["testo"] = inStile.testo
+                if a.avviso == nil, let avviso = inStile.avviso { a.avviso = avviso }
                 a.argomenti["scopo"] = "spostamento"
                 a.argomenti["appuntamento"] = s.argomenti["appuntamento"]
                 a.titolo = "Preparo un messaggio per \(c.nome)"

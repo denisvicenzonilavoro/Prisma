@@ -236,6 +236,15 @@ struct AvvisiStileMessaggioVista: View {
     let clienteId: String
     @State private var violazioni: [ViolazioneStile] = []
 
+    /// Gli avvisi si rifanno quando cambia il testo, il cliente o il profilo dello stile (una regola spenta in
+    /// Impostazioni, una firma riscritta, Vera che impara di nuovo dopo un invio): il profilo si legge nel body,
+    /// così l'osservazione lo segue anche con il pannello aperto.
+    private struct ChiaveAvvisi: Equatable {
+        let testo: String
+        let clienteId: String
+        let profilo: ProfiloStile
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             if !violazioni.isEmpty {
@@ -245,7 +254,7 @@ struct AvvisiStileMessaggioVista: View {
                 }
             }
         }
-        .task(id: testo) {
+        .task(id: ChiaveAvvisi(testo: testo, clienteId: clienteId, profilo: stato.dati.impostazioni.stileVera)) {
             violazioni = stato.violazioniStile(testo, clienteId: clienteId)
         }
     }
@@ -278,6 +287,9 @@ struct FoglioStileVera: View {
     @State private var conFormule = false
     @State private var formule = ""
     @State private var letto = false
+    /// Le eccezioni del tu o Lei per cliente: ✕ toglie solo dalla copia, «Salva» la scrive, «Annulla» la lascia.
+    @State private var perCliente: [String: Allocuzione] = [:]
+    @State private var tolte: Set<String> = []
 
     var body: some View {
         let p = stato.dati.impostazioni.stileVera
@@ -301,7 +313,7 @@ struct FoglioStileVera: View {
                                 Text("Del tu sotto i \(soglia) anni, del Lei agli altri").carattereApple(F.dettaglioRiga)
                             }
                         }
-                        eccezioni(p)
+                        eccezioni()
                     }
                     sezione("Lunghezza delle frasi", acceso: $conLunghezza) {
                         Stepper(value: $lunghezza, in: 4...60) {
@@ -358,14 +370,14 @@ struct FoglioStileVera: View {
         .superficieApple(Tema.Apple.Vera.SchedaCalcoli.superficie, raggio: Tema.Apple.Raggio.tile)
     }
 
-    @ViewBuilder private func eccezioni(_ p: ProfiloStile) -> some View {
-        let perCliente = (p.cortesia?.valore.perCliente ?? [:]).sorted { $0.key < $1.key }
-        ForEach(perCliente, id: \.key) { id, a in
+    @ViewBuilder private func eccezioni() -> some View {
+        let elenco = perCliente.sorted { $0.key < $1.key }
+        ForEach(elenco, id: \.key) { id, a in
             HStack(spacing: 6) {
                 Text("Del \(a.nome) a \(stato.cliente(id)?.nome ?? "un cliente non più in archivio")")
                     .carattereApple(F.dettaglioRiga).foregroundColor(F.coloreDettaglio)
                 Spacer(minLength: 0)
-                Button { stato.togliEccezioneStile(id) } label: {
+                Button { perCliente[id] = nil; tolte.insert(id) } label: {
                     Image(systemName: "xmark").frame(width: F.tastoTogli, height: F.tastoTogli)
                 }
                 .buttonStyle(.plain).foregroundColor(F.coloreDettaglio)
@@ -380,6 +392,7 @@ struct FoglioStileVera: View {
             predefinita = r.valore.predefinita
             conSoglia = r.valore.sogliaEta != nil
             soglia = r.valore.sogliaEta ?? 40
+            perCliente = r.valore.perCliente
         }
         if let r = p.lunghezzaFrasi { conLunghezza = r.attiva; lunghezza = r.valore }
         if let r = p.unaCosaPerRiga { unaCosaPerRiga = r.attiva && r.valore }
@@ -398,7 +411,8 @@ struct FoglioStileVera: View {
             var cortesia = p.cortesia?.valore ?? CortesiaStile(predefinita: predefinita)
             cortesia.predefinita = predefinita
             cortesia.sogliaEta = conSoglia ? soglia : nil
-            // Le eccezioni tolte con ✕ intanto restano tolte
+            // Le eccezioni tolte con ✕ si tolgono solo adesso, con «Salva»
+            for id in tolte { cortesia.perCliente[id] = nil }
             ScritturaStileVera.metti(\.cortesia, attiva: conCortesia, valore: cortesia, in: &p)
             ScritturaStileVera.metti(\.lunghezzaFrasi, attiva: conLunghezza, valore: lunghezza, in: &p)
             ScritturaStileVera.metti(\.unaCosaPerRiga, attiva: unaCosaPerRiga, valore: true, in: &p)

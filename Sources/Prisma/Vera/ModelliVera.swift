@@ -50,7 +50,7 @@ struct MessaggioVera: Identifiable, Codable, Equatable {
     var agendaOrariScelto: String?
     var agendaSpostamento: SpostamentoBlocco?
     /// «Il tagliando dei dati» (5) sotto la risposta: "" = tutto l'archivio, altrimenti l'id del cliente (il controllo
-    /// si legge sempre aggiornato da StatoShell.esitoTagliando).
+    /// si legge da StatoShell.esitoTagliando, che le viste ricalcolano quando cambiano i dati: `versioneCalcoli`).
     var tagliando: String?
     /// «Il mercato per i tuoi clienti» (14): l'evento con i clienti toccati (motivo, azione e cifre di Prisma) e l'id
     /// del messaggio con la scheda «Conferma» delle bozze, quando sono state preparate («Bozze pronte ✓»).

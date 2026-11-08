@@ -1019,12 +1019,19 @@ enum ProvaVera {
         ProvaSussurroVera.esegui(controlla)
         // Il sussurro nell'app: voci della vista, scheda «Conferma», «Non ora», chat, modalità cliente (ProvaCollegaSussurroVera.swift)
         ProvaCollegaSussurroVera.esegui(controlla)
+        // La scheda del sussurro ritrovata dalla conversazione, la chat e la chiusura dopo «Conferma»
+        ProvaSchedaSussurroAperta.esegui(controlla)
+        StatoShell.provaSussurroChatEChiusura(controlla)
         ProvaMercatoClientiVera.esegui(controlla)
+        // In modalità cliente l'elenco del mercato mostra solo il cliente presente
+        ProvaMercatoModoCliente.esegui(controlla)
         ProvaStileVera.esegui(controlla)
         ProvaTreLivelliVera.esegui(controlla)
         ProvaPassiVera.esegui(controlla)
         // «Ragiona a passi» collegato all'app: smistamento, messaggio con il piano, scheda «Conferma» (ProvaCollegaPassi.swift)
         ProvaCollegaPassi.esegui(controlla)
+        // Le domande dei passi con il loro seguito, «Rifai i calcoli», il piano vuoto evitato
+        StatoShell.provaPassiSeguito(controlla)
         #if os(macOS)
         // La mini finestra: ⌥ Spazio, i cinque stati, cifre e canali, «non pronta» (ProvaMiniVera.swift)
         ProvaMiniVera.esegui(controlla)

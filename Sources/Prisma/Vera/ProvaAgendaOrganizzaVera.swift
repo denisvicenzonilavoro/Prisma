@@ -14,6 +14,7 @@ enum ProvaAgendaOrganizzaVera {
         ricerca(controlla)
         bozzaEScelta(controlla)
         blocco(controlla)
+        revisione(controlla)
     }
 
     // MARK: - Aiuti
@@ -379,6 +380,31 @@ enum ProvaAgendaOrganizzaVera {
             controlla(s6 == s, "Agenda che si organizza: dalla frase allo stesso spostamento")
         } else {
             controlla(false, "Agenda che si organizza: dalla frase allo spostamento")
+        }
+    }
+
+    // MARK: - Correzioni della revisione
+
+    private static func revisione(_ controlla: (Bool, String) -> Void) {
+        // «ora» nel senso di «adesso» non è una ricerca di orari
+        for frase in ["Trovami i clienti che ora hanno liquidità ferma", "Cerca ora le promesse di Sofia",
+                      "Le borse hanno perso l'8%: dammi ora i clienti toccati"] {
+            let r = AgendaOrganizzaVera.riconosce(frase)
+            controlla(r == nil, "Agenda, revisione: «\(frase)» non è dell'agenda: \(r.map { "\($0)" } ?? "nil")")
+        }
+        controlla(AgendaOrganizzaVera.riconosce("Trovami un'ora per il riesame di Marco entro giovedì") == .cerca,
+                  "Agenda, revisione: «trovami un'ora…» resta una ricerca")
+        // «Sposta tutti gli appuntamenti di Marco»: solo i suoi, gli altri restano e contano come occupati
+        let conMarco = agenda + [app("marco-gio", "marco", "Il punto con Marco", h(5, 10), 60, "In studio", .altro)]
+        let x = contesto(conMarco)
+        let r = AgendaOrganizzaVera.interpreta("Sposta tutti gli appuntamenti di Marco da giovedì a venerdì", contesto: x)
+        controlla(r?.intento == .spostaBlocco && r?.clienteId == "marco",
+                  "Agenda, revisione: lo spostamento in blocco di Marco ha il cliente: \(r?.clienteId ?? "nil")")
+        if let r, let s = AgendaOrganizzaVera.spostaBlocco(r, contesto: x) {
+            controlla(!s.mosse.isEmpty && s.mosse.allSatisfy { $0.clienteId == "marco" },
+                      "Agenda, revisione: si spostano solo gli impegni di Marco: \(s.mosse.map(\.appuntamentoId))")
+        } else {
+            controlla(false, "Agenda, revisione: lo spostamento in blocco di Marco non si prepara")
         }
     }
 }

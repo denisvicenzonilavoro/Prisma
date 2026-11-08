@@ -415,6 +415,9 @@ enum VoceConfronto: Hashable {
     /// Il tagliando dei dati (fase 4, CollegaTagliandoShell.swift): le voci del controllo di adesso (in memoria, si
     /// rifanno quando servono; nell'archivio resta solo il registro) e la pagina sopra la chat di Vera.
     var esitoTagliando: EsitoTagliando?
+    /// Con quale `versioneCalcoli` è stato fatto `esitoTagliando`: se i dati sono cambiati dopo (a pagina chiusa),
+    /// `esitoTagliandoAggiornato()` rifà l'elenco prima di usarlo. Non osservata: serve solo alle azioni.
+    @ObservationIgnored var versioneEsitoTagliando: Int?
     var paginaTagliandoAperta = false
     /// Il prossimo turno notturno del tagliando: un lavoro all'ora dell'orologio, niente Timer.
     @ObservationIgnored var lavoroTagliando: DispatchWorkItem?
@@ -645,6 +648,10 @@ enum VoceConfronto: Hashable {
                 cambiaVersioneComuneClienti()
             }
             veraCambiata = dati.impostazioni.vera != prima.vera
+            #if os(macOS)
+            // Il turno notturno del tagliando segue le sue impostazioni (anche cambiate da un ripristino)
+            if dati.impostazioni.tagliando != prima.tagliando { programmaTagliando() }
+            #endif
         case .tutto(let prima):
             // Gli array non toccati condividono la memoria con i vecchi: confrontarli costa O(1)
             let ora = dati.istantanea
@@ -656,6 +663,9 @@ enum VoceConfronto: Hashable {
                 cambiaVersioneComuneClienti()
             }
             veraCambiata = ora.impostazioni.vera != prima.impostazioni.vera
+            #if os(macOS)
+            if ora.impostazioni.tagliando != prima.impostazioni.tagliando { programmaTagliando() }
+            #endif
             if ora.clienteAttivoId != prima.clienteAttivoId { clienteAttivoCambiato.send(ora.clienteAttivoId) }
         }
         if veraCambiata {
@@ -700,8 +710,12 @@ enum VoceConfronto: Hashable {
 
     // MARK: - Lettura
 
-    // In modalità cliente le app vedono solo il cliente davanti a te: gli altri non compaiono da nessuna parte
-    var clienti: [Cliente] { modoCliente.map { id in dati.clienti.filter { $0.id == id } } ?? dati.clienti }
+    // In modalità cliente le app vedono solo il cliente davanti a te: gli altri non compaiono da nessuna parte.
+    // Le schede unite a un'altra dal tagliando (`Cliente.unitaIn`) restano in archivio ma non compaiono più fra i clienti.
+    var clienti: [Cliente] { modoCliente.map { id in dati.clienti.filter { $0.id == id } } ?? clientiAttivi }
+    /// I clienti veri e propri: tutto l'archivio meno le schede unite a un'altra («Unisci le schede» del tagliando).
+    /// `dati.clienti` completo resta per archivio, backup, «Annulla» e ricerca per id.
+    var clientiAttivi: [Cliente] { dati.clienti.filter { $0.unitaIn == nil } }
     var appuntamenti: [Appuntamento] { modoCliente.map { id in dati.appuntamenti.filter { $0.clienteId == id } } ?? dati.appuntamenti }
     var attivita: [Attivita] { modoCliente.map { id in dati.attivita.filter { $0.clienteId == id } } ?? dati.attivita }
     var nomeUtente: String { dati.impostazioni.nomeUtente }
@@ -823,9 +837,22 @@ enum VoceConfronto: Hashable {
         dati.sessioniCopilota.removeAll { $0.clienteId == id }
         for d in dati.documenti where d.clienteId == id { rimuoviFile(d) }
         dati.documenti.removeAll { $0.clienteId == id }
+        // Il profilo di stile: l'eccezione «tu o Lei» del cliente tolto non resta nelle impostazioni (né nei backup né
+        // nell'istantanea di «Prisma ovunque»). Si cambia solo il valore: l'origine della regola resta com'era.
+        if var r = dati.impostazioni.stileVera.cortesia, r.valore.perCliente[id] != nil {
+            r.valore.perCliente[id] = nil
+            dati.impostazioni.stileVera.cortesia = r
+        }
+        // Le schede unite a quella tolta tornano schede normali: altrimenti resterebbero escluse per sempre dal tagliando
+        // e dai clienti, con un «Annulla» dell'unione ormai impossibile
+        if dati.clienti.contains(where: { $0.unitaIn == id }) {
+            var elenco = dati.clienti
+            for i in elenco.indices where elenco[i].unitaIn == id { elenco[i].unitaIn = nil }
+            dati.clienti = elenco
+        }
         if modoCliente == id { modoCliente = nil }
         if dati.clienteAttivoId == id {
-            dati.clienteAttivoId = dati.clienti.first?.id ?? ""
+            dati.clienteAttivoId = clientiAttivi.first?.id ?? ""
         }
         azzeraNote()
     }
@@ -1503,11 +1530,12 @@ enum VoceConfronto: Hashable {
     /// Salva il PDF nella cartella Documenti del cliente: entra nei backup e si ritrova in Documenti.
     /// `cliente`: di chi è il documento (il tavolo con l'iPad passa il cliente presente); nil = il cliente attivo.
     @discardableResult
-    func archiviaProspetto(_ pdf: Data, documento: DocumentoStampabile, cliente perCliente: String? = nil) -> String? {
+    func archiviaProspetto(_ pdf: Data, documento: DocumentoStampabile, cliente perCliente: String? = nil,
+                           sostituisci: Bool = true) -> String? {
         let cliente = perCliente ?? clienteAttivoId
         let titolo = "\(documento.genere) · \(documento.titolo)"
-        // Lo stesso documento archiviato di nuovo nello stesso giorno sostituisce la copia di prima
-        if let vecchio = dati.documenti.first(where: { $0.clienteId == cliente && $0.titolo == titolo && Calendar.current.isDateInToday($0.importatoIl) }) {
+        // Lo stesso documento archiviato di nuovo nello stesso giorno sostituisce la copia di prima (se richiesto)
+        if sostituisci, let vecchio = dati.documenti.first(where: { $0.clienteId == cliente && $0.titolo == titolo && Calendar.current.isDateInToday($0.importatoIl) }) {
             eliminaDocumento(vecchio.id)
         }
         var d = Documento(clienteId: cliente, titolo: titolo, tipo: documento.tipo)

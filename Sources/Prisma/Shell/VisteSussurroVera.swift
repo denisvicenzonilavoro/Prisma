@@ -19,8 +19,9 @@ private typealias A = Tema.Apple
 struct SussurroDossierVista: View {
     @Environment(StatoShell.self) var stato
     let cliente: Cliente
-    /// La scheda «Conferma» aperta sotto una voce: chiave della voce → id del messaggio di Vera che la contiene.
-    @State private var schede: [String: String] = [:]
+    // La scheda «Conferma» aperta sotto una voce si ricava dalla conversazione del cliente
+    // (`StatoShell.schedaSussurroAperta`), mai da uno @State: cambiando scheda del dossier, cliente o chiudendo il
+    // dossier la vista rinasce e la scheda in attesa deve restare sotto la voce, con il pulsante disattivato.
 
     var body: some View {
         let _ = ContaCorpi.segna()
@@ -51,7 +52,8 @@ struct SussurroDossierVista: View {
     // MARK: Una voce
 
     private func riga(_ v: VoceSussurro) -> some View {
-        let messaggio = schede[v.chiave]
+        // La scheda in attesa, altrimenti l'ultima della voce: così `onChange` vede anche il passaggio a «eseguita»
+        let messaggio = stato.schedaSussurroAperta(v) ?? stato.ultimaSchedaSussurro(v)
         let scheda = messaggio.flatMap { stato.messaggioVera($0)?.conferma }
         return HStack(alignment: .top, spacing: A.sussurroSpazioRiga) {
             Circle()
@@ -91,7 +93,9 @@ struct SussurroDossierVista: View {
 
     private func pulsante(_ v: VoceSussurro, aperta: Bool) -> some View {
         Button(v.azione.titolo) {
-            if let id = stato.eseguiSussurro(v) { schede[v.chiave] = id }
+            // Una scheda già in attesa per la voce non se ne fa un'altra (niente doppioni né attività ripetute)
+            guard stato.schedaSussurroAperta(v) == nil else { return }
+            stato.eseguiSussurro(v)
         }
         .buttonStyle(.apple)
         .fixedSize()
@@ -106,7 +110,6 @@ struct SussurroDossierVista: View {
                 Button(dove) { stato.apriFonteSussurro(v) }
             }
             Button("Non ora: torna tra una settimana") {
-                schede[v.chiave] = nil
                 stato.chiudiSussurro(v)
             }
             .disabled(stato.solaLettura)
@@ -123,14 +126,12 @@ struct SussurroDossierVista: View {
     private func cambiata(_ v: VoceSussurro, stato nuovo: SchedaConfermaVera.Stato?, scheda: SchedaConfermaVera?) {
         switch nuovo {
         case .eseguita?:
-            schede[v.chiave] = nil
             let esito = scheda?.attive.compactMap(\.esito).first
             if esito?.fatta != false { stato.chiudiSussurro(v) }
             if let testo = esito?.messaggio { stato.mostraAvviso(testo, daVera: true) }
-        case .daConfermare?:
-            break
         default:
-            schede[v.chiave] = nil
+            // In attesa, lasciata stare, sostituita o annullata: la scheda si ricava di nuovo dalla conversazione
+            break
         }
     }
 
@@ -150,6 +151,34 @@ struct SussurroDossierVista: View {
         case .arancio: return "Presto"
         case .blu: return "Da sapere"
         }
+    }
+}
+
+extension StatoShell {
+    /// La richiesta con cui `schedaSussurro` scrive la scheda di una voce (serve per ritrovarla nella conversazione).
+    static func testoRichiestaSussurro(_ v: VoceSussurro) -> String { "\(v.azione.titolo): \(v.testo)" }
+
+    /// L'id del messaggio di Vera con la scheda «Conferma» ancora in attesa per la voce, cercato nella conversazione
+    /// del cliente della voce (l'ultimo: origine sussurro, da confermare, stessa voce). nil se non ce n'è.
+    func schedaSussurroAperta(_ v: VoceSussurro) -> String? {
+        Self.cercaSchedaSussurro(v, in: conversazione(v.clienteId), soloInAttesa: true)
+    }
+
+    /// L'id dell'ultimo messaggio di Vera con una scheda «Conferma» della voce, in qualunque stato.
+    func ultimaSchedaSussurro(_ v: VoceSussurro) -> String? {
+        Self.cercaSchedaSussurro(v, in: conversazione(v.clienteId), soloInAttesa: false)
+    }
+
+    /// La ricerca pura. La voce si riconosce dalla chiave negli argomenti dell'azione («sussurro»), quando c'è, o
+    /// dalla richiesta scritta da `schedaSussurro`.
+    static func cercaSchedaSussurro(_ v: VoceSussurro, in messaggi: [MessaggioVera], soloInAttesa: Bool) -> String? {
+        let richiesta = testoRichiestaSussurro(v)
+        return messaggi.last { m in
+            guard let s = m.conferma, s.origine == .sussurro else { return false }
+            if soloInAttesa, s.stato != .daConfermare { return false }
+            let chiavi = s.azioni.compactMap { $0.argomenti["sussurro"] }
+            return chiavi.isEmpty ? s.richiesta == richiesta : chiavi.contains(v.chiave)
+        }?.id
     }
 }
 
@@ -180,5 +209,36 @@ private struct TestataSussurro: View {
         case 2: return "due cose da sapere adesso"
         default: return "\(SchedaConfermaVera.numero(n)) cose da sapere adesso"
         }
+    }
+}
+
+/// La scheda «Conferma» di una voce si ritrova dalla conversazione del cliente (non da uno @State della vista): dopo
+/// un cambio di scheda del dossier resta sotto la voce, il pulsante non ne crea una seconda, confermata non c'è più.
+/// Da chiamare in `Prisma --prova-vera` (accanto a `ProvaCollegaSussurroVera`).
+enum ProvaSchedaSussurroAperta {
+    static func esegui(_ controlla: (Bool, String) -> Void) {
+        let s = StatoShell(persistente: false)
+        s.rispostePreparate = true
+        let oggi = Date()
+        guard let i = s.dati.clienti.firstIndex(where: { $0.id == "sofia" }) else {
+            return controlla(false, "Scheda del sussurro: manca Sofia tra i dati di prova")
+        }
+        s.dati.clienti[i].consensi = Consensi()
+        guard let v = s.vociSussurro(dati: s.dati.istantanea, clienteId: "sofia", oggi: oggi).first(where: { $0.azione.cambia }) else {
+            return controlla(false, "Scheda del sussurro: per Sofia senza consenso manca una voce da confermare")
+        }
+        controlla(s.schedaSussurroAperta(v) == nil, "Scheda del sussurro: prima del pulsante nessuna scheda in attesa")
+        guard let mid = s.eseguiSussurro(v, oggi: oggi) else {
+            return controlla(false, "Scheda del sussurro: il pulsante non prepara la scheda «Conferma»")
+        }
+        // La vista rinasce (nuova scheda del dossier): la scheda si ritrova dai dati
+        controlla(s.schedaSussurroAperta(v) == mid, "Scheda del sussurro: la scheda in attesa si ritrova dalla conversazione del cliente")
+        let altra = VoceSussurro(chiave: v.chiave + "-altra", clienteId: v.clienteId, categoria: v.categoria, tono: v.tono,
+                                 testo: v.testo + " Altro.", azione: v.azione, fonte: v.fonte, rango: v.rango, data: v.data)
+        controlla(s.schedaSussurroAperta(altra) == nil, "Scheda del sussurro: la scheda di una voce non vale per un'altra")
+        let attivita = s.dati.attivita.count
+        _ = s.confermaSchedaVera(messaggio: mid)
+        controlla(s.schedaSussurroAperta(v) == nil && s.ultimaSchedaSussurro(v) == mid && s.dati.attivita.count == attivita + 1,
+                  "Scheda del sussurro: confermata, la scheda non è più in attesa e l'attività è una sola")
     }
 }

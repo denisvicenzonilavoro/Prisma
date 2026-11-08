@@ -109,7 +109,7 @@ enum MotoreNotifiche {
         // Proposte ferme: presentate da più dei giorni del seguito senza un appuntamento in agenda, o rimandate e da
         // riprendere. Una voce sola per tutte, come i clienti da ricontattare (apre il Portafoglio)
         let sogliaSeguito = dati.impostazioni.giorniSeguitoProposte
-        let ferme = MotoreSeguitoProposte.inSospeso(posizioni: dati.posizioni, clienti: dati.clienti, appuntamenti: dati.appuntamenti,
+        let ferme = MotoreSeguitoProposte.inSospeso(posizioni: dati.posizioni, clienti: stato.clientiAttivi, appuntamenti: dati.appuntamenti,
                                                     attivita: dati.attivita, adesso: oggi, soglia: sogliaSeguito)
         if ferme.count == 1, let s = ferme.first {
             let p = s.posizione
@@ -130,7 +130,7 @@ enum MotoreNotifiche {
                                    data: inizio, canale: canaleFerme, destinazione: nil))
         }
         // Compleanni dei clienti
-        for c in dati.clienti {
+        for c in stato.clientiAttivi {
             guard let nascita = c.dataNascita, let prossimo = prossimoCompleanno(nascita, da: inizio, cal: cal) else { continue }
             let giorni = cal.dateComponents([.day], from: inizio, to: prossimo).day ?? 99
             guard giorni <= giorniCompleanno else { continue }
@@ -168,7 +168,7 @@ enum MotoreNotifiche {
                                    destinazione: daVerificare.count == 1 ? .prodotto(primo.id) : .app(.prodotti)))
         }
         // Clienti da ricontattare (nessun contatto da mesi e niente in agenda): una voce sola, apre il Portafoglio
-        let richiamare = MotorePortafoglio.daRicontattare(dati.posizioni, clienti: dati.clienti, appuntamenti: dati.appuntamenti,
+        let richiamare = MotorePortafoglio.daRicontattare(dati.posizioni, clienti: stato.clientiAttivi, appuntamenti: dati.appuntamenti,
                                                           incontri: dati.incontri, oggi: oggi)
         if let primo = richiamare.first {
             elenco.append(Notifica(id: "ricontattare-\(richiamare.map(\.id).joined(separator: ","))", gruppo: .daSistemare, app: .clienti,
@@ -179,7 +179,7 @@ enum MotoreNotifiche {
         }
         // Polizze e previdenza senza beneficiari: il capitale andrebbe agli eredi legittimi
         let perCliente = Dictionary(grouping: dati.posizioni.filter { $0.stato == .inEssere }, by: \.clienteId)
-        let senzaBeneficiari = dati.clienti.filter { c in
+        let senzaBeneficiari = stato.clientiAttivi.filter { c in
             guard let mie = perCliente[c.id] else { return false }
             return mie.contains { p in
                 MotoreSuccessione.classifica(p).1 == .beneficiari && p.senzaBeneficiari
@@ -193,7 +193,7 @@ enum MotoreNotifiche {
                                    data: inizio, destinazione: nil))
         }
         // Proposte di un tipo che il cliente dice di non conoscere (griglia dell'esperienza nel profilo)
-        let ignoti = MotoreEsperienza.daSegnalare(clienti: dati.clienti, posizioni: dati.posizioni, prodotti: dati.prodotti)
+        let ignoti = MotoreEsperienza.daSegnalare(clienti: stato.clientiAttivi, posizioni: dati.posizioni, prodotti: dati.prodotti)
         if let primo = ignoti.first {
             // Una sola proposta di un solo cliente: la notifica porta alla proposta
             var una: Posizione?
@@ -420,7 +420,7 @@ extension StatoShell {
     func deducibiliFineAnno(oggi: Date) -> [FineAnno] {
         let calcolo: () -> [FineAnno] = {
             guard MotoreFineAnno.ultimiGiorni(oggi) else { return [] }
-            return MotoreFineAnno.conSpazio(clienti: self.dati.clienti, posizioni: self.dati.posizioni, oggi: oggi)
+            return MotoreFineAnno.conSpazio(clienti: self.clientiAttivi, posizioni: self.dati.posizioni, oggi: oggi)
                 .filter { f in f.scadenze.contains { $0.tipo == .deduzione && MotoreFineAnno.vicina($0, oggi: oggi) } }
         }
         guard Calendar.current.isDateInToday(oggi) else { return calcolo() }
@@ -612,7 +612,7 @@ extension MotoreNotifiche {
         // Compleanni dei clienti: la mattina del giorno
         if scelte.compleanni {
             let oggi = cal.startOfDay(for: adesso)
-            for c in dati.clienti {
+            for c in dati.clienti where c.unitaIn == nil {
                 guard let nascita = c.dataNascita, let giorno = prossimoCompleanno(nascita, da: oggi, cal: cal),
                       let quando = allOra(giorno), quando > adesso else { continue }
                 let anno = cal.component(.year, from: giorno)
@@ -629,7 +629,7 @@ extension MotoreNotifiche {
         if scelte.occasioni {
             let regole = dati.impostazioni.occasioni
             let fino = cal.date(byAdding: .day, value: RegoleOccasioni.giorniPromemoria, to: adesso) ?? adesso
-            let occasioni = MotoreOccasioni.calcola(clienti: dati.clienti, posizioni: dati.posizioni, prodotti: dati.prodotti,
+            let occasioni = MotoreOccasioni.calcola(clienti: dati.clienti.filter { $0.unitaIn == nil }, posizioni: dati.posizioni, prodotti: dati.prodotti,
                                                     da: adesso, a: fino, regole: regole, oggi: adesso, cal: cal)
                 .filter(MotoreOccasioni.perPromemoria)
             let giorniPrima = Array(Set([regole.anticipoGiorni, 0])).sorted(by: >)

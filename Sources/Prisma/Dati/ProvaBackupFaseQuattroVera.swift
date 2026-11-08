@@ -18,6 +18,7 @@ extension ProvaBackup {
         aggiungiStileVeraDiProva(&d)
         aggiungiTreLivelliDiProva(&d)
         aggiungiPassiVeraDiProva(&d)
+        aggiungiMessaggiFaseQuattroDiProva(&d)
     }
 
     /// Tutte le verifiche della fase 4. Restituisce il motivo del primo errore (nil = tutto bene).
@@ -30,6 +31,7 @@ extension ProvaBackup {
         if let e = try verificaStileVera(originale: originale, estratto: estratto) { return e }
         if let e = try verificaTreLivelli(originale: originale, estratto: estratto) { return e }
         if let e = try verificaPassiVera(originale: originale, estratto: estratto) { return e }
+        if let e = try verificaMessaggiFaseQuattro(originale: originale, estratto: estratto) { return e }
         if let e = try verificaSezioniNuoveFaseQuattro(originale: originale) { return e }
         return nil
     }
@@ -661,6 +663,82 @@ extension ProvaBackup {
         let ist = SpazioOvunque.datiIstantanea(originale)
         guard ist.conversazioni.isEmpty, ist.impostazioni.vera.passi == ImpostazioniPassiVera() else {
             return "il ragionamento a passi (piani nelle conversazioni, impostazioni di Vera) non deve entrare nell'istantanea di Prisma ovunque"
+        }
+        return nil
+    }
+
+    // MARK: - Le schede in chat (routine, tagliando, stile, tre livelli)
+
+    static let idMessaggioRoutineTagliandoDiProva = "msg-backup-routine-tagliando"
+    static let idMessaggioStileTreLivelliDiProva = "msg-backup-stile-tre-livelli"
+    /// I campi dei messaggi di Vera della fase 4 che non hanno una prova propria nelle sezioni sopra.
+    static let campiMessaggioFaseQuattro = ["esitoRoutine", "tagliando", "stileVera", "treLivelli", "treLivelliLivello"]
+
+    /// Due risposte di Vera con le schede salvate solo nel messaggio: il lancio di una routine e il tagliando di tutto
+    /// l'archivio (""), lo stile di una bozza, la spiegazione in tre livelli (aperta sul cliente) e il tagliando di un
+    /// cliente. Chiamata dopo `aggiungiRoutineVeraDiProva` (riusa il suo lancio) e `aggiungiTreLivelliDiProva`.
+    static func aggiungiMessaggiFaseQuattroDiProva(_ d: inout DatiPrisma) {
+        guard let c = d.clienti.first, let esito = d.routine.esiti.first else { return }
+        let t = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        var r = MessaggioVera(autore: .vera, testo: "Ho lanciato «Quando firmo».", titolo: "Quando firmo", motore: "Calcoli di Prisma")
+        r.id = idMessaggioRoutineTagliandoDiProva
+        r.data = t
+        r.esitoRoutine = esito
+        r.tagliando = ""
+        var s = MessaggioVera(autore: .vera, testo: "La bozza nel tuo stile e la spiegazione in tre versioni.", titolo: "Il fondo pensione",
+                              motore: "Qwen sul Mac")
+        s.id = idMessaggioStileTreLivelliDiProva
+        s.data = t
+        s.stileVera = SchedaStileVera(tipo: .bozza, clienteId: c.id, canale: .messaggi, generica: "Gentile cliente, la contatto per…",
+                                      inStile: "Ciao, ti scrivo per…", modifiche: ["Firma: «Denis»"], violazioni: ["Una frase lunga"],
+                                      grave: true, conQwen: true)
+        s.treLivelli = "tre-livelli-backup-1"
+        s.treLivelliLivello = .cliente
+        s.tagliando = c.id
+        d.conversazioni[c.id, default: []] += [r, s]
+    }
+
+    /// Restituisce il motivo dell'errore (nil = tutto bene).
+    static func verificaMessaggiFaseQuattro(originale: DatiPrisma, estratto: DatiPrisma) throws -> String? {
+        guard let c = originale.clienti.first,
+              let r = originale.conversazioni[c.id]?.first(where: { $0.id == idMessaggioRoutineTagliandoDiProva }),
+              let s = originale.conversazioni[c.id]?.first(where: { $0.id == idMessaggioStileTreLivelliDiProva }),
+              r.esitoRoutine != nil, r.tagliando == "", s.stileVera != nil, s.treLivelli != nil, s.treLivelliLivello == .cliente, s.tagliando == c.id else {
+            return "l'archivio di prova non ha i messaggi di Vera con routine, tagliando, stile e tre livelli"
+        }
+        let tornati = estratto.conversazioni[c.id] ?? []
+        guard tornati.first(where: { $0.id == r.id }) == r, tornati.first(where: { $0.id == s.id }) == s else {
+            return "il lancio della routine, il tagliando, lo stile o i tre livelli dei messaggi di Vera non tornano uguali dal backup"
+        }
+        for m in [r, s] {
+            guard var j = try JSONSerialization.jsonObject(with: Archivio.codificatore.encode(m)) as? [String: Any] else {
+                return "messaggio di prova non codificato"
+            }
+            // Un messaggio salvato prima della fase 4: senza i campi nuovi si apre intero, senza schede
+            var senzaCampi = j
+            for chiave in campiMessaggioFaseQuattro { senzaCampi.removeValue(forKey: chiave) }
+            let senza = try Archivio.decodificatore.decode(MessaggioVera.self, from: JSONSerialization.data(withJSONObject: senzaCampi))
+            guard senza.esitoRoutine == nil, senza.tagliando == nil, senza.stileVera == nil, senza.treLivelli == nil,
+                  senza.treLivelliLivello == nil, senza.id == m.id, senza.testo == m.testo, senza.titolo == m.titolo else {
+                return "un messaggio di Vera senza routine, tagliando, stile e tre livelli non si apre intero"
+            }
+            // Campi rovinati (un tipo di passo o un livello che non esistono, un numero al posto del testo o della scheda):
+            // si perde solo il campo, il messaggio resta
+            j["esitoRoutine"] = ["routineId": 3, "passi": [["tipo": "passoCheNonEsiste"]]] as [String: Any]
+            j["tagliando"] = 42
+            // SchedaStileVera è tollerante dentro (un tipo sconosciuto diventa «profilo»): qui si rovina il campo intero
+            j["stileVera"] = 7
+            j["treLivelli"] = ["rovinato": true] as [String: Any]
+            j["treLivelliLivello"] = "livelloCheNonEsiste"
+            let rovinato = try Archivio.decodificatore.decode(MessaggioVera.self, from: JSONSerialization.data(withJSONObject: j))
+            guard rovinato.esitoRoutine == nil, rovinato.tagliando == nil, rovinato.stileVera == nil, rovinato.treLivelli == nil,
+                  rovinato.treLivelliLivello == nil, rovinato.id == m.id, rovinato.testo == m.testo, rovinato.titolo == m.titolo else {
+                return "un campo rovinato (routine, tagliando, stile o tre livelli) fa perdere il messaggio di Vera"
+            }
+        }
+        // Le conversazioni (con queste schede) restano sul Mac
+        guard SpazioOvunque.datiIstantanea(originale).conversazioni.isEmpty else {
+            return "le schede di routine, tagliando, stile e tre livelli (nelle conversazioni) non devono entrare nell'istantanea di Prisma ovunque"
         }
         return nil
     }

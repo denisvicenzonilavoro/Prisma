@@ -246,7 +246,8 @@ struct VeraScrivania: View {
     }
 
     private var portafoglio: Bool { stato.veraPortafoglio }
-    private var messaggi: [MessaggioVera] { stato.conversazione(stato.chiaveConversazione) }
+    // In modalità cliente senza i messaggi del sussurro (appunti del consulente)
+    private var messaggi: [MessaggioVera] { stato.messaggiPerLoSchermo(stato.conversazione(stato.chiaveConversazione)) }
     private var allargata: Bool { !messaggi.isEmpty || stato.veraInCorso }
     private var pronta: Bool { stato.qwen.disponibilita.pronto }
 

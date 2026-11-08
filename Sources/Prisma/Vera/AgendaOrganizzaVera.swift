@@ -429,8 +429,9 @@ enum AgendaOrganizzaVera {
     /// «Libera giovedì, sposta tutto a venerdì»: ogni impegno pianificato del giorno da liberare (non i blocchi «Non
     /// disponibile», non quelli già passati) va alla stessa ora del giorno di arrivo se è libera e dentro gli orari,
     /// altrimenti al primo orario libero di quel giorno; quello che non ci sta resta dov'è e lo si dice.
+    /// Con `cliente` («sposta tutti gli appuntamenti di Marco…») si muovono solo i suoi: gli altri restano occupati.
     static func spostaBlocco(da: Date, a: Date, appuntamenti: [Appuntamento], orari: OrariLavoro, oggi: Date,
-                             cal: Calendar = MotorePianificazione.calendario) -> SpostamentoBlocco {
+                             cliente: String? = nil, cal: Calendar = MotorePianificazione.calendario) -> SpostamentoBlocco {
         let daG = cal.startOfDay(for: da)
         let aG = cal.startOfDay(for: a)
         let giornoA = DateItaliane.descrivi(aG, conOra: false, oggi: oggi, cal: cal)
@@ -448,10 +449,12 @@ enum AgendaOrganizzaVera {
             return esito
         }
         let daMuovere = appuntamenti
-            .filter { $0.stato == .pianificato && $0.tipo != .nonDisponibile && cal.isDate($0.inizio, inSameDayAs: daG) && $0.inizio >= oggi }
+            .filter { $0.stato == .pianificato && $0.tipo != .nonDisponibile && cal.isDate($0.inizio, inSameDayAs: daG) && $0.inizio >= oggi
+                && (cliente == nil || $0.clienteId == cliente) }
             .sorted { $0.inizio < $1.inizio }
         guard !daMuovere.isEmpty else {
-            esito.nota = "\(maiuscola(DateItaliane.descrivi(daG, conOra: false, oggi: oggi, cal: cal))) non hai impegni da spostare."
+            let conLui = cliente == nil ? "" : " con questo cliente"
+            esito.nota = "\(maiuscola(DateItaliane.descrivi(daG, conOra: false, oggi: oggi, cal: cal))) non hai impegni\(conLui) da spostare."
             return esito
         }
         let ids = Set(daMuovere.map(\.id))
@@ -492,7 +495,8 @@ enum AgendaOrganizzaVera {
 
     static func spostaBlocco(_ r: RichiestaOrari, contesto x: ContestoStrumenti) -> SpostamentoBlocco? {
         guard let da = r.daGiorno, let a = r.aGiorno else { return nil }
-        return spostaBlocco(da: da, a: a, appuntamenti: x.appuntamenti, orari: x.impostazioni.orari, oggi: x.oggi, cal: x.calendario)
+        return spostaBlocco(da: da, a: a, appuntamenti: x.appuntamenti, orari: x.impostazioni.orari, oggi: x.oggi,
+                            cliente: r.clienteId, cal: x.calendario)
     }
 
     /// Le azioni per la scheda «Conferma»: per ogni impegno lo spostamento (agenda_sposta_impegno) e, se è con un
@@ -563,7 +567,9 @@ enum AgendaOrganizzaVera {
             || trova(#"\bsposta(mi)? (tutto|tutti|tutte|gli impegni|gli appuntamenti|la giornata)\b"#, t) {
             return .spostaBlocco
         }
-        if trova(#"\b(trova|trovami|cerca|cercami|proponi|proponimi|dammi|vedi se c'è)\b.*\b(ora|orario|orari|spazio|buco|momento|posto|mezz'ora)\b"#, t)
+        // Solo le forme di una ricerca d'orario: «ora» da sola è spesso l'avverbio («trovami i clienti che ora…»),
+        // «momento» e «posto» da soli sono nomi qualsiasi
+        if trova(#"\b(trova|trovami|cerca|cercami|proponi|proponimi|dammi|vedi se c'è)\b.*(\bun'ora\b|\bmezz'ora\b|\bun orario\b|\b(due |gli |degli )?orari\b|\b(uno |lo )?spazio (per|libero|in agenda)\b|\bun buco\b|\bun momento (per|libero)\b|\bun posto in agenda\b)"#, t)
             || trova(#"\b(un'ora|un orario|due orari|mezz'ora)\b.*\b(per|con)\b"#, t) && trova(#"\b(entro|attaccat|libero|liber[ao]|trova|cerca)"#, t) {
             return .cerca
         }
@@ -674,7 +680,9 @@ enum AgendaOrganizzaVera {
         switch intento {
         case .spostaBlocco:
             let (da, a) = partenzaArrivo(frase, oggi: x.oggi, cal: x.calendario)
-            return RichiestaOrari(intento: .spostaBlocco, daGiorno: da, aGiorno: a)
+            var r = RichiestaOrari(intento: .spostaBlocco, daGiorno: da, aGiorno: a)
+            clienteDelBlocco(&r, frase: frase, contesto: x)
+            return r
         case .cerca:
             var r = RichiestaOrari(intento: .cerca)
             r.modo = modoDetto(t)
@@ -707,12 +715,24 @@ enum AgendaOrganizzaVera {
         }
     }
 
+    /// Spostamento in blocco: il cliente solo se la frase lo nomina («sposta tutti gli appuntamenti di Marco…»), mai
+    /// quello aperto: «sposta tutto» senza nome resta l'intera giornata.
+    private static func clienteDelBlocco(_ r: inout RichiestaOrari, frase: String, contesto x: ContestoStrumenti) {
+        switch RegistroStrumenti.cliente(frase, x) {
+        case .trovato(let c): r.clienteId = c.id
+        case .ambiguo(let cs): r.ambigui = cs.map(\.nome)
+        default: r.nomeDetto = nomeDetto(frase)
+        }
+    }
+
     /// Cosa manca per procedere, come domanda di Vera (nil = si può procedere).
     static func domanda(_ r: RichiestaOrari, oggi: Date, cal: Calendar = MotorePianificazione.calendario) -> String? {
         switch r.intento {
         case .spostaBlocco:
             guard let da = r.daGiorno else { return "Quale giorno ti libero?" }
             guard r.aGiorno != nil else { return "A quale giorno sposto gli impegni di \(DateItaliane.descrivi(da, conOra: false, oggi: oggi, cal: cal))?" }
+            if r.clienteId == nil, let a = r.ambigui, a.count > 1 { return "Quale cliente intendi: \(a.joined(separator: " o "))?" }
+            if r.clienteId == nil, let n = r.nomeDetto { return "Non trovo «\(n)» tra i clienti: di chi sposto gli impegni?" }
             return nil
         case .cerca:
             if r.clienteId == nil, let a = r.ambigui, a.count > 1 { return "Quale cliente intendi: \(a.joined(separator: " o "))?" }
@@ -783,7 +803,10 @@ enum AgendaOrganizzaVera {
         switch a.testo("intento") {
         case "sposta_blocco"?:
             guard let da = giorno("da_giorno"), let al = giorno("a_giorno"), da != al else { return nil }
-            return RichiestaOrari(intento: .spostaBlocco, daGiorno: da, aGiorno: al, conQwen: true)
+            // Il cliente lo dice la frase, non Qwen: come per le regole
+            var r = RichiestaOrari(intento: .spostaBlocco, daGiorno: da, aGiorno: al, conQwen: true)
+            clienteDelBlocco(&r, frase: frase, contesto: x)
+            return r
         case "cerca"?:
             let t = normale(frase)
             var r = RichiestaOrari(intento: .cerca, conQwen: true)
@@ -843,6 +866,7 @@ enum AgendaOrganizzaVera {
     /// Il contesto degli strumenti dai dati di Prisma (`oggi` sempre da fuori).
     static func contesto(_ d: DatiPrisma, oggi: Date, attivo: String? = nil, cal: Calendar = MotorePianificazione.calendario) -> ContestoStrumenti {
         ContestoStrumenti(oggi: oggi, clienti: d.clienti, appuntamenti: d.appuntamenti, posizioni: d.posizioni, attivo: attivo,
-                          impostazioni: d.impostazioni, inModoCliente: false, calendario: cal)
+                          impostazioni: d.impostazioni, inModoCliente: false, calendario: cal,
+                          clientiScritti: Set(StileVera.inviati(d.messaggi).map(\.clienteId)))
     }
 }

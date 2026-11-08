@@ -9,9 +9,10 @@ extension StatoShell {
 
     var contestoStrumenti: ContestoStrumenti {
         // In modalità cliente Vera conosce solo il cliente davanti a te: niente nomi né dati degli altri
-        let clienti = inModoCliente ? dati.clienti.filter { $0.id == clienteAttivoId } : dati.clienti
+        let clienti = inModoCliente ? clientiAttivi.filter { $0.id == clienteAttivoId } : clientiAttivi
         return ContestoStrumenti(oggi: Date(), clienti: clienti, appuntamenti: dati.appuntamenti, posizioni: dati.posizioni,
-                          attivo: veraPortafoglio ? nil : clienteAttivoId, impostazioni: dati.impostazioni, inModoCliente: inModoCliente)
+                          attivo: veraPortafoglio ? nil : clienteAttivoId, impostazioni: dati.impostazioni, inModoCliente: inModoCliente,
+                          clientiScritti: Set(StileVera.inviati(dati.messaggi).map(\.clienteId)))
     }
 
     // MARK: - Lo smistamento
@@ -36,11 +37,17 @@ extension StatoShell {
         // giovedì, sposta tutto a venerdì», poi «Federico ha scelto martedì» (CollegaAgendaOrganizzaShell.swift)
         if chiediAgendaOrganizza(testo, chiave: chiaveConversazione) { return true }
         if sceltaDettaAgenda(testo, chiave: chiaveConversazione) { return true }
+        // «Il sussurro» (funzione 7): «cosa devo sapere su Marco?», «cosa c'è da sapere su Marco domani?» prima dei
+        // comandi a regole, che leggerebbero «cosa c'è… domani» come agenda; la sua frase è ancorata in testa e lascia
+        // passare i verbi d'azione (CollegaSussurroShell.swift)
+        if chiediSussurro(testo, chiave: chiaveConversazione) { return true }
         // «Le routine» (funzione 3): «chiudiamo il mese», «com'è la settimana?», «ho firmato con Giulia», «prepara
         // l'incontro con Marco»; i comandi d'azione («fissa… a fine mese») e i documenti li lascia passare
         // (CollegaRoutineShell.swift). Ultima del gruppo: le sue frasi sono le più larghe
         if chiediRoutine(testo, chiave: chiaveConversazione) { return true }
-        if eseguiComandoVera(testo) { return true }
+        // «Le borse hanno perso l'8% da lunedì, cosa c'è da fare?»: un evento di mercato non è una domanda sull'agenda,
+        // passa più avanti a «Il mercato per i tuoi clienti»
+        if !eventoDiMercatoNonAgenda(testo), eseguiComandoVera(testo) { return true }
         // Fase 3: promesse, differenze, coperture e resoconto
         if chiediResoconto(testo, chiave: chiaveConversazione) { return true }
         if chiediDifferenze(testo, chiave: chiaveConversazione) { return true }
@@ -51,8 +58,6 @@ extension StatoShell {
         if chiediBozzeMercatoClienti(testo, chiave: chiaveConversazione) { return true }
         // «Ragiona a passi» (funzione 20): un budget mensile da dividere tra protezione e obiettivi (CollegaPassiShell.swift)
         if chiediPassi(testo, chiave: chiaveConversazione) { return true }
-        // «Il sussurro» (funzione 7): «cosa devo sapere su Marco?» (CollegaSussurroShell.swift)
-        if chiediSussurro(testo, chiave: chiaveConversazione) { return true }
         // «Il mercato per i tuoi clienti» (funzione 14): l'evento detto a parole («le borse hanno perso l'8% in una
         // settimana», «la BCE taglia i tassi di 25 punti base»), prima di «Tre livelli» che leggerebbe «perché…»
         if chiediMercatoClienti(testo, chiave: chiaveConversazione) { return true }
@@ -64,6 +69,17 @@ extension StatoShell {
         if chiediClientela(testo, nelDossier: chiave != VeraPortafoglio.chiave) { return true }
         if chiediNorme(testo, chiave: chiaveConversazione) { return true }
         return chiediFalloTu(testo, chiave: chiaveConversazione)
+    }
+
+    /// true se la frase dice un evento di mercato e i comandi a regole la leggerebbero come agenda («cosa c'è» con un
+    /// giorno): allora i comandi la lasciano passare. Un appuntamento in sospeso ha sempre la precedenza.
+    func eventoDiMercatoNonAgenda(_ testo: String) -> Bool {
+        guard appuntamentoInSospeso == nil, MercatoClientiVera.eUnEvento(testo) else { return false }
+        let noti = clientiAttivi.map { ClienteNoto(id: $0.id, nome: $0.nome) }
+        if case .agenda? = InterpreteComandi.interpreta(testo, clienti: noti, attivo: veraPortafoglio ? nil : clienteAttivoId) {
+            return true
+        }
+        return false
     }
 
     // MARK: - «Fallo tu»
@@ -234,6 +250,8 @@ extension StatoShell {
             for i in s.azioni.indices { if let e = esiti[s.azioni[i].id] { s.azioni[i].esito = e } }
             s.stato = .eseguita
         }
+        // Il sussurro (fase 4, funzione 7): le voci confermate si chiudono, il dossier non le ripropone
+        if s.origine == .sussurro, let eseguita = messaggioVera(messaggio)?.conferma { chiudiSussurriConfermati(eseguita) }
         let fatte = s.attive.compactMap { esiti[$0.id] }
         let testo: String
         if fatte.count == 1 {
@@ -241,7 +259,9 @@ extension StatoShell {
         } else {
             testo = (fatte.allSatisfy(\.fatta) ? "Fatto." : "Fatto in parte.") + "\n" + fatte.map { "• \($0.messaggio)" }.joined(separator: "\n")
         }
-        aggiungiMessaggio(MessaggioVera(autore: .vera, testo: testo, motore: Self.motoreAzioni), cliente: chiave ?? chiaveConversazione)
+        // Dopo una scheda del sussurro anche il «Fatto.» resta un appunto del consulente (nascosto in modalità cliente)
+        aggiungiMessaggio(MessaggioVera(autore: .vera, testo: testo, titolo: s.origine == .sussurro ? Self.titoloSussurro : nil,
+                                        motore: Self.motoreAzioni), cliente: chiave ?? chiaveConversazione)
         return fatte
     }
 
@@ -365,6 +385,11 @@ extension StatoShell {
             let tipo: TipoOccasioneMessaggio = mercato ? .avvisoMercato : .richiestaVera
             let tono = TonoMessaggio(rawValue: arg["tono"] ?? "") ?? .formale
             let origine = OrigineMessaggio(tipo: tipo, riferimento: riferimento)
+            let occasione = "\(tipo.rawValue)-\(id)-\(riferimento)"
+            // Dalla scena del Mercato e dal portafoglio: una sola bozza per cliente ed evento
+            if mercato, dati.messaggi.contains(where: { $0.occasioneId == occasione && $0.stato == .bozza }) {
+                return EsitoAzioneVera(fatta: false, messaggio: "Per \(c.nome) c'è già una bozza per questo evento in Messaggi.")
+            }
             let oggetto: String?
             if canale != .mail {
                 oggetto = nil
@@ -375,7 +400,7 @@ extension StatoShell {
                 oggetto = Self.oggettoAgendaOrganizza(scopo: arg["scopo"], orari: arg["orari"])
                     ?? (arg["scopo"] == "spostamento" ? "Il nostro incontro" : "Un messaggio da \(nomeUtente)")
             }
-            var m = MessaggioCliente(clienteId: id, occasioneId: "\(tipo.rawValue)-\(id)-\(riferimento)", origine: origine,
+            var m = MessaggioCliente(clienteId: id, occasioneId: occasione, origine: origine,
                                      canaleLavoro: nil, tono: tono, canale: canale,
                                      oggetto: oggetto,
                                      testo: testo, cifre: [], autore: .vera, modello: nil)
@@ -510,15 +535,15 @@ extension StatoShell {
 
     var datiClientela: DatiClientela {
         var spese: [String: (mensili: Double, salvata: Bool)] = [:]
-        for c in dati.clienti { spese[c.id] = (analisi360(c.id).protezione.fabbisognoMensile, analisiSalvata(c.id)) }
-        return DatiClientela(oggi: Date(), clienti: dati.clienti, posizioni: dati.posizioni, appuntamenti: dati.appuntamenti,
+        for c in clientiAttivi { spese[c.id] = (analisi360(c.id).protezione.fabbisognoMensile, analisiSalvata(c.id)) }
+        return DatiClientela(oggi: Date(), clienti: clientiAttivi, posizioni: dati.posizioni, appuntamenti: dati.appuntamenti,
                              incontri: dati.incontri, spese: spese)
     }
 
     /// Una domanda su tutti i clienti: Qwen la traduce in filtri, Prisma cerca. true se l'ha gestita.
     /// La conversazione passa al portafoglio (riguarda tutti i clienti); in modalità cliente non si fa.
     func chiediClientela(_ testo: String, nelDossier: Bool = false) -> Bool {
-        let noti = dati.clienti.map { ClienteNoto(id: $0.id, nome: $0.nome) }
+        let noti = clientiAttivi.map { ClienteNoto(id: $0.id, nome: $0.nome) }
         guard ClientelaVera.eUnaDomanda(testo, clienti: noti, soloEspliciti: nelDossier) else { return false }
         if inModoCliente {
             let chiave = chiaveConversazione

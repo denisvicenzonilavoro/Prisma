@@ -265,6 +265,8 @@ struct EsitoRoutine: Codable, Equatable, Identifiable {
     /// La frase del consulente (o «Ogni lunedì alle 8:30» per un lancio programmato).
     var richiesta: String
     var clienteId: String?
+    /// La posizione firmata su cui hanno lavorato i passi di «Dopo la firma» (per il contratto trascinato dopo).
+    var posizioneId: String?
     var data: Date
     var passi: [EsitoPassoRoutine] = []
     var risultato = RisultatoRoutine(titolo: "", righe: [], pulsanti: [])
@@ -371,13 +373,17 @@ extension RoutineVera {
     /// Le durate della scaletta si arrotondano a 5 minuti.
     static let passoMinuti = 5
 
-    private static let innescoFirma = #"\bho firmato\b|\babbiamo firmato\b|\bha firmato\b|\bdopo la firma\b|\bfirmato con\b"#
+    /// L'annuncio della firma («ho firmato con Giulia», «Giulia ha firmato»), non la domanda «l'ha firmato?» né il
+    /// «contratto firmato con Alleanza» (le domande con «?» le scarta la Shell).
+    private static let innescoFirma = #"\bho firmato\b|\babbiamo firmato\b|(?<!')\bha firmato\b|\bdopo la firma\b|\bfirmato con\b(?! alleanza\b)"#
 
     /// Le quattro routine del template.
     static func pronte() -> [RoutineVera] {
         let inizio = Date(timeIntervalSinceReferenceDate: 0)
         let prepara = RoutineVera(id: idPrepara, titolo: "Prepara l'incontro", frase: "Vera, prepara l'incontro con Marco",
-                                  inneschi: [#"\bprepara(?:mi)?\b.*\b(?:incontro|appuntamento|colloquio|riunione|scaletta)\b"#],
+                                  // L'oggetto subito dopo il verbo: «prepara un messaggio… dell'appuntamento» o «preparami il resoconto
+                                  // dell'incontro» restano a «Fallo tu» e al resoconto
+                                  inneschi: [#"\bprepara(?:mi)? (?:l'|il |la |lo )?(?:incontro|appuntamento|colloquio|riunione|scaletta)\b"#],
                                   passi: [PassoRoutine(.schedaCliente), PassoRoutine(.ultimoIncontro), PassoRoutine(.scadenzeCliente),
                                           PassoRoutine(.cosaManca), PassoRoutine(.scaletta)],
                                   pronta: true, creataIl: inizio)
@@ -389,7 +395,8 @@ extension RoutineVera {
                                  programmazione: ProgrammazioneRoutine(tipo: .settimanale, giorno: 2, ora: 8, minuto: 30),
                                  pronta: true, creataIl: inizio)
         let fineMese = RoutineVera(id: idFineMese, titolo: "Fine mese", frase: "Vera, chiudiamo il mese",
-                                   inneschi: [#"\bchiud(?:iamo|i|ere) il mese\b"#, #"\bfine (?:del )?mese\b"#, #"\bchiusura del mese\b"#],
+                                   // «Fine mese» da sola; dentro una domanda («quali promesse scadono a fine mese?») resta agli altri motori
+                                   inneschi: [#"\bchiud(?:iamo|i|ere) il mese\b"#, #"^(?:la |a )?fine (?:del )?mese$"#, #"\bchiusura del mese\b"#],
                                    passi: [PassoRoutine(.parcelleMese), PassoRoutine(.chilometriMese), PassoRoutine(.fattureDaEmettere),
                                            PassoRoutine(.scadenzeMeseDopo)],
                                    programmazione: ProgrammazioneRoutine(tipo: .fineMese, ora: 17, minuto: 30),
@@ -480,9 +487,12 @@ extension RoutineVera {
         }
     }
 
-    /// Le routine che partono con un evento (oggi solo la firma).
+    /// Le routine che partono con un evento (oggi solo la firma). Come in `riconosci`, quelle del consulente prendono il
+    /// posto della pronta («Dopo la firma» parte solo se il consulente non ne ha una sua attiva): niente azioni doppie.
     static func perEvento(_ tipo: ProgrammazioneRoutine.Tipo, _ routine: [RoutineVera]) -> [RoutineVera] {
-        routine.filter { $0.attiva && $0.programmazione?.tipo == tipo && tipo == .dopoFirma }
+        let tutte = routine.filter { $0.attiva && $0.programmazione?.tipo == tipo && tipo == .dopoFirma }
+        let proprie = tutte.filter { !$0.pronta }
+        return proprie.isEmpty ? tutte : proprie
     }
 
     /// La routine dopo un lancio: una volta in più, con la data.
@@ -523,6 +533,7 @@ extension RoutineVera {
         for p in r.passi.prefix(passiMassimi) { esito.passi.append(passo(p, x, &l)) }
         esito.azioni = l.azioni
         esito.scaletta = l.scaletta
+        esito.posizioneId = l.posizione?.id
         let titolo = l.titolo ?? titoloRisultato(r, l)
         esito.risultato = RisultatoRoutine(titolo: titolo, righe: l.righe.isEmpty ? ["Niente da segnalare."] : l.righe,
                                            pulsanti: Array(l.pulsantiOrdinati.prefix(2)))
@@ -623,7 +634,8 @@ extension RoutineVera {
 
     private static func contestoStrumenti(_ x: ContestoRoutine, attivo: String?) -> ContestoStrumenti {
         ContestoStrumenti(oggi: x.oggi, clienti: x.dati.clienti, appuntamenti: x.dati.appuntamenti, posizioni: x.dati.posizioni,
-                          attivo: attivo, impostazioni: x.dati.impostazioni, calendario: x.calendario)
+                          attivo: attivo, impostazioni: x.dati.impostazioni, calendario: x.calendario,
+                          clientiScritti: Set(StileVera.inviati(x.dati.messaggi).map(\.clienteId)))
     }
 
     /// Prepara un'azione con il registro, come «Fallo tu»: la stessa esecuzione dopo «Conferma».
@@ -912,7 +924,8 @@ extension RoutineVera {
         if let pieno = perGiorno.max(by: { ($0.value.count, $1.key) < ($1.value.count, $0.key) }), pieno.value.count >= 2 {
             let clienti = Dictionary(x.dati.clienti.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
             let chi = pieno.value.map { a -> String in
-                let nome = clienti[a.clienteId].map { primoNome($0.nome) } ?? a.titolo
+                // Un cliente che il motore non vede (modalità cliente) non dà il suo titolo; l'impegno personale sì
+                let nome = clienti[a.clienteId].map { primoNome($0.nome) } ?? (a.clienteId.isEmpty ? a.titolo : "un impegno")
                 return a.tipo == .telefonata ? "la telefonata a \(nome)" : nome
             }
             l.righe.append("\(maiuscola(formato("EEEE", cal).string(from: pieno.key))) è il giorno pieno: \(elenco(chi))")
@@ -946,7 +959,8 @@ extension RoutineVera {
         let dettaglio = "\(nomeGiorno) \(fascia) è libero" + (altre > 0 ? " (e altre \(altre) mezze giornate)" : "")
         // A cosa può servire: la prima attività aperta della settimana
         let settimana = MotoreStorie.settimanaDi(x.oggi, cal: cal)
-        let attivita = x.dati.attivita.filter { !$0.completata && $0.scadenza < settimana.end }
+        let visibili = Set(x.dati.clienti.map(\.id))
+        let attivita = x.dati.attivita.filter { !$0.completata && $0.scadenza < settimana.end && ($0.clienteId.isEmpty || visibili.contains($0.clienteId)) }
             .sorted { ($0.scadenza, $0.priorita.ordine, $0.id) < ($1.scadenza, $1.priorita.ordine, $1.id) }.first
         let uso = attivita.map { "buono per «\($0.titolo)»" } ?? "buono per le telefonate della settimana"
         l.righe.append("\(nomeGiorno) \(fascia) è libero: \(uso)")
@@ -1140,7 +1154,8 @@ extension RoutineVera {
             let nome = "Contratto firmato · \(p.map { nomePosizione($0) } ?? c.nome)"
             l.azioni.append(AzioneConferma(strumento: RegistroStrumenti.documentiArchivia, app: .documenti, titolo: "Archivio «\(nome)»",
                                            dettaglio: "Nella scheda di \(c.nome) · Documenti",
-                                           argomenti: ["cliente": c.id, "file": file, "titolo": nome, "tipo": Documento.Tipo.polizza.rawValue]))
+                                           argomenti: ["cliente": c.id, "file": file, "titolo": nome, "tipo": Documento.Tipo.polizza.rawValue]
+                                               .merging(p.map { ["posizione": $0.id] } ?? [:]) { a, _ in a }))
             l.righe.append("Contratto da archiviare nella scheda di \(primoNome(c.nome)) (da confermare)")
             return EsitoPassoRoutine(tipo: .archiviaContratto, titolo: titolo, dettaglio: "Nella scheda di \(c.nome) · Documenti", stato: .daConfermare, fonte: "Il file trascinato")
         }
@@ -1349,16 +1364,31 @@ extension RoutineVera {
     static func daParole(_ testo: String, oggi: Date) -> RoutineVera? {
         let passi = passiDa(testo)
         guard !passi.isEmpty else { return nil }
-        let prog = programmazioneDa(testo)
+        let prog = programmazioneTenuta(programmazioneDa(testo), passi: passi)
         let titolo = titoloDa(prog, passi: passi)
         return nuova(titolo: titolo, frase: nil, passi: passi, programmazione: prog, oggi: oggi)
     }
 
-    private static func nuova(titolo: String, frase: String?, passi: [PassoRoutine], programmazione: ProgrammazioneRoutine?, oggi: Date) -> RoutineVera {
-        let lancio = frase ?? (programmazione?.tipo == .dopoFirma ? "Vera, ho firmato con…" : "Vera, \(minuscola(titolo))")
+    /// Una routine che parte da sola all'ora (ogni settimana, a fine mese) non sa per quale cliente: con un passo sul
+    /// cliente non partirebbe mai (`controllaRoutineDovute`), quindi la programmazione si toglie e la routine si lancia
+    /// con la frase. «Dopo ogni firma» resta: il cliente è quello della firma.
+    static func programmazioneTenuta(_ p: ProgrammazioneRoutine?, passi: [PassoRoutine]) -> ProgrammazioneRoutine? {
+        guard let p, p.tipo != .dopoFirma, passi.contains(where: { $0.tipo.serveCliente }) else { return p }
+        return nil
+    }
+
+    /// true se la richiesta diceva un'ora (ogni lunedì, a fine mese) che la routine non può tenere (ha passi sul cliente).
+    static func programmazioneTolta(richiesta: String, routine r: RoutineVera) -> Bool {
+        guard r.programmazione == nil, let p = programmazioneDa(richiesta), p.tipo != .dopoFirma else { return false }
+        return r.serveCliente
+    }
+
+    private static func nuova(titolo: String, frase: String?, passi: [PassoRoutine], programmazione voluta: ProgrammazioneRoutine?, oggi: Date) -> RoutineVera {
+        let prog = programmazioneTenuta(voluta, passi: passi)
+        let lancio = frase ?? (prog?.tipo == .dopoFirma ? "Vera, ho firmato con…" : "Vera, \(minuscola(titolo))")
         return RoutineVera(id: "routine-\(UUID().uuidString.prefix(8).lowercased())", titolo: titolo, frase: lancio,
-                           inneschi: inneschiDa(titolo: titolo, frase: lancio, programmazione: programmazione),
-                           passi: passi, programmazione: programmazione, creataIl: oggi)
+                           inneschi: inneschiDa(titolo: titolo, frase: lancio, programmazione: prog),
+                           passi: passi, programmazione: prog, creataIl: oggi)
     }
 
     // MARK: - Routine nuove a parole: Qwen (JSON, solo i passi del catalogo)
@@ -1407,7 +1437,7 @@ extension RoutineVera {
         }
         guard !tipi.isEmpty else { return nil }
         let passi = tipi.prefix(passiMassimi).map { PassoRoutine($0, mesi: $0 == .fissaControllo ? mesi : nil) }
-        let prog = programmazioneDa(richiesta)
+        let prog = programmazioneTenuta(programmazioneDa(richiesta), passi: passi)
         func pulito(_ chiave: String, massimo: Int) -> String? {
             guard let s = (j[chiave] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines.union(CharacterSet(charactersIn: "«»\""))),
                   !s.isEmpty, s.count <= massimo, CommentoVera.numeriConservati(bozza: richiesta, testo: s),

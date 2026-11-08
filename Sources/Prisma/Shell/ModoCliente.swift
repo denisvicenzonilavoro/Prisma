@@ -31,6 +31,8 @@ extension StatoShell {
         pannelloAppAperte = false
         portafoglio = false
         veraPortafoglio = false
+        // La scena «Per i tuoi clienti» elenca tutto il portafoglio
+        scenaMercatoClientiVera = nil
         filtroClienteAgenda = nil
         filtroClienteAttivita = nil
         if avviso { mostraAvviso("Modalità cliente: si vede solo il dossier di \(c.nome).") }

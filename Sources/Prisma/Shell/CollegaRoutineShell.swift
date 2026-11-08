@@ -44,7 +44,7 @@ extension StatoShell {
     /// Accende o spegne una routine (anche una pronta: la copia salvata ne tiene lo stato). È il consulente che lo fa
     /// dall'interruttore della pagina, non Vera.
     func impostaRoutineAttiva(_ id: String, _ attiva: Bool) {
-        guard !solaLettura, var r = routineVera(id), r.attiva != attiva else { return }
+        guard !solaLettura, !inModoCliente, var r = routineVera(id), r.attiva != attiva else { return }
         r.attiva = attiva
         if let i = dati.routine.routine.firstIndex(where: { $0.id == id }) {
             dati.routine.routine[i] = r
@@ -55,7 +55,7 @@ extension StatoShell {
 
     /// Toglie una routine del consulente (le pronte non si tolgono: si spengono). I suoi lanci passati restano.
     func eliminaRoutine(_ id: String) {
-        guard !solaLettura, let r = routineVera(id), !r.pronta else { return }
+        guard !solaLettura, !inModoCliente, let r = routineVera(id), !r.pronta else { return }
         dati.routine.routine.removeAll { $0.id == id }
         if routineSelezionataVera == id { routineSelezionataVera = RoutineVera.idPrepara }
         mostraAvviso("La routine «\(r.titolo)» è tolta")
@@ -66,6 +66,9 @@ extension StatoShell {
     func lanciaRoutineDaPagina(_ id: String, cliente clienteId: String?, oggi: Date = Date()) {
         guard !veraInCorso, let r = routineVera(id) else { return }
         let chiave: String
+        if inModoCliente && !Self.tuttaSulCliente(r) {
+            return mostraAvviso("In modalità cliente lancio solo le routine fatte tutte di passi sul cliente davanti a te.")
+        }
         if let c = clienteId {
             guard visibileAlCliente(c), cliente(c) != nil else { return mostraAvviso("In modalità cliente lancio solo le routine sul cliente davanti a te.") }
             if !inModoCliente { clienteAttivoId = c }
@@ -106,9 +109,19 @@ extension StatoShell {
     func lanciaRoutine(_ r: RoutineVera, richiesta: String, clienteId: String?, posizioneId: String? = nil, file: String? = nil,
                        chiave: String, oggi: Date = Date(), parla: Bool = true) -> EsitoRoutine {
         var d = dati.istantanea
-        // In modalità cliente il motore vede solo il cliente davanti a te (anche nei passi che leggono l'agenda)
+        // In modalità cliente il motore vede solo il cliente davanti a te: clienti, agenda, attività, promesse,
+        // posizioni, documenti, messaggi e incontri (le routine con passi fuori dal cliente non partono, vedi
+        // `tuttaSulCliente`: il filtro è la seconda difesa)
         if inModoCliente {
-            d.clienti = d.clienti.filter { $0.id == clienteAttivoId }
+            let id = clienteAttivoId
+            d.clienti = d.clienti.filter { $0.id == id }
+            d.appuntamenti = d.appuntamenti.filter { $0.clienteId == id }
+            d.attivita = d.attivita.filter { $0.clienteId == id }
+            d.promesse = d.promesse.filter { $0.clienteId == id }
+            d.posizioni = d.posizioni.filter { $0.clienteId == id }
+            d.documenti = d.documenti.filter { $0.clienteId == id }
+            d.messaggi = d.messaggi.filter { $0.clienteId == id }
+            d.incontri = d.incontri.filter { $0.clienteId == id }
         }
         let contesto = ContestoRoutine(dati: d, oggi: oggi, clienteId: clienteId, posizioneId: posizioneId, file: file)
         let esito = RoutineVera.esegui(r, richiesta: richiesta, contesto: contesto)
@@ -118,9 +131,15 @@ extension StatoShell {
         var m = MessaggioVera(autore: .vera, testo: Self.testoRoutine(esito), titolo: r.titolo,
                               motore: esito.azioni.isEmpty ? MotoriVera.sintesi.nome : Self.motoreAzioni)
         m.esitoRoutine = esito
-        m.conferma = esito.schedaConferma
+        m.conferma = self.inStile(esito.schedaConferma)
         aggiungiMessaggio(m, cliente: chiave, parla: parla)
         return esito
+    }
+
+    /// true se ogni passo lavora sul cliente: le sole routine che partono in modalità cliente (le altre guardano anche
+    /// l'agenda o il portafoglio del consulente).
+    static func tuttaSulCliente(_ r: RoutineVera) -> Bool {
+        !r.passi.isEmpty && !r.passi.contains { !$0.tipo.serveCliente }
     }
 
     /// Il testo della risposta sopra i passi: la domanda, oppure quante azioni aspettano «Conferma».
@@ -172,11 +191,16 @@ extension StatoShell {
         let clienti = inModoCliente ? dati.clienti.filter { $0.id == clienteAttivoId } : dati.clienti
         let noti = clienti.map { ClienteNoto(id: $0.id, nome: $0.nome) }
         let attivo: String? = inModoCliente ? clienteAttivoId : (chiave != VeraPortafoglio.chiave && cliente(chiave) != nil ? chiave : nil)
+        // Le domande sulle promesse e sulle scadenze («quali promesse scadono a fine mese?») restano ai loro motori
+        guard !Self.eUnaDomandaNonRoutine(t) else { return false }
         guard let l = RoutineVera.riconosci(testo, routine: routineTutte, clienti: noti, attivo: attivo) else { return false }
+        // La firma si annuncia: «l'ha firmato?», «cosa ho promesso dopo la firma», «il contratto firmato con…» no
+        if l.routine.programmazione?.tipo == .dopoFirma, Self.nonEUnAnnuncioDiFirma(testo, t) { return false }
         aggiungiMessaggio(MessaggioVera(autore: .utente, testo: testo), cliente: chiave)
         domandaVera = ""
-        if inModoCliente && !l.routine.serveCliente {
-            aggiungiMessaggio(MessaggioVera(autore: .vera, testo: "In modalità cliente lancio solo le routine sul cliente davanti a te: «\(l.routine.titolo)» guarda tutto il portafoglio.",
+        if inModoCliente && !Self.tuttaSulCliente(l.routine) {
+            let perche = l.routine.serveCliente ? "guarda anche l'agenda o il portafoglio" : "guarda tutto il portafoglio"
+            aggiungiMessaggio(MessaggioVera(autore: .vera, testo: "In modalità cliente lancio solo le routine sul cliente davanti a te: «\(l.routine.titolo)» \(perche).",
                                             motore: Self.motoreAzioni), cliente: chiave)
             return true
         }
@@ -188,6 +212,14 @@ extension StatoShell {
     func completaRoutineInSospeso(_ testo: String, chiave: String) -> Bool {
         guard let m = conversazione(chiave).last, m.autore == .vera, let e = m.esitoRoutine, e.domanda != nil,
               let r = routineVera(e.routineId) else { return false }
+        // Un comando, un documento, un elenco, una routine nuova o un'altra routine non sono la risposta: restano ai
+        // loro motori (anche se nominano un solo cliente)
+        let t = InterpreteComandi.pulisci(testo)
+        guard Self.rispostaBreve(t),
+              DateItaliane.cerca(Self.comandiNonRoutine, t) == nil, DateItaliane.cerca(Self.esclusioniRoutine, t) == nil,
+              !Self.eUnaRoutineNuova(testo, t), !Self.eUnElencoRoutine(t), !Self.eUnaDomandaNonRoutine(t),
+              !routineTutte.contains(where: { $0.attiva && $0.id != r.id && $0.inneschi.contains { DateItaliane.cerca($0, t) != nil } })
+        else { return false }
         let clienti = inModoCliente ? dati.clienti.filter { $0.id == clienteAttivoId } : dati.clienti
         let nominati = InterpreteComandi.clientiNominati(InterpreteComandi.pulisci(testo), clienti.map { ClienteNoto(id: $0.id, nome: $0.nome) })
         guard nominati.count == 1 else { return false }
@@ -214,9 +246,34 @@ extension StatoShell {
         return RoutineVera.programmazioneDa(testo) != nil && !RoutineVera.passiDa(testo).isEmpty
     }
 
+    /// La risposta a «Per quale cliente?» è breve: il nome, al più con «per», «con», «di» e la cortesia («per Marco»,
+    /// «Marco Rossi», «quello di Giulia Verdi»).
+    static func rispostaBreve(_ t: String) -> Bool {
+        t.split(whereSeparator: { $0 == " " || $0 == "," }).count <= Self.paroleRispostaCliente
+    }
+    static let paroleRispostaCliente = 5
+
+    /// Le domande sulle promesse e sulle scadenze («quali promesse scadono a fine mese?», «chi ha polizze in scadenza
+    /// a fine mese?», «cosa devo mandare a Giulia entro fine mese?»): restano a promesse, clientela e agenda.
+    static func eUnaDomandaNonRoutine(_ t: String) -> Bool {
+        DateItaliane.cerca(richiestaPromesse, t) != nil
+            || DateItaliane.cerca(#"^(?:chi|quali|quale|quanti|quante|cosa|che cosa|che)\b.*\b(?:scad|promess)\w*"#, t) != nil
+    }
+
+    /// La frase che nomina la firma ma non la annuncia: una domanda («?» nella frase originale: `pulisci` lo toglie),
+    /// le promesse, il resoconto, oppure «il contratto firmato con…» senza «ho/abbiamo firmato».
+    static func nonEUnAnnuncioDiFirma(_ testo: String, _ t: String) -> Bool {
+        if testo.contains("?") { return true }
+        if DateItaliane.cerca(richiestaPromesse, t) != nil || eUnResoconto(t) { return true }
+        let primaPersona = DateItaliane.cerca(#"\b(?:ho|abbiamo) firmato\b"#, t) != nil
+        return !primaPersona && DateItaliane.cerca(#"\b(?:contratt[oi]|modul[oi]|polizz[ae]|document[oi]) firmat[oaie]\b|\bfirmato con alleanza\b"#, t) != nil
+    }
+
     static let creaRoutine = #"\b(?:crea(?:mi)?|nuova|aggiungi|salva|fammi|imposta|registra|voglio)\b[^.?!]*\broutine\b"#
     /// I documenti hanno i loro comandi («preparami il fascicolo per l'incontro di giovedì»).
-    static let esclusioniRoutine = #"\b(?:report|prospett[oi]|document[oi]|fascicol[oi]|presentazione|relazione)\b"#
+    /// Anche le bozze e il resoconto («prepara un messaggio per Federico per spostare l'appuntamento», «preparami il
+    /// resoconto dell'incontro con Marco»): vanno a «Fallo tu» e al resoconto.
+    static let esclusioniRoutine = #"\b(?:report|prospett[oi]|document[oi]|fascicol[oi]|presentazione|relazione|messaggi[oa]?|e-?mail|bozz[ae]|sms|whatsapp|resocont[oi])\b"#
     /// I comandi d'azione di sempre («fissa…», «sposta…», «ricordami…»): non sono routine anche se dicono «fine mese».
     static let comandiNonRoutine = #"^(?:mi )?(?:fiss|mett|prenot|organizz|programm|spost|anticip|posticip|rimand|scriv|mand|invi|avvis|ricordami|annot|prend\w* nota|blocc|liber|aggiorn|cambi)\w*\b"#
 
@@ -253,10 +310,19 @@ extension StatoShell {
 
     /// La routine capita, nella scheda «Conferma»: si salva solo confermando.
     @discardableResult
-    func rispondiRoutineNuova(_ r: RoutineVera, richiesta: String, chiave: String, motore: String) -> MessaggioVera {
+    func rispondiRoutineNuova(_ capita: RoutineVera, richiesta: String, chiave: String, motore: String) -> MessaggioVera {
+        var r = capita
+        // Per sicurezza (il motore già lo fa): una routine all'ora con passi sul cliente non partirebbe mai da sola
+        if let p = r.programmazione, p.tipo != .dopoFirma, r.serveCliente { r.programmazione = nil }
         let passi = r.passi.enumerated().map { "\($0.offset + 1). \($0.element.tipo.descrizione)" }.joined(separator: "\n")
-        let quando = r.programmazione.map { "Parte da sola: \($0.etichetta.prefix(1).lowercased() + $0.etichetta.dropFirst()), con Prisma aperto." }
-            ?? "La lanci dicendo «\(r.frase)»."
+        let quando: String
+        if let p = r.programmazione {
+            quando = "Parte da sola: \(p.etichetta.prefix(1).lowercased() + p.etichetta.dropFirst()), con Prisma aperto."
+        } else if RoutineVera.programmazioneTolta(richiesta: richiesta, routine: r) {
+            quando = "Ha passi su un cliente: non può partire da sola. La lanci dicendo «\(r.frase)» e scegli il cliente."
+        } else {
+            quando = "La lanci dicendo «\(r.frase)»."
+        }
         var m = MessaggioVera(autore: .vera, testo: "Ho capito la routine «\(r.titolo)»:\n\(passi)\n\(quando) La salvo solo con «Conferma».",
                               titolo: "Una routine nuova", motore: motore == MotoriVera.sintesi.nome ? Self.motoreAzioni : motore)
         m.conferma = SchedaConfermaVera(richiesta: richiesta, azioni: [RoutineVera.azioneSalva(r)], origine: .regole)
@@ -320,7 +386,9 @@ extension StatoShell {
     @discardableResult
     func routineDopoFirma(posizione p: Posizione, oggi: Date = Date()) -> [EsitoRoutine] {
         guard !solaLettura, cliente(p.clienteId) != nil, visibileAlCliente(p.clienteId) else { return [] }
-        let routine = RoutineVera.perEvento(.dopoFirma, dati.routine.tutte)
+        // Le routine del consulente prendono il posto di «Dopo la firma» (`perEvento`); in modalità cliente solo
+        // quelle fatte tutte di passi sul cliente
+        let routine = RoutineVera.perEvento(.dopoFirma, dati.routine.tutte).filter { !inModoCliente || Self.tuttaSulCliente($0) }
         let nome = p.nome.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? p.area.nome : p.nome
         let esiti = routine.map { r in
             lanciaRoutine(r, richiesta: "Firmato: «\(nome)»", clienteId: p.clienteId, posizioneId: p.id,
@@ -354,12 +422,13 @@ extension StatoShell {
             mostraAvviso("Non riesco a leggere «\(url.lastPathComponent)»: \(error.localizedDescription)")
             return true
         }
-        let posizione = RoutineVera.posizioneFirmata(cliente: c, posizioneId: nil, posizioni: dati.posizioni)
+        let posizione = RoutineVera.posizioneFirmata(cliente: c, posizioneId: e.posizioneId, posizioni: dati.posizioni)
         let nomePosizione = posizione.map { $0.nome.trimmingCharacters(in: .whitespaces).isEmpty ? $0.area.nome : $0.nome }
         let titolo = "Contratto firmato · \(nomePosizione ?? c.nome)"
         let a = AzioneConferma(strumento: RegistroStrumenti.documentiArchivia, app: .documenti, titolo: "Archivio «\(titolo)»",
                                dettaglio: "Nella scheda di \(c.nome) · Documenti",
-                               argomenti: ["cliente": c.id, "file": copia.path, "titolo": titolo, "tipo": Documento.Tipo.polizza.rawValue])
+                               argomenti: ["cliente": c.id, "file": copia.path, "titolo": titolo, "tipo": Documento.Tipo.polizza.rawValue]
+                                   .merging(posizione.map { ["posizione": $0.id] } ?? [:]) { a, _ in a })
         aggiungiMessaggio(MessaggioVera(autore: .utente, testo: "📄 \(url.lastPathComponent)"), cliente: chiave, parla: false)
         var r = MessaggioVera(autore: .vera, testo: "È il contratto firmato di \(c.nome): con «Conferma» lo archivio nella sua scheda, tra i Documenti.",
                               titolo: e.titolo, motore: Self.motoreAzioni)
@@ -374,10 +443,17 @@ extension StatoShell {
 
     // MARK: - Esecuzione dopo «Conferma» (chiamate da FalloTuShell.eseguiAzioneVera / disfaAzioneVera)
 
-    /// Com'era la posizione prima di «segna in essere», e la pratica aperta insieme (per «Annulla»).
+    /// Com'era prima di «segna in essere» (per «Annulla»): la posizione, quella scritta dalla firma (per capire se qualcuno
+    /// l'ha cambiata dopo), la pratica aperta insieme, l'attività di ripresa chiusa e la raccomandazione del track
+    /// record prima e dopo. I campi nuovi sono opzionali: le schede salvate prima si leggono ancora.
     private struct PrimaDellaFirmaRoutine: Codable {
         var posizione: Posizione
         var pratica: Pratica?
+        var dopo: Posizione?
+        /// L'attività «Riprendere la proposta…» com'era, ancora aperta, prima della firma.
+        var ripresa: Attivita?
+        var raccomandazionePrima: Raccomandazione?
+        var raccomandazioneDopo: Raccomandazione?
     }
 
     private static func codificaRoutine<T: Encodable>(_ v: T) -> String? {
@@ -394,8 +470,11 @@ extension StatoShell {
         return try? dec.decode(t, from: d)
     }
 
-    /// `posizioni_segna_firmata`: la proposta firmata diventa in essere, accettata, con la decorrenza; si apre la sua
-    /// pratica dopo la firma come quando l'esito si segna a mano. Una posizione che non è più una proposta non si tocca.
+    /// `posizioni_segna_firmata`: la proposta firmata passa in essere come quando l'esito si segna a mano
+    /// (`StatoSeguito.chiudiProposta`): `MotoreSeguitoProposte.applica(.accettata)` con i dati proposti di Prisma
+    /// (decorrenza della scheda, primo valore, versato, scadenza, prima adesione), la pratica dopo la firma, la scelta
+    /// nel track record e la ripresa chiusa. Senza rilanciare le routine «dopo ogni firma» (sono loro ad averla
+    /// chiesta). Una posizione che non è più una proposta non si tocca.
     func eseguiPosizioneFirmataRoutine(_ a: AzioneConferma) -> EsitoAzioneVera {
         let arg = a.argomenti
         guard let id = arg["posizione"], let i = dati.posizioni.firstIndex(where: { $0.id == id }) else {
@@ -407,43 +486,79 @@ extension StatoShell {
         guard prima.stato == .proposta else {
             return EsitoAzioneVera(fatta: false, messaggio: "«\(nome)» non è più una proposta: non l'ho toccata.")
         }
+        var d = datiAccettazione(prima, appuntamento: nil)
+        if let dec = RegistroStrumenti.daIso(arg["decorrenza"]) { d.decorrenza = dec }
+        let raccomandazionePrima = raccomandazione(perPosizione: id)
+        let ripresaId = prima.seguito?.attivitaId
+        let ripresa = ripresaId.flatMap { t in dati.attivita.first { $0.id == t && !$0.completata } }
         var p = prima
-        p.stato = .inEssere
-        p.esito = .accettata
-        if let d = RegistroStrumenti.daIso(arg["decorrenza"]) { p.decorrenza = d }
+        _ = MotoreSeguitoProposte.applica(.accettata(d), a: &p, appuntamentoId: nil, adesso: Posizione.oggiArrotondato)
         dati.posizioni[i] = p
         let pratichePrima = Set(dati.pratiche.map(\.id))
         apriPraticaSeServe(p)
         let pratica = dati.pratiche.first { !pratichePrima.contains($0.id) }
+        // Track record: la scelta del cliente con l'esito (e la raccomandazione, se è la prima presentazione)
+        registraRaccomandazioneSeServe(prima: prima, dopo: p)
+        if let t = ripresa?.id, let j = dati.attivita.firstIndex(where: { $0.id == t && !$0.completata }) {
+            dati.attivita[j].completata = true
+        }
         let mese = p.decorrenza.map { " da " + Formati.dataEstesa.string(from: $0) } ?? ""
+        let primaFirma = PrimaDellaFirmaRoutine(posizione: prima, pratica: pratica, dopo: p, ripresa: ripresa,
+                                               raccomandazionePrima: raccomandazionePrima,
+                                               raccomandazioneDopo: raccomandazione(perPosizione: id))
         return EsitoAzioneVera(fatta: true, messaggio: "«\(nome)» di \(cliente(p.clienteId)?.nome ?? "del cliente") è in essere\(mese).",
-                               oggetto: id, prima: Self.codificaRoutine(PrimaDellaFirmaRoutine(posizione: prima, pratica: pratica)))
+                               oggetto: id, prima: Self.codificaRoutine(primaFirma))
     }
 
-    /// «Annulla»: la posizione torna com'era, se nessuno l'ha cambiata dopo; la pratica aperta insieme esce, se è
-    /// ancora com'era (una pratica già lavorata a mano resta).
+    /// «Annulla»: la posizione torna com'era se nessuno l'ha cambiata dopo; se è stata corretta (premio, date…) si
+    /// rimettono solo stato, esito, decorrenza e seguito e le correzioni restano. La pratica aperta insieme esce se è
+    /// ancora com'era (una pratica già lavorata a mano resta); la ripresa si riapre e la raccomandazione torna com'era,
+    /// anche queste solo se nessuno le ha toccate dopo.
     func disfaPosizioneFirmataRoutine(_ a: AzioneConferma) -> Bool {
         guard let e = a.esito, e.fatta, let id = e.oggetto, let prima = Self.decodificaRoutine(PrimaDellaFirmaRoutine.self, e.prima),
               let i = dati.posizioni.firstIndex(where: { $0.id == id }) else { return false }
         let ora = dati.posizioni[i]
         guard ora.stato == .inEssere, ora.esito == .accettata else { return false }
-        dati.posizioni[i] = prima.posizione
+        if let dopo = prima.dopo, ora == dopo {
+            dati.posizioni[i] = prima.posizione
+        } else {
+            var r = ora
+            r.stato = prima.posizione.stato
+            r.esito = prima.posizione.esito
+            r.decorrenza = prima.posizione.decorrenza
+            if let dopo = prima.dopo, ora.seguito == dopo.seguito { r.seguito = prima.posizione.seguito }
+            dati.posizioni[i] = r
+            mostraAvviso("«\(ora.nome.trimmingCharacters(in: .whitespaces).isEmpty ? ora.area.nome : ora.nome)» torna proposta: le correzioni fatte dopo la firma restano")
+        }
         if let pr = prima.pratica, let k = dati.pratiche.firstIndex(where: { $0.id == pr.id }), dati.pratiche[k] == pr {
             dati.pratiche.remove(at: k)
+        }
+        if let t = prima.ripresa, let j = dati.attivita.firstIndex(where: { $0.id == t.id }) {
+            var chiusa = t
+            chiusa.completata = true
+            if dati.attivita[j] == chiusa { dati.attivita[j].completata = false }
+        }
+        if let dopo = prima.raccomandazioneDopo, prima.raccomandazionePrima != dopo,
+           let k = dati.raccomandazioni.firstIndex(where: { $0.id == dopo.id }), dati.raccomandazioni[k] == dopo {
+            if let r = prima.raccomandazionePrima { dati.raccomandazioni[k] = r } else { dati.raccomandazioni.remove(at: k) }
         }
         return true
     }
 
     /// `routine_salva`: la routine nuova entra tra quelle del consulente.
     func eseguiSalvaRoutine(_ a: AzioneConferma) -> EsitoAzioneVera {
-        guard let r = Self.decodificaRoutine(RoutineVera.self, a.argomenti["routine"]) else {
+        guard var r = Self.decodificaRoutine(RoutineVera.self, a.argomenti["routine"]) else {
             return EsitoAzioneVera(fatta: false, messaggio: "Non riesco a leggere la routine da salvare.")
         }
         guard !dati.routine.tutte.contains(where: { $0.id == r.id }) else {
             return EsitoAzioneVera(fatta: false, messaggio: "La routine «\(r.titolo)» è già salvata.")
         }
+        // Una routine all'ora con passi sul cliente non partirebbe mai da sola: si lancia con la frase
+        let tolta = r.programmazione.map { $0.tipo != .dopoFirma && r.serveCliente } ?? false
+        if tolta { r.programmazione = nil }
         dati.routine.routine.append(r)
-        let lancio = r.programmazione.map { "parte da sola, \($0.etichetta.prefix(1).lowercased() + $0.etichetta.dropFirst())" } ?? "la lanci con «\(r.frase)»"
+        let lancio = r.programmazione.map { "parte da sola, \($0.etichetta.prefix(1).lowercased() + $0.etichetta.dropFirst())" }
+            ?? (tolta ? "ha passi su un cliente, quindi non parte da sola: la lanci con «\(r.frase)»" : "la lanci con «\(r.frase)»")
         return EsitoAzioneVera(fatta: true, messaggio: "La routine «\(r.titolo)» è salvata: \(lancio).", oggetto: r.id)
     }
 

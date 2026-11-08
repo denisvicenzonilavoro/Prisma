@@ -112,8 +112,8 @@ extension StatoShell {
     private func orariPerIlCliente(_ ricerca: RicercaOrari) -> RicercaOrari {
         guard inModoCliente else { return ricerca }
         var r = ricerca
-        for i in r.proposte.indices where r.proposte[i].attaccato {
-            r.proposte[i].etichetta = r.proposte[i].vicinanza == .prima ? "prima di un altro incontro in studio" : "subito dopo un altro incontro in studio"
+        for i in r.proposte.indices {
+            r.proposte[i].etichetta = AgendaOrganizzaGriglia.etichetta(r.proposte[i], inModoCliente: true)
         }
         return r
     }
@@ -147,7 +147,7 @@ extension StatoShell {
             if let bozza {
                 var a = bozza
                 a.argomenti["agendaOrari"] = m.id
-                m.conferma = SchedaConfermaVera(richiesta: frase, azioni: [a], origine: r.conQwen ? .qwen : .regole)
+                m.conferma = self.inStile(SchedaConfermaVera(richiesta: frase, azioni: [a], origine: r.conQwen ? .qwen : .regole))
             }
         }
     }
@@ -176,21 +176,42 @@ extension StatoShell {
             aggiornaSchedaVera(messaggio: v.id) { $0.stato = .sostituita }
         }
         let x = contestoAgendaOrganizza(oggi: oggi)
-        var scelta = AgendaOrganizzaVera.azioneScelta(p, richiesta: ricerca.richiesta, cliente: c, contesto: x)
+        // Un orario di questi orari già fissato con «Conferma» (agenda_nuovo_impegno ancora in agenda): la nuova scelta
+        // sposta quell'impegno invece di fissarne un secondo
+        var r = ricerca.richiesta
+        if r.daSpostare == nil, let fissato = impegnoGiaFissatoAgenda(messaggio: messaggio, chiave: chiave) {
+            r.daSpostare = fissato
+        }
+        var scelta = AgendaOrganizzaVera.azioneScelta(p, richiesta: r, cliente: c, contesto: x)
         scelta.argomenti["agendaScelta"] = messaggio
         var azioni = [scelta]
-        if let conferma = azioneConfermaOrarioAgenda(p, richiesta: ricerca.richiesta, cliente: c) {
+        if let conferma = azioneConfermaOrarioAgenda(p, richiesta: r, cliente: c) {
             azioni.append(conferma)
         }
         aggiornaMessaggioVera(messaggio) { $0.agendaOrariScelto = p.id }
         let nome = Self.primoNome(c.nome)
         let quando = DateItaliane.descrivi(p.inizio, conOra: true, oggi: oggi, cal: x.calendario)
         let dove = p.etichetta.isEmpty ? "" : ", \(p.etichetta)"
-        let cosa = ricerca.richiesta.daSpostare != nil && scelta.strumento == RegistroStrumenti.agendaSposta ? "sposto l'impegno" : "lo metto in agenda"
+        let cosa = r.daSpostare != nil && scelta.strumento == RegistroStrumenti.agendaSposta ? "sposto l'impegno" : "lo metto in agenda"
         return rispostaAgendaOrganizza("\(nome) ha scelto \(quando)\(dove). Con «Conferma» \(cosa) e preparo la conferma per \(nome): la spedisci tu.",
                                        chiave: chiave, motore: Self.motoreAzioni) { v in
-            v.conferma = SchedaConfermaVera(richiesta: "\(nome) ha scelto \(quando)", azioni: azioni, origine: .regole)
+            v.conferma = self.inStile(SchedaConfermaVera(richiesta: "\(nome) ha scelto \(quando)", azioni: azioni, origine: .regole))
         }
+    }
+
+    /// L'impegno fissato da una scelta precedente di questi orari: l'ultima agenda_nuovo_impegno eseguita (non annullata)
+    /// con `agendaScelta` uguale al messaggio degli orari, se l'impegno è ancora in agenda.
+    func impegnoGiaFissatoAgenda(messaggio: String, chiave: String) -> String? {
+        for v in conversazione(chiave).reversed() {
+            guard let azioni = v.conferma?.azioni else { continue }
+            for a in azioni.reversed() where a.strumento == RegistroStrumenti.agendaNuovo
+                && a.argomenti["agendaScelta"] == messaggio && !a.tolta {
+                guard let e = a.esito, e.fatta, !e.annullata, let id = e.oggetto,
+                      dati.appuntamenti.contains(where: { $0.id == id }) else { continue }
+                return id
+            }
+        }
+        return nil
     }
 
     /// La bozza di conferma per il cliente dopo la scelta (messaggi_prepara, scopo «conferma_orario», testo di Prisma).
@@ -230,16 +251,25 @@ extension StatoShell {
         let cal = MotorePianificazione.calendario
         var candidati = ricerca.proposte
         var detto = false
+        var perPosizione = false
         if DateItaliane.cerca(#"\b(?:il primo|la prima|primo orario)\b"#, t) != nil {
             candidati = Array(candidati.prefix(1))
             detto = true
+            perPosizione = true
         } else if DateItaliane.cerca(#"\b(?:il secondo|la seconda|secondo orario)\b"#, t) != nil {
             candidati = candidati.count > 1 ? [candidati[1]] : []
             detto = true
+            perPosizione = true
         }
         let giorni = AgendaOrganizzaVera.giorniNominati(testo, oggi: oggi, cal: cal)
         if !giorni.isEmpty {
-            candidati = candidati.filter { p in giorni.contains { cal.isDate($0, inSameDayAs: p.inizio) } }
+            let perData = candidati.filter { p in giorni.contains { cal.isDate($0, inSameDayAs: p.inizio) } }
+            // «Martedì» detto per nome vale per ogni martedì proposto (anche nella seconda settimana, e anche se la
+            // risposta arriva giorni dopo la proposta): la data assoluta resta per «il 17», «domani»
+            let nomi = Self.giorniSettimanaNominati(t)
+            candidati = perData.isEmpty && !nomi.isEmpty
+                ? candidati.filter { nomi.contains(cal.component(.weekday, from: $0.inizio)) }
+                : perData
             detto = true
         }
         if let ora = DateItaliane.trova(t, oggi: oggi, cal: cal).ora {
@@ -247,6 +277,13 @@ extension StatoShell {
             detto = true
         }
         guard detto else { return false }
+        // Nessun orario proposto coincide: «Non era tra gli orari proposti» solo per una scelta esplicita («ha scelto»,
+        // «preferisce», «il secondo»). «Fissiamo una telefonata venerdì alle 15», «confermo la riunione di giovedì»,
+        // «meglio saperlo: cosa ho lunedì?» passano ai comandi e a «Fallo tu», con la loro scheda di conferma
+        if candidati.isEmpty, !perPosizione,
+           DateItaliane.cerca(#"\b(?:ha scelto|sceglie|scelgo|preferisce|preferisco|opta per|optiamo per)\b"#, t) == nil {
+            return false
+        }
         aggiungiMessaggio(MessaggioVera(autore: .utente, testo: testo), cliente: chiave)
         domandaVera = ""
         guard candidati.count == 1 else {
@@ -257,6 +294,15 @@ extension StatoShell {
         }
         scegliOrarioAgenda(messaggio: m.id, orario: candidati[0].id, oggi: oggi)
         return true
+    }
+
+    /// I giorni della settimana detti per nome nella frase, come `Calendar.component(.weekday)` (domenica = 1).
+    static func giorniSettimanaNominati(_ t: String) -> Set<Int> {
+        let nomi: [(String, Int)] = [
+            (#"\bdomenica\b"#, 1), (#"\bluned[iì]\b"#, 2), (#"\bmarted[iì]\b"#, 3), (#"\bmercoled[iì]\b"#, 4),
+            (#"\bgioved[iì]\b"#, 5), (#"\bvenerd[iì]\b"#, 6), (#"\bsabato\b"#, 7),
+        ]
+        return Set(nomi.filter { DateItaliane.cerca($0.0, t.lowercased()) != nil }.map(\.1))
     }
 
     /// La conversazione che contiene un messaggio di Vera.
@@ -282,7 +328,7 @@ extension StatoShell {
         }
         return rispostaAgendaOrganizza(testo, titolo: titolo, chiave: chiave, motore: Self.motoreAzioni) { m in
             m.agendaSpostamento = s
-            m.conferma = AgendaOrganizzaVera.scheda(azioni, richiesta: frase, conQwen: r.conQwen)
+            m.conferma = self.inStile(AgendaOrganizzaVera.scheda(azioni, richiesta: frase, conQwen: r.conQwen))
         }
     }
 

@@ -5,8 +5,11 @@ import Foundation
 // controlla l'archivio: doppioni, campi vuoti, consensi, riesame, questionari, documento d'identità e posizioni
 // scadute. Il risultato in breve (`StatoTagliando`) resta nell'archivio; l'elenco delle voci (`esitoTagliando`) vive
 // in memoria e si rifà quando serve. Ogni correzione è una proposta: una scheda «Conferma» (mai eseguita in silenzio)
-// oppure una schermata da aprire. Nulla si cancella da solo: «Unisci le schede» sposta tutto sulla scheda principale e
-// segna l'altra come unita (`Cliente.unitaIn`), che resta in archivio; «Annulla» rimette tutto com'era.
+// oppure una schermata da aprire. Nulla si cancella da solo: «Unisci le schede» sposta sulla scheda principale tutto ciò
+// che è legato al cliente (tranne le raccomandazioni registrate, un registro che non si cambia) e segna l'altra come
+// unita (`Cliente.unitaIn`): resta in archivio ma esce dai clienti (`StatoShell.clientiAttivi`); «Annulla» rimette
+// tutto com'era. L'elenco delle voci porta con sé la `versioneCalcoli` con cui è stato fatto: le azioni lo rifanno
+// prima di usarlo se i dati sono cambiati intanto (`esitoTagliandoAggiornato`).
 // Il tagliando riguarda tutto l'archivio: in modalità cliente non si apre.
 extension StatoShell {
     static let titoloTagliando = "Il tagliando dei dati"
@@ -18,7 +21,7 @@ extension StatoShell {
     // MARK: - Il controllo
 
     /// I clienti che il tagliando controlla: le schede unite a un'altra restano in archivio ma non contano più.
-    var clientiDelTagliando: [Cliente] { dati.clienti.filter { $0.unitaIn == nil } }
+    var clientiDelTagliando: [Cliente] { clientiAttivi }
 
     /// Rifà l'elenco delle voci con i dati di adesso, senza toccare il registro salvato (dopo una correzione, a pagina
     /// aperta). Fuori dai body: legge i campi dell'archivio uno per uno.
@@ -28,7 +31,32 @@ extension StatoShell {
                                         incontri: dati.incontri, documenti: dati.documenti, regole: dati.impostazioni.conformita,
                                         oggi: adesso, ignorate: Set(dati.tagliando.ignorate))
         esitoTagliando = e
+        versioneEsitoTagliando = versioneCalcoli
         return e
+    }
+
+    /// L'elenco delle voci con i dati di adesso: quello in memoria se nessun dato dei calcoli è cambiato da quando è
+    /// stato fatto, altrimenti si rifà (un codice fiscale scritto a mano, una scheda tolta a pagina chiusa). nil in
+    /// modalità cliente. Solo dalle azioni (pulsanti, chat), mai dentro un body: può scrivere `esitoTagliando`.
+    @discardableResult
+    func esitoTagliandoAggiornato() -> EsitoTagliando? {
+        guard !inModoCliente else { return nil }
+        if let e = esitoTagliando, versioneEsitoTagliando == versioneCalcoli { return e }
+        return aggiornaEsitoTagliando()
+    }
+
+    /// La scheda vera a cui portano le azioni su un cliente: se la scheda è stata unita a un'altra si segue `unitaIn`
+    /// fino alla principale (con un limite di passi contro un giro chiuso). Una scheda che non c'è più resta com'è.
+    func schedaPrincipaleTagliando(_ id: String) -> String {
+        var attuale = id
+        var visti: Set<String> = [id]
+        for _ in 0..<8 {
+            guard let u = dati.clienti.first(where: { $0.id == attuale })?.unitaIn, !visti.contains(u),
+                  dati.clienti.contains(where: { $0.id == u }) else { break }
+            visti.insert(u)
+            attuale = u
+        }
+        return attuale
     }
 
     /// Il tagliando completo: le voci e, sul Mac, il registro salvato (ultimo controllo, riassunto, voci «Va bene così»
@@ -53,7 +81,11 @@ extension StatoShell {
     func tagliandoSeDovuto(adesso: Date = Date()) {
         #if os(macOS)
         guard persistente, archivioPronto, !lavoriInPausa, !solaLettura else { return }
-        guard TagliandoVera.dovuto(ultimo: dati.tagliando.ultimoControllo, adesso: adesso, impostazioni: dati.impostazioni.tagliando) else { return }
+        guard TagliandoVera.dovuto(ultimo: dati.tagliando.ultimoControllo, adesso: adesso, impostazioni: dati.impostazioni.tagliando) else {
+            // Non dovuto: dopo un riavvio l'elenco in memoria si rifà (senza toccare il registro dei controlli)
+            if esitoTagliando == nil, !inModoCliente { aggiornaEsitoTagliando(adesso: adesso) }
+            return
+        }
         eseguiTagliando(adesso: adesso)
         #endif
     }
@@ -99,7 +131,7 @@ extension StatoShell {
 
     func apriPaginaTagliando() {
         guard !inModoCliente else { return mostraAvviso("Il tagliando riguarda tutto l'archivio: fuori dalla modalità cliente.") }
-        if esitoTagliando == nil { aggiornaEsitoTagliando() }
+        esitoTagliandoAggiornato()
         if !aperta(.vera) { apri(.vera) }
         paginaTagliandoAperta = true
     }
@@ -183,7 +215,17 @@ extension StatoShell {
     /// Il pulsante di una voce: la scheda «Conferma» della sua azione, oppure la schermata da aprire.
     @discardableResult
     func correggiVoceTagliando(_ id: String) -> String? {
-        guard let v = voceTagliando(id), let c = v.correzione else { return nil }
+        // I dati possono essere cambiati da quando la pagina mostra la voce: si rifà l'elenco prima di proporre
+        esitoTagliandoAggiornato()
+        guard let v = voceTagliando(id), let c = v.correzione else {
+            mostraAvviso("Questa voce non c'è più: i dati sono cambiati e il tagliando è aggiornato.")
+            return nil
+        }
+        // L'attività è già segnata: una seconda uguale non serve
+        guard !correzioneTagliandoInCorso(v) else {
+            mostraAvviso("L'attività per questa voce è già segnata.")
+            return nil
+        }
         switch c {
         case .naviga(_, let destinazione):
             vaiTagliando(destinazione)
@@ -197,18 +239,22 @@ extension StatoShell {
     /// Le voci dei campi vuoti, insieme: le azioni «Completa dai documenti» in una scheda sola (nil se nessuna).
     @discardableResult
     func completaCampiVuotiTagliando() -> String? {
-        let azioni = (esitoTagliando?.voci ?? []).filter { $0.tipo == .campiVuoti }.compactMap { $0.correzione?.azione }
+        let azioni = (esitoTagliandoAggiornato()?.voci ?? []).filter { $0.tipo == .campiVuoti && !correzioneTagliandoInCorso($0) }
+            .compactMap { $0.correzione?.azione }
         guard !azioni.isEmpty else { return nil }
         let s = SchedaConfermaVera(richiesta: "Campi vuoti: completa dai documenti (tagliando dei dati)", azioni: azioni, origine: .regole)
         return proponiConfermaTagliando(s, testo: "Completo le schede con i dati letti nei documenti, solo con «Conferma».")
     }
 
     /// «Sistema tutto»: tutte le azioni del tagliando in una scheda «Conferma» (le voci che portano a una schermata
-    /// restano nella pagina).
+    /// restano nella pagina; quelle con l'attività già segnata non si ripropongono, per non fare doppioni). L'elenco si
+    /// rifà prima se i dati sono cambiati, così la scheda non propone correzioni su voci già sistemate.
     @discardableResult
     func sistemaTuttoTagliando(chiave: String = VeraPortafoglio.chiave, parla: Bool = false) -> String? {
-        guard let e = esitoTagliando ?? (inModoCliente ? nil : aggiornaEsitoTagliando()) else { return nil }
-        guard let s = TagliandoVera.schedaSistemaTutto(e) else {
+        guard let e = esitoTagliandoAggiornato() else { return nil }
+        let azioni = e.voci.filter { !correzioneTagliandoInCorso($0) }.compactMap { $0.correzione?.azione }
+        let scheda = azioni.isEmpty ? nil : SchedaConfermaVera(richiesta: "Sistema tutto (tagliando dei dati)", azioni: azioni, origine: .regole)
+        guard let s = scheda else {
             if parla {
                 rispostaTagliando("Non c'è niente da sistemare con un'azione: le voci rimaste si aprono dalla pagina del tagliando.", chiave: chiave)
             } else {
@@ -216,9 +262,11 @@ extension StatoShell {
             }
             return nil
         }
-        let restano = e.voci.count - s.azioni.count
+        let inCorso = e.voci.filter { correzioneTagliandoInCorso($0) }.count
+        let restano = max(0, e.voci.count - s.azioni.count - inCorso)
         var testo = "Ecco tutte le correzioni del tagliando: le faccio solo con «Conferma». Nulla si cancella."
         if restano > 0 { testo += restano == 1 ? " Una voce si sistema dalla sua scheda." : " \(restano) voci si sistemano dalla loro scheda." }
+        if inCorso > 0 { testo += inCorso == 1 ? " Per una voce l'attività è già segnata." : " Per \(inCorso) voci l'attività è già segnata." }
         return proponiConfermaTagliando(s, testo: testo, chiave: chiave, parla: parla)
     }
 
@@ -265,7 +313,7 @@ extension StatoShell {
         }
         // «Apri il tagliando»: la pagina, e in chat il riassunto
         if t.hasPrefix("apri") || t.hasPrefix("mostra") || t.hasPrefix("fammi vedere") { paginaTagliandoAperta = true }
-        let noti = dati.clienti.filter { $0.unitaIn == nil }.map { ClienteNoto(id: $0.id, nome: $0.nome) }
+        let noti = clientiAttivi.map { ClienteNoto(id: $0.id, nome: $0.nome) }
         let nominati = InterpreteComandi.clientiNominati(t, noti)
         if nominati.count == 1, let c = cliente(nominati[0].id) {
             let voci = e.voci(cliente: c.id)
@@ -331,8 +379,8 @@ extension StatoShell {
     }
 
     /// Sposta su un altro cliente gli elementi di un campo dell'archivio (tutti quelli di `da`, o solo gli id dati).
-    private func spostaTagliando<T>(_ campo: ReferenceWritableKeyPath<DatiVivi, [T]>, id: KeyPath<T, String>,
-                                    cliente: WritableKeyPath<T, String>, da: String, a: String, soli: Set<String>? = nil) -> [String] {
+    private func spostaTagliando<T, C: Equatable>(_ campo: ReferenceWritableKeyPath<DatiVivi, [T]>, id: KeyPath<T, String>,
+                                                  cliente: WritableKeyPath<T, C>, da: C, a: C, soli: Set<String>? = nil) -> [String] {
         var elenco = dati[keyPath: campo]
         var spostati: [String] = []
         for i in elenco.indices where elenco[i][keyPath: cliente] == da && (soli?.contains(elenco[i][keyPath: id]) ?? true) {
@@ -343,8 +391,11 @@ extension StatoShell {
         return spostati
     }
 
-    /// Unisce due schede: tutto passa sulla principale, i dati che le mancano li prende dall'altra, telefono ed email
-    /// diversi vanno nelle note; la scheda doppia resta in archivio, segnata come unita. Niente si cancella.
+    /// Unisce due schede: passa sulla principale tutto ciò che è legato al cliente (le raccolte con il suo id, le voci
+    /// per cliente di analisi, confronti TFR e conversazioni di Vera, i consensi e le date di «In regola» che le
+    /// mancano); i dati dell'anagrafica che le mancano li prende dall'altra, telefono ed email diversi vanno nelle note.
+    /// Restano sulla doppia solo le raccomandazioni registrate (un registro che non si cambia, il messaggio lo dice).
+    /// La scheda doppia resta in archivio, segnata come unita. Niente si cancella; «Annulla» rimette tutto com'era.
     private func unisciSchedeTagliando(_ a: AzioneConferma) -> EsitoAzioneVera {
         let no = { (m: String) in EsitoAzioneVera(fatta: false, messaggio: m) }
         guard let pId = a.argomenti["principale"], let dId = a.argomenti["doppione"], pId != dId,
@@ -366,6 +417,46 @@ extension StatoShell {
         u.messaggi = spostaTagliando(\DatiVivi.messaggi, id: \.id, cliente: \.clienteId, da: dId, a: pId)
         u.incontri = spostaTagliando(\DatiVivi.incontri, id: \.id, cliente: \.clienteId, da: dId, a: pId)
         u.obiettivi = spostaTagliando(\DatiVivi.obiettivi, id: \.id, cliente: \.clienteId, da: dId, a: pId)
+        u.simulazioni = spostaTagliando(\DatiVivi.simulazioni, id: \.id, cliente: \.clienteId, da: dId, a: pId)
+        u.valutazioni = spostaTagliando(\DatiVivi.valutazioni, id: \.id, cliente: \.clienteId, da: dId, a: pId)
+        u.commenti = spostaTagliando(\DatiVivi.commenti, id: \.id, cliente: \.clienteId, da: dId, a: pId)
+        u.fotografie = spostaTagliando(\DatiVivi.fotografie, id: \.id, cliente: \.clienteId, da: dId, a: pId)
+        u.schedeAdeguatezza = spostaTagliando(\DatiVivi.schedeAdeguatezza, id: \.id, cliente: \.clienteId, da: dId, a: pId)
+        u.parcelle = spostaTagliando(\DatiVivi.parcelle, id: \.id, cliente: \.clienteId, da: dId, a: pId)
+        u.eventiVita = spostaTagliando(\DatiVivi.eventiVita, id: \.id, cliente: \.clienteId, da: dId, a: pId)
+        u.sessioniCopilota = spostaTagliando(\DatiVivi.sessioniCopilota, id: \.id, cliente: \.clienteId, da: dId, a: pId)
+        u.partiteRischio = spostaTagliando(\DatiVivi.partiteRischio, id: \.id, cliente: \.clienteId, da: dId, a: pId)
+        u.promesse = spostaTagliando(\DatiVivi.promesse, id: \.id, cliente: \.clienteId, da: dId, a: pId)
+        u.confrontiDocumenti = spostaTagliando(\DatiVivi.confrontiDocumenti, id: \.id, cliente: \.clienteId, da: dId, a: pId)
+        // Le coperture si riconoscono dal documento (`id` = documentoId): passano con il loro documento
+        u.coperture = spostaTagliando(\DatiVivi.coperture, id: \.id, cliente: \.clienteId, da: dId, a: pId)
+        u.sussurriChiusi = spostaTagliando(\DatiVivi.sussurriChiusi, id: \.idTagliando, cliente: \.clienteId, da: dId, a: pId)
+        u.spiegazioniTreLivelli = spostaTagliando(\DatiVivi.spiegazioniTreLivelli, id: \.id, cliente: \.clienteId, da: dId, a: pId)
+        u.esitiRoutine = spostaTagliando(\DatiVivi.routine.esiti, id: \.id, cliente: \.clienteId, da: Optional(dId), a: Optional(pId))
+        // Le pratiche seguono la loro posizione (non hanno un cliente proprio): passano con le posizioni.
+        // Analisi 360 e confronto TFR (una voce per cliente): passano solo se la principale non ne ha una sua
+        if dati.analisi[pId] == nil, let an = dati.analisi[dId] {
+            var d = dati.analisi
+            d[pId] = an
+            d[dId] = nil
+            dati.analisi = d
+            u.analisiSpostata = true
+        }
+        if dati.confrontiTFR[pId] == nil, let tfr = dati.confrontiTFR[dId] {
+            var d = dati.confrontiTFR
+            d[pId] = tfr
+            d[dId] = nil
+            dati.confrontiTFR = d
+            u.confrontoTFRSpostato = true
+        }
+        // La conversazione di Vera della doppia passa in coda a quella della principale
+        if let vecchi = dati.conversazioni[dId], !vecchi.isEmpty {
+            var d = dati.conversazioni
+            d[pId] = (d[pId] ?? []) + vecchi
+            d[dId] = nil
+            dati.conversazioni = d
+            u.messaggiVera = vecchi.map(\.id)
+        }
 
         // I dati che mancano alla principale arrivano dall'altra; quelli diversi restano nelle note
         var nuovo = principale
@@ -374,6 +465,43 @@ extension StatoShell {
         if nuovo.telefono.trimmingCharacters(in: .whitespaces).isEmpty, !doppia.telefono.isEmpty { nuovo.telefono = doppia.telefono; u.riempiti["telefono"] = doppia.telefono }
         if nuovo.indirizzo.trimmingCharacters(in: .whitespaces).isEmpty, !doppia.indirizzo.isEmpty { nuovo.indirizzo = doppia.indirizzo; u.riempiti["indirizzo"] = doppia.indirizzo }
         if nuovo.dataNascita == nil, let n = doppia.dataNascita { nuovo.dataNascita = n; u.riempiti["dataNascita"] = RegistroStrumenti.isoData(n) }
+        // I canali della doppia (le sue posizioni Alleanza o indipendenti ora sono qui)
+        for canale in doppia.canali where !nuovo.canali.contains(canale) {
+            nuovo.canali.append(canale)
+            u.canaliAggiunti.append(canale)
+        }
+        // I consensi: quello che la principale non ha (mai dato né registrato) arriva dalla doppia
+        var consensi = nuovo.consensi
+        if !consensi.privacy, doppia.consensi.privacy {
+            consensi.privacy = true
+            consensi.dataPrivacy = doppia.consensi.dataPrivacy
+        }
+        // Il consenso commerciale solo se la principale non ne ha mai registrato uno (un «no» con la data resta)
+        if !consensi.marketing, consensi.dataMarketing == nil, doppia.consensi.marketing {
+            consensi.marketing = true
+            consensi.dataMarketing = doppia.consensi.dataMarketing
+        }
+        if consensi != nuovo.consensi {
+            u.consensiPrima = nuovo.consensi
+            u.consensiDopo = consensi
+            nuovo.consensi = consensi
+        }
+        // «In regola»: questionari, verifiche e documento d'identità che mancano alla principale arrivano dalla doppia
+        if let cd = doppia.conformita {
+            var conf = nuovo.conformita ?? ConformitaCliente()
+            if conf.questionarioAlleanza == nil { conf.questionarioAlleanza = cd.questionarioAlleanza }
+            if conf.questionarioIndipendente == nil { conf.questionarioIndipendente = cd.questionarioIndipendente }
+            if conf.verificaAlleanza == nil { conf.verificaAlleanza = cd.verificaAlleanza }
+            if conf.verificaIndipendente == nil { conf.verificaIndipendente = cd.verificaIndipendente }
+            if conf.documento == nil { conf.documento = cd.documento }
+            let unita = MotoreConformita.normalizzata(conf)
+            if unita != nuovo.conformita {
+                u.conformitaUnita = true
+                u.conformitaPrima = nuovo.conformita
+                u.conformitaDopo = unita
+                nuovo.conformita = unita
+            }
+        }
         var diversi: [String] = []
         if !doppia.telefono.isEmpty, !principale.telefono.isEmpty, TagliandoVera.telefono(doppia.telefono) != TagliandoVera.telefono(principale.telefono) {
             diversi.append("telefono \(doppia.telefono)")
@@ -392,10 +520,18 @@ extension StatoShell {
         dati.clienti = elenco
         if clienteAttivoId == dId { clienteAttivoId = pId }
         aggiornaEsitoTagliando()
-        let spostati = u.posizioni.count + u.documenti.count + u.appuntamenti.count + u.attivita.count + u.note.count + u.messaggi.count
-            + u.incontri.count + u.obiettivi.count
+        let spostati = u.elementiSpostati
         let quanti = spostati == 0 ? "" : (spostati == 1 ? " Un elemento è passato sulla sua scheda." : " \(spostati) elementi sono passati sulla sua scheda.")
-        return EsitoAzioneVera(fatta: true, messaggio: "«\(doppia.nome)» è unita a «\(principale.nome)».\(quanti) La scheda doppia resta in archivio, segnata come unita.",
+        var resta = ""
+        if dati.analisi[dId] != nil || dati.confrontiTFR[dId] != nil {
+            resta += " La principale aveva già la sua analisi 360 o il suo confronto TFR: quelli della doppia restano sulla scheda unita."
+        }
+        let raccomandazioni = dati.raccomandazioni.filter { $0.clienteId == dId }.count
+        if raccomandazioni > 0 {
+            resta += raccomandazioni == 1 ? " La raccomandazione registrata resta sulla scheda unita (il registro non si cambia)."
+                : " Le \(raccomandazioni) raccomandazioni registrate restano sulla scheda unita (il registro non si cambia)."
+        }
+        return EsitoAzioneVera(fatta: true, messaggio: "«\(doppia.nome)» è unita a «\(principale.nome)».\(quanti)\(resta) La scheda doppia resta in archivio, segnata come unita, e non compare più fra i clienti.",
                                oggetto: pId, prima: Self.jsonTagliando(u))
     }
 
@@ -412,6 +548,46 @@ extension StatoShell {
         _ = spostaTagliando(\DatiVivi.messaggi, id: \.id, cliente: \.clienteId, da: p, a: d, soli: Set(u.messaggi))
         _ = spostaTagliando(\DatiVivi.incontri, id: \.id, cliente: \.clienteId, da: p, a: d, soli: Set(u.incontri))
         _ = spostaTagliando(\DatiVivi.obiettivi, id: \.id, cliente: \.clienteId, da: p, a: d, soli: Set(u.obiettivi))
+        _ = spostaTagliando(\DatiVivi.simulazioni, id: \.id, cliente: \.clienteId, da: p, a: d, soli: Set(u.simulazioni))
+        _ = spostaTagliando(\DatiVivi.valutazioni, id: \.id, cliente: \.clienteId, da: p, a: d, soli: Set(u.valutazioni))
+        _ = spostaTagliando(\DatiVivi.commenti, id: \.id, cliente: \.clienteId, da: p, a: d, soli: Set(u.commenti))
+        _ = spostaTagliando(\DatiVivi.fotografie, id: \.id, cliente: \.clienteId, da: p, a: d, soli: Set(u.fotografie))
+        _ = spostaTagliando(\DatiVivi.schedeAdeguatezza, id: \.id, cliente: \.clienteId, da: p, a: d, soli: Set(u.schedeAdeguatezza))
+        _ = spostaTagliando(\DatiVivi.parcelle, id: \.id, cliente: \.clienteId, da: p, a: d, soli: Set(u.parcelle))
+        _ = spostaTagliando(\DatiVivi.eventiVita, id: \.id, cliente: \.clienteId, da: p, a: d, soli: Set(u.eventiVita))
+        _ = spostaTagliando(\DatiVivi.sessioniCopilota, id: \.id, cliente: \.clienteId, da: p, a: d, soli: Set(u.sessioniCopilota))
+        _ = spostaTagliando(\DatiVivi.partiteRischio, id: \.id, cliente: \.clienteId, da: p, a: d, soli: Set(u.partiteRischio))
+        _ = spostaTagliando(\DatiVivi.promesse, id: \.id, cliente: \.clienteId, da: p, a: d, soli: Set(u.promesse))
+        _ = spostaTagliando(\DatiVivi.confrontiDocumenti, id: \.id, cliente: \.clienteId, da: p, a: d, soli: Set(u.confrontiDocumenti))
+        _ = spostaTagliando(\DatiVivi.coperture, id: \.id, cliente: \.clienteId, da: p, a: d, soli: Set(u.coperture))
+        _ = spostaTagliando(\DatiVivi.sussurriChiusi, id: \.idTagliando, cliente: \.clienteId, da: p, a: d, soli: Set(u.sussurriChiusi))
+        _ = spostaTagliando(\DatiVivi.spiegazioniTreLivelli, id: \.id, cliente: \.clienteId, da: p, a: d, soli: Set(u.spiegazioniTreLivelli))
+        _ = spostaTagliando(\DatiVivi.routine.esiti, id: \.id, cliente: \.clienteId, da: Optional(p), a: Optional(d), soli: Set(u.esitiRoutine))
+        // Analisi e confronto TFR tornano sulla doppia solo se lì non ne è nata un'altra nel frattempo
+        if u.analisiSpostata, dati.analisi[d] == nil, let an = dati.analisi[p] {
+            var x = dati.analisi
+            x[d] = an
+            x[p] = nil
+            dati.analisi = x
+        }
+        if u.confrontoTFRSpostato, dati.confrontiTFR[d] == nil, let tfr = dati.confrontiTFR[p] {
+            var x = dati.confrontiTFR
+            x[d] = tfr
+            x[p] = nil
+            dati.confrontiTFR = x
+        }
+        // I messaggi di Vera arrivati dalla doppia tornano là (quelli scritti dopo restano sulla principale)
+        if !u.messaggiVera.isEmpty, let conv = dati.conversazioni[p] {
+            let ids = Set(u.messaggiVera)
+            let tornano = conv.filter { ids.contains($0.id) }
+            if !tornano.isEmpty {
+                var x = dati.conversazioni
+                let restano = conv.filter { !ids.contains($0.id) }
+                x[p] = restano.isEmpty ? nil : restano
+                x[d] = tornano + (x[d] ?? [])
+                dati.conversazioni = x
+            }
+        }
         var c = dati.clienti[ip]
         // Si tolgono solo i dati messi dall'unione e ancora uguali: quello scritto dopo resta
         for (campo, valore) in u.riempiti {
@@ -424,6 +600,10 @@ extension StatoShell {
             default: break
             }
         }
+        c.canali.removeAll { u.canaliAggiunti.contains($0) }
+        // Consensi e «In regola» tornano com'erano solo se nessuno li ha toccati dopo l'unione
+        if let dopo = u.consensiDopo, let prima = u.consensiPrima, c.consensi == dopo { c.consensi = prima }
+        if u.conformitaUnita, c.conformita == u.conformitaDopo { c.conformita = u.conformitaPrima }
         if let riga = u.rigaNota, let r = c.nota.range(of: riga, options: .backwards) {
             var da = r.lowerBound
             if da > c.nota.startIndex, c.nota[c.nota.index(before: da)] == "\n" { da = c.nota.index(before: da) }
@@ -440,7 +620,9 @@ extension StatoShell {
     /// Completa un dato vuoto dell'anagrafica con quello letto in un documento. Un dato già scritto non si sovrascrive.
     private func completaDatoTagliando(_ a: AzioneConferma) -> EsitoAzioneVera {
         let no = { (m: String) in EsitoAzioneVera(fatta: false, messaggio: m) }
-        guard let id = a.argomenti["cliente"], let i = dati.clienti.firstIndex(where: { $0.id == id }), let campo = a.argomenti["campo"],
+        // Una scheda unita nel frattempo (in «Sistema tutto» l'unione viene prima): il dato va sulla principale
+        guard let chiesto = a.argomenti["cliente"], case let id = schedaPrincipaleTagliando(chiesto),
+              let i = dati.clienti.firstIndex(where: { $0.id == id }), dati.clienti[i].unitaIn == nil, let campo = a.argomenti["campo"],
               let letto = a.argomenti["valore"]?.trimmingCharacters(in: .whitespacesAndNewlines), !letto.isEmpty else {
             return no("Non trovo la scheda del cliente o il dato da completare.")
         }
@@ -518,7 +700,9 @@ extension StatoShell {
     /// Registra nella scheda (In regola) il documento d'identità letto in Documenti: numero, rilascio e scadenza.
     private func registraDocumentoTagliando(_ a: AzioneConferma, oggi: Date) -> EsitoAzioneVera {
         let no = { (m: String) in EsitoAzioneVera(fatta: false, messaggio: m) }
-        guard let id = a.argomenti["cliente"], let i = dati.clienti.firstIndex(where: { $0.id == id }),
+        // Una scheda unita nel frattempo: il documento va registrato sulla principale
+        guard let chiesto = a.argomenti["cliente"], case let id = schedaPrincipaleTagliando(chiesto),
+              let i = dati.clienti.firstIndex(where: { $0.id == id }), dati.clienti[i].unitaIn == nil,
               let scadenza = RegistroStrumenti.daIso(a.argomenti["scadenza"]) else { return no("Non trovo la scheda del cliente o la scadenza del documento.") }
         var c = dati.clienti[i]
         var conf = c.conformita ?? ConformitaCliente()
@@ -552,6 +736,7 @@ extension StatoShell {
 }
 
 /// Com'era prima di «Unisci le schede» (per «Annulla»): gli elementi spostati, i dati riempiti e la riga delle note.
+/// Lettura tollerante: un'unione registrata prima che i campi nuovi esistessero si annulla con quelli che ha.
 private struct UnioneTagliando: Codable {
     var principale: String
     var doppione: String
@@ -563,14 +748,105 @@ private struct UnioneTagliando: Codable {
     var messaggi: [String] = []
     var incontri: [String] = []
     var obiettivi: [String] = []
+    var simulazioni: [String] = []
+    var valutazioni: [String] = []
+    var commenti: [String] = []
+    var fotografie: [String] = []
+    /// Le schede di adeguatezza (id = la posizione).
+    var schedeAdeguatezza: [String] = []
+    var parcelle: [String] = []
+    var eventiVita: [String] = []
+    var sessioniCopilota: [String] = []
+    var partiteRischio: [String] = []
+    var promesse: [String] = []
+    var confrontiDocumenti: [String] = []
+    /// Le coperture (id = il documento della polizza).
+    var coperture: [String] = []
+    /// Le voci chiuse del sussurro (`SussurroChiuso.idTagliando`).
+    var sussurriChiusi: [String] = []
+    var spiegazioniTreLivelli: [String] = []
+    var esitiRoutine: [String] = []
+    /// Le voci per cliente passate sulla principale (che non ne aveva una sua).
+    var analisiSpostata = false
+    var confrontoTFRSpostato = false
+    /// I messaggi della conversazione di Vera passati in coda a quella della principale.
+    var messaggiVera: [String] = []
     /// Campo → valore messo nella principale dalla scheda doppia (il campo era vuoto).
     var riempiti: [String: String] = [:]
+    var canaliAggiunti: [Canale] = []
+    var consensiPrima: Consensi?
+    var consensiDopo: Consensi?
+    /// «In regola» completato con le date della doppia (prima può essere nil: per questo c'è il segno).
+    var conformitaUnita = false
+    var conformitaPrima: ConformitaCliente?
+    var conformitaDopo: ConformitaCliente?
     var rigaNota: String?
 
     init(principale: String, doppione: String) {
         self.principale = principale
         self.doppione = doppione
     }
+
+    /// Quanti elementi sono passati sulla principale (per il messaggio).
+    var elementiSpostati: Int {
+        let elenchi = [posizioni, documenti, appuntamenti, attivita, note, messaggi, incontri, obiettivi, simulazioni, valutazioni,
+                       commenti, fotografie, schedeAdeguatezza, parcelle, eventiVita, sessioniCopilota, partiteRischio, promesse,
+                       confrontiDocumenti, coperture, sussurriChiusi, spiegazioniTreLivelli, esitiRoutine, messaggiVera]
+        return elenchi.reduce(0) { $0 + $1.count } + (analisiSpostata ? 1 : 0) + (confrontoTFRSpostato ? 1 : 0)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case principale, doppione, posizioni, documenti, appuntamenti, attivita, note, messaggi, incontri, obiettivi, simulazioni,
+             valutazioni, commenti, fotografie, schedeAdeguatezza, parcelle, eventiVita, sessioniCopilota, partiteRischio, promesse,
+             confrontiDocumenti, coperture, sussurriChiusi, spiegazioniTreLivelli, esitiRoutine, analisiSpostata, confrontoTFRSpostato,
+             messaggiVera, riempiti, canaliAggiunti, consensiPrima, consensiDopo, conformitaUnita, conformitaPrima, conformitaDopo, rigaNota
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        principale = try c.decode(String.self, forKey: .principale)
+        doppione = try c.decode(String.self, forKey: .doppione)
+        func elenco(_ k: CodingKeys) -> [String] { ((try? c.decodeIfPresent([String].self, forKey: k)) ?? nil) ?? [] }
+        posizioni = elenco(.posizioni)
+        documenti = elenco(.documenti)
+        appuntamenti = elenco(.appuntamenti)
+        attivita = elenco(.attivita)
+        note = elenco(.note)
+        messaggi = elenco(.messaggi)
+        incontri = elenco(.incontri)
+        obiettivi = elenco(.obiettivi)
+        simulazioni = elenco(.simulazioni)
+        valutazioni = elenco(.valutazioni)
+        commenti = elenco(.commenti)
+        fotografie = elenco(.fotografie)
+        schedeAdeguatezza = elenco(.schedeAdeguatezza)
+        parcelle = elenco(.parcelle)
+        eventiVita = elenco(.eventiVita)
+        sessioniCopilota = elenco(.sessioniCopilota)
+        partiteRischio = elenco(.partiteRischio)
+        promesse = elenco(.promesse)
+        confrontiDocumenti = elenco(.confrontiDocumenti)
+        coperture = elenco(.coperture)
+        sussurriChiusi = elenco(.sussurriChiusi)
+        spiegazioniTreLivelli = elenco(.spiegazioniTreLivelli)
+        esitiRoutine = elenco(.esitiRoutine)
+        messaggiVera = elenco(.messaggiVera)
+        analisiSpostata = ((try? c.decodeIfPresent(Bool.self, forKey: .analisiSpostata)) ?? nil) ?? false
+        confrontoTFRSpostato = ((try? c.decodeIfPresent(Bool.self, forKey: .confrontoTFRSpostato)) ?? nil) ?? false
+        riempiti = ((try? c.decodeIfPresent([String: String].self, forKey: .riempiti)) ?? nil) ?? [:]
+        canaliAggiunti = ((try? c.decodeIfPresent([Canale].self, forKey: .canaliAggiunti)) ?? nil) ?? []
+        consensiPrima = (try? c.decodeIfPresent(Consensi.self, forKey: .consensiPrima)) ?? nil
+        consensiDopo = (try? c.decodeIfPresent(Consensi.self, forKey: .consensiDopo)) ?? nil
+        conformitaUnita = ((try? c.decodeIfPresent(Bool.self, forKey: .conformitaUnita)) ?? nil) ?? false
+        conformitaPrima = (try? c.decodeIfPresent(ConformitaCliente.self, forKey: .conformitaPrima)) ?? nil
+        conformitaDopo = (try? c.decodeIfPresent(ConformitaCliente.self, forKey: .conformitaDopo)) ?? nil
+        rigaNota = (try? c.decodeIfPresent(String.self, forKey: .rigaNota)) ?? nil
+    }
+}
+
+/// Un nome stabile per una voce chiusa del sussurro (non ha un id suo): la chiave e il momento della chiusura.
+fileprivate extension SussurroChiuso {
+    var idTagliando: String { "\(chiave)|\(chiusoIl.timeIntervalSinceReferenceDate)" }
 }
 
 // MARK: - Prova del collegamento (dentro `Prisma --prova-vera`)
@@ -596,6 +872,18 @@ extension StatoShell {
         var pos = Posizione(clienteId: doppia.id, canale: .alleanza, stato: .inEssere, area: .investimento, nome: "Piano della scheda doppia")
         pos.id = "pos-doppia-prova"
         s.dati.posizioni.append(pos)
+        // Ciò che oltre alle otto raccolte di prima deve passare: il consenso privacy (solo sulla doppia), una voce chiusa
+        // del sussurro e un messaggio della conversazione di Vera
+        s.dati.clienti[im].consensi = Consensi()
+        if let id = s.dati.clienti.firstIndex(where: { $0.id == doppia.id }) {
+            s.dati.clienti[id].consensi = Consensi(privacy: true, dataPrivacy: Date(timeIntervalSinceReferenceDate: 790_000_000))
+        }
+        let sussurroDoppia = SussurroChiuso(clienteId: doppia.id, chiave: "prova-tagliando", chiusoIl: Date(timeIntervalSinceReferenceDate: 800_000_100))
+        s.dati.sussurriChiusi.append(sussurroDoppia)
+        let messaggioDoppia = MessaggioVera(autore: .utente, testo: "Domanda sulla scheda doppia")
+        s.dati.conversazioni[doppia.id] = [messaggioDoppia]
+        // Marco senza email: dopo l'unione «Completa» con la scheda doppia deve scrivere sulla principale
+        s.dati.clienti[im].email = ""
 
         let e = s.eseguiTagliando()
         controlla(s.dati.tagliando.ultimo == e.registro || s.dati.tagliando.ultimo == nil,
@@ -615,16 +903,64 @@ extension StatoShell {
         let dopoUnione = s.eseguiTagliando()
         controlla(!dopoUnione.voci.contains { $0.tipo == .doppione } && dopoUnione.schede == 5,
                   "Tagliando nell'app: dopo l'unione il doppione non torna e la scheda unita non conta più")
+        controlla(!s.clienti.contains { $0.id == dop } && s.clienti.contains { $0.id == principale } && s.clientiAttivi.count == 5,
+                  "Tagliando nell'app: la scheda unita esce dai clienti (resta solo in archivio)")
         if dop == doppia.id {
             controlla(s.dati.posizioni.first { $0.id == pos.id }?.clienteId == principale && s.cliente(principale)?.codiceFiscale == "BNCMRC80A01H501U",
                       "Tagliando nell'app: la posizione passa sulla principale e il codice fiscale mancante arriva dalla doppia")
+        }
+        controlla(s.cliente(principale)?.consensi.privacy == true,
+                  "Tagliando nell'app: il consenso privacy della doppia arriva sulla principale (niente «Consenso privacy mancante» falso)")
+        controlla(s.dati.sussurriChiusi.contains { $0.chiave == sussurroDoppia.chiave && $0.clienteId == principale }
+                  && s.dati.conversazioni[principale]?.contains { $0.id == messaggioDoppia.id } == true
+                  && (dop == principale || s.dati.conversazioni[dop] == nil),
+                  "Tagliando nell'app: anche sussurro chiuso e conversazione di Vera passano sulla principale")
+        // «Sistema tutto» mette l'unione prima di «Completa»: l'azione rimasta sulla doppia scrive sulla principale
+        let completaDoppia = AzioneConferma(strumento: TagliandoVera.strumentoCompleta, app: .clienti, titolo: "Completo l'email",
+                                            dettaglio: "", argomenti: ["cliente": dop, "campo": TagliandoVera.Campo.email.rawValue,
+                                                                       "valore": "marco.prova@example.it"])
+        if let r = s.eseguiAzioneTagliando(completaDoppia) {
+            controlla(r.fatta && r.oggetto == principale && s.cliente(principale)?.email == "marco.prova@example.it"
+                      && s.dati.clienti.first { $0.id == dop }?.email.isEmpty == true,
+                      "Tagliando nell'app: un dato per una scheda già unita va sulla principale, non sulla doppia: \(r.messaggio)")
+            var x = completaDoppia
+            x.esito = r
+            controlla(s.disfaAzioneTagliando(x) == true && s.cliente(principale)?.email.isEmpty == true,
+                      "Tagliando nell'app: «Annulla» toglie il dato dalla principale")
+        } else {
+            controlla(false, "Tagliando nell'app: «Completa dai documenti» è uno strumento del tagliando")
         }
         var conEsito = unisci
         conEsito.esito = fatto
         controlla(s.disfaAzioneTagliando(conEsito) == true && s.dati.clienti.allSatisfy { $0.unitaIn == nil }
                   && s.dati.posizioni.first { $0.id == pos.id }?.clienteId == doppia.id
-                  && s.cliente("marco")?.codiceFiscale.isEmpty == true,
-                  "Tagliando nell'app: «Annulla» rimette le due schede com'erano")
+                  && s.cliente("marco")?.codiceFiscale.isEmpty == true
+                  && s.cliente("marco")?.consensi.privacy == false
+                  && s.dati.sussurriChiusi.contains { $0.chiave == sussurroDoppia.chiave && $0.clienteId == doppia.id }
+                  && s.dati.conversazioni[doppia.id]?.contains { $0.id == messaggioDoppia.id } == true
+                  && s.dati.conversazioni["marco"]?.contains { $0.id == messaggioDoppia.id } != true,
+                  "Tagliando nell'app: «Annulla» rimette le due schede com'erano (anche consensi, sussurro e conversazione)")
+        // Eliminare la principale di un'unione libera la scheda doppia (niente `unitaIn` verso una scheda che non c'è)
+        do {
+            let t = StatoShell(persistente: false)
+            var p = Cliente(id: "principale-prova", nome: "Principale Prova", iniziali: "PP", tinta: .blu, tema: "", email: "",
+                            telefono: "", preferito: false, nota: "", creatoIl: Date(timeIntervalSinceReferenceDate: 800_000_000))
+            p.codiceFiscale = ""
+            var d = Cliente(id: "doppia-prova", nome: "P. Prova", iniziali: "PP", tinta: .blu, tema: "", email: "",
+                            telefono: "", preferito: false, nota: "", creatoIl: Date(timeIntervalSinceReferenceDate: 800_000_000))
+            d.unitaIn = p.id
+            t.dati.clienti.append(contentsOf: [p, d])
+            if var r = t.dati.impostazioni.stileVera.cortesia {
+                r.valore.perCliente[p.id] = .tu
+                t.dati.impostazioni.stileVera.cortesia = r
+            } else {
+                t.dati.impostazioni.stileVera.cortesia = RegolaStile<CortesiaStile>.scritta(CortesiaStile(predefinita: .lei, perCliente: [p.id: .tu]))
+            }
+            t.eliminaCliente(p.id)
+            controlla(t.dati.clienti.first { $0.id == d.id }?.unitaIn == nil && t.clienti.contains { $0.id == d.id }
+                      && t.dati.impostazioni.stileVera.cortesia?.valore.perCliente[p.id] == nil,
+                      "Tagliando nell'app: eliminata la principale, la scheda unita torna normale e l'eccezione «tu o Lei» se ne va")
+        }
 
         // Completa dai documenti: il codice fiscale di Laura letto nella sua carta d'identità
         if let il = s.dati.clienti.firstIndex(where: { $0.id == "laura" }) {
@@ -684,6 +1020,25 @@ extension StatoShell {
         controlla(s.chiediTagliando("Sistema tutto", chiave: chiave) && s.conversazione(chiave).last?.conferma?.stato == .daConfermare
                   && s.conversazione(chiave).last?.conferma?.azioni.allSatisfy { $0.esito == nil } == true,
                   "Tagliando in chat: «Sistema tutto» prepara la scheda «Conferma», niente eseguito")
+        // Un'attività già segnata non si ripropone in «Sistema tutto» (sarebbe un doppione)
+        if let voce = s.esitoTagliandoAggiornato()?.voci.first(where: { $0.correzione?.azione?.strumento == RegistroStrumenti.attivitaNuova }),
+           let a = voce.correzione?.azione, let cl = a.argomenti["cliente"], let titolo = a.argomenti["titolo"] {
+            s.dati.attivita.append(Attivita(id: "att-tagliando-prova", clienteId: cl, titolo: titolo, scadenza: Date(), priorita: .normale, completata: false))
+            let mid = s.sistemaTuttoTagliando()
+            let azioni = mid.flatMap { m in s.conversazione(chiave).first { $0.id == m }?.conferma?.azioni } ?? []
+            controlla(s.correzioneTagliandoInCorso(voce)
+                      && !azioni.contains { $0.strumento == RegistroStrumenti.attivitaNuova && $0.argomenti["cliente"] == cl && $0.argomenti["titolo"] == titolo },
+                      "Tagliando nell'app: «Sistema tutto» non ripropone l'attività già segnata")
+            s.dati.attivita.removeAll { $0.id == "att-tagliando-prova" }
+        }
+        // L'elenco si rifà se i dati sono cambiati a pagina chiusa (un codice fiscale scritto a mano)
+        if let v = s.esitoTagliandoAggiornato()?.voci.first(where: { $0.tipo == .campiVuoti }), let cl = v.clienti.first,
+           let i = s.dati.clienti.firstIndex(where: { $0.id == cl }), s.dati.clienti[i].codiceFiscale.isEmpty {
+            s.dati.clienti[i].codiceFiscale = "RSSMRA80A01H501U"
+            let rifatto = s.esitoTagliandoAggiornato()
+            controlla(s.versioneEsitoTagliando == s.versioneCalcoli && rifatto?.voci.contains { $0.id == v.id } != true,
+                      "Tagliando nell'app: dopo una modifica a mano l'elenco del tagliando si rifà prima di usarlo")
+        }
         controlla(s.chiediTagliando("Come sta la scheda di Laura? Tagliando di Laura", chiave: chiave) && s.conversazione(chiave).last?.tagliando == "laura",
                   "Tagliando in chat: il tagliando di un cliente nominato")
         controlla(!s.chiediTagliando("Fissa un incontro con Marco giovedì", chiave: chiave) && !s.chiediTagliando("Prenota il tagliando dell'auto", chiave: chiave),

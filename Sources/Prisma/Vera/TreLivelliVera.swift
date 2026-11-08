@@ -199,7 +199,7 @@ enum TreLivelliVera {
     // MARK: Riconoscimento
 
     static let segniArgomento: [(ArgomentoTreLivelli, String)] = [
-        (.previdenza, #"\bfondo pensione\b|\bfondi pensione\b|\bprevidenz\w*|\bpip\b|\bpension\w*|\bintegrativ\w*"#),
+        (.previdenza, #"\bfondo pensione\b|\bfondi pensione\b|\bprevidenz\w*|\bpip\b|\bpension\w*|\b(?:pensione|previdenza) integrativa\b"#),
         (.protezione, #"\bprotezion\w*|\btcm\b|\bcaso morte\b|\bpolizza vita\b|\bassicurazion\w* sulla vita\b|\bse (?:gli|le|mi|ti) (?:succede|capita)\w*"#),
         (.liquidita, #"\bliquidit\w*|\briserva\b|\bsoldi fermi\b|\bconto corrente\b|\bcapitali? in scadenza\b|\bsalvadana\w*"#),
     ]

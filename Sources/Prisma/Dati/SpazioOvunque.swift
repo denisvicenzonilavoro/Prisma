@@ -466,6 +466,8 @@ enum SincroniaOvunque {
         nuovo.routine.esiti = locale.routine.esiti
         nuovo.tagliando = locale.tagliando
         nuovo.spiegazioniTreLivelli = locale.spiegazioniTreLivelli
+        // I «Non ora» del sussurro non sono nel giornale: quelli del dispositivo si uniscono a quelli del Mac
+        nuovo.sussurriChiusi = SpazioOvunque.unisciSussurriChiusi(nuovo.sussurriChiusi, locale.sussurriChiusi, clienti: nuovo.clienti)
         let mie = locale.impostazioni
         var imp = nuovo.impostazioni
         imp.vera = mie.vera
@@ -494,6 +496,23 @@ enum SincroniaOvunque {
         nuovo.giornaleOvunque = inSospeso
         nuovo.versione = DatiPrisma.versioneAttuale
         return (nuovo, locale.giornaleOvunque.count - inSospeso.count, riapplicate)
+    }
+}
+
+extension SpazioOvunque {
+    /// Le voci chiuse del sussurro di due archivi insieme: una per cliente e chiave, con la chiusura più recente, solo
+    /// per i clienti che ci sono ancora. Una voce riaperta sul Mac resta chiusa sul dispositivo fino alla scadenza
+    /// (al massimo `RegoleSussurro.giorniChiusura` giorni): è solo una preferenza di vista.
+    static func unisciSussurriChiusi(_ a: [SussurroChiuso], _ b: [SussurroChiuso], clienti: [Cliente]) -> [SussurroChiuso] {
+        var chiuse: [String: SussurroChiuso] = [:]
+        for s in a + b {
+            let k = s.clienteId + "\u{1F}" + s.chiave
+            if let g = chiuse[k], g.chiusoIl >= s.chiusoIl { continue }
+            chiuse[k] = s
+        }
+        let ids = Set(clienti.map(\.id))
+        return chiuse.values.filter { ids.contains($0.clienteId) }
+            .sorted { ($0.chiusoIl, $0.clienteId, $0.chiave) < ($1.chiusoIl, $1.clienteId, $1.chiave) }
     }
 }
 

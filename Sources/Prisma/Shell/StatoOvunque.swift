@@ -568,6 +568,8 @@ extension StatoShell {
             return corrente
         }
         var nuovo = e.dati
+        // Un «Non ora» del sussurro premuto mentre il giro lavorava resta
+        nuovo.sussurriChiusi = SpazioOvunque.unisciSussurriChiusi(nuovo.sussurriChiusi, corrente.sussurriChiusi, clienti: nuovo.clienti)
         let ultimoSeq = partenza.giornaleOvunque.map(\.seq).max() ?? 0
         let nuove = corrente.giornaleOvunque.filter { $0.seq > ultimoSeq }
         for op in nuove { MotoreUnioneOvunque.applicaForzata(op, a: &nuovo) }
