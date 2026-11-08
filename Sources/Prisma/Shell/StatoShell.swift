@@ -430,6 +430,11 @@ enum VoceConfronto: Hashable {
     @ObservationIgnored var compitoSuMisura: Task<Void, Never>?
     /// Fase 5, «I motori di Vera» (CollegaMotoriShell.swift): la pagina con «Due velocità» e «Il cervello grande».
     var paginaMotoriAperta = false
+    var schedaMotori = SchedaMotoriVera.dueVelocita
+    /// Le richieste smistate di oggi con il loro tempo (solo in memoria).
+    let dueVelocita = StatoDueVelocita()
+    /// La domanda in corso e quando è partita: la prima risposta di Vera ne registra corsia e secondi.
+    @ObservationIgnored var inizioRichiestaVera: (testo: String, quando: Date)?
     /// Il prossimo turno notturno del tagliando: un lavoro all'ora dell'orologio, niente Timer.
     @ObservationIgnored var lavoroTagliando: DispatchWorkItem?
     /// I vettori della ricerca per significato, in una cache cifrata (RicercaVera.swift).
@@ -2231,6 +2236,8 @@ enum VoceConfronto: Hashable {
             conversazioniTemporanee[id] = elenco
         }
         if m.autore == .vera, parla { parlaRisposta(m) }
+        // «Due velocità»: la corsia e il tempo della richiesta (CollegaMotoriShell.swift)
+        if m.autore == .vera { registraRichiestaVera(m) }
     }
 
     /// La modalità che la testata di Vera mostra: quella scelta, altrimenti quella dell'ultima risposta (lavoro se
@@ -2248,6 +2255,7 @@ enum VoceConfronto: Hashable {
         scenarioInSospeso = nil
         compitoVera?.cancel()
         compitoVera = nil
+        inizioRichiestaVera = nil
         // Il compito fermato non torna a rimettere Vera libera: lo si fa qui
         veraInCorso = false
         dati.conversazioni[id] = nil
@@ -2264,6 +2272,8 @@ enum VoceConfronto: Hashable {
         guard !testo.isEmpty, !veraInCorso else { return false }
         // La domanda parte da tastiera o da uno spunto: la dettatura del Mac si spegne (anche per i comandi)
         if dettaturaAttiva { chiudiDettatura() }
+        // «Due velocità»: il tempo parte qui. Il portafoglio è sempre lavoro (le cifre di Prisma): mai la corsia veloce
+        iniziaRichiestaVera(testo)
         // Comandi, «sì»/«no» alla scheda, domande su tutti i clienti, «Fallo tu» (FalloTuShell.swift)
         if spunto == nil, smista, smistaVera(testo, chiave: VeraPortafoglio.chiave) { return true }
         // «E se Marco va in pensione a 63 anni?»: lo scenario di un cliente nominato lo calcola Prisma (ScenariVeraShell.swift)
@@ -2469,6 +2479,8 @@ enum VoceConfronto: Hashable {
         guard !testo.isEmpty, !veraInCorso else { return false }
         // La domanda parte da tastiera o da uno spunto: la dettatura del Mac si spegne (anche per i comandi)
         if dettaturaAttiva { chiudiDettatura() }
+        // «Due velocità» (fase 5): prima le regole (qui sotto), poi il modello Apple (spento), infine Qwen; il tempo parte qui
+        iniziaRichiestaVera(testo)
         // Comandi, «sì»/«no» alla scheda, domande su tutti i clienti, «Fallo tu» (FalloTuShell.swift)
         if spunto == nil, smista, smistaVera(testo, chiave: clienteAttivoId) { return true }
         // «E se Marco va in pensione a 63 anni?»: lo scenario lo calcola Prisma, Vera lo racconta (ScenariVeraShell.swift)
@@ -2509,6 +2521,12 @@ enum VoceConfronto: Hashable {
         let ricordiProposti = schedaRicordi(da: testo, chiave: id)
         let pianoIniziale = piano
         let ambienteIniziale = ambiente
+        // La corsia veloce: il modello Apple solo se ammesso, disponibile e la domanda è breve di conversazione. Con il
+        // modello Apple spento (`ModelloAppleVera.ammesso = false`) la condizione è sempre falsa: si va a Qwen come prima
+        if !breve, SmistamentoVera.corsiaModello(pianoIniziale.scelta, domanda: testo) == .apple, let veloce = ModelloAppleVera.motore() {
+            rispostaVeloce(pianoIniziale, domanda: testo, cliente: id, veloce: veloce)
+            return true
+        }
         conQwen(cliente: id) { _ in
             // La risposta arriva a pezzi e si vede mentre Vera la scrive (FlussoVera, bolla in arrivo)
             let motore = self.qwen

@@ -1044,6 +1044,8 @@ enum ProvaVera {
         StatoShell.provaPassiSeguito(controlla)
         // La fase 5: su misura (anonimizzazione, pacchetto, importazione, esame e sostituzione con il server finto) (ProvaSuMisuraVera.swift)
         ProvaSuMisuraVera.esegui(controlla)
+        // Due velocità: regole, modello Apple spento, sotto macOS 26 tutto a Qwen, ripiego (ProvaDueVelocitaVera.swift)
+        ProvaDueVelocitaVera.esegui(controlla)
         #if os(macOS)
         // La mini finestra: ⌥ Spazio, i cinque stati, cifre e canali, «non pronta» (ProvaMiniVera.swift)
         ProvaMiniVera.esegui(controlla)
