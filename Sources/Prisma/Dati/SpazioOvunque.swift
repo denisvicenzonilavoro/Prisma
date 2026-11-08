@@ -145,6 +145,10 @@ enum SpazioOvunque {
         x.conversazioni = [:]
         // Le partite del gioco del rischio restano sul Mac (decisione 44)
         x.partiteRischio = []
+        // Spese, scadenze, corsi e le loro impostazioni (km per cliente, correzioni) restano sul Mac («Luce» giro 9):
+        // sono dati personali del consulente e l'iPhone non ha Studio › Spese
+        x.speseStudio = ArchivioSpese()
+        x.impostazioni.studio.spese = ImpostazioniSpese()
         x.giornaleOvunque = []
         x.impostazioni.ovunque = ImpostazioniOvunque()
         x.impostazioni.vera = ImpostazioniVera()
@@ -456,9 +460,11 @@ enum SincroniaOvunque {
 
         nuovo.conversazioni = locale.conversazioni
         nuovo.partiteRischio = locale.partiteRischio
+        nuovo.speseStudio = locale.speseStudio
         let mie = locale.impostazioni
         var imp = nuovo.impostazioni
         imp.vera = mie.vera
+        imp.studio.spese = mie.studio.spese
         imp.aspetto = mie.aspetto
         imp.dimensioneTesto = mie.dimensioneTesto
         imp.sfondoAnimato = mie.sfondoAnimato

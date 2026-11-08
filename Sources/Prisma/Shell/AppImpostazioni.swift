@@ -183,6 +183,7 @@ struct AppImpostazioni: View {
         case "impostazioni-occasioni": return .promemoria
         case "impostazioni-pdf": return .proposte
         case TestiParcelle.ancoraImpostazioni: return .studio
+        case TestiSpese.ancoraImpostazioni: return .studio
         case TestiFamiglie.ancoraImpostazioni: return .rendimenti
         default: return nil
         }

@@ -1264,6 +1264,10 @@ enum ProvaCalcoli {
         // «Luce», giro 7: la scheda «L'azienda» dei clienti imprenditori (persona chiave dalle coperture collegate, TFM sì/no
         // senza calcoli fiscali, welfare e continuità dalle liste dell'utente, dati mancanti detti, frasi dai dati veri)
         ProvaCalcoliAzienda.esegui(verificaEsterna)
+        // «Luce», giro 9: chilometri, spese e scadenze (giri dalla tabella andata e ritorno, correzione a mano che vince,
+        // telefonate e pianificati esclusi, visite senza km, somma vera delle spese, mese mostrato, ricorrenze, ore,
+        // lettore dello scontrino, pacchetto senza nomi)
+        ProvaCalcoliSpese.esegui(verificaEsterna)
         // «Luce», giro 6: la Biblioteca, «Trova la pagina» (passi, intestazioni, BM25 sui fac-simile, la pagina che contiene
         // davvero la frase, «non trovata», tetto dell'indice, avviso sui parametri superati)
         ProvaCalcoliBiblioteca.esegui(verificaEsterna)

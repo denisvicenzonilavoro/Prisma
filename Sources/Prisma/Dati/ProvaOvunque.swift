@@ -117,6 +117,7 @@ enum ProvaOvunque {
             try provaNomi()
             try provaSpaziLuce()
             try provaAziende()
+            try provaSpese()
             try provaSpazio(radice: radice)
             print("Prova di Prisma ovunque riuscita")
             return 0
@@ -259,6 +260,30 @@ enum ProvaOvunque {
         let letto = try JSONOvunque.decodificatore().decode(DatiPrisma.self, from: chiaro)
         try controlla(letto.clienti.map(\.aziende) == dati.clienti.map(\.aziende),
                       "le aziende non tornano uguali dall'istantanea dello spazio")
+    }
+
+    /// Chilometri, spese e scadenze («Luce» giro 9): spese, scadenze, corsi e le loro impostazioni (km per cliente,
+    /// correzioni dei giri) restano sul Mac, non entrano nell'istantanea cifrata; sul dispositivo l'istantanea accolta
+    /// non tocca quelle locali.
+    private static func provaSpese() throws {
+        var dati = DatiPrisma.demo()
+        dati.speseStudio = ProvaBackup.speseDiProvaBackup()
+        dati.impostazioni.studio.spese = ProvaBackup.impostazioniSpeseDiProvaBackup()
+        try controlla(!dati.speseStudio.vuoto && !dati.impostazioni.studio.spese.kmAndataRitornoPerCliente.isEmpty,
+                      "i dati di prova delle spese sono vuoti")
+        let istantanea = SpazioOvunque.datiIstantanea(dati)
+        try controlla(istantanea.speseStudio == ArchivioSpese(), "le spese del consulente entrano nell'istantanea di Prisma ovunque")
+        try controlla(istantanea.impostazioni.studio.spese == ImpostazioniSpese(),
+                      "i km per cliente e le correzioni dei giri entrano nell'istantanea di Prisma ovunque")
+        let chiaro = String(data: try JSONOvunque.codificatore().encode(istantanea), encoding: .utf8) ?? ""
+        try controlla(!chiaro.contains("Pranzo di lavoro (prova)") && !chiaro.contains("Corso di prova"),
+                      "un testo delle spese è nell'istantanea di Prisma ovunque")
+        // Sul dispositivo: l'istantanea del Mac (senza spese) non cancella quelle locali
+        let ist = IstantaneaOvunque(generazione: 1, mac: "mac-prova", nomeMac: "Mac", scrittaIl: Date(), vistoFinoA: [:], lamport: 0,
+                                    modificheAmmesse: true, dati: istantanea)
+        let accolta = SincroniaOvunque.accogli(ist, in: dati).dati
+        try controlla(accolta.speseStudio == dati.speseStudio && accolta.impostazioni.studio.spese == dati.impostazioni.studio.spese,
+                      "accogliendo l'istantanea il dispositivo perde le sue spese o le loro impostazioni")
     }
 
     private static func provaSpaziLuce() throws {

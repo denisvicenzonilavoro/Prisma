@@ -98,6 +98,9 @@ struct ImpostazioniStudio: Codable, Equatable {
     /// I dati fiscali del consulente per le fatture (Impostazioni › Studio › Fatturazione, giro 2): vuoti di base,
     /// nessun regime, aliquota o regola predefinita (DatiFatturazione.swift).
     var fatturazione = DatiFatturazione()
+    /// Chilometri, spese e scadenze («Luce» giro 9, versione 27, SpeseStudio.swift): partenza, km per cliente, correzioni
+    /// dei giri, ore di aggiornamento richieste, nomi nel pacchetto. Non entrano nei calcoli in cache.
+    var spese = ImpostazioniSpese()
 
     /// I tipi di prodotto che danno provvigioni (gli altri, liquidità, immobili e debiti, non entrano in Studio).
     static let areeProvvigionali: [AreaPosizione] = [.investimento, .risparmio, .previdenza, .protezione]
@@ -119,7 +122,7 @@ struct ImpostazioniStudio: Codable, Equatable {
         return o
     }
 
-    private enum CodingKeys: String, CodingKey { case aliquote, obiettivi, fatturazione }
+    private enum CodingKeys: String, CodingKey { case aliquote, obiettivi, fatturazione, spese }
 
     /// Lettura tollerante: le chiavi sconosciute (un'area che non c'è più, un anno non numerico) si scartano, le altre
     /// restano così come sono (anche vuote: l'archivio torna identico dopo un salvataggio).
@@ -136,6 +139,8 @@ struct ImpostazioniStudio: Codable, Equatable {
         }
         // Giro 2: gli archivi del giro 1 non hanno i dati fiscali
         fatturazione = ((try? c.decodeIfPresent(DatiFatturazione.self, forKey: .fatturazione)) ?? nil) ?? DatiFatturazione()
+        // «Luce» giro 9 (versione 27): gli archivi di prima non hanno le impostazioni delle spese
+        spese = ((try? c.decodeIfPresent(ImpostazioniSpese.self, forKey: .spese)) ?? nil) ?? ImpostazioniSpese()
     }
 
     /// Le chiavi si scrivono come testo (l'area e l'anno), così il JSON è un oggetto leggibile.
@@ -148,5 +153,6 @@ struct ImpostazioniStudio: Codable, Equatable {
         try c.encode(perArea, forKey: .aliquote)
         try c.encode(perAnno, forKey: .obiettivi)
         try c.encode(fatturazione, forKey: .fatturazione)
+        try c.encode(spese, forKey: .spese)
     }
 }

@@ -513,6 +513,9 @@ extension DatiPrisma {
         // passo non rifà le cache dei clienti
         a.pratiche = []; b.pratiche = []
         b.impostazioni.pratiche = a.impostazioni.pratiche
+        // Chilometri, spese e scadenze («Luce» giro 9) si calcolano nella vista, senza cache
+        b.speseStudio = a.speseStudio
+        b.impostazioni.studio.spese = a.impostazioni.studio.spese
         return a == b
     }
 }

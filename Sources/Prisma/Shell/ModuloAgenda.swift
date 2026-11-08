@@ -71,6 +71,15 @@ struct ModuloAppuntamento: View {
                     CampoModulo(etichetta: "Luogo o collegamento") {
                         TextField("In studio, telefono, videochiamata…", text: $bozza.luogo).textFieldStyle(.roundedBorder)
                     }
+                    // Dove si è svolto, per i chilometri di Studio › Spese («Luce» giro 9, decisione 100): lo dice l'utente
+                    CampoModulo(etichetta: "Dove") {
+                        Picker("", selection: $bozza.presso) {
+                            Text("Non indicato").tag(LuogoIncontro?.none)
+                            ForEach(LuogoIncontro.allCases) { Text($0.nome).tag(Optional($0)) }
+                        }
+                        .labelsHidden()
+                        .frame(width: Tema.Apple.Studio.Spese.Moduli.sceltaPresso)
+                    }
                     if !nuovo {
                         CampoModulo(etichetta: "Stato") {
                             Toggle("Incontro concluso", isOn: Binding(get: { bozza.stato == .concluso },

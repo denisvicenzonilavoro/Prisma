@@ -15,7 +15,7 @@ import SwiftUI
 
 /// Le schede di Studio, nell'ordine del segmentato.
 enum SchedaStudio: String, CaseIterable, Identifiable, Hashable {
-    case cruscotto, fatture, track, ocf, palestra
+    case cruscotto, fatture, track, ocf, palestra, spese
 
     var id: String { rawValue }
 
@@ -27,6 +27,7 @@ enum SchedaStudio: String, CaseIterable, Identifiable, Hashable {
         case .track: return "Track record"
         case .ocf: return "OCF"
         case .palestra: return "Palestra"
+        case .spese: return "Spese"
         }
     }
 
@@ -46,6 +47,9 @@ enum SchedaStudio: String, CaseIterable, Identifiable, Hashable {
             return nil
         case .palestra:
             // C'è dal giro 5 di Luce (StudioPalestra.swift)
+            return nil
+        case .spese:
+            // C'è dal giro 9 di Luce (StudioSpese.swift)
             return nil
         }
     }
@@ -258,6 +262,9 @@ private struct CorpoStudio: View, Equatable {
         } else if s == .palestra {
             // Studio › Palestra («Luce» giro 5): StudioPalestra.swift; osserva da sé lo stato della palestra
             PalestraStudioVista(stato: stato, palestra: stato.palestra, base: base)
+        } else if s == .spese {
+            // Studio › Spese («Luce» giro 9): StudioSpese.swift; osserva da sé spese, scadenze, agenda e impostazioni
+            SpeseStudioVista(stato: stato, base: base, ritardoAnelli: ritardoAnelli)
         } else {
             ProssimaSchedaStudio(scheda: s)
                 .entrataCascata(0, base: base)

@@ -178,6 +178,9 @@ enum VoceConfronto: Hashable {
     /// La palestra della trattativa (Studio › Palestra, «Luce» giro 5, StatoPalestra.swift): un oggetto a parte, ogni
     /// parola di Vera ridisegna solo la conversazione. Non si salva (solo l'esito, in `dati.impostazioni.palestra`).
     let palestra = StatoPalestra()
+    /// Studio › Spese («Luce» giro 9, StatoSpese.swift): il mese scelto, la spesa appena inquadrata, il foglio aperto e
+    /// il pacchetto per il commercialista. Non si salva.
+    let studioSpese = StatoSpese()
     /// Prisma ovunque (giro 8, StatoOvunque.swift): lo stato della pagina Impostazioni › iPhone e iPad, la chiave dello
     /// spazio in memoria e i lavori della sincronizzazione. Un oggetto a parte: i pallini e i controlli non pubblicano
     /// StatoShell. Non si salva (le impostazioni dello spazio stanno in `dati.impostazioni.ovunque`).
@@ -3322,6 +3325,13 @@ enum VoceConfronto: Hashable {
         }
         // I fac-simile della Biblioteca se ne vanno con i clienti di prova («Luce» giro 6)
         togliEsempiBiblioteca()
+        // Le spese, i corsi e le scadenze di prova, e i km dei clienti di prova (Studio › Spese, «Luce» giro 9)
+        var spese = dati.speseStudio
+        SpeseDiProva.togli(&spese)
+        if spese != dati.speseStudio { dati.speseStudio = spese }
+        for id in Self.clientiDiProva where dati.impostazioni.studio.spese.kmAndataRitornoPerCliente[id] != nil {
+            dati.impostazioni.studio.spese.kmAndataRitornoPerCliente[id] = nil
+        }
     }
 
     /// Torna ai dati di prova (con backup di sicurezza dello stato attuale): i 5 clienti del template,

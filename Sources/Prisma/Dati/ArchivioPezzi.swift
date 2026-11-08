@@ -67,7 +67,7 @@ enum ArchivioPezzi {
         case .pratiche: return .sezione("pratiche")
         case .mercato: return .sezione("mercato")
         case .giornaleOvunque, .conflittiOvunque, .arriviOvunque, .inquadratureDaConfermare: return .sezione("ovunque")
-        case .famiglie, .ocf, .portafogliModello: return .sezione("studio")
+        case .famiglie, .ocf, .portafogliModello, .speseStudio: return .sezione("studio")
         }
     }
 
@@ -181,6 +181,7 @@ enum ArchivioPezzi {
         case .promesse: return a.promesse == b.promesse
         case .confrontiDocumenti: return a.confrontiDocumenti == b.confrontiDocumenti
         case .coperture: return a.coperture == b.coperture
+        case .speseStudio: return a.speseStudio == b.speseStudio
         case .clienteAttivoId: return a.clienteAttivoId == b.clienteAttivoId
         case .impostazioni: return a.impostazioni == b.impostazioni
         }
@@ -226,6 +227,7 @@ enum ArchivioPezzi {
         case .promesse: b.promesse = a.promesse
         case .confrontiDocumenti: b.confrontiDocumenti = a.confrontiDocumenti
         case .coperture: b.coperture = a.coperture
+        case .speseStudio: b.speseStudio = a.speseStudio
         case .clienteAttivoId: b.clienteAttivoId = a.clienteAttivoId
         case .impostazioni: b.impostazioni = a.impostazioni
         }

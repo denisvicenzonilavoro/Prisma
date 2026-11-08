@@ -223,6 +223,7 @@ enum NovitaLuce: String, CaseIterable, Identifiable {
         case .palestra: return true              // giro 5: Studio › Palestra, la palestra della trattativa
         case .trovaLaPagina: return true         // giro 6: Biblioteca, «Trova la pagina»
         case .imprenditori: return true          // giro 7: Clienti › dossier › L'azienda
+        case .speseScadenze: return true         // giro 9: Studio › Spese, chilometri, spese e scadenze
         default: return false
         }
     }
