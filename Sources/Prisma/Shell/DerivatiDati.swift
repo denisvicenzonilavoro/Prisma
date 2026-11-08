@@ -134,6 +134,8 @@ final class DerivatiDati {
     var trackRecord: TrackRecord?
     /// Le occasioni dei messaggi di oggi (StatoMessaggi.swift): dipendono dai dati dei calcoli (messaggi compresi) e dal giorno.
     var occasioniMessaggi: OccasioniMessaggi?
+    /// I gruppi delle campagne di oggi (CampagneMessaggi.swift, «Luce» giro 12): stesse dipendenze delle occasioni.
+    var gruppiCampagne: [GruppoCampagna]?
     /// Il numero dell'ultima impaginazione del documento di Prospetti: cambia solo quando il documento si
     /// impagina di nuovo, quindi dice alle pagine sul tavolo se sono ancora le stesse. Non si azzera con la
     /// chiave e viene da un contatore comune a tutti gli stati, così due documenti non hanno mai lo stesso numero.
@@ -176,6 +178,7 @@ final class DerivatiDati {
         cruscottoStudio = nil
         trackRecord = nil
         occasioniMessaggi = nil
+        gruppiCampagne = nil
         radar = nil
         datiCalcoli = nil
         contiAree = [:]

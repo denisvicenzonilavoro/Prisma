@@ -109,6 +109,13 @@ enum VoceConfronto: Hashable {
     /// «Luce»: la scheda di Pratiche e la vista di Territorio (StatoSala.swift).
     var schedaPratiche: SchedaPratiche = .proposta
     var vistaTerritorio: VistaTerritorio = .oggi
+    /// «Luce» giro 12: la vista di Clienti (Rubrica, Potenziali, Passaparola) e quella di Messaggi (Messaggi, Campagne)
+    /// (StatoClientiLuce.swift).
+    var vistaClienti: VistaClienti = .rubrica
+    var vistaMessaggi: VistaMessaggi = .messaggi
+    /// Il potenziale per cui si apre il modulo del nuovo cliente (Clienti › Potenziali, arrivo in «Cliente»): lo legge
+    /// AppClienti, che apre `ModuloCliente` già compilato.
+    var richiestaClienteDaPotenziale: String?
     /// Da dove si apre Messaggi (cliente, occasione, messaggio salvato): la scrivono le altre app con `preparaMessaggio`,
     /// l'app Messaggi la prende con `prendiRichiestaMessaggi()` (CollegamentiMessaggi.swift).
     var richiestaMessaggi: RichiestaMessaggi?
@@ -155,6 +162,11 @@ enum VoceConfronto: Hashable {
     /// Pratiche › Proposta («Luce» giro 3): il bisogno scelto, la sequenza delle cinque tappe, le scelte di prodotto
     /// (StatoPraticheProposta.swift). Un oggetto a parte: la sequenza non pubblica StatoShell. Non si salva.
     let praticheProposta = StatoPraticheProposta()
+    /// Clienti › Potenziali e Passaparola («Luce» giro 12, StatoClientiLuce.swift): scheda trascinata, ambasciatore
+    /// evidenziato, modulo aperto. Un oggetto a parte: non pubblica StatoShell. Non si salva.
+    let potenziali = StatoPotenziali()
+    /// Messaggi › Campagne («Luce» giro 12): gruppo scelto, esclusi, orari tolti, tono e canale. Non si salva.
+    let campagne = StatoCampagne()
     /// Mercato (giro 7, StatoMercato.swift): il campo e il risultato della ricerca per ISIN, lo scaricamento in corso, il
     /// foglio aperto. Un oggetto a parte: scrivere nel campo non pubblica StatoShell. Non si salva.
     let sessioneMercato = SessioneMercato()
