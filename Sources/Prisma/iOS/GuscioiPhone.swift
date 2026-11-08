@@ -139,6 +139,8 @@ struct AppTelefono: View {
         // Mercato (giro 7 di «Orizzonte»): la prima tessera grande, le altre e chi è toccato, gli avvisi a un tocco; in
         // sola lettura, i dati arrivano dal Mac (MercatoTelefono.swift)
         case .mercato: MercatoTelefono()
+        // Incontri sull'iPhone («Luce» giro 13): «Nota veloce» in alto e le note in partenza (NotaVocaleTelefono.swift)
+        case .incontri: IncontriTelefono().navigationTitle(app.titolo)
         default:
             InArrivoMobile(app: app, titolo: "\(app.titolo) è sul Mac", testo: StatoShell.soloSulMacPerOra)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -369,6 +371,8 @@ private struct ClientiTelefono: View {
             .filter { cerca.isEmpty || $0.nome.localizedCaseInsensitiveContains(cerca) }
             .sorted { $0.nome.localizedCaseInsensitiveCompare($1.nome) == .orderedAscending }
         FondoTelefono {
+            // «Luce» giro 13: la cosa principale in alto, la carta d'identità del cliente nuovo (CartaIdentitaTelefono.swift)
+            if cerca.isEmpty { PulsanteNuovoClienteTelefono() }
             if elenco.isEmpty {
                 VuotoTelefono(testo: cerca.isEmpty ? "Nessun cliente: apri il backup del Mac dal centro di controllo." : "Nessun cliente con «\(cerca)».")
             }
@@ -382,6 +386,7 @@ private struct ClientiTelefono: View {
         }
         .navigationTitle("Clienti")
         .searchable(text: $cerca, prompt: "Cerca un cliente")
+        .cartaIdentitaTelefono(stato)
     }
 }
 

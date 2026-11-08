@@ -43,6 +43,10 @@ struct AppClienti: View {
         .onChange(of: stato.richiestaNuovoCliente) { controllaRichiesta($0) }
         // «Luce» giro 13: «Scrivi a mano» dalla scena del nuovo cliente apre il modulo con i dati letti
         .onChange(of: stato.bozzaNuovoCliente) { controllaBozza($0) }
+        #if os(iOS)
+        // iPad: «Nuovo cliente» della testata apre la fotocamera per la carta d'identità («Luce» giro 13)
+        .cartaIdentitaTelefono(stato)
+        #endif
         .onChange(of: stato.richiestaCompletamento) { controllaCompletamento($0) }
     }
 
