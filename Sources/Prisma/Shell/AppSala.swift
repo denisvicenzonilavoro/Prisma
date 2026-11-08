@@ -111,7 +111,7 @@ private struct EscSala: View {
         let _ = ContaCorpi.segna()
         let libera = sistema.appAttiva == .sala && !sistema.pannelloNovita && sistema.sovrapposizione == nil
             && !sistema.pannelloNotifiche && !sistema.pannelloRicerca && sistema.guida == nil && !sistema.bloccato
-            && stato.presentazione == nil
+            && stato.presentazione == nil && !stato.sala.dettaglioValoreAperto
         if libera {
             Button(palco ? "Torna alla Sala" : "Chiudi la Sala") {
                 if palco {
@@ -393,7 +393,7 @@ struct ContenutoPalco: View {
                 .id(cliente.id)
         case .lanciaAnno:
             // Giro 8: Lancia l'anno (Shell/SalaLanciaAnno.swift); nelle istantanee una partita a seme fisso già giocata
-            LanciaAnnoVista(cliente: cliente, esito: partitaLancia(), modificabile: !inSala)
+            LanciaAnnoVista(cliente: cliente, modificabile: !inSala, iniziale: partitaLancia)
                 .id(cliente.id)
         case .valoreConsulente:
             // Giro 8: Quanto vale avermi accanto (Shell/SalaValoreConsulente.swift)

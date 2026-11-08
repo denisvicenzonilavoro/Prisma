@@ -9,6 +9,8 @@ import SwiftUI
 struct PaginaImpostazioniSala: View {
     @Environment(StatoShell.self) var stato
 
+    private typealias S = Tema.Apple.Impostazioni.Sala
+
     private static let numero = FloatingPointFormatStyle<Double>.number.precision(.fractionLength(0...2))
 
     var body: some View {
@@ -38,24 +40,24 @@ struct PaginaImpostazioniSala: View {
                     RigaImpostazione(titolo: e.titolo, sottotitolo: sottotitolo(e),
                                      aiuto: "Un evento esce a caso solo con la probabilità annua e la fonte. Senza, si gioca a mano con «Gioca una carta».",
                                      ultima: i == eventi.count - 1) {
-                        HStack(spacing: 6) {
+                        HStack(spacing: S.spazioCampi) {
                             if e.effetto == .mancatoReddito {
                                 TextField("mesi", value: legame(e, \.mesiDouble), format: Self.numero)
-                                    .frame(width: 56)
+                                    .frame(width: S.campoMesi)
                                 Text("mesi")
                             } else {
-                                TextField("importo", value: legame(e, \.importo), format: Self.numero)
-                                    .frame(width: 90)
+                                TextField("importo", value: legame(e, \.importo, azzeraProva: true), format: Self.numero)
+                                    .frame(width: S.campoImporto)
                                 Text("€")
                             }
                             TextField("%", value: legame(e, \.probabilitaPercento), format: Self.numero)
-                                .frame(width: 56)
+                                .frame(width: S.campoProbabilita)
                             Text("% l’anno")
                             TextField("fonte", text: legameTesto(e))
-                                .frame(width: 160)
+                                .frame(width: S.campoFonte)
                         }
                         .textFieldStyle(.roundedBorder)
-                        .carattereApple(Tema.Apple.Carattere.secondario)
+                        .carattereApple(S.carattereCampi)
                         .disabled(stato.solaLettura)
                     }
                 }
@@ -93,7 +95,7 @@ struct PaginaImpostazioniSala: View {
                     modifica { $0[keyPath: campo] = t.isEmpty ? nil : v }
                 }))
                 .textFieldStyle(.roundedBorder)
-                .frame(width: 380)
+                .frame(width: S.campoTesto)
                 .disabled(stato.solaLettura)
         }
     }
@@ -105,19 +107,22 @@ struct PaginaImpostazioniSala: View {
         stato.dati.impostazioni.sala = s
     }
 
-    /// Cambia un evento: la voce dell'utente con lo stesso id (copiata dalla risorsa la prima volta).
-    private func cambiaEvento(_ e: EventoAnno, _ cambia: (inout EventoAnno) -> Void) {
+    /// Cambia un evento: la voce dell'utente con lo stesso id (copiata dalla risorsa la prima volta). La cifra di prova
+    /// del template si toglie solo quando l'utente scrive l'importo (`azzeraProva`), non per la fonte o la probabilità.
+    private func cambiaEvento(_ e: EventoAnno, azzeraProva: Bool = false, _ cambia: (inout EventoAnno) -> Void) {
         modifica { s in
             var x = s.eventiAnno.first { $0.id == e.id } ?? e
             cambia(&x)
-            x.importoDiProva = nil
+            if azzeraProva { x.importoDiProva = nil }
             s.eventiAnno.removeAll { $0.id == e.id }
             s.eventiAnno.append(x)
         }
     }
 
-    private func legame(_ e: EventoAnno, _ campo: WritableKeyPath<EventoAnno, Double?>) -> Binding<Double?> {
-        Binding(get: { e[keyPath: campo] }, set: { v in cambiaEvento(e) { $0[keyPath: campo] = v.flatMap { $0 >= 0 ? $0 : nil } } })
+    private func legame(_ e: EventoAnno, _ campo: WritableKeyPath<EventoAnno, Double?>, azzeraProva: Bool = false) -> Binding<Double?> {
+        Binding(get: { e[keyPath: campo] }, set: { v in
+            cambiaEvento(e, azzeraProva: azzeraProva) { $0[keyPath: campo] = v.flatMap { $0 >= 0 ? $0 : nil } }
+        })
     }
 
     private func legameTesto(_ e: EventoAnno) -> Binding<String> {

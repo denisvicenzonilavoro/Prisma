@@ -16,7 +16,9 @@ enum ProvaCalcoliRacconti {
         lettera(verifica)
         lancia(verifica)
         lanciaEventi(verifica)
+        lanciaRegole(verifica)
         valore(verifica)
+        valoreRevisione(verifica)
     }
 
     private static let oggi = AiutiProva.data(2026, 11, 8)
@@ -54,6 +56,33 @@ enum ProvaCalcoliRacconti {
         verifica.vero("Lettera: senza pensione nessuna frase sulla pensione", !fissa.contains("pensione"))
         verifica.vero("Lettera: obiettivo principale = priorità più alta", s.obiettivo == "Casa di prova")
         verifica.vero("Lettera: senza genere il saluto è «Prova,»", MotoreLettera.saluto(s) == "Prova," && fissa.hasPrefix("Prova,"))
+        // Decisione 80: il saluto è «{nome},» anche quando il genere si sa
+        let conGenere = SchedaLettera(nome: "Giulia", femminile: true, etaTraguardo: 67, etaIpotizzata: false, annoTraguardo: 2033,
+                                      meseIncontro: "novembre 2026", etaOggi: 60, obiettivo: "Obiettivo di prova",
+                                      arrivoConPiano: AiutiProva.data(2032, 5, 1), arrivoSenzaPiano: AiutiProva.data(2038, 3, 1),
+                                      versamentoMensile: nil, pensioneConPiano: nil, pensioneSenzaPiano: nil, fondoNelPiano: false,
+                                      pianoPresente: true, mancanti: [])
+        verifica.vero("Lettera: con il genere il saluto resta «Giulia,» (decisione 80)",
+                      MotoreLettera.saluto(conGenere) == "Giulia," && MotoreLettera.fissa(conGenere, .conPiano).hasPrefix("Giulia,"))
+        // Chi scrive sta nel 2033: un arrivo nel 2038 non si racconta al passato; uno nel 2032 sì
+        let senzaFuturo = MotoreLettera.fissa(conGenere, .senzaPiano)
+        verifica.vero("Lettera: arrivo dopo l'anno del traguardo al futuro, mai «l’abbiamo raggiunto»",
+                      senzaFuturo.contains("lo raggiungeremo a") && !senzaFuturo.contains("l’abbiamo raggiunto"))
+        verifica.vero("Lettera: arrivo prima dell'anno del traguardo al passato",
+                      MotoreLettera.fissa(conGenere, .conPiano).contains("l’abbiamo raggiunto a"))
+        verifica.vero("Lettera: la scheda per Qwen dice di raccontare al futuro l'arrivo dopo il traguardo",
+                      MotoreLettera.fatti(conGenere, .senzaPiano).contains { $0.contains("raccontalo al futuro") })
+        // Lo streaming davanti al cliente: niente nomi vietati, niente scenari negativi nel «senza», niente parole a metà
+        let ammessiProva = MotoreLettera.ammessi(conGenere, .senzaPiano)
+        verifica.vero("Lettera: durante il flusso un nome vietato non si mostra",
+                      LetteraVera.pezzoMostrabile("Giulia, ti scrivo con Alleanza e ", ammessi: ammessiProva, vietati: ["Alleanza"],
+                                                  versione: .conPiano) == nil)
+        verifica.vero("Lettera: durante il flusso nel «senza» uno scenario negativo non si mostra",
+                      LetteraVera.pezzoMostrabile("Giulia, purtroppo ho ", ammessi: ammessiProva, vietati: [],
+                                                  versione: .senzaPiano) == nil)
+        verifica.vero("Lettera: durante il flusso la parola a metà non si mostra",
+                      LetteraVera.pezzoMostrabile("Giulia, ti scrivo dal 20", ammessi: ammessiProva, vietati: [],
+                                                  versione: .conPiano) == "Giulia, ti scrivo dal")
         verifica.vero("Lettera: la lettera fissa non ha segnaposto", !fissa.contains("{") && !MotoreLettera.fissa(s, .senzaPiano).contains("{"))
         verifica.vero("Lettera: il versamento previsto (550 euro) nella versione con il piano", fissa.contains("550 euro al mese"))
         verifica.vero("Lettera: con un versamento previsto il piano c'è", s.pianoPresente && !s.mancanti.contains(.piano))
@@ -233,6 +262,69 @@ enum ProvaCalcoliRacconti {
                       unite.map(\.id) == ["e-no", "e-mesi", "e-spesa"] && unite[0].fonte == "Fonte di prova")
     }
 
+    /// Le regole della revisione: premi della protezione proposta, mercato come il Monte Carlo, versamenti fino alla
+    /// scadenza, evento del cliente insieme alla carta a mano.
+    private static func lanciaRegole(_ verifica: VerificaCalcoli) {
+        var c = cliente()
+        c.profilo.risparmioAnnuo = 6_000
+        func partita(_ posizioni: [Posizione], eventi: [EventoLineaVita] = []) -> PartitaLanciaAnno? {
+            try? MotoreLanciaAnno.prepara(cliente: c, posizioni: posizioni, obiettivi: [], eventiCliente: eventi, tabella: [],
+                                          diProva: false, anniScelti: nil, oggi: oggi, seme: 3).get()
+        }
+        // 1. La protezione proposta si paga: 50 € al mese escono dal risparmio della vita con il piano
+        var tcm = AiutiProva.posizione("Protezione di prova", .protezione, 0)
+        tcm.stato = .proposta
+        tcm.rischio = .infortuni
+        tcm.premio = 50
+        tcm.frequenza = .mensile
+        tcm.indennizzoStimato = 5_000
+        guard var p = partita(posizioniLancia(proposta: false) + [tcm]) else {
+            return verifica.vero("Lancia l'anno: partita con la protezione proposta", false)
+        }
+        verifica("Lancia l'anno: il piano chiede il premio della protezione (600 € l'anno)", p.richiestaDelPiano(anno: 1), 600)
+        verifica.vero("Lancia l'anno: con una protezione proposta le due vite non sono uguali", !p.senzaPiano)
+        MotoreLanciaAnno.lancia(&p, z: 0)
+        verifica("Lancia l'anno: la copertura non è gratis (con il piano = senza − 600)", p.con.valore, p.senza.valore - 600, tolleranza: 0.5)
+        // 2. Il mercato con le regole del Monte Carlo
+        let mu = log(1.06) - 0.16 * 0.16 / 2
+        var multiramo = VitaLanciaAnno(voci: [VoceLancia(nome: "Multiramo di prova", valore: 10_000, mu: mu, sigma: 0.16, fattoreCosti: 1,
+                                                         versamentoAnnuo: 0, quotaGestione: 0.7, fattoreGestione: 1.02,
+                                                         valoreGestione: 7_000)], serie: [])
+        _ = MotoreLanciaAnno.cresci(&multiramo, z: -2, anno: 1)
+        verifica("Lancia l'anno: multiramo, con z = −2 scende solo la parte in fondi", multiramo.valore,
+                 7_000 * 1.02 + 3_000 * exp(mu - 0.32), tolleranza: 0.5)
+        var ramoI = VitaLanciaAnno(voci: [VoceLancia(nome: "Ramo I di prova", valore: 10_000, mu: mu, sigma: 0.16, fattoreCosti: 1,
+                                                     versamentoAnnuo: 1_000, fattoreIngresso: 0.97, garantito: true)], serie: [])
+        _ = MotoreLanciaAnno.cresci(&ramoI, z: -2, anno: 1)
+        verifica("Lancia l'anno: Ramo I mai sotto zero, versamento al netto del 3% d'ingresso", ramoI.valore, 10_000 + 970, tolleranza: 0.01)
+        var fondo = VitaLanciaAnno(voci: [VoceLancia(nome: "Fondo pensione di prova", valore: 10_000, mu: log(1.10), sigma: 0, fattoreCosti: 1,
+                                                     versamentoAnnuo: 0, tassaAnnua: 0.20)], serie: [])
+        _ = MotoreLanciaAnno.cresci(&fondo, z: 0, anno: 1)
+        verifica("Lancia l'anno: fondo pensione, imposta annua sul risultato (+10% → +8%)", fondo.valore, 10_800, tolleranza: 0.01)
+        // 3. I versamenti si fermano alla scadenza: una proposta che dura un anno chiede il premio solo il primo anno
+        var breve = posizioniLancia(proposta: true)
+        breve[1].scadenza = AiutiProva.data(2027, 11, 8)
+        guard var b = partita(breve) else { return }
+        verifica("Lancia l'anno: proposta di un anno, il primo anno chiede 1.200 €", b.richiestaDelPiano(anno: 1), 1_200)
+        verifica("Lancia l'anno: proposta di un anno, il secondo anno non chiede più nulla", b.richiestaDelPiano(anno: 2), 0)
+        MotoreLanciaAnno.lancia(&b, z: 0)
+        MotoreLanciaAnno.lancia(&b, z: 0)
+        verifica("Lancia l'anno: dopo la scadenza il risparmio torna tutto sul conto (stesso valore delle due vite)",
+                 b.con.valore, b.senza.valore, tolleranza: 0.5)
+        // 4. Una carta a mano nell'anno di un evento del cliente: si applicano tutti e due
+        let vita = EventoLineaVita(clienteId: "prova", tipo: .eredita, eta: 38, importo: 10_000)
+        let spesa = EventoAnno(id: "e-spesa", titolo: "Spesa di prova", effetto: .spesa, importo: 12_000, tono: .rosso)
+        guard var x = partita(posizioniLancia(proposta: false), eventi: [vita]),
+              var y = partita(posizioniLancia(proposta: false), eventi: [vita]),
+              let ax = MotoreLanciaAnno.lancia(&x, cartaAMano: spesa, z: 0) else { return }
+        MotoreLanciaAnno.lancia(&y, z: 0)
+        let infl = 1 + IpotesiCalcolo.inflazione / 100
+        verifica.vero("Lancia l'anno: carta a mano ed evento del cliente nello stesso anno, la carta li dice tutti e due",
+                      ax.evento != nil && ax.eventoCliente != nil)
+        verifica("Lancia l'anno: l'evento del cliente non sparisce (con la carta = senza carta − la spesa)",
+                 x.senza.valore, y.senza.valore - 12_000 * infl, tolleranza: 0.5)
+    }
+
     // MARK: - Quanto vale avermi accanto
 
     private static func raccomandazione(_ id: String, _ p: Posizione, accettata: Date, sostituita: String? = nil) -> Raccomandazione {
@@ -296,6 +388,10 @@ enum ProvaCalcoliRacconti {
                       (v.totalePerCanale[.alleanza] ?? 0) > 0 && (v.totalePerCanale[.indipendente] ?? 0) > 0)
         verifica.vero("Valore: senza aliquote le provvigioni Alleanza non sono stimate", v.provvigioniStimate == nil && v.provvigioniNonStimate)
         verifica.vero("Valore: con un compenso il rapporto c'è", v.rapporto != nil)
+        // Provvigioni non stimate: il rapporto è solo il valore indipendente per euro di parcella, mai tutto il valore
+        verifica.vero("Valore: provvigioni non stimate → rapporto solo sulle parcelle", v.rapportoSoloParcelle)
+        verifica("Valore: rapporto = valore indipendente / parcelle", v.rapporto ?? -1,
+                 (v.totalePerCanale[.indipendente] ?? 0) / v.parcellePagate)
         // Senza il costo della sostituita la voce non si conta e lo dice
         var senzaCosto = vecchio
         senzaCosto.costoAnnuo = nil
@@ -319,5 +415,43 @@ enum ProvaCalcoliRacconti {
         verifica.vero("Valore: titolo con «almeno» quando una voce manca",
                       MotoreValoreConsulente.titolo(ImpostazioniSala.titoloValoreDiProva, valore: "1.000 €", mesi: 36, parziale: true)
                         == "In tre anni il nostro lavoro vale almeno 1.000 €.")
+    }
+
+    /// Le regole della revisione: limiti fiscali per contribuente, periodo degli ultimi 12 mesi.
+    private static func valoreRevisione(_ verifica: VerificaCalcoli) {
+        var c = cliente()
+        c.profilo.redditoLordoAnnuo = 40_000
+        c.clienteDal = AiutiProva.data(2023, 11, 1)
+        let tabella = TabellaRiferimenti(RiferimentiRendimento())
+        var fondo = AiutiProva.posizione("Fondo di prova", .previdenza, 6_500)
+        fondo.decorrenza = AiutiProva.data(2023, 11, 10)
+        fondo.premio = 2_000
+        fondo.frequenza = .annuale
+        // Il cliente versa già 5.000 € l'anno in un fondo suo: il limite di deducibilità resta quasi tutto consumato
+        var giaSuo = AiutiProva.posizione("Fondo già del cliente", .previdenza, 9_000)
+        giaSuo.decorrenza = AiutiProva.data(2015, 1, 10)
+        giaSuo.premio = 5_000
+        giaSuo.frequenza = .annuale
+        let racc = [raccomandazione("r-fondo", fondo, accettata: AiutiProva.data(2023, 11, 5))]
+        let v = MotoreValoreConsulente.calcola(cliente: c, posizioni: [fondo, giaSuo], raccomandazioni: racc, schede: [], parcelle: [],
+                                               studio: ImpostazioniStudio(), tabella: tabella, oggi: oggi)
+        let marginale = RegoleFiscali.risparmioDeduzione(reddito: 40_000, deduzione: RegoleFiscali.limiteDeducibilita)
+            - RegoleFiscali.risparmioDeduzione(reddito: 40_000, deduzione: 5_000)
+        verifica("Valore: con 5.000 € già versati altrove conta solo la deduzione in più (marginale), tre anni",
+                 v.voce(.tasse)?.totale ?? -1, 3 * marginale, tolleranza: 0.5)
+        // Ultimi 12 mesi: la sostituzione conta un anno solo, il track record non si scompone
+        var vecchio = AiutiProva.posizione("Vecchio di prova", .investimento, 0)
+        vecchio.stato = .chiusa
+        vecchio.costoAnnuo = 2.1
+        var nuovo = AiutiProva.posizione("Nuovo di prova", .investimento, 50_000)
+        nuovo.costoAnnuo = 1.3
+        nuovo.decorrenza = AiutiProva.data(2024, 11, 8)
+        let racc2 = racc + [raccomandazione("r-nuovo", nuovo, accettata: AiutiProva.data(2024, 11, 8), sostituita: vecchio.id)]
+        let u = MotoreValoreConsulente.calcola(cliente: c, posizioni: [fondo, giaSuo, vecchio, nuovo], raccomandazioni: racc2, schede: [],
+                                               parcelle: [], studio: ImpostazioniStudio(), tabella: tabella, oggi: oggi, periodo: .ultimi12)
+        verifica("Valore: ultimi 12 mesi, la sostituzione vale un anno (400 €)", u.voce(.costi)?.totale ?? -1, 400, tolleranza: 3)
+        verifica.vero("Valore: ultimi 12 mesi, «Rispetto all’alternativa» senza cifra e lo dice",
+                      u.voce(.alternativa)?.totale == nil && u.voce(.alternativa)?.motivoAssente?.contains("12 mesi") == true)
+        verifica("Valore: ultimi 12 mesi, il titolo dice un anno", Double(u.mesi), 12)
     }
 }

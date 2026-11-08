@@ -24,7 +24,7 @@ enum ProvaLetteraVera {
         let motore = MotoreLocale(vera, disponibilita: .pronto, sessione: sessione)
 
         let fedele = """
-        Cara Giulia,
+        Giulia,
 
         ti scrivo dal 2056. Ho 67 anni e stamattina, con il caffè in mano, ho ripensato a quella sera di novembre 2026 in cui avevamo tutti i numeri sul tavolo. L’obiettivo «Casa di prova» l’abbiamo raggiunto a ottobre 2029, come avevamo previsto, mettendo da parte 550 euro al mese con pazienza.
 
@@ -37,7 +37,7 @@ enum ProvaLetteraVera {
         let inventata = fedele.replacingOccurrences(of: "2.160 euro", with: "2.500 euro")
         let promessa = fedele.replacingOccurrences(of: "Grazie per aver cominciato", with: "Il rendimento garantito ci ha premiato. Grazie per aver cominciato")
         let cupa = """
-        Cara Giulia,
+        Giulia,
 
         ti scrivo dal 2056. Ho 67 anni. L’obiettivo «Casa di prova» l’abbiamo raggiunto a marzo 2034, dopo tanti sacrifici e qualche rinuncia di troppo che ancora mi pesa.
 
@@ -58,7 +58,7 @@ enum ProvaLetteraVera {
                   "Lettera, Qwen finto: istruzioni fisse, scheda con le cifre di Prisma e la lettera fissa, senza ragionamento")
         controlla(LetteraVera.piano(s, .conPiano, vera: vera).scelta.modalita == .lavoro,
                   "Lettera: Vera scrive in modalità lavoro (numeri solo da Prisma)")
-        controlla(primo.autore == .vera && primo.avviso == nil && primo.testo.hasPrefix("Cara Giulia,")
+        controlla(primo.autore == .vera && primo.avviso == nil && primo.testo.hasPrefix("Giulia,")
                   && primo.testo.hasSuffix("Giulia, 67 anni") && primo.testo.components(separatedBy: "Giulia, 67 anni").count == 2,
                   "Lettera, Qwen finto: una lettera con le cifre della scheda passa, con la firma di Prisma una volta sola (\(primo.avviso ?? "ok"))")
         controlla((pezzi.valore ?? 0) >= 1, "Lettera, Qwen finto: il testo arriva in streaming (\(pezzi.valore ?? 0) aggiornamenti)")
@@ -88,7 +88,7 @@ enum ProvaLetteraVera {
                   && (quinto.avviso ?? "").contains("la lettera è quella di Prisma"),
                   "Lettera: se Qwen non è pronto resta la lettera di Prisma e Vera lo dice («\(quinto.avviso ?? "")»)")
         let senzaMotore = aspetta { await LetteraVera.scrivi(s, versione: .senzaPiano, posizioni: [], motore: nil, vera: vera) }
-        controlla(senzaMotore.autore == .modelloFisso && senzaMotore.testo.hasPrefix("Cara Giulia,")
+        controlla(senzaMotore.autore == .modelloFisso && senzaMotore.testo.hasPrefix("Giulia,")
                   && senzaMotore.testo.contains("1.400 euro"),
                   "Lettera: senza Qwen la lettera fissa «senza il piano», con le cifre della scheda")
     }

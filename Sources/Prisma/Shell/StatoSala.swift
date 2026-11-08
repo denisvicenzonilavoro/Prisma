@@ -133,6 +133,18 @@ enum VistaTerritorio: String, CaseIterable, Identifiable, Hashable {
     @ObservationIgnored var valoreDettaglioIstantanea: TipoVoceValore?
     /// «Quanto vale avermi accanto» ricordato per cliente, versione dei dati e giorno (`StatoShell.valoreConsulente`).
     @ObservationIgnored var memoValore: (chiave: String, valore: ValoreConsulente)?
+    /// Il periodo di «Quanto vale avermi accanto» (§4.4.4): dall'inizio del rapporto o gli ultimi 12 mesi.
+    var periodoValore: PeriodoValore = .inizio
+    /// I clienti per cui il consulente ha scelto «Metti nel riesame» (decisione 18): solo per loro il prospetto del
+    /// riesame mostra «Quanto vale avermi accanto». Una scelta della sessione, non salvata.
+    var valoreNelRiesame: Set<String> = []
+    /// Il dettaglio di «Quanto vale avermi accanto» è aperto: Esc lo chiude prima di tornare alla griglia.
+    var dettaglioValoreAperto = false
+    /// Le stesure della lettera dal futuro, per cliente e versione, finché il palco è aperto: la presentazione mostra
+    /// solo quelle già scritte (e viste dal consulente) sul palco, mai una stesura nuova (§3.1).
+    @ObservationIgnored var stesureLettera: [String: [VersioneLettera: TestoLettera]] = [:]
+    /// La scheda della lettera ricordata per cliente, versione dei dati e giorno (`StatoShell.schedaLettera`).
+    @ObservationIgnored var memoScheda: (chiave: String, scheda: SchedaLettera?)?
 }
 
 /// Solo istantanee: una partita di Lancia l'anno già giocata (seme fisso, anni, carte a mano per anno).
@@ -148,6 +160,8 @@ extension StatoShell {
     func apriEsperienza(_ e: EsperienzaSala, cliente id: String? = nil) {
         if let id, cliente(id) != nil { clienteAttivoId = id }
         sala.esperienza = clienteAttivo == nil ? nil : e
+        sala.stesureLettera = [:]
+        sala.dettaglioValoreAperto = false
         apri(.sala)
     }
 

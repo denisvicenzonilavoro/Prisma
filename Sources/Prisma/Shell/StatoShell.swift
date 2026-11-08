@@ -1459,7 +1459,7 @@ enum VoceConfronto: Hashable {
     }
 
     func contenutoProspetto(_ scelta: SceltaProspetto) -> ContenutoProspetto? {
-        if case .riesame = scelta { return fonteVera(clienteAttivoId).map { CompositoreProspetti.riesame($0, conformita: conformitaCliente(clienteAttivoId), occasioni: occasioniRiesame(clienteAttivoId), memoria: memoriaRiesame(clienteAttivoId), valore: clienteAttivo.map(valoreConsulente)) } }
+        if case .riesame = scelta { return fonteVera(clienteAttivoId).map { CompositoreProspetti.riesame($0, conformita: conformitaCliente(clienteAttivoId), occasioni: occasioniRiesame(clienteAttivoId), memoria: memoriaRiesame(clienteAttivoId), valore: clienteAttivo.flatMap { valoreNelRiesame($0.id) ? valoreConsulente($0) : nil }) } }
         // Dall'archivio dei calcoli (giro 0, tappa 2): il body di Prospetti non si iscrive a tutti i campi (aspetto, note,
         // conversazioni…); i prospetti leggono solo campi dei calcoli, e il cliente arriva a parte
         return CompositoreProspetti.componi(scelta, dati: datiDeiCalcoli(), cliente: clienteAttivoId, orizzonteConfronto: orizzonteConfronto)

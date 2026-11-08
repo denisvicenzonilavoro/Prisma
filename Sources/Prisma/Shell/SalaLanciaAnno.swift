@@ -42,7 +42,10 @@ struct LanciaAnnoVista: View {
     @Environment(\.modoIstantanea) private var istantanea
     @Environment(\.prismaCalmo) private var calmo
 
-    @State private var esito: Result<PartitaLanciaAnno, DatoLanciaMancante>
+    /// La partita aperta: nil finché la vista non compare (fino ad allora vale `iniziale`, calcolata solo allora).
+    @State private var partitaAperta: Result<PartitaLanciaAnno, DatoLanciaMancante>?
+    /// I dati del cliente sono cambiati dopo il primo lancio: la partita in corso resta, il piede propone ↻.
+    @State private var datiCambiati = false
     @State private var numero = 0
     @State private var corsa: Task<Void, Never>?
     @State private var giroDado: Double = 0
@@ -50,15 +53,24 @@ struct LanciaAnnoVista: View {
     private typealias L = Tema.Apple.SalaEsperienze.Lancia
     private typealias M = Tema.Apple.Moto.SalaEsperienze.Lancia
 
-    init(cliente: Cliente, esito: Result<PartitaLanciaAnno, DatoLanciaMancante>, modificabile: Bool = true) {
+    /// La partita con cui si apre il palco: si calcola solo finché la vista non ha la sua (non a ogni disegno del padre).
+    let iniziale: () -> Result<PartitaLanciaAnno, DatoLanciaMancante>
+
+    init(cliente: Cliente, modificabile: Bool = true, iniziale: @escaping () -> Result<PartitaLanciaAnno, DatoLanciaMancante>) {
         self.cliente = cliente
         self.modificabile = modificabile
-        self._esito = State(initialValue: esito)
+        self.iniziale = iniziale
+    }
+
+    private var esito: Result<PartitaLanciaAnno, DatoLanciaMancante> {
+        get { partitaAperta ?? iniziale() }
+        nonmutating set { partitaAperta = newValue }
     }
 
     var body: some View {
         let _ = ContaCorpi.segna()
         let nome = StatoShell.nomeBreve(cliente)
+        let versione = stato.versioneDati
         Group {
             switch esito {
             case .success(let p):
@@ -68,7 +80,27 @@ struct LanciaAnnoVista: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
+        .onAppear { if partitaAperta == nil { partitaAperta = iniziale() } }
         .onDisappear { corsa?.cancel() }
+        .onChange(of: versione) { _, _ in datiCambiatiOra() }
+    }
+
+    /// I dati sono cambiati (profilo, posizioni, eventi di Impostazioni › Sala): senza anni lanciati la partita si rifà
+    /// da sola (e «mancano» si sblocca); a partita cominciata resta com'è e il piede lo dice, con ↻ per rifarla.
+    private func datiCambiatiOra() {
+        guard !istantanea, corsa == nil else {
+            datiCambiati = true
+            return
+        }
+        switch esito {
+        case .failure:
+            esito = stato.partitaLanciaAnno(cliente, numero: numero)
+        case .success(let p) where p.anni.isEmpty:
+            esito = stato.partitaLanciaAnno(cliente, numero: numero)
+            datiCambiati = false
+        case .success:
+            datiCambiati = true
+        }
     }
 
     // MARK: La partita
@@ -141,13 +173,13 @@ struct LanciaAnnoVista: View {
         return HStack(spacing: L.spazioPulsanti) {
             Button { lancia(nil, animato: true) } label: {
                 HStack(spacing: L.spazioPulsanti / 2) {
-                    GlifoLuceVista(glifo: .dadi, lato: L.latoDado, colore: .white)
+                    GlifoLuceVista(glifo: .dadi, lato: L.latoDado, colore: L.coloreDado)
                         .rotationEffect(.degrees(giroDado))
                     Text("Lancia l’anno")
                 }
             }
             .buttonStyle(.applePrimarioGrande)
-            .keyboardShortcut(.space, modifiers: [])
+            .background(SpazioLancia(sistema: stato.sistema, presentazione: !modificabile, attivo: !fermo) { lancia(nil, animato: true) })
             .disabled(fermo)
             .help("Un anno in più: i mercati dal Monte Carlo, gli eventi della vita del cliente (spazio)")
             Button { dieci() } label: { Text("Lancia 10 anni") }
@@ -259,6 +291,9 @@ struct LanciaAnnoVista: View {
     private func piede(_ p: PartitaLanciaAnno, nome: String) -> some View {
         let avvertenza = ImpostazioniSala.avvertenza(stato.dati.impostazioni.sala.avvertenzaLancia)
         var righe: [String] = []
+        if datiCambiati {
+            righe.append("I dati di \(nome) sono cambiati: premi ↻ per una partita con i dati nuovi.")
+        }
         if p.pianoOltreRisparmio {
             righe.append("Il piano chiede \(Formati.euro(p.chiedeIlPiano)) l’anno, \(nome) ne mette da parte \(Formati.euro(p.risparmioLibero)): nelle due vite contano \(Formati.euro(p.chiedeIlPiano)).")
         }
@@ -314,6 +349,7 @@ struct LanciaAnnoVista: View {
         corsa?.cancel()
         corsa = nil
         numero += 1
+        datiCambiati = false
         let nuovo = stato.partitaLanciaAnno(cliente, numero: numero)
         withAnimation(calmo ? Tema.Moto.dissolvenzaCalma : .easeOut(duration: Tema.Apple.Studio.Moto.durataRimonta)) { esito = nuovo }
     }
@@ -335,6 +371,33 @@ struct LanciaAnnoVista: View {
         }
         .frame(maxWidth: L.larghezzaStato)
         .entrataCascata(1, base: Tema.Apple.Moto.Cascata.baseDentroApp)
+    }
+}
+
+/// Lo spazio lancia l'anno solo con la Sala davanti e niente sopra (finestre interne, pannelli, ricerca, guida): una
+/// scorciatoia senza modificatori non deve rubare lo spazio a chi scrive in Vera o in una scheda. Nella presentazione
+/// la sala opaca copre tutto e lo spazio lancia. Osserva le finestre a parte: la partita non si ridisegna.
+private struct SpazioLancia: View {
+    @Environment(StatoShell.self) var stato
+    let sistema: StatoFinestre
+    let presentazione: Bool
+    let attivo: Bool
+    let azione: () -> Void
+
+    var body: some View {
+        let davanti = presentazione
+            ? stato.presentazione != nil
+            : sistema.appAttiva == .sala && !sistema.pannelloNovita && sistema.sovrapposizione == nil
+                && !sistema.pannelloNotifiche && !sistema.pannelloRicerca && sistema.guida == nil && !sistema.bloccato
+                && stato.presentazione == nil
+        if davanti && attivo {
+            Button("Lancia l’anno", action: azione)
+                .keyboardShortcut(.space, modifiers: [])
+                .buttonStyle(StileSemplice())
+                .opacity(0)
+                .frame(width: 0, height: 0)
+                .accessibilityHidden(true)
+        }
     }
 }
 

@@ -227,8 +227,9 @@ extension CompositoreProspetti {
                                 nota: "dal \(Formati.dataBreve.string(from: v.dal))"),
             IndicatoreProspetto(etichetta: "Compenso", valore: Formati.euro(v.compenso),
                                 nota: v.provvigioniNonStimate ? "provvigioni Alleanza non stimate" : "parcelle e provvigioni stimate"),
-            IndicatoreProspetto(etichetta: "Per euro di compenso", valore: v.rapporto.map { String(format: "%.1f", $0).replacingOccurrences(of: ".", with: ",") } ?? "—",
-                                nota: "euro di valore"),
+            IndicatoreProspetto(etichetta: v.rapportoSoloParcelle ? "Per euro di parcella" : "Per euro di compenso",
+                                valore: v.rapporto.map { String(format: "%.1f", $0).replacingOccurrences(of: ".", with: ",") } ?? "—",
+                                nota: v.rapportoSoloParcelle ? "valore del canale indipendente" : "euro di valore"),
             IndicatoreProspetto(etichetta: "Protetto (caso morte)", valore: v.protetto.map(Formati.euro) ?? "—", nota: "non entra nel totale"),
         ]))
         b.append(.tabella(TabellaProspetto(

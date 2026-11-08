@@ -288,6 +288,8 @@ extension Tema.Apple.SalaEsperienze {
         static let coloreEta = K.inchiostro2
         static let spazioAnnoEta: CGFloat = 12
         static let spazioPulsanti: CGFloat = 8
+        /// Il dado sul pulsante primario: bianco come il testo del pulsante.
+        static let coloreDado = Tema.Apple.Controlli.Pulsante.testoPrincipale
         /// Il glifo del dado nel pulsante (bianco, 15).
         static let latoDado: CGFloat = 15
         /// I due riquadri: `.tile` padding 16 / 20, 16 fra l'uno e l'altro, 14 sotto la testa.
@@ -420,6 +422,16 @@ extension Tema.Apple.SalaEsperienze {
         static let sottoRigaDettaglio = C.secondario
         static let fraRighe: CGFloat = 10
         static let veloDettaglio = Color(r: 0, g: 0, b: 0, a: 0.18)
+        /// Fra titolo e sottotitolo di una riga del dettaglio.
+        static let fraTitoloSottotitolo: CGFloat = 2
+        static let filoRapportoSpessore: CGFloat = 1
+        /// Il segmentato del periodo e «Metti nel riesame», 16 sotto la testa.
+        static let sopraComandi: CGFloat = 16
+        static let spazioComandi: CGFloat = 10
+        /// Fra i due segmenti (Alleanza, indipendente) della barra del compenso.
+        static let spazioSegmenti = Tema.Apple.Grafico.Barra.spazio
+        /// Il resto della barra del compenso fino alla scala del valore: non si disegna.
+        static let coloreResto = Color.clear
     }
 }
 

@@ -10,9 +10,11 @@ import SwiftUI
 //   │ spiegazione       ││ …              ││ …                        ││ …                  │
 //   │ Alleanza · Indip. ││                ││                          ││                    │
 //   └───────────────────┘└────────────────┘└──────────────────────────┘└────────────────────┘
+//   ( Dall'inizio | Ultimi 12 mesi )                                    [ Metti nel riesame ]
 //   VALORE E COMPENSO, A CONFRONTO                       ┌───────────────────────────────┐
 //   Il valore portato     ██████████████████  9.030 €     │ Per ogni euro di compenso,    │
-//   Le parcelle pagate    ██████              3.600 €     │ circa 2,5 euro di valore.     │
+//   Il compenso           ████▌██             3.600 €     │ circa 2,5 euro di valore.     │
+//                         (Alleanza · indipendente)       └───────────────────────────────┘
 //   Stime basate su ipotesi, non garanzie di risultato.   └───────────────────────────────┘
 //
 // - Le cifre vengono da `MotoreValoreConsulente` (decisioni 58 e 85): solo ciò che è nato dalle raccomandazioni
@@ -20,24 +22,34 @@ import SwiftUI
 // - Titolo e avvertenza li scrive o approva l'utente (Impostazioni › Sala): finché non lo fa restano il titolo del
 //   template segnato «testo di prova» e il segnaposto dichiarato della decisione 56.
 // - Nessun pulsante a destra del palco: l'esperienza non va sul tavolo né nel Prisma del cliente; le cifre restano per il
-//   consulente (e nel prospetto del riesame, che è per lui). Un clic su un riquadro apre il dettaglio delle voci.
+//   consulente. «Metti nel riesame» (decisione 18, facoltativo) la porta nel prospetto del riesame, che è per lui: finché
+//   non lo sceglie il riesame non la mostra. Il periodo «Dall'inizio · Ultimi 12 mesi» (§4.4.4). Un clic su un riquadro
+//   apre il dettaglio delle voci; Esc chiude prima il dettaglio, poi il palco.
 // - Movimento: cascata dei riquadri, cifre contate, barre che si allungano. «Riduci movimento» e istantanee: fermo.
 
 extension StatoShell {
     /// Il valore del lavoro con un cliente, ricordato finché i dati non cambiano (il track record ricostruisce i
     /// versamenti: non si rifà a ogni disegno).
-    func valoreConsulente(_ c: Cliente) -> ValoreConsulente {
+    func valoreConsulente(_ c: Cliente, periodo: PeriodoValore = .inizio) -> ValoreConsulente {
         let oggi = Calendar.current.startOfDay(for: Date())
-        let chiave = "\(c.id)-\(versioneDati)-\(oggi.timeIntervalSinceReferenceDate)"
+        let chiave = "\(c.id)-\(periodo.rawValue)-\(versioneDati)-\(oggi.timeIntervalSinceReferenceDate)"
         if let m = sala.memoValore, m.chiave == chiave { return m.valore }
         let v = MotoreValoreConsulente.calcola(cliente: c, posizioni: posizioniCliente(c.id),
                                                raccomandazioni: dati.raccomandazioni.filter { $0.clienteId == c.id },
                                                schede: dati.schedeAdeguatezza.filter { $0.clienteId == c.id },
                                                parcelle: dati.parcelle.filter { $0.clienteId == c.id },
                                                studio: dati.impostazioni.studio,
-                                               tabella: TabellaRiferimenti(dati.impostazioni.riferimenti), oggi: Date())
+                                               tabella: TabellaRiferimenti(dati.impostazioni.riferimenti), oggi: Date(),
+                                               periodo: periodo)
         sala.memoValore = (chiave, v)
         return v
+    }
+
+    /// «Quanto vale avermi accanto» va nel riesame di questo cliente solo se il consulente l'ha messo (decisione 18).
+    func valoreNelRiesame(_ id: String) -> Bool { sala.valoreNelRiesame.contains(id) }
+
+    func mettiValoreNelRiesame(_ id: String, _ si: Bool) {
+        if si { sala.valoreNelRiesame.insert(id) } else { sala.valoreNelRiesame.remove(id) }
     }
 }
 
@@ -56,13 +68,19 @@ struct ValoreConsulenteVista: View {
     var body: some View {
         let _ = ContaCorpi.segna()
         let nome = StatoShell.nomeBreve(cliente)
-        let v = stato.valoreConsulente(cliente)
+        let periodo = stato.sala.periodoValore
+        let v = stato.valoreConsulente(cliente, periodo: periodo)
         let sala = stato.dati.impostazioni.sala
         let dettaglio = aperto ?? (istantanea ? stato.sala.valoreDettaglioIstantanea.map(TipoVoceAperta.voce) : nil)
         ZStack {
             VStack(alignment: .leading, spacing: 0) {
                 testa(v, nome: nome, sala: sala)
                     .entrataCascata(1, base: Tema.Apple.Moto.Cascata.baseDentroApp)
+                if !v.presto && modificabile {
+                    comandi()
+                        .padding(.top, V.sopraComandi)
+                        .entrataCascata(1, base: Tema.Apple.Moto.Cascata.baseDentroApp)
+                }
                 riquadri(v, nome: nome)
                     .padding(.top, V.sopraRiquadri)
                 if !v.presto, v.totale != nil {
@@ -83,8 +101,28 @@ struct ValoreConsulenteVista: View {
                     .transition(.opacity)
                 DettaglioValoreVista(titolo: dettaglio.titolo, righe: righe(dettaglio, v), nota: notaDettaglio(dettaglio, v),
                                      chiudi: chiudi)
-                    .transition(.scale(scale: 0.92).combined(with: .opacity))
+                    .transition(calmo || istantanea ? .opacity : .scale(scale: 0.92).combined(with: .opacity))
             }
+        }
+        .onDisappear { stato.sala.dettaglioValoreAperto = false }
+    }
+
+    // MARK: Periodo e riesame
+
+    private func comandi() -> some View {
+        let nelRiesame = stato.valoreNelRiesame(cliente.id)
+        return HStack(spacing: V.spazioComandi) {
+            SegmentatoPillola(selezione: Binding(get: { stato.sala.periodoValore }, set: { stato.sala.periodoValore = $0 }),
+                              valori: PeriodoValore.allCases, titolo: \.titolo)
+                .fixedSize()
+                .help("Il valore dall’inizio del rapporto o solo degli ultimi 12 mesi")
+            Spacer(minLength: V.spazioComandi)
+            Button { stato.mettiValoreNelRiesame(cliente.id, !nelRiesame) } label: {
+                Text(nelRiesame ? "✓ Nel riesame" : "Metti nel riesame")
+            }
+            .buttonStyle(.apple)
+            .help(nelRiesame ? "Il prospetto del riesame (per te) mostra queste cifre: premi per toglierle"
+                  : "Porta queste cifre nel prospetto del riesame, che è per te: niente parte verso il cliente")
         }
     }
 
@@ -253,14 +291,9 @@ struct ValoreConsulenteVista: View {
                     .carattereApple(V.etichetta)
                     .foregroundColor(V.coloreEtichetta)
                 barra("Il valore portato", valore: totale, frazione: totale / scala, colore: V.coloreValore, indice: 0)
-                if v.parcellePagate > 0 || !v.soloAlleanza {
-                    barra("Le parcelle pagate", valore: v.parcellePagate, frazione: v.parcellePagate / scala,
-                          colore: V.coloreIndipendente, indice: 1)
-                }
-                if let p = v.provvigioniStimate {
-                    barra(v.soloAlleanza ? "I costi (provvigioni)" : "Provvigioni stimate", valore: p, frazione: p / scala,
-                          colore: V.coloreAlleanza, indice: 2)
-                } else if v.provvigioniNonStimate {
+                // Una sola barra del compenso, a due segmenti nei colori dei canali (§4.4.2)
+                barraCompenso(v, scala: scala)
+                if v.provvigioniNonStimate {
                     Text("Provvigioni Alleanza non stimate: scrivi le aliquote in Impostazioni › Studio.")
                         .carattereApple(V.nota)
                         .foregroundColor(V.coloreNota)
@@ -269,7 +302,9 @@ struct ValoreConsulenteVista: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             Group {
                 if let r = v.rapporto {
-                    Text("Per ogni euro di \(v.provvigioniStimate == nil ? "parcella" : "compenso"), circa \(rapporto(r)) euro di valore\(r < 1 ? " misurabile" : "").")
+                    Text(v.rapportoSoloParcelle
+                         ? "Per ogni euro di parcella, circa \(rapporto(r)) euro di valore\(r < 1 ? " misurabile" : "") sul canale indipendente."
+                         : "Per ogni euro di \(v.provvigioniStimate == nil ? "parcella" : "compenso"), circa \(rapporto(r)) euro di valore\(r < 1 ? " misurabile" : "").")
                         .carattereApple(V.rapporto)
                         .foregroundColor(Tema.Apple.Colore.inchiostro)
                 } else {
@@ -283,8 +318,31 @@ struct ValoreConsulenteVista: View {
             .padding(V.paddingRapporto)
             .frame(width: V.larghezzaRapporto, alignment: .leading)
             .background(RoundedRectangle(cornerRadius: V.raggioRapporto, style: .continuous).fill(V.fondoRapporto))
-            .overlay(RoundedRectangle(cornerRadius: V.raggioRapporto, style: .continuous).strokeBorder(V.filoRapporto, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: V.raggioRapporto, style: .continuous).strokeBorder(V.filoRapporto, lineWidth: V.filoRapportoSpessore))
         }
+    }
+
+    private func barraCompenso(_ v: ValoreConsulente, scala: Double) -> some View {
+        let provvigioni = v.provvigioniStimate ?? 0
+        let titolo = v.soloAlleanza && v.parcellePagate == 0 ? "I costi (provvigioni)" : "Il compenso"
+        return HStack(spacing: V.spazioBarre) {
+            Text(titolo)
+                .carattereApple(V.etichettaBarra)
+                .foregroundColor(Tema.Apple.Colore.inchiostro)
+                .lineLimit(1)
+                .frame(width: V.larghezzaEtichetta, alignment: .leading)
+            BarraPienaSegmenti(pezzi: [
+                PezzoBarraPiena(id: "alleanza", peso: provvigioni, colore: V.coloreAlleanza),
+                PezzoBarraPiena(id: "indipendente", peso: v.parcellePagate, colore: V.coloreIndipendente),
+                // Il resto fino alla scala del valore, vuoto: la barra è lunga quanto il compenso
+                PezzoBarraPiena(id: "resto", peso: max(0, scala - provvigioni - v.parcellePagate), colore: V.coloreResto),
+            ], indice: 1, altezza: V.altezzaBarra, spazio: V.spazioSegmenti, raggioPezzo: V.raggioBarra, raggioContenitore: V.raggioBarra)
+            Text(Formati.euro(v.compenso))
+                .carattereApple(V.cifraBarra)
+                .foregroundColor(Tema.Apple.Colore.inchiostro)
+                .frame(width: V.larghezzaCifra, alignment: .trailing)
+        }
+        .help("Alleanza (provvigioni stimate) \(Formati.euro(provvigioni)) · Indipendente (parcelle) \(Formati.euro(v.parcellePagate))")
     }
 
     private func barra(_ etichetta: String, valore: Double, frazione: Double, colore: Color, indice: Int) -> some View {
@@ -332,10 +390,13 @@ struct ValoreConsulenteVista: View {
     }
 
     private func apriDettaglio(_ d: TipoVoceAperta) {
+        // Esc della Sala si mette da parte finché il dettaglio è aperto: Esc chiude prima il dettaglio (§1.4.4)
+        stato.sala.dettaglioValoreAperto = true
         withAnimation(calmo ? Tema.Moto.dissolvenzaCalma : Tema.Apple.Moto.SalaEsperienze.passaggio) { aperto = d }
     }
 
     private func chiudi() {
+        stato.sala.dettaglioValoreAperto = false
         withAnimation(calmo ? Tema.Moto.dissolvenzaCalma : Tema.Apple.Moto.SalaEsperienze.ritorno) { aperto = nil }
     }
 }
@@ -375,7 +436,7 @@ private struct DettaglioValoreVista: View {
             }
             ForEach(righe) { r in
                 HStack(alignment: .firstTextBaseline, spacing: V.fraRighe) {
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: V.fraTitoloSottotitolo) {
                         Text(r.titolo)
                             .carattereApple(V.rigaDettaglio)
                             .foregroundColor(Tema.Apple.Colore.inchiostro)

@@ -116,6 +116,25 @@ enum LetteraVera {
         MessaggiVera.mostrabile(parziale, fatti: ammessi)
     }
 
+    /// Il pezzo del flusso da mostrare davanti al cliente, o nil se da qui in poi non si mostra più nulla: solo le parole
+    /// finite (un nome a metà non si vede), e solo se passano gli stessi controlli di fine flusso che si possono fare su
+    /// un testo a metà: cifre e promesse, segnaposto, nomi vietati (prodotti, compagnie, «Alleanza») e, nella versione
+    /// «senza il piano», gli scenari negativi (decisione 80).
+    static func pezzoMostrabile(_ parziale: String, ammessi: String, vietati: [String], versione v: VersioneLettera) -> String? {
+        let finite: String
+        if let ultimo = parziale.lastIndex(where: { $0.isWhitespace }) {
+            finite = String(parziale[..<ultimo])
+        } else {
+            finite = ""
+        }
+        guard mostrabile(finite, ammessi: ammessi) else { return nil }
+        if finite.contains("[") || finite.contains("{") || finite.contains("<") { return nil }
+        let minuscolo = finite.lowercased()
+        if vietati.contains(where: { minuscolo.contains($0.lowercased()) }) { return nil }
+        if v == .senzaPiano, finite.range(of: scenariNegativi, options: [.regularExpression, .caseInsensitive]) != nil { return nil }
+        return finite
+    }
+
     /// Toglie grassetti, titoli e, in fondo, una firma scritta da Qwen (la mette Prisma).
     static func pulisci(_ testo: String, scheda s: SchedaLettera) -> String {
         MessaggiVera.pulisci(testo, firma: "\(s.nome) \(s.etaTraguardo) anni")
@@ -144,16 +163,24 @@ enum LetteraVera {
         let ammessi = MotoreLettera.ammessi(s, v)
         do {
             var suPezzo: ((ParzialeVera) -> Void)?
+            let nomi = vietati(posizioni)
             if let aggiorna {
-                // Il flusso si mostra solo finché le cifre già arrivate sono quelle della scheda
+                // Il flusso si mostra solo finché passa i controlli: alla prima stesura che non va, il foglio si ferma lì
+                // (a fine flusso resta la lettera fissa) e niente di scartato compare davanti al cliente
+                let fermo = BloccoFlusso()
                 suPezzo = { parziale in
+                    guard !fermo.fermo else { return }
                     let t = pulisci(parziale.testo, scheda: s)
-                    if mostrabile(t, ammessi: ammessi) { aggiorna(t) }
+                    if let mostra = pezzoMostrabile(t, ammessi: ammessi, vietati: nomi, versione: v) {
+                        aggiorna(mostra)
+                    } else {
+                        fermo.fermo = true
+                    }
                 }
             }
             let r = try await motore.scrivi(piano(s, v, vera: vera), aggiorna: suPezzo)
             let pulito = pulisci(r.testo, scheda: s)
-            if let motivo = controlla(pulito, scheda: s, versione: v, vietati: vietati(posizioni)) {
+            if let motivo = controlla(pulito, scheda: s, versione: v, vietati: nomi) {
                 return fissa(s, v, avviso: maiuscola(motivo) + ": la lettera è quella di Prisma.")
             }
             return TestoLettera(testo: MotoreLettera.conFirma(pulito, s), autore: .vera, modello: motore.modello, avviso: nil)
@@ -163,6 +190,11 @@ enum LetteraVera {
             let m = (error as? ErroreVera)?.messaggio ?? error.localizedDescription
             return fissa(s, v, avviso: "Vera non ha potuto scrivere la lettera (\(m)): la lettera è quella di Prisma.")
         }
+    }
+
+    /// Il segno che il flusso non si mostra più (i pezzi arrivano in ordine, uno alla volta).
+    private final class BloccoFlusso: @unchecked Sendable {
+        var fermo = false
     }
 
     private static func maiuscola(_ s: String) -> String {

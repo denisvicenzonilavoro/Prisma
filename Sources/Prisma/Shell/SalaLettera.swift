@@ -5,7 +5,7 @@ import SwiftUI
 //
 //   ( Con il piano | Senza il piano )   ┌──────────────────────────────────────────────┐
 //   Vera scrive la lettera con le        │ UNA LETTERA DAL FUTURO                       │
-//   cifre dei motori di Prisma…          │ Cara Giulia,                                 │
+//   cifre dei motori di Prisma…          │ Giulia,                                      │
 //   ┌ Pensione stimata con il piano ┐    │ ti scrivo dal 2056. Ho 67 anni…  (serif)     │
 //   │ 2.160 €                       │    │                                              │
 //   └───────────────────────────────┘    │ Giulia, 67 anni                              │
@@ -19,9 +19,26 @@ import SwiftUI
 //   (`TestoProgressivo`), e Vera lo dice in arancio sotto il segmentato.
 // - Il foglio è carta calda (#FFFDF8) anche nello scuro; nel PDF («Salva la lettera in PDF…» dal menu del foglio) la
 //   carta è bianca (`Tema.Apple.Carta`). Niente esce dal Mac: «Mostra sul tavolo» e «Aggiungi al Prisma» arrivano dopo.
-// - Le due stesure si tengono in memoria finché il palco è aperto; cambiare versione ferma il flusso in corso.
+// - Le due stesure si tengono in memoria finché il palco è aperto (anche in `StatoSala.stesureLettera`); cambiare versione
+//   ferma il flusso in corso. La presentazione non chiama mai Qwen: mostra la stesura già scritta sul palco, che il
+//   consulente ha visto, o la lettera fissa; aprendo la presentazione il flusso del palco si ferma (una richiesta sola).
+// - La scheda dei fatti si ricorda per cliente, versione dei dati e giorno (`StatoShell.schedaLettera`): lo streaming
+//   ridisegna il foglio a ogni pezzo e non rifà pensione e curve.
 // - «Riduci movimento»: la lettera compare intera con la dissolvenza di 0,15 s (con Qwen a flusso finito). Istantanee:
 //   la lettera fissa, intera, mai Qwen.
+
+extension StatoShell {
+    /// La scheda della lettera, ricordata finché i dati non cambiano (pensione e curve non si rifanno a ogni disegno).
+    func schedaLettera(_ c: Cliente) -> SchedaLettera? {
+        let oggi = Calendar.current.startOfDay(for: Date())
+        let chiave = "\(c.id)-\(versioneDati)-\(oggi.timeIntervalSinceReferenceDate)"
+        if let m = sala.memoScheda, m.chiave == chiave { return m.scheda }
+        let s = MotoreLettera.scheda(cliente: c, posizioni: posizioniCliente(c.id), obiettivi: obiettiviCliente(c.id),
+                                     analisi: dati.analisi[c.id], oggi: Date())
+        sala.memoScheda = (chiave, s)
+        return s
+    }
+}
 
 /// Il contenuto del palco per la lettera dal futuro.
 struct LetteraDalFuturo: View {
@@ -39,6 +56,8 @@ struct LetteraDalFuturo: View {
     /// Il testo che sta arrivando da Qwen (nil = nessun flusso in corso).
     @State private var inArrivo: String?
     @State private var compito: Task<Void, Never>?
+    /// Cresce a ogni flusso nuovo: i pezzi in coda di un flusso fermato non scrivono sul foglio.
+    @State private var generazione = 0
     @State private var opacitaTesto: Double = 1
     /// Cambia a ogni nuova comparsa della lettera fissa (fa ripartire la scrittura parola per parola).
     @State private var giro = 0
@@ -54,9 +73,8 @@ struct LetteraDalFuturo: View {
     var body: some View {
         let _ = ContaCorpi.segna()
         let nome = StatoShell.nomeBreve(cliente)
-        let scheda = MotoreLettera.scheda(cliente: cliente, posizioni: stato.posizioniCliente(cliente.id),
-                                          obiettivi: stato.obiettiviCliente(cliente.id), analisi: stato.dati.analisi[cliente.id],
-                                          oggi: Date())
+        let scheda = stato.schedaLettera(cliente)
+        let presentazioneAperta = modificabile && stato.presentazione != nil
         Group {
             if let scheda {
                 ZStack(alignment: .topLeading) {
@@ -72,8 +90,15 @@ struct LetteraDalFuturo: View {
                         .entrataCascata(2, base: Tema.Apple.Moto.Cascata.baseDentroApp)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .onAppear { avvia(scheda) }
+                .onAppear {
+                    if modificabile, stesure.isEmpty { stesure = stato.sala.stesureLettera[cliente.id] ?? [:] }
+                    avvia(scheda)
+                }
                 .onDisappear { compito?.cancel() }
+                .onChange(of: presentazioneAperta) { _, aperta in
+                    // La presentazione mostra solo stesure già viste: il flusso del palco si ferma
+                    if aperta { ferma() }
+                }
                 .onChange(of: versione) { _, nuova in
                     stato.sala.versioneLettera = nuova
                     cambia(scheda, riscrivi: false)
@@ -184,38 +209,54 @@ struct LetteraDalFuturo: View {
     /// Il testo da mostrare: il flusso di Qwen, la stesura finita o la lettera fissa.
     private func testoMostrato(_ s: SchedaLettera) -> String {
         if let inArrivo, !calmo { return inArrivo }
-        if let t = stesure[versione], inArrivo == nil { return t.testo }
+        if let t = stesura(versione), inArrivo == nil { return t.testo }
         return MotoreLettera.conFirma(MotoreLettera.fissa(s, versione), s)
     }
 
     /// La lettera fissa (o una stesura di Prisma) compare parola per parola; il flusso di Qwen arriva già a pezzi.
     private func progressivo(_ s: SchedaLettera) -> Bool {
         guard !istantanea, !calmo, inArrivo == nil else { return false }
-        return stesure[versione].map { $0.autore == .modelloFisso } ?? true
+        return stesura(versione).map { $0.autore == .modelloFisso } ?? true
     }
 
-    private var qwenPronta: Bool { !istantanea && stato.disponibilitaLocale.pronto }
+    /// Sul palco le stesure di questa vista; nella presentazione quelle già scritte sul palco (mai una nuova).
+    private func stesura(_ v: VersioneLettera) -> TestoLettera? {
+        modificabile ? stesure[v] : stato.sala.stesureLettera[cliente.id]?[v]
+    }
+
+    /// Qwen scrive solo sul palco, davanti al consulente: nella presentazione mai.
+    private var qwenPronta: Bool { !istantanea && modificabile && stato.disponibilitaLocale.pronto }
 
     /// L'avviso arancio: Qwen non pronto o stesura scartata.
     private var avvisoVera: String? {
         if istantanea { return stato.sala.letteraNonProntaIstantanea ? LetteraVera.avvisoNonPronta(nil) : nil }
-        if let a = stesure[versione]?.avviso { return a }
+        if let a = stesura(versione)?.avviso { return a }
+        guard modificabile else { return nil }
         return stato.disponibilitaLocale.pronto ? nil : LetteraVera.avvisoNonPronta(stato.disponibilitaLocale.motivo)
     }
 
     // MARK: Scrivere
 
     private func avvia(_ s: SchedaLettera) {
-        guard !istantanea, qwenPronta, stesure[versione] == nil, compito == nil else { return }
+        guard !istantanea, qwenPronta, stesure[versione] == nil, compito == nil, stato.presentazione == nil else { return }
         scrivi(s, dopo: Tema.Apple.Moto.Lettera.ritardoAvvio)
     }
 
     /// Cambio di versione o «Riscrivi»: il testo sfuma, il flusso in corso si ferma, poi la nuova stesura.
-    private func cambia(_ s: SchedaLettera, riscrivi: Bool) {
+    /// Ferma il flusso in corso (i pezzi già in coda si scartano con la generazione).
+    private func ferma() {
         compito?.cancel()
         compito = nil
+        generazione += 1
         inArrivo = nil
-        if riscrivi { stesure[versione] = nil }
+    }
+
+    private func cambia(_ s: SchedaLettera, riscrivi: Bool) {
+        ferma()
+        if riscrivi {
+            stesure[versione] = nil
+            stato.sala.stesureLettera[cliente.id]?[versione] = nil
+        }
         let d = Tema.Apple.Moto.Lettera.dissolvenzaCambio
         if istantanea {
             giro += 1
@@ -225,7 +266,7 @@ struct LetteraDalFuturo: View {
         Movimenti.dopo(calmo ? 0 : d) {
             giro += 1
             withAnimation(calmo ? Tema.Moto.dissolvenzaCalma : .easeIn(duration: d)) { opacitaTesto = 1 }
-            if qwenPronta, stesure[versione] == nil { scrivi(s, dopo: 0) }
+            if qwenPronta, stesure[versione] == nil, stato.presentazione == nil { scrivi(s, dopo: 0) }
         }
     }
 
@@ -234,14 +275,20 @@ struct LetteraDalFuturo: View {
         let vera = stato.dati.impostazioni.vera
         let motore = MotoriVera.qwen(vera, locale: stato.disponibilitaLocale)
         let posizioni = stato.posizioniCliente(cliente.id)
+        let id = cliente.id
+        generazione += 1
+        let g = generazione
         compito = Task { @MainActor in
             if attesa > 0 { try? await Task.sleep(nanoseconds: UInt64(attesa * 1_000_000_000)) }
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, generazione == g else { return }
             inArrivo = ""
             let r = await LetteraVera.scrivi(s, versione: v, posizioni: posizioni, motore: motore, vera: vera,
-                                             aggiorna: { t in DispatchQueue.main.async { if versione == v, inArrivo != nil { inArrivo = t } } })
-            guard !Task.isCancelled else { return }
+                                             aggiorna: { t in
+                                                 DispatchQueue.main.async { if generazione == g, versione == v, inArrivo != nil { inArrivo = t } }
+                                             })
+            guard !Task.isCancelled, generazione == g else { return }
             stesure[v] = r
+            stato.sala.stesureLettera[id, default: [:]][v] = r
             inArrivo = nil
             compito = nil
             if calmo { withAnimation(Tema.Moto.dissolvenzaCalma) { opacitaTesto = 1 } }

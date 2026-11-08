@@ -14,7 +14,9 @@ import Foundation
 // - l'anno del traguardo è quello in cui il cliente compie l'età della pensione, dalla data di nascita;
 // - la frase sul fondo entra SOLO se c'è una posizione previdenziale in proposta;
 // - «Senza il piano» dice le cifre e basta: niente scenari negativi oltre le cifre (decisione 80);
-// - saluto «Cara/Caro {nome},» solo se il genere si sa dal codice fiscale, altrimenti «{nome},» (decisione 80).
+// - saluto sempre «{nome},» (decisione 80);
+// - chi scrive sta nell'anno del traguardo: un obiettivo raggiunto entro quell'anno si racconta al passato, uno che
+//   arriva dopo al futuro («lo raggiungeremo a …»), mai un fatto futuro raccontato come già accaduto.
 
 /// Le due versioni della lettera.
 enum VersioneLettera: String, Codable, CaseIterable, Identifiable {
@@ -34,7 +36,7 @@ enum VersioneLettera: String, Codable, CaseIterable, Identifiable {
 struct SchedaLettera: Equatable {
     /// Il nome di battesimo.
     let nome: String
-    /// nil: «Cara/Caro» si evita.
+    /// Il genere dal codice fiscale (nil se non si sa); il saluto resta «{nome},» (decisione 80).
     let femminile: Bool?
     let etaTraguardo: Int
     /// L'età della pensione non viene dalle ipotesi del cliente: 67, «età di pensione ipotizzata».
@@ -139,13 +141,12 @@ enum MotoreLettera {
 
     // MARK: - Testi
 
-    /// «Cara Giulia,», «Caro Marco,» o «Andrea,» se il genere non si sa.
-    static func saluto(_ s: SchedaLettera) -> String {
-        switch s.femminile {
-        case true?: return "Cara \(s.nome),"
-        case false?: return "Caro \(s.nome),"
-        case nil: return "\(s.nome),"
-        }
+    /// «Giulia,»: il saluto della decisione 80, uguale per tutti.
+    static func saluto(_ s: SchedaLettera) -> String { "\(s.nome)," }
+
+    /// L'arrivo cade entro l'anno da cui scrive la lettera (si racconta al passato).
+    static func giaArrivato(_ arrivo: Date, _ s: SchedaLettera, cal: Calendar = .current) -> Bool {
+        cal.component(.year, from: arrivo) <= s.annoTraguardo
     }
 
     /// La firma, che aggiunge sempre Prisma: «Giulia, 67 anni».
@@ -164,8 +165,10 @@ enum MotoreLettera {
         case .conPiano:
             var primo = "ti scrivo dal \(s.annoTraguardo). Ho \(s.etaTraguardo) anni e stamattina ho ripensato a quella sera di \(s.meseIncontro), con tutti i numeri sul tavolo."
             if let o = s.obiettivo {
-                if let a = s.arrivoConPiano {
+                if let a = s.arrivoConPiano, giaArrivato(a, s) {
                     primo += " L’obiettivo «\(o)» l’abbiamo raggiunto a \(data(a)), come avevamo previsto."
+                } else if let a = s.arrivoConPiano {
+                    primo += " L’obiettivo «\(o)» lo raggiungeremo a \(data(a)), come avevamo previsto."
                 } else {
                     primo += " L’obiettivo «\(o)» è rimasto la nostra strada."
                 }
@@ -184,8 +187,10 @@ enum MotoreLettera {
         case .senzaPiano:
             var primo = "ti scrivo dal \(s.annoTraguardo). Ho \(s.etaTraguardo) anni."
             if let o = s.obiettivo {
-                if let a = s.arrivoSenzaPiano {
+                if let a = s.arrivoSenzaPiano, giaArrivato(a, s) {
                     primo += " L’obiettivo «\(o)» l’abbiamo raggiunto a \(data(a))."
+                } else if let a = s.arrivoSenzaPiano {
+                    primo += " L’obiettivo «\(o)» lo raggiungeremo a \(data(a))."
                 } else {
                     primo += " L’obiettivo «\(o)» è rimasto più lontano di quanto speravamo."
                 }
@@ -219,7 +224,10 @@ enum MotoreLettera {
         if let o = s.obiettivo {
             r.append("L'obiettivo: «\(o)»")
             let arrivo = v == .conPiano ? s.arrivoConPiano : s.arrivoSenzaPiano
-            r.append("Arrivo dell'obiettivo: " + (arrivo.map(data) ?? "molto più tardi, senza una data"))
+            r.append("Arrivo dell'obiettivo: " + (arrivo.map { a in
+                data(a) + (giaArrivato(a, s) ? " (già raggiunto quando scrivi: raccontalo al passato)"
+                                              : " (dopo l'anno da cui scrivi: raccontalo al futuro, non è ancora successo)")
+            } ?? "molto più tardi, senza una data"))
             if v == .conPiano, let m = s.versamentoMensile { r.append("Versamento mensile: \(cifra(m)) euro") }
         }
         if let p = pensione(s, v) { r.append("Pensione al mese: circa \(cifra(p)) euro") }

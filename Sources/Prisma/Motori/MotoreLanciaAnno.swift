@@ -4,10 +4,16 @@ import Foundation
 // per anno. Motore puro e leggero: UNA traiettoria (non le mille del Monte Carlo), niente SwiftUI.
 // - Il mercato dell'anno viene dal Monte Carlo che esiste: una sola estrazione normale z dal `GeneratoreSeme` per anno,
 //   e ogni voce cresce di exp(μ + σ·z) con μ = ln(1 + r) − σ²/2 e r, σ e costi da `MotoreMonteCarlo.linea` (stesso
-//   fattore comune, correlazione piena, come `simula`). Stesso seme → stessa partita (prove e istantanee ripetibili).
+//   fattore comune, correlazione piena, come `simula`), con le stesse regole: il pavimento del Ramo I, l'imposta annua
+//   dei fondi pensione sul risultato positivo, il costo d'ingresso sui versamenti e, nelle multiramo a due parti, la
+//   gestione separata che cresce del suo accreditato senza oscillare accanto ai fondi (ribilanciata a fine anno se il
+//   contratto lo prevede). Stesso seme → stessa partita (prove e istantanee ripetibili).
+// - I versamenti di posizioni e proposte si fermano alla loro scadenza; quelli degli obiettivi alla scadenza
+//   dell'obiettivo. Il risparmio che il piano chiede si ricalcola anno per anno.
 // - Le due vite hanno lo STESSO risparmio (decisione 78): senza piano = le posizioni in essere di oggi più il risparmio
 //   libero sul conto (`IpotesiLiquidita.conto`); con il piano = in essere più le proposte aperte e i versamenti previsti
-//   degli obiettivi (decisione 77), pagati con lo stesso risparmio (il capitale delle proposte esce dalla liquidità). Se
+//   degli obiettivi (decisione 77), pagati con lo stesso risparmio (il capitale delle proposte esce dalla liquidità;
+//   anche i premi delle polizze di protezione in proposta escono dal risparmio, perché la loro copertura non è gratis). Se
 //   il piano chiede più del risparmio libero, tutte e due le vite contano quella cifra e la partita lo dice.
 // - Gli eventi (decisione 69): niente probabilità inventate. Esce a caso solo un evento con probabilità E fonte scritte
 //   dall'utente (Impostazioni › Sala); gli eventi del cliente arrivano dalla linea della vita all'età giusta; gli altri
@@ -41,19 +47,48 @@ struct TabellaEventiAnno: Decodable, Equatable {
 
 /// Una voce di una delle due vite: una posizione, il conto o un versamento previsto.
 struct VoceLancia: Equatable {
-    let nome: String
+    var nome: String
     var valore: Double
-    /// ln(1 + r) − σ²/2 e σ (frazioni annue).
-    let mu: Double
-    let sigma: Double
+    /// ln(1 + r) − σ²/2 e σ (frazioni annue) della parte che oscilla (nelle multiramo: i fondi).
+    var mu: Double
+    var sigma: Double
     /// Il fattore dei costi dell'anno (1 − costo annuo).
-    let fattoreCosti: Double
-    /// Versamento annuo (premi della posizione o versamento previsto dell'obiettivo).
-    let versamentoAnnuo: Double
+    var fattoreCosti: Double
+    /// Versamento annuo (premi della posizione o versamento previsto dell'obiettivo), quello che esce di tasca.
+    var versamentoAnnuo: Double
     /// Fino a quanti anni dall'inizio si versa (nil = sempre).
-    var anniVersamento: Int?
+    var anniVersamento: Int? = nil
     /// È il conto: riceve il risparmio libero e paga (o incassa) gli imprevisti.
-    let conto: Bool
+    var conto: Bool = false
+    /// Il versamento previsto di un obiettivo (le spese lo usano prima delle altre voci: è lì per questo).
+    var obiettivo: Bool = false
+    /// Fa parte del piano (proposta o versamento di un obiettivo): i suoi versamenti li paga il risparmio.
+    var delPiano: Bool = false
+    /// La parte del versamento che entra davvero (1 − costo d'ingresso).
+    var fattoreIngresso: Double = 1
+    /// Ramo I: il rendimento accreditato non è mai negativo.
+    var garantito: Bool = false
+    /// Imposta annua sul risultato positivo (fondi pensione), frazione.
+    var tassaAnnua: Double = 0
+    /// Multiramo a due parti: la quota in gestione separata (0 = nessuna), il suo fattore annuo, il saldo dentro
+    /// `valore` e se a fine anno le due parti tornano alla quota.
+    var quotaGestione: Double = 0
+    var fattoreGestione: Double = 1
+    var valoreGestione: Double = 0
+    var ribilancia: Bool = false
+
+    /// In quell'anno (1 = il primo) si versa ancora.
+    func versaNellAnno(_ anno: Int) -> Bool { !conto && (anniVersamento.map { anno <= $0 } ?? true) }
+}
+
+/// Un'uscita del piano che non fa patrimonio: il premio di una polizza di protezione in proposta.
+struct UscitaPiano: Equatable {
+    let nome: String
+    let annuo: Double
+    /// Fino a quanti anni si paga (nil = sempre).
+    let anni: Int?
+
+    func nellAnno(_ anno: Int) -> Bool { anni.map { anno <= $0 } ?? true }
 }
 
 /// Una delle due vite.
@@ -121,8 +156,8 @@ struct PartitaLanciaAnno: Equatable {
     /// Il risparmio libero del cliente e quanto chiede il piano all'anno (proposte + obiettivi).
     let risparmioLibero: Double
     let chiedeIlPiano: Double
-    /// I premi annui delle proposte (la parte del piano che non finisce con gli obiettivi).
-    let premiProposte: Double
+    /// I premi delle polizze di protezione in proposta: escono dal risparmio della vita con il piano.
+    let usciteProtezione: [UscitaPiano]
     /// Nessuna proposta aperta né versamento previsto: le due vite sono uguali.
     let senzaPiano: Bool
     /// Almeno un evento può uscire a caso (probabilità e fonte scritte dall'utente).
@@ -137,6 +172,13 @@ struct PartitaLanciaAnno: Equatable {
     var pianoOltreRisparmio: Bool { chiedeIlPiano > risparmioLibero + 0.5 }
     var annoCorrente: Int { annoIniziale + anni.count }
     var etaCorrente: Int? { etaIniziale.map { $0 + anni.count } }
+
+    /// Quanto chiede il piano in quell'anno (1 = il primo): versamenti delle proposte e degli obiettivi ancora in corso
+    /// e premi della protezione proposta.
+    func richiestaDelPiano(anno k: Int) -> Double {
+        con.voci.filter { $0.delPiano && $0.versaNellAnno(k) }.reduce(0) { $0 + $1.versamentoAnnuo }
+            + usciteProtezione.filter { $0.nellAnno(k) }.reduce(0) { $0 + $1.annuo }
+    }
 }
 
 extension GeneratoreSeme: Equatable {
@@ -193,14 +235,8 @@ enum MotoreLanciaAnno {
         let etaPensione = cliente.profilo.lavoro?.etaPensione ?? 67
         let anni = anniPartita(anniScelti, eta: eta, etaPensione: etaPensione)
 
-        func voce(_ p: Posizione, valore: Double, versa: Bool) -> VoceLancia {
-            let predefinito = p.area == .liquidita ? IpotesiLiquidita.conto : IpotesiCalcolo.rendimentoPredefinito
-            let l = MotoreMonteCarlo.linea(p, rendimentoPredefinito: predefinito, mesi: 12, data: oggi)
-            let s = max(0, l.volatilita) / 100
-            return VoceLancia(nome: p.nome, valore: valore, mu: log(max(1 + l.rendimento / 100, 0.01)) - s * s / 2, sigma: s,
-                              fattoreCosti: 1 - min(max(l.costoAnnuo, 0), 99) / 100,
-                              versamentoAnnuo: versa && p.frequenza.volteAllAnno > 0 ? max(0, p.premioAnnuo) : 0,
-                              conto: false)
+        func voce(_ p: Posizione, valore: Double, delPiano: Bool) -> VoceLancia {
+            voceLancia(p, valore: valore, delPiano: delPiano, oggi: oggi, cal: cal)
         }
         func conto(_ valore: Double) -> VoceLancia {
             VoceLancia(nome: "Conto", valore: valore, mu: log(1 + IpotesiLiquidita.conto / 100), sigma: 0, fattoreCosti: 1,
@@ -214,23 +250,29 @@ enum MotoreLanciaAnno {
         let daLiquidita = capitaleProposte - nuovo
 
         // Senza piano: le posizioni in essere (la liquidità diventa il conto), più il denaro nuovo sul conto
-        var vociSenza = inEssere.filter { $0.area != .liquidita }.map { voce($0, valore: $0.valore, versa: true) }
+        var vociSenza = inEssere.filter { $0.area != .liquidita }.map { voce($0, valore: $0.valore, delPiano: false) }
         vociSenza.append(conto(liquidita + nuovo))
         // Con il piano: la liquidità meno il capitale delle proposte, le proposte, i versamenti previsti degli obiettivi
-        var vociCon = inEssere.filter { $0.area != .liquidita }.map { voce($0, valore: $0.valore, versa: true) }
+        var vociCon = inEssere.filter { $0.area != .liquidita }.map { voce($0, valore: $0.valore, delPiano: false) }
         vociCon.append(conto(liquidita - daLiquidita))
-        vociCon += proposte.map { voce($0, valore: max(0, $0.versamentoIniziale), versa: true) }
+        vociCon += proposte.map { voce($0, valore: max(0, $0.versamentoIniziale), delPiano: true) }
         let annoInizio = oggi
         for o in obiettivi where o.clienteId == cliente.id && o.versamentoMensile > 0 && o.scadenza > oggi && o.raggiuntoIl == nil {
             let mesi = cal.dateComponents([.month], from: annoInizio, to: o.scadenza).month ?? 12
             let anniObiettivo = max(1, (mesi + 11) / 12)
             var v = VoceLancia(nome: "Versamento per «\(o.titolo)»", valore: 0, mu: log(max(1 + o.rendimento / 100, 0.01)), sigma: 0,
-                               fattoreCosti: 1, versamentoAnnuo: o.versamentoMensile * 12, conto: false)
+                               fattoreCosti: 1, versamentoAnnuo: o.versamentoMensile * 12, obiettivo: true, delPiano: true)
             v.anniVersamento = anniObiettivo
             vociCon.append(v)
         }
-        let premi = proposte.reduce(0) { $0 + ($1.frequenza.volteAllAnno > 0 ? max(0, $1.premioAnnuo) : 0) }
-        let chiede = premi + vociCon.filter { $0.anniVersamento != nil }.reduce(0) { $0 + $1.versamentoAnnuo }
+        // I premi della protezione proposta: la copertura nella vita con il piano si paga con lo stesso risparmio
+        let protezioneProposta = mie.filter { $0.stato == .proposta && $0.area == .protezione }
+        let uscite = protezioneProposta.compactMap { p -> UscitaPiano? in
+            guard p.frequenza.volteAllAnno > 0, p.premioAnnuo > 0 else { return nil }
+            return UscitaPiano(nome: p.nome, annuo: p.premioAnnuo, anni: anniVersamento(p, oggi: oggi, cal: cal))
+        }
+        let chiede = vociCon.filter { $0.delPiano && $0.versaNellAnno(1) }.reduce(0) { $0 + $1.versamentoAnnuo }
+            + uscite.filter { $0.nellAnno(1) }.reduce(0) { $0 + $1.annuo }
         let coperte = mie.filter { $0.area == .protezione && $0.rischio != nil }
         let partita = PartitaLanciaAnno(
             seme: seme, generatore: GeneratoreSeme(seme: seme), annoIniziale: annoOggi, etaIniziale: eta,
@@ -241,10 +283,38 @@ enum MotoreLanciaAnno {
             copertureCon: coperte.filter { $0.stato == .inEssere || $0.stato == .proposta },
             copertureSenza: coperte.filter { $0.stato == .inEssere },
             redditoNetto: cliente.profilo.redditoNettoAnnuo.flatMap { $0 > 0 ? $0 : nil },
-            diProva: diProva, risparmioLibero: risparmio, chiedeIlPiano: chiede, premiProposte: premi,
-            senzaPiano: proposte.isEmpty && chiede == 0,
+            diProva: diProva, risparmioLibero: risparmio, chiedeIlPiano: chiede, usciteProtezione: uscite,
+            senzaPiano: proposte.isEmpty && protezioneProposta.isEmpty && !vociCon.contains(where: \.obiettivo),
             eventiACaso: tabella.contains { $0.esceACaso })
         return .success(partita)
+    }
+
+    /// Gli anni in cui una posizione riceve ancora versamenti: fino alla scadenza (0 se già scaduta), nil senza scadenza.
+    static func anniVersamento(_ p: Posizione, oggi: Date, cal: Calendar) -> Int? {
+        guard let scadenza = p.scadenza else { return nil }
+        let mesi = max(0, cal.dateComponents([.month], from: oggi, to: scadenza).month ?? 0)
+        return (mesi + 11) / 12
+    }
+
+    /// La voce di una posizione con le regole di `MotoreMonteCarlo.linea` e `simula`.
+    static func voceLancia(_ p: Posizione, valore: Double, delPiano: Bool, oggi: Date, cal: Calendar = .current) -> VoceLancia {
+        let predefinito = p.area == .liquidita ? IpotesiLiquidita.conto : IpotesiCalcolo.rendimentoPredefinito
+        let l = MotoreMonteCarlo.linea(p, rendimentoPredefinito: predefinito, mesi: 12, data: oggi)
+        let s = max(0, l.volatilita) / 100
+        var v = VoceLancia(nome: p.nome, valore: valore, mu: log(max(1 + l.rendimento / 100, 0.01)) - s * s / 2, sigma: s,
+                           fattoreCosti: 1 - min(max(l.costoAnnuo, 0), 99) / 100,
+                           versamentoAnnuo: p.frequenza.volteAllAnno > 0 ? max(0, p.premioAnnuo) : 0,
+                           anniVersamento: anniVersamento(p, oggi: oggi, cal: cal), delPiano: delPiano)
+        v.fattoreIngresso = 1 - min(max(l.costoIngresso, 0), 99) / 100
+        v.garantito = l.capitaleGarantito
+        v.tassaAnnua = max(0, l.tassazioneAnnua) / 100
+        if let g = l.gestione {
+            v.quotaGestione = min(max(g.quota, 0), 1)
+            v.fattoreGestione = max(1 + g.accreditato / 100, 0.01)
+            v.valoreGestione = valore * v.quotaGestione
+            v.ribilancia = g.ribilanciamento
+        }
+        return v
     }
 
     // MARK: - Lanciare
@@ -268,9 +338,8 @@ enum MotoreLanciaAnno {
         let rendimento = cresci(&p.con, z: z, anno: k)
         _ = cresci(&p.senza, z: z, anno: k)
         // 2. Il risparmio: lo stesso nelle due vite (il piano lo usa per proposte e obiettivi, il resto va sul conto)
-        let totale = max(p.risparmioLibero, p.chiedeIlPiano)
-        let chiedeOra = p.premiProposte
-            + p.con.voci.filter { $0.anniVersamento.map { k <= $0 } ?? false }.reduce(0) { $0 + $1.versamentoAnnuo }
+        let chiedeOra = p.richiestaDelPiano(anno: k)
+        let totale = max(p.risparmioLibero, chiedeOra)
         sulConto(&p.senza, totale)
         sulConto(&p.con, max(0, totale - chiedeOra))
 
@@ -284,26 +353,43 @@ enum MotoreLanciaAnno {
         var tono = tonoMercato(z: z)
         var copertura: Posizione?
         var diProva = false
-        if let e = cartaAMano ?? (eventoCliente(p, eta: eta, anno: anno) == nil ? uscito : nil) {
-            evento = e
-            titolo = "\(anno) · \(e.titolo)"
-            tono = e.tono
-            let r = effetti(e, partita: p, inflazione: inflazione)
-            con = r.con
-            senza = r.senza
-            copertura = r.copertura
-            diProva = r.diProva
-        } else if let v = eventoCliente(p, eta: eta, anno: anno) {
+        let delloStessoAnno = eventoCliente(p, eta: eta, anno: anno)
+        // L'evento della linea della vita del cliente non si perde mai: con una carta a mano si applicano tutti e due
+        var importoCliente: Double?
+        if let v = delloStessoAnno {
             delCliente = v
-            titolo = "\(anno) · \(v.nome)"
             let importo = (v.importo ?? 0) * inflazione
+            importoCliente = importo
+            titolo = "\(anno) · \(v.nome)"
             tono = importo >= 0 ? .verde : .arancio
             let frase = importo >= 0 ? "Entrano \(euro(importo))" : "Escono \(euro(-importo))"
             con = EffettoAnno(importo: importo, frase: frase)
             senza = con
         }
+        if let e = cartaAMano ?? (delloStessoAnno == nil ? uscito : nil) {
+            evento = e
+            tono = e.tono
+            let r = effetti(e, partita: p, inflazione: inflazione)
+            copertura = r.copertura
+            diProva = r.diProva
+            if let v = delloStessoAnno, let ic = importoCliente {
+                titolo = "\(anno) · \(e.titolo) · \(v.nome)"
+                let fraseCliente = "\(v.nome): " + (ic >= 0 ? "entrano \(euro(ic))" : "escono \(euro(-ic))")
+                con = EffettoAnno(importo: r.con.importo, frase: r.con.frase + " · " + fraseCliente)
+                senza = EffettoAnno(importo: r.senza.importo, frase: r.senza.frase + " · " + fraseCliente)
+            } else {
+                titolo = "\(anno) · \(e.titolo)"
+                con = r.con
+                senza = r.senza
+            }
+        }
         if let i = con.importo { applica(&p.con, i) }
         if let i = senza.importo { applica(&p.senza, i) }
+        // Con una carta a mano l'importo dell'evento del cliente si applica a parte (anche se la carta non ha cifra)
+        if evento != nil, let ic = importoCliente {
+            applica(&p.con, ic)
+            applica(&p.senza, ic)
+        }
         p.con.serie.append(p.con.valore)
         p.senza.serie.append(p.senza.valore)
         let a = AnnoLanciato(anno: anno, eta: eta, rendimento: rendimento, titolo: titolo, evento: evento, eventoCliente: delCliente,
@@ -340,17 +426,45 @@ enum MotoreLanciaAnno {
     }
 
     /// Fa crescere le voci di una vita per un anno e restituisce il rendimento medio pesato (frazione).
-    private static func cresci(_ v: inout VitaLanciaAnno, z: Double, anno: Int) -> Double {
+    static func cresci(_ v: inout VitaLanciaAnno, z: Double, anno: Int) -> Double {
         let prima = v.valore
         var dopo = 0.0
         for i in v.voci.indices {
             let x = v.voci[i]
-            let fattore = exp(x.mu + x.sigma * z) * x.fattoreCosti
-            v.voci[i].valore = x.valore * fattore
-            dopo += v.voci[i].valore
-            if !x.conto, x.anniVersamento.map({ anno <= $0 }) ?? true { v.voci[i].valore += x.versamentoAnnuo }
+            var m = exp(x.mu + x.sigma * z) * x.fattoreCosti
+            // Ramo I: il rendimento accreditato non è mai negativo
+            if x.garantito, m < 1 { m = 1 }
+            // Fondi pensione: imposta sul risultato positivo, anno per anno
+            if x.tassaAnnua > 0, m > 1 { m = 1 + (m - 1) * (1 - x.tassaAnnua) }
+            let rata = x.versaNellAnno(anno) ? x.versamentoAnnuo * x.fattoreIngresso : 0
+            if x.quotaGestione > 0 {
+                // Multiramo a due parti: la gestione separata non oscilla, i fondi sì
+                let g = x.valoreGestione * x.fattoreGestione
+                let f = (x.valore - x.valoreGestione) * m
+                dopo += g + f
+                var gDopo = g + rata * x.quotaGestione
+                var fDopo = f + rata * (1 - x.quotaGestione)
+                if x.ribilancia {
+                    let somma = gDopo + fDopo
+                    gDopo = somma * x.quotaGestione
+                    fDopo = somma - gDopo
+                }
+                v.voci[i].valoreGestione = gDopo
+                v.voci[i].valore = gDopo + fDopo
+            } else {
+                v.voci[i].valore = x.valore * m
+                dopo += v.voci[i].valore
+                v.voci[i].valore += rata
+            }
         }
         return prima > 0 ? dopo / prima - 1 : 0
+    }
+
+    /// Toglie a una voce una parte del valore, con la stessa proporzione nella gestione separata.
+    private static func togli(_ v: inout VitaLanciaAnno, _ j: Int, _ importo: Double) {
+        let x = v.voci[j]
+        if x.quotaGestione > 0, x.valore > 0 { v.voci[j].valoreGestione = x.valoreGestione * max(0, 1 - importo / x.valore) }
+        v.voci[j].valore -= importo
     }
 
     private static func sulConto(_ v: inout VitaLanciaAnno, _ importo: Double) {
@@ -368,9 +482,9 @@ enum MotoreLanciaAnno {
         }
         var manca = -(v.voci[i].valore + importo)
         v.voci[i].valore = 0
-        for j in v.voci.indices where v.voci[j].anniVersamento != nil && manca > 0 {
+        for j in v.voci.indices where v.voci[j].obiettivo && manca > 0 {
             let preso = min(manca, max(0, v.voci[j].valore))
-            v.voci[j].valore -= preso
+            togli(&v, j, preso)
             manca -= preso
         }
         guard manca > 0.005 else { return }
@@ -381,7 +495,7 @@ enum MotoreLanciaAnno {
             return
         }
         let quota = min(1, manca / totale)
-        for j in altre { v.voci[j].valore -= v.voci[j].valore * quota }
+        for j in altre { togli(&v, j, v.voci[j].valore * quota) }
         manca -= totale * quota
         if manca > 0.005 { v.voci[i].valore = -manca }
     }

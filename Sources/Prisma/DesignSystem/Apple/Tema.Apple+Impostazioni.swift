@@ -202,5 +202,18 @@ extension Tema.Apple {
             static let larghezzaCampo: CGFloat = 220
             static let paddingPopover = Misura.padding(14, 16)
         }
+
+        // MARK: Sala («Luce» giro 8)
+
+        /// Impostazioni › Sala: i campi degli imprevisti in riga (mesi o importo, probabilità, fonte) e i testi.
+        enum Sala {
+            static let spazioCampi: CGFloat = 6
+            static let campoMesi: CGFloat = 56
+            static let campoImporto: CGFloat = 90
+            static let campoProbabilita: CGFloat = 56
+            static let campoFonte: CGFloat = 160
+            static let campoTesto: CGFloat = 380
+            static let carattereCampi = Carattere.secondario
+        }
     }
 }

@@ -8,15 +8,22 @@ import Foundation
 //   aveva già, o che ha fatto da solo, non è «valore» del consulente;
 // - tasse risparmiate: anno per anno, i contributi deducibili versati nei fondi pensione nati dal consiglio
 //   (`RegoleFiscali.risparmioDeduzione`, al massimo `limiteDeducibilita` l'anno) e la detrazione del 19% dei premi delle
-//   coperture (`RegoleFiscali.detraibili`), con il reddito lordo di oggi: è una STIMA, e lo si dice;
+//   coperture (`RegoleFiscali.detraibili`), con il reddito lordo di oggi: è una STIMA, e lo si dice. I limiti sono per
+//   contribuente: i contributi e i premi che il cliente versa già in posizioni sue (non nate dal consiglio) li consumano
+//   per primi, e al consiglio va solo il beneficio in più (marginale);
 // - costi tagliati: per ogni sostituzione (`AlternativaRaccomandazione.posizioneSostituitaId` o la scheda di
 //   adeguatezza) (costo % della sostituita − costo % della nuova) × valore di oggi della nuova × anni dall'accettazione;
 //   senza il costo di una delle due la voce non si conta e lo si dice;
 // - rispetto all'alternativa: lo scarto del track record (`MotoreTrackRecord`) delle sole raccomandazioni del cliente;
 // - «E in più, protetto»: solo il capitale caso morte delle coperture nate dal consiglio (non entra nel totale);
 // - il compenso, diviso per canale: parcelle pagate (indipendente) e provvigioni stimate con le aliquote di
-//   Impostazioni › Studio (Alleanza; senza aliquote «non stimate»). Per i clienti solo Alleanza «Valore e costi»;
-// - meno di 12 mesi, o nessuna raccomandazione accettata: «presto per misurare», senza totale.
+//   Impostazioni › Studio (Alleanza; senza aliquote «non stimate»). Per i clienti solo Alleanza «Valore e costi». Il
+//   rapporto valore/compenso confronta grandezze dello stesso perimetro: con le provvigioni non stimate è solo il valore
+//   del canale indipendente per euro di parcella (`rapportoSoloParcelle`), mai tutto il valore diviso le sole parcelle;
+// - meno di 12 mesi, o nessuna raccomandazione accettata: «presto per misurare», senza totale;
+// - il periodo (proposta di §4.4.4): «Dall'inizio» del rapporto o «Ultimi 12 mesi». Negli ultimi 12 mesi contano le
+//   tasse degli ultimi 12 mesi di versamenti, i costi tagliati per i mesi del periodo, le parcelle e le provvigioni del
+//   periodo; il track record misura solo dall'inizio, quindi «Rispetto all'alternativa» resta senza cifra e lo dice.
 // Motore puro, senza SwiftUI. Nessuna richiesta di rete: i riferimenti sono quelli già in archivio.
 
 /// Le tre voci che entrano nel totale.
@@ -54,6 +61,20 @@ struct VoceValore: Equatable {
     let motivoAssente: String?
 }
 
+/// Il periodo misurato (§4.4.4).
+enum PeriodoValore: String, CaseIterable, Identifiable {
+    case inizio, ultimi12
+
+    var id: String { rawValue }
+
+    var titolo: String {
+        switch self {
+        case .inizio: return "Dall’inizio"
+        case .ultimi12: return "Ultimi 12 mesi"
+        }
+    }
+}
+
 /// Da dove viene la data d'inizio del rapporto.
 enum InizioRapporto: Equatable {
     case clienteDal, primaRaccomandazione, scheda
@@ -64,7 +85,11 @@ struct ValoreConsulente: Equatable {
     let dal: Date
     let inizio: InizioRapporto
     let al: Date
+    /// I mesi misurati (dall'inizio del rapporto, o 12 negli ultimi 12 mesi).
     let mesi: Int
+    var periodo: PeriodoValore = .inizio
+    /// Da quando si misura: `dal` o 12 mesi fa.
+    var misuraDal: Date? = nil
     let voci: [VoceValore]
     /// Meno di 12 mesi o nessuna raccomandazione accettata: niente totale.
     let presto: Bool
@@ -102,8 +127,17 @@ struct ValoreConsulente: Equatable {
 
     var compenso: Double { parcellePagate + (provvigioniStimate ?? 0) }
 
-    /// Euro di valore per euro di compenso; nil con compenso zero o senza totale.
+    /// Il rapporto è solo valore indipendente per euro di parcella: le provvigioni Alleanza non sono stimate.
+    var rapportoSoloParcelle: Bool { provvigioniNonStimate }
+
+    /// Euro di valore per euro di compenso; nil con compenso zero o senza totale. Con le provvigioni non stimate il
+    /// compenso è incompleto: si confrontano solo il valore del canale indipendente e le parcelle.
     var rapporto: Double? {
+        guard totale != nil else { return nil }
+        if rapportoSoloParcelle {
+            guard parcellePagate > 0 else { return nil }
+            return (totalePerCanale[.indipendente] ?? 0) / parcellePagate
+        }
         guard let t = totale, compenso > 0 else { return nil }
         return t / compenso
     }
@@ -130,18 +164,27 @@ enum MotoreValoreConsulente {
 
     static func calcola(cliente c: Cliente, posizioni: [Posizione], raccomandazioni: [Raccomandazione],
                         schede: [SchedaAdeguatezza], parcelle: [Parcella], studio: ImpostazioniStudio,
-                        tabella: TabellaRiferimenti, oggi: Date, cal: Calendar = .current) -> ValoreConsulente {
+                        tabella: TabellaRiferimenti, oggi: Date, periodo: PeriodoValore = .inizio,
+                        cal: Calendar = .current) -> ValoreConsulente {
         let (dal, origine) = inizio(c, raccomandazioni: raccomandazioni)
-        let mesi = max(0, cal.dateComponents([.month], from: dal, to: oggi).month ?? 0)
+        let mesiRapporto = max(0, cal.dateComponents([.month], from: dal, to: oggi).month ?? 0)
+        let dodiciMesiFa = cal.date(byAdding: .month, value: -12, to: oggi) ?? oggi
+        let misura = periodo == .ultimi12 ? max(dal, dodiciMesiFa) : dal
+        let mesi = periodo == .ultimi12 ? min(12, mesiRapporto) : mesiRapporto
         let accettate = attribuite(c, raccomandazioni: raccomandazioni, dal: dal)
         let perId = Dictionary(posizioni.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         let nate = accettate.compactMap { r in r.posizioneId.flatMap { perId[$0] } }.filter { $0.stato == .inEssere }
-        let presto = mesi < mesiMinimi || accettate.isEmpty
+        let presto = mesiRapporto < mesiMinimi || accettate.isEmpty
         let nome = ModelliMessaggi.primoNome(c.nome)
 
-        let tasse = voceTasse(c, nate: nate, dal: dal, oggi: oggi, nome: nome, cal: cal)
-        let costi = voceCosti(accettate, perId: perId, schede: schede, oggi: oggi, nome: nome, cal: cal)
-        let alternativa = voceAlternativa(accettate, posizioni: posizioni, tabella: tabella, oggi: oggi, nome: nome, cal: cal)
+        let idNate = Set(accettate.compactMap(\.posizioneId))
+        let altre = posizioni.filter { $0.clienteId == c.id && $0.stato != .proposta && !idNate.contains($0.id) }
+        let tasse = voceTasse(c, nate: nate, altre: altre, dal: misura, oggi: oggi, nome: nome, cal: cal)
+        let costi = voceCosti(accettate, perId: perId, schede: schede, oggi: oggi, nome: nome, dal: misura, cal: cal)
+        let alternativa = periodo == .ultimi12
+            ? VoceValore(tipo: .alternativa, totale: nil, perCanale: [:], dettagli: [], stima: true,
+                         motivoAssente: "Il track record misura dall’inizio: negli ultimi 12 mesi non si scompone")
+            : voceAlternativa(accettate, posizioni: posizioni, tabella: tabella, oggi: oggi, nome: nome, cal: cal)
 
         // Protetto: il capitale caso morte delle coperture nate dal consiglio
         let vita = nate.filter { $0.area == .protezione && $0.rischio == .vita && ($0.capitaleAssicurato ?? 0) > 0 }
@@ -151,17 +194,20 @@ enum MotoreValoreConsulente {
         }
 
         // Il compenso: parcelle pagate dall'inizio del rapporto, provvigioni stimate delle posizioni Alleanza nate dal consiglio
-        let pagate = parcelle.filter { $0.clienteId == c.id && $0.stato == .pagata && ($0.incassataIl ?? $0.data) >= dal }
+        let pagate = parcelle.filter { $0.clienteId == c.id && $0.stato == .pagata && ($0.incassataIl ?? $0.data) >= misura }
             .reduce(0) { $0 + MotoreParcelle.importo($1) }
         let alleanza = nate.filter { $0.canale == .alleanza }
-        let eventi = alleanza.flatMap { MotoreStudio.eventi($0, studio: studio, da: dal, a: oggi, cal: cal) }
+        let eventi = alleanza.flatMap { MotoreStudio.eventi($0, studio: studio, da: misura, a: oggi, cal: cal) }
         let nonStimate = eventi.contains { $0.importo == nil } || (!alleanza.isEmpty && eventi.isEmpty && studio.aliquoteInserite(per: alleanza[0].area) == nil)
         let provvigioni: Double? = nonStimate || eventi.isEmpty ? nil : eventi.compactMap(\.importo).reduce(0, +)
 
-        return ValoreConsulente(dal: dal, inizio: origine, al: oggi, mesi: mesi, voci: [tasse, costi, alternativa], presto: presto,
-                                protetto: protetto > 0 ? protetto : nil, protettoDettagli: dettagliProtetto,
-                                parcellePagate: pagate, provvigioniStimate: provvigioni, provvigioniNonStimate: nonStimate,
-                                soloAlleanza: c.canali == [.alleanza])
+        var v = ValoreConsulente(dal: dal, inizio: origine, al: oggi, mesi: mesi, voci: [tasse, costi, alternativa], presto: presto,
+                                 protetto: protetto > 0 ? protetto : nil, protettoDettagli: dettagliProtetto,
+                                 parcellePagate: pagate, provvigioniStimate: provvigioni, provvigioniNonStimate: nonStimate,
+                                 soloAlleanza: c.canali == [.alleanza])
+        v.periodo = periodo
+        v.misuraDal = misura
+        return v
     }
 
     // MARK: - Le voci
@@ -183,9 +229,21 @@ enum MotoreValoreConsulente {
         return r
     }
 
-    static func voceTasse(_ c: Cliente, nate: [Posizione], dal: Date, oggi: Date, nome: String, cal: Calendar) -> VoceValore {
+    /// Le coperture con i premi detraibili.
+    static func detraibile(_ p: Posizione) -> Bool {
+        p.area == .protezione && [.vita, .invalidita, .infortuni, .ltc].contains(p.rischio ?? .altro)
+    }
+
+    /// `altre`: le posizioni del cliente non nate dal consiglio, che consumano per prime i limiti per contribuente.
+    static func voceTasse(_ c: Cliente, nate: [Posizione], altre: [Posizione] = [], dal: Date, oggi: Date, nome: String,
+                          cal: Calendar) -> VoceValore {
         let previdenza = nate.filter { $0.regime == .previdenza }
-        let coperture = nate.filter { $0.area == .protezione && [.vita, .invalidita, .infortuni, .ltc].contains($0.rischio ?? .altro) }
+        let coperture = nate.filter(detraibile)
+        let altraPrevidenza = altre.filter { $0.regime == .previdenza }
+        let altreCoperture = altre.filter(detraibile)
+        func versatoNellAnno(_ p: Posizione, _ anno: Int) -> Double {
+            versamenti(p, da: .distantPast, a: oggi, cal: cal).filter { cal.component(.year, from: $0.0) == anno }.reduce(0) { $0 + $1.1 }
+        }
         guard !previdenza.isEmpty || !coperture.isEmpty else {
             return VoceValore(tipo: .tasse, totale: nil, perCanale: [:], dettagli: [], stima: true,
                               motivoAssente: "Nessuna deduzione: \(nome) non ha versamenti deducibili nati dal consiglio")
@@ -207,8 +265,11 @@ enum MotoreValoreConsulente {
             }
             let versato = perPosizione.reduce(0) { $0 + $1.1 }
             if versato > 0 {
-                let deduzione = min(versato, RegoleFiscali.limiteDeducibilita)
-                let risparmio = RegoleFiscali.risparmioDeduzione(reddito: reddito, deduzione: deduzione)
+                // Il limite è per contribuente: i contributi che versa già altrove lo consumano per primi
+                let gia = min(altraPrevidenza.reduce(0) { $0 + versatoNellAnno($1, anno) }, RegoleFiscali.limiteDeducibilita)
+                let deduzione = min(versato, max(0, RegoleFiscali.limiteDeducibilita - gia))
+                let risparmio = RegoleFiscali.risparmioDeduzione(reddito: reddito, deduzione: gia + deduzione)
+                    - RegoleFiscali.risparmioDeduzione(reddito: reddito, deduzione: gia)
                 for (p, v) in perPosizione {
                     let quota = risparmio * v / versato
                     perCanale[p.canale, default: 0] += quota
@@ -226,7 +287,14 @@ enum MotoreValoreConsulente {
                 if p.rischio == .ltc { ltc += v } else { vita += v }
                 premi.append((p, v))
             }
-            let detraibili = RegoleFiscali.detraibili(vita: vita, ltc: ltc)
+            // Anche il tetto dei premi detraibili è per contribuente: i premi delle sue coperture lo consumano per primi
+            var giaVita = 0.0, giaLtc = 0.0
+            for p in altreCoperture {
+                let v = versatoNellAnno(p, anno)
+                if p.rischio == .ltc { giaLtc += v } else { giaVita += v }
+            }
+            let detraibili = RegoleFiscali.detraibili(vita: giaVita + vita, ltc: giaLtc + ltc)
+                - RegoleFiscali.detraibili(vita: giaVita, ltc: giaLtc)
             if detraibili > 0 {
                 let detrazione = detraibili * RegoleFiscali.detrazionePremi / 100 * RegoleFiscali.quotaDetrazione(reddito: reddito)
                 let totalePremi = premi.reduce(0) { $0 + $1.1 }
@@ -247,7 +315,7 @@ enum MotoreValoreConsulente {
     }
 
     static func voceCosti(_ accettate: [Raccomandazione], perId: [String: Posizione], schede: [SchedaAdeguatezza], oggi: Date,
-                          nome: String, cal: Calendar) -> VoceValore {
+                          nome: String, dal: Date = .distantPast, cal: Calendar) -> VoceValore {
         var dettagli: [DettaglioValore] = []
         var perCanale: [Canale: Double] = [:]
         var senzaCosto = 0
@@ -261,7 +329,7 @@ enum MotoreValoreConsulente {
                 senzaCosto += 1
                 continue
             }
-            let giorni = max(0, cal.dateComponents([.day], from: r.accettataIl ?? r.data, to: oggi).day ?? 0)
+            let giorni = max(0, cal.dateComponents([.day], from: max(r.accettataIl ?? r.data, dal), to: oggi).day ?? 0)
             let anni = Double(giorni) / 365.25
             let risparmio = (prima - dopo) / 100 * nuova.valore * anni
             perCanale[nuova.canale, default: 0] += risparmio
