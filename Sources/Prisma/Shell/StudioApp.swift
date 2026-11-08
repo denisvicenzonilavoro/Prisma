@@ -15,7 +15,7 @@ import SwiftUI
 
 /// Le schede di Studio, nell'ordine del segmentato.
 enum SchedaStudio: String, CaseIterable, Identifiable, Hashable {
-    case cruscotto, fatture, track, ocf, palestra
+    case cruscotto, fatture, track, ocf, palestra, spese
 
     var id: String { rawValue }
 
@@ -27,7 +27,29 @@ enum SchedaStudio: String, CaseIterable, Identifiable, Hashable {
         case .track: return "Track record"
         case .ocf: return "OCF"
         case .palestra: return "Palestra"
+        case .spese: return "Spese"
         }
+    }
+
+    /// Studio › Spese c'è solo sul Mac: iPhone e iPad non la hanno (decisione 34), e le spese restano fuori da «Prisma
+    /// ovunque».
+    static var speseSulDispositivo: Bool {
+        #if os(macOS)
+        return true
+        #else
+        return false
+        #endif
+    }
+
+    /// Le schede del segmentato: Spese solo sul Mac e mai in modalità cliente (§6.3.1 punto 1.7: «la scheda Spese non si
+    /// vede»; le altre schede in modalità cliente mostrano «Studio resta tuo»).
+    static func visibili(modoCliente: Bool) -> [SchedaStudio] {
+        allCases.filter { $0 != .spese || (speseSulDispositivo && !modoCliente) }
+    }
+
+    /// La scheda da mostrare al posto di una che qui non si vede: il Cruscotto.
+    static func mostrabile(_ s: SchedaStudio, modoCliente: Bool) -> SchedaStudio {
+        visibili(modoCliente: modoCliente).contains(s) ? s : .cruscotto
     }
 
     /// Cosa arriverà nelle schede che in questo giro non ci sono ancora (nil per il Cruscotto).
@@ -46,6 +68,9 @@ enum SchedaStudio: String, CaseIterable, Identifiable, Hashable {
             return nil
         case .palestra:
             // C'è dal giro 5 di Luce (StudioPalestra.swift)
+            return nil
+        case .spese:
+            // C'è dal giro 9 di Luce (StudioSpese.swift)
             return nil
         }
     }
@@ -115,7 +140,7 @@ enum TestiStudio {
 extension StatoShell {
     /// Apre Studio sulla scheda data (dalla scrivania, dalle novità, dal dock con la scheda di prima).
     func apriStudio(_ scheda: SchedaStudio = .cruscotto) {
-        schedaStudio = scheda
+        schedaStudio = SchedaStudio.mostrabile(scheda, modoCliente: inModoCliente)
         apri(.studio)
     }
 
@@ -180,7 +205,8 @@ struct AzioniStudio: View {
                 .fixedSize()
                 .help("Il tuo anno da consulente, in un minuto")
             }
-            SegmentatoPillola(selezione: Bindable(stato).schedaStudio, valori: SchedaStudio.allCases, titolo: { $0.titolo })
+            SegmentatoPillola(selezione: Bindable(stato).schedaStudio,
+                              valori: SchedaStudio.visibili(modoCliente: stato.inModoCliente), titolo: { $0.titolo })
                 .fixedSize()
         }
     }
@@ -228,7 +254,7 @@ private struct CorpoStudio: View, Equatable {
     }
 
     var body: some View {
-        let s = mostrata ?? scheda
+        let s = SchedaStudio.mostrabile(mostrata ?? scheda, modoCliente: chiave.modo != nil)
         let m = Tema.Apple.Studio.Moto.self
         return contenuto(s)
             .id(s)
@@ -258,6 +284,9 @@ private struct CorpoStudio: View, Equatable {
         } else if s == .palestra {
             // Studio › Palestra («Luce» giro 5): StudioPalestra.swift; osserva da sé lo stato della palestra
             PalestraStudioVista(stato: stato, palestra: stato.palestra, base: base)
+        } else if s == .spese {
+            // Studio › Spese («Luce» giro 9): StudioSpese.swift; osserva da sé spese, scadenze, agenda e impostazioni
+            SpeseStudioVista(stato: stato, base: base, ritardoAnelli: ritardoAnelli)
         } else {
             ProssimaSchedaStudio(scheda: s)
                 .entrataCascata(0, base: base)

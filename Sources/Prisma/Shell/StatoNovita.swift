@@ -254,6 +254,9 @@ extension StatoShell {
         } else if voce == .palestra {
             // Studio › Palestra (giro 5, StudioPalestra.swift)
             apriStudio(.palestra)
+        } else if voce == .speseScadenze {
+            // Studio › Spese (giro 9, StudioSpese.swift)
+            apriStudio(.spese)
         } else if voce == .trovaLaPagina {
             // La Biblioteca con la domanda pronta (giro 6, AppBiblioteca.swift): i documenti a sinistra, la domanda in alto
             apriBibliotecaTrovaPagina()

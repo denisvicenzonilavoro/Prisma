@@ -92,7 +92,7 @@ private struct ColonnaIncassoStudio: View {
 }
 
 /// Un rettangolo con i raggi degli angoli in alto e in basso diversi (macOS 13 non ha `UnevenRoundedRectangle`).
-private struct FormaColonnaStudio: Shape {
+struct FormaColonnaStudio: Shape {
     let alto: CGFloat
     let basso: CGFloat
 

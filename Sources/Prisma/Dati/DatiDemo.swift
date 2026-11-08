@@ -188,7 +188,7 @@ enum DatiDemo {
             Appuntamento(id: "event-giulia-analisi", clienteId: "giulia", titolo: "Analisi delle posizioni in essere", inizio: data(-6, 17, 0),
                          durataMinuti: 60, luogo: "In studio",
                          note: "Raccolti estratti conto, polizze e piano del mutuo.", stato: .concluso,
-                         tipo: .analisi),
+                         tipo: .analisi, presso: .studio),
             Appuntamento(id: "event-giulia", clienteId: "giulia", titolo: "Il punto sul progetto casa", inizio: data(0, 9, 30),
                          durataMinuti: 45, luogo: "In studio",
                          note: "Riprendere gli obiettivi, la situazione attuale e concordare il prossimo passo.", stato: .pianificato,

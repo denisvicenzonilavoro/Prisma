@@ -178,6 +178,9 @@ enum VoceConfronto: Hashable {
     /// La palestra della trattativa (Studio › Palestra, «Luce» giro 5, StatoPalestra.swift): un oggetto a parte, ogni
     /// parola di Vera ridisegna solo la conversazione. Non si salva (solo l'esito, in `dati.impostazioni.palestra`).
     let palestra = StatoPalestra()
+    /// Studio › Spese («Luce» giro 9, StatoSpese.swift): il mese scelto, la spesa appena inquadrata, il foglio aperto e
+    /// il pacchetto per il commercialista. Non si salva.
+    let studioSpese = StatoSpese()
     /// Prisma ovunque (giro 8, StatoOvunque.swift): lo stato della pagina Impostazioni › iPhone e iPad, la chiave dello
     /// spazio in memoria e i lavori della sincronizzazione. Un oggetto a parte: i pallini e i controlli non pubblicano
     /// StatoShell. Non si salva (le impostazioni dello spazio stanno in `dati.impostazioni.ovunque`).
@@ -525,6 +528,8 @@ enum VoceConfronto: Hashable {
         avviaSalvataggio()
         #if os(macOS)
         avviaBackupAutomatico()
+        // Le cartelle di lavoro di un pacchetto per il commercialista interrotto (Studio › Spese, «Luce» giro 9)
+        DispatchQueue.global(qos: .utility).async { PacchettoCommercialista.pulisciAvanzi() }
         #elseif os(iOS)
         // Su iPhone e iPad niente backup automatico: i dati arrivano dal backup del Mac
         #endif
@@ -771,6 +776,13 @@ enum VoceConfronto: Hashable {
         compitoVera = nil
         veraInCorso = false
         dati.clienti.removeAll { $0.id == id }
+        // Studio › Spese («Luce» giro 9): le visite concluse restano, senza nome né testi, per i km dei mesi già chiusi
+        let tolte = MotoreChilometri.visiteDaTenere(clienteId: id, appuntamenti: dati.appuntamenti, kmClienti: dati.kmClienti)
+        if !tolte.isEmpty {
+            var spese = dati.speseStudio
+            spese.visiteTolte.append(contentsOf: tolte)
+            dati.speseStudio = spese
+        }
         dati.appuntamenti.removeAll { $0.clienteId == id }
         dati.attivita.removeAll { $0.clienteId == id }
         dati.posizioni.removeAll { $0.clienteId == id }
@@ -800,6 +812,14 @@ enum VoceConfronto: Hashable {
         dati.eventiVita.removeAll { $0.clienteId == id }
         // Copilota (giro 5): le sessioni d'ascolto del cliente se ne vanno con lui
         dati.sessioniCopilota.removeAll { $0.clienteId == id }
+        // Studio › Spese («Luce» giro 9): i km del cliente se ne vanno con lui; le spese restano del consulente, senza il
+        // legame al cliente tolto
+        dati.kmClienti[id] = nil
+        if dati.speseStudio.spese.contains(where: { $0.clienteId == id }) {
+            var spese = dati.speseStudio
+            for i in spese.spese.indices where spese.spese[i].clienteId == id { spese.spese[i].clienteId = nil }
+            dati.speseStudio = spese
+        }
         for d in dati.documenti where d.clienteId == id { rimuoviFile(d) }
         dati.documenti.removeAll { $0.clienteId == id }
         if modoCliente == id { modoCliente = nil }
@@ -3322,6 +3342,13 @@ enum VoceConfronto: Hashable {
         }
         // I fac-simile della Biblioteca se ne vanno con i clienti di prova («Luce» giro 6)
         togliEsempiBiblioteca()
+        // Le spese, i corsi e le scadenze di prova, e i km dei clienti di prova (Studio › Spese, «Luce» giro 9)
+        var spese = dati.speseStudio
+        SpeseDiProva.togli(&spese)
+        if spese != dati.speseStudio { dati.speseStudio = spese }
+        for id in Self.clientiDiProva where dati.kmClienti[id] != nil {
+            dati.kmClienti[id] = nil
+        }
     }
 
     /// Torna ai dati di prova (con backup di sicurezza dello stato attuale): i 5 clienti del template,

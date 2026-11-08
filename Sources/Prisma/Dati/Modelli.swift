@@ -400,9 +400,13 @@ struct Appuntamento: Identifiable, Codable, Hashable {
     var canale: Canale?
     /// Posizione di cui si parla (per esempio una polizza in scadenza o una proposta).
     var posizioneId: String?
+    /// Dove si è svolto: dal cliente, in studio, altrove («Luce» giro 9, decisione 100, versione 27). nil = non indicato:
+    /// Prisma non lo indovina dal testo di `luogo`, e per i chilometri la visita resta da chiedere («Dove eri?»).
+    var presso: LuogoIncontro?
 
     init(id: String, clienteId: String, titolo: String, inizio: Date, durataMinuti: Int, luogo: String,
-         note: String, stato: Stato, tipo: TipoAppuntamento = .altro, canale: Canale? = nil, posizioneId: String? = nil) {
+         note: String, stato: Stato, tipo: TipoAppuntamento = .altro, canale: Canale? = nil, posizioneId: String? = nil,
+         presso: LuogoIncontro? = nil) {
         self.id = id
         self.clienteId = clienteId
         self.titolo = titolo
@@ -414,6 +418,7 @@ struct Appuntamento: Identifiable, Codable, Hashable {
         self.tipo = tipo
         self.canale = canale
         self.posizioneId = posizioneId
+        self.presso = presso
     }
 
     var fine: Date { inizio.addingTimeInterval(TimeInterval(durataMinuti * 60)) }
@@ -452,6 +457,8 @@ struct Appuntamento: Identifiable, Codable, Hashable {
         tipo = (try? c.decodeIfPresent(TipoAppuntamento.self, forKey: .tipo)) ?? .altro
         canale = try c.decodeIfPresent(Canale.self, forKey: .canale)
         posizioneId = try c.decodeIfPresent(String.self, forKey: .posizioneId)
+        // «Luce» giro 9 (versione 27): gli archivi di prima non l'hanno; un valore sconosciuto = non indicato
+        presso = (try? c.decodeIfPresent(LuogoIncontro.self, forKey: .presso)) ?? nil
     }
 }
 

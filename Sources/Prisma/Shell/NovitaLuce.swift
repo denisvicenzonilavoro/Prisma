@@ -224,6 +224,7 @@ enum NovitaLuce: String, CaseIterable, Identifiable {
         case .trovaLaPagina: return true         // giro 6: Biblioteca, «Trova la pagina»
         case .imprenditori: return true          // giro 7: Clienti › dossier › L'azienda
         case .lettera, .lanciaAnno, .valoreConsulente: return true   // giro 8: Sala › la lettera, Lancia l'anno, Quanto vale
+        case .speseScadenze: return true         // giro 9: Studio › Spese, chilometri, spese e scadenze
         default: return false
         }
     }

@@ -18,8 +18,18 @@ struct PaginaImpostazioniStudio: View {
     /// L'anno degli obiettivi che si stanno scrivendo (l'anno in corso, o il prossimo).
     @State private var anno = Calendar.current.component(.year, from: Date())
 
+    @Environment(\.modoIstantanea) private var istantanea
+
     var body: some View {
         let _ = ContaCorpi.segna()
+        // Nelle istantanee lo scorrimento all'ancora non avviene (è asincrono): la sezione delle spese va in cima (787)
+        if istantanea && stato.studioSpese.impostazioniInCima {
+            return AnyView(SezioneImpostazioniSpese())
+        }
+        return AnyView(pagina)
+    }
+
+    private var pagina: some View {
         let annoCorrente = Calendar.current.component(.year, from: Date())
         let aree = ImpostazioniStudio.areeProvvigionali
         let senzaDecorrenza = stato.cruscottoStudio().posizioniSenzaDecorrenza
@@ -87,6 +97,12 @@ struct PaginaImpostazioniStudio: View {
                 }
                 NotaImpostazioni("Un obiettivo vuoto non disegna il suo anello. Quanto hai fatto lo calcola Prisma dai tuoi dati.")
             }
+            // Chilometri, spese e scadenze («Luce» giro 9, ImpostazioniSpeseVista.swift), con la sua ancora
+            #if os(macOS)
+            // Solo sul Mac, come Studio › Spese (decisione 34)
+            SezioneImpostazioniSpese()
+                .id(SezioneImpostazioniSpese.ancora)
+            #endif
             // I dati fiscali per le parcelle e il file XML della fattura (giro 2, ImpostazioniFatture.swift)
             SezioneDatiFatture()
                 .id(SezioneDatiFatture.ancora)
@@ -138,7 +154,7 @@ struct PaginaImpostazioniStudio: View {
 }
 
 /// Un campo numerico della pagina: etichetta facoltativa sopra, il valore (vuoto = nil) e l'unità accanto.
-private struct CampoNumeroStudio: View {
+struct CampoNumeroStudio: View {
     let etichetta: String?
     let unita: String
     let larghezza: CGFloat

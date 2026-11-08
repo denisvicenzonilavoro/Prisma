@@ -173,6 +173,8 @@ enum ProvaBackup {
             ProvaBackup.aggiungiAziendeDiProva(&originale)
             // «Luce», giro 8: inizio del rapporto, indennizzo stimato e impostazioni della Sala (ProvaBackupRacconti.swift)
             ProvaBackup.aggiungiRaccontiDiProva(&originale)
+            // «Luce», giro 9: spese, scadenze, corsi, impostazioni dei km e luogo degli appuntamenti (ProvaBackupSpese.swift)
+            ProvaBackup.aggiungiSpeseDiProva(&originale)
             // Vera, fase 3: promesse, confronti, coperture e un resoconto (ProvaBackupFaseTreVera.swift)
             ProvaBackup.aggiungiFaseTreVeraDiProva(&originale)
             // Il versamento mensile previsto dell'obiettivo (cursore del dettaglio nel tema Apple)
@@ -298,6 +300,11 @@ enum ProvaBackup {
             }
             // Il registro della palestra della trattativa (versione 27, «Luce» giro 5) (ProvaBackupPalestra.swift)
             if let e = try verificaPalestra(originale: originale, estratto: estratto.dati) {
+                print("ERRORE: \(e)")
+                return 1
+            }
+            // Chilometri, spese e scadenze (versione 27, «Luce» giro 9), e un archivio senza (ProvaBackupSpese.swift)
+            if let e = try verificaSpese(originale: originale, estratto: estratto.dati) {
                 print("ERRORE: \(e)")
                 return 1
             }
@@ -588,6 +595,16 @@ enum ProvaBackup {
             }
             // La Biblioteca di «Luce» (giro 6): documenti, testo, indice di prima, «Escludi la Biblioteca» (ProvaBackupBiblioteca.swift)
             if let errore = try provaBiblioteca(radice: radice) {
+                print("ERRORE: \(errore)")
+                return 1
+            }
+            // I file degli scontrini e degli attestati di Studio › Spese («Luce» giro 9) nel backup (ProvaBackupSpese.swift)
+            if let errore = try provaFileSpese(radice: radice) {
+                print("ERRORE: \(errore)")
+                return 1
+            }
+            // Un cliente tolto porta via i suoi km; Studio › Spese non si vede in modalità cliente (ProvaBackupSpese.swift)
+            if let errore = provaClienteToltoSpese() {
                 print("ERRORE: \(errore)")
                 return 1
             }

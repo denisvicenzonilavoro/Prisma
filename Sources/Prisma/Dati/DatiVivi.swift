@@ -37,7 +37,7 @@ import Observation
     @ObservationIgnored private var inCarica = false
 
     /// Numero dei campi di `DatiPrisma` copiati qui (la prova lo confronta con Mirror).
-    static let numeroCampi = 39
+    static let numeroCampi = 41
 
     var versione: Int { didSet { segnala(.calcoli) } }
     var clienti: [Cliente] { didSet(prima) { segnalaClienti(prima, clienti, \.id) } }
@@ -76,6 +76,10 @@ import Observation
     var promesse: [PromessaCliente] { didSet(prima) { segnalaClienti(prima, promesse, \.clienteId) } }
     var confrontiDocumenti: [ConfrontoDocumenti] { didSet(prima) { segnalaClienti(prima, confrontiDocumenti, \.clienteId) } }
     var coperture: [CoperturaPolizza] { didSet(prima) { segnalaClienti(prima, coperture, \.clienteId) } }
+    /// Le spese del consulente non entrano in nessun calcolo in cache (giro 9 di «Luce»).
+    var speseStudio: ArchivioSpese { didSet { segnala(.neutro) } }
+    /// I km per cliente di Studio › Spese: nessun calcolo in cache.
+    var kmClienti: [String: Double] { didSet { segnala(.neutro) } }
     var clienteAttivoId: String { didSet(prima) { segnala(.clienteAttivo(prima: prima)) } }
     var impostazioni: Impostazioni { didSet(prima) { segnala(.impostazioni(prima: prima)) } }
 
@@ -117,6 +121,8 @@ import Observation
         promesse = d.promesse
         confrontiDocumenti = d.confrontiDocumenti
         coperture = d.coperture
+        speseStudio = d.speseStudio
+        kmClienti = d.kmClienti
         clienteAttivoId = d.clienteAttivoId
         impostazioni = d.impostazioni
     }
@@ -205,6 +211,8 @@ import Observation
         d.promesse = promesse
         d.confrontiDocumenti = confrontiDocumenti
         d.coperture = coperture
+        d.speseStudio = speseStudio
+        d.kmClienti = kmClienti
         return d
     }
 
@@ -247,6 +255,8 @@ import Observation
         d.promesse = _promesse
         d.confrontiDocumenti = _confrontiDocumenti
         d.coperture = _coperture
+        d.speseStudio = _speseStudio
+        d.kmClienti = _kmClienti
         return d
     }
 
@@ -292,6 +302,8 @@ import Observation
         if promesse != d.promesse { promesse = d.promesse }
         if confrontiDocumenti != d.confrontiDocumenti { confrontiDocumenti = d.confrontiDocumenti }
         if coperture != d.coperture { coperture = d.coperture }
+        if speseStudio != d.speseStudio { speseStudio = d.speseStudio }
+        if kmClienti != d.kmClienti { kmClienti = d.kmClienti }
         if clienteAttivoId != d.clienteAttivoId { clienteAttivoId = d.clienteAttivoId }
         if impostazioni != d.impostazioni { impostazioni = d.impostazioni }
         inCarica = false
@@ -316,6 +328,8 @@ extension Impostazioni {
         b.novitaViste = novitaViste
         b.consegna = consegna
         b.pratiche = pratiche
+        // Chilometri, spese e scadenze (giro 9 di «Luce») non entrano nei calcoli in cache
+        b.studio.spese = studio.spese
         return self == b
     }
 }

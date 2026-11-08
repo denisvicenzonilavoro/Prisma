@@ -118,6 +118,7 @@ enum ProvaOvunque {
             try provaSpaziLuce()
             try provaAziende()
             try provaRacconti()
+            try provaSpese()
             try provaSpazio(radice: radice)
             print("Prova di Prisma ovunque riuscita")
             return 0
@@ -276,6 +277,48 @@ enum ProvaOvunque {
         let letto = try JSONOvunque.decodificatore().decode(DatiPrisma.self, from: chiaro)
         try controlla(letto.clienti.map(\.aziende) == dati.clienti.map(\.aziende),
                       "le aziende non tornano uguali dall'istantanea dello spazio")
+    }
+
+    /// Chilometri, spese e scadenze («Luce» giro 9): spese, scadenze, corsi, i km per cliente e le impostazioni (correzioni
+    /// dei giri) restano sul Mac, non entrano nell'istantanea cifrata; sul dispositivo l'istantanea accolta non tocca quelle
+    /// locali. Dove si è svolto un appuntamento (`presso`) invece si sincronizza come gli altri campi dell'appuntamento.
+    private static func provaSpese() throws {
+        var dati = DatiPrisma.demo()
+        dati.speseStudio = ProvaBackup.speseDiProvaBackup()
+        dati.impostazioni.studio.spese = ProvaBackup.impostazioniSpeseDiProvaBackup()
+        dati.kmClienti = ProvaBackup.kmClientiDiProvaBackup
+        try controlla(!dati.speseStudio.vuoto && !dati.kmClienti.isEmpty, "i dati di prova delle spese sono vuoti")
+        let istantanea = SpazioOvunque.datiIstantanea(dati)
+        try controlla(istantanea.speseStudio == ArchivioSpese(), "le spese del consulente entrano nell'istantanea di Prisma ovunque")
+        try controlla(istantanea.impostazioni.studio.spese == ImpostazioniSpese() && istantanea.kmClienti.isEmpty,
+                      "i km per cliente e le correzioni dei giri entrano nell'istantanea di Prisma ovunque")
+        let chiaro = String(data: try JSONOvunque.codificatore().encode(istantanea), encoding: .utf8) ?? ""
+        try controlla(!chiaro.contains("Pranzo di lavoro (prova)") && !chiaro.contains("Corso di prova"),
+                      "un testo delle spese è nell'istantanea di Prisma ovunque")
+        // Sul dispositivo: l'istantanea del Mac (senza spese) non cancella quelle locali
+        let ist = IstantaneaOvunque(generazione: 1, mac: "mac-prova", nomeMac: "Mac", scrittaIl: Date(), vistoFinoA: [:], lamport: 0,
+                                    modificheAmmesse: true, dati: istantanea)
+        let accolta = SincroniaOvunque.accogli(ist, in: dati).dati
+        try controlla(accolta.speseStudio == dati.speseStudio && accolta.impostazioni.studio.spese == dati.impostazioni.studio.spese
+                          && accolta.kmClienti == dati.kmClienti,
+                      "accogliendo l'istantanea il dispositivo perde le sue spese o le loro impostazioni")
+        // «Dove eri?» scelto sul dispositivo arriva al Mac: `presso` è fra i campi sincronizzati dell'appuntamento
+        try controlla(CampiOvunque.regole(.appuntamento).campi.contains("presso"), "il luogo dell'appuntamento non si sincronizza")
+        var mac = DatiPrisma.demo()
+        guard let i = mac.appuntamenti.indices.first else { throw Fallita(motivo: "nessun appuntamento nei dati di prova") }
+        mac.appuntamenti[i].presso = nil
+        var dispositivo = mac
+        dispositivo.appuntamenti[i].presso = .cliente
+        let differenze = RegistroOvunque.differenze(da: mac, a: dispositivo)
+        try controlla(differenze.count == 1 && differenze.first?.campo == "presso",
+                      "scegliere «Dal cliente» sul dispositivo non registra un'operazione sul luogo dell'appuntamento")
+        if let d = differenze.first {
+            let op = OperazioneOvunque(id: "op-presso", dispositivo: "ipad-prova", lamport: 1, seq: 1, data: Date(), base: 1,
+                                       entita: d.entita, entitaId: d.entitaId, tipo: d.tipo, campo: d.campo, prima: d.prima, dopo: d.dopo)
+            let esito = MotoreUnioneOvunque.applica(op, a: &mac)
+            try controlla(mac.appuntamenti[i].presso == .cliente,
+                          "il luogo scelto sul dispositivo non arriva sul Mac (esito \(esito))")
+        }
     }
 
     private static func provaSpaziLuce() throws {

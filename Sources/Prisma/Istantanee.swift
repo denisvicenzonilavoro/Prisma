@@ -1698,6 +1698,8 @@ enum Istantanee {
         tutteLeScene += scenePalestra
         // «Luce», giro 7: Clienti › dossier › L'azienda, i clienti imprenditori (Shell/IstantaneeAzienda.swift)
         tutteLeScene += sceneAzienda
+        // «Luce», giro 9: Studio › Spese, chilometri, spese e scadenze (Shell/IstantaneeSpese.swift)
+        tutteLeScene += sceneSpese
         // «Luce», giro 6: Biblioteca · Trova la pagina (Shell/IstantaneeBiblioteca.swift)
         tutteLeScene += sceneBiblioteca
         for scena in tutteLeScene where solo?.contains(scena.nome) ?? true {

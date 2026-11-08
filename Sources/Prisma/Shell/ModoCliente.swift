@@ -33,6 +33,10 @@ extension StatoShell {
         veraPortafoglio = false
         filtroClienteAgenda = nil
         filtroClienteAttivita = nil
+        // Studio › Spese non si vede in modalità cliente (§6.3.1 punto 1.7): niente foglio aperto, e il segmentato torna al
+        // Cruscotto (che mostra «Studio resta tuo»)
+        studioSpese.foglio = nil
+        if schedaStudio == .spese { schedaStudio = .cruscotto }
         if avviso { mostraAvviso("Modalità cliente: si vede solo il dossier di \(c.nome).") }
     }
 

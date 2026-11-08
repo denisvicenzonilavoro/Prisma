@@ -89,7 +89,8 @@ enum CampiOvunque {
             return Regole(campi: ["clienteId", "titolo", "scadenza", "priorita", "completata", "note", "appuntamentoId"], servizio: [],
                           creabile: true, eliminabile: true, conCliente: true)
         case .appuntamento:
-            return Regole(campi: ["clienteId", "titolo", "inizio", "durataMinuti", "luogo", "note", "stato", "tipo", "canale", "posizioneId"],
+            return Regole(campi: ["clienteId", "titolo", "inizio", "durataMinuti", "luogo", "note", "stato", "tipo", "canale", "posizioneId",
+                                  "presso"],
                           servizio: [], creabile: true, eliminabile: true, conCliente: true)
         case .bisogni:
             // Il profilo dei bisogni non si crea né si elimina: c'è con il cliente (id = id del cliente)
