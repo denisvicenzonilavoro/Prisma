@@ -124,6 +124,15 @@ enum Risorse {
             print("ERRORE: logo Alleanza non ridotto")
             return 1
         }
+        // Territorio (Luce, giro 11): la tabella dei comuni (di prova finché non c'è quella ISTAT) e i confini di una provincia
+        guard let t = TabellaTerritorio.caricaComuni(), !t.comuni.isEmpty else {
+            print("ERRORE: \(TabellaTerritorio.fileComuni) non leggibile dal bundle")
+            return 1
+        }
+        guard let primo = t.comuni.first, TabellaTerritorio.caricaConfini(provincia: primo.provincia) != nil else {
+            print("ERRORE: confini del Territorio non leggibili dal bundle")
+            return 1
+        }
         print("OK: risorse trovate in \(bundle.bundlePath)")
         return 0
     }
