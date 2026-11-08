@@ -273,6 +273,10 @@ extension StatoShell {
     /// «Mostra al cliente»: la pagina a tutto schermo nella presentazione, carta bianca, la frase evidenziata e niente
     /// risposta di Vera (la frase del documento parla da sola). Esc chiude.
     func mostraBibliotecaAlCliente() {
+        #if os(iOS)
+        // L'impaginazione per la presentazione (DocumentoStampabile con formato) c'è solo sul Mac (TavoloMac.swift)
+        mostraAvviso(StatoShell.soloSulMacPerOra)
+        #else
         guard let r = trovaPagina.risultato, let p = r.passo, let d = documentoBiblioteca(p.documentoId) else { return }
         let pagine = trovaPagina.pagine(d)
         guard p.pagina - 1 < pagine.count else { return }
@@ -281,6 +285,7 @@ extension StatoShell {
         let doc = DocumentoStampabile(titolo: d.titolo, cliente: "pagina \(p.pagina)", genere: "Biblioteca",
                                       formato: Tema.Apple.Biblioteca.formatoPresentazione, pagine: [AnyView(foglio)], tipo: .altro)
         presenta(doc, delCliente: false)
+        #endif
     }
 
     // MARK: - Fac-simile di prova

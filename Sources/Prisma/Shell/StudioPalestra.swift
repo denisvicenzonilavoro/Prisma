@@ -112,7 +112,9 @@ struct PalestraStudioVista: View {
                     .entrataCascata(1, base: base)
             }
         }
+        #if os(macOS)
         .onExitCommand { palestra.annulla() }
+        #endif
     }
 }
 

@@ -348,15 +348,21 @@ enum Istantanee {
         }),
         ("86-impostazioni-velocita", { s in
             // Giro 0 di «Prisma istantaneo»: le tabelle delle due misure (DATI DI PROVA DICHIARATI, MisuraVelocita.swift)
+            // MisuraVelocita c'è solo sul Mac (su iPhone e iPad questa scena non serve)
+            #if os(macOS)
             s.misureIstantanea = MisuraVelocita.diProvaIstantanea
-            s.schedaImpostazioni = .strumenti
             s.ancoraImpostazioni = MisuraVelocita.ancora
+            #endif
+            s.schedaImpostazioni = .strumenti
             s.apri(.impostazioni)
         }),
         ("86-impostazioni-velocita-scuro", { s in
+            // MisuraVelocita c'è solo sul Mac (su iPhone e iPad questa scena non serve)
+            #if os(macOS)
             s.misureIstantanea = MisuraVelocita.diProvaIstantanea
-            s.schedaImpostazioni = .strumenti
             s.ancoraImpostazioni = MisuraVelocita.ancora
+            #endif
+            s.schedaImpostazioni = .strumenti
             s.apri(.impostazioni)
         }),
         ("70-modo-cliente", { s in
