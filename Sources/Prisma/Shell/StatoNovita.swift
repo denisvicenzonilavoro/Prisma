@@ -264,6 +264,12 @@ extension StatoShell {
         } else if voce == .imprenditori {
             // Il dossier del primo cliente con un'azienda, sulla scheda «L'azienda» (giro 7, DossierAzienda.swift)
             apriClientiImprenditori()
+        } else if voce == .passaparola {
+            // Clienti › Passaparola (giro 12, ClientiPassaparola.swift)
+            apriPassaparola()
+        } else if voce == .campagne {
+            // Messaggi › Campagne sul primo gruppo (giro 12, MessaggiCampagne.swift)
+            apriCampagne(nil)
         } else if app == .studio {
             apriStudio(.cruscotto)
         } else {
