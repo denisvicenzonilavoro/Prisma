@@ -803,6 +803,14 @@ enum VoceConfronto: Hashable {
         dati.eventiVita.removeAll { $0.clienteId == id }
         // Copilota (giro 5): le sessioni d'ascolto del cliente se ne vanno con lui
         dati.sessioniCopilota.removeAll { $0.clienteId == id }
+        // Studio › Spese («Luce» giro 9): i km del cliente se ne vanno con lui; le spese restano del consulente, senza il
+        // legame al cliente tolto
+        dati.kmClienti[id] = nil
+        if dati.speseStudio.spese.contains(where: { $0.clienteId == id }) {
+            var spese = dati.speseStudio
+            for i in spese.spese.indices where spese.spese[i].clienteId == id { spese.spese[i].clienteId = nil }
+            dati.speseStudio = spese
+        }
         for d in dati.documenti where d.clienteId == id { rimuoviFile(d) }
         dati.documenti.removeAll { $0.clienteId == id }
         if modoCliente == id { modoCliente = nil }
@@ -3329,8 +3337,8 @@ enum VoceConfronto: Hashable {
         var spese = dati.speseStudio
         SpeseDiProva.togli(&spese)
         if spese != dati.speseStudio { dati.speseStudio = spese }
-        for id in Self.clientiDiProva where dati.impostazioni.studio.spese.kmAndataRitornoPerCliente[id] != nil {
-            dati.impostazioni.studio.spese.kmAndataRitornoPerCliente[id] = nil
+        for id in Self.clientiDiProva where dati.kmClienti[id] != nil {
+            dati.kmClienti[id] = nil
         }
     }
 

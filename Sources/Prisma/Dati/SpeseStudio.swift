@@ -9,7 +9,7 @@ import Foundation
 //   Prisma propone al più dei titoli di scadenza senza date (`ScadenzaStudio.titoliSuggeriti`): le date le decide l'utente,
 //   da verificare con il suo commercialista.
 // - I chilometri non si calcolano con servizi di percorso (decisione 22): l'utente scrive una volta i km di andata e
-//   ritorno per cliente (`ImpostazioniSpese.kmAndataRitornoPerCliente`) e corregge un giro a mano (`kmCorretti`).
+//   ritorno per cliente (`DatiPrisma.kmClienti`, nel file di ogni cliente) e corregge un giro a mano (`kmCorretti`).
 // - Dove si è svolto un incontro lo dice l'utente (`Appuntamento.presso`, decisione 100): senza, la visita va fra quelle
 //   «senza km» con «Dove eri?».
 // - Archivio: versione 27, una sola chiave `speseStudio` (sezione «studio» della cartella a pezzi), letta con tolleranza
@@ -292,8 +292,6 @@ struct ArchivioSpese: Codable, Equatable {
 struct ImpostazioniSpese: Codable, Equatable {
     /// Da dove parti: una descrizione («Studio di via Roma»), mai una coordinata. Vuota = non impostata.
     var partenza = ""
-    /// I km di andata e ritorno fra la partenza e ogni cliente (clienteId → km), scritti dall'utente.
-    var kmAndataRitornoPerCliente: [String: Double] = [:]
     /// Le correzioni a mano dei giri («aaaa-mm-gg» → km del giro): vincono sulla tabella.
     var kmCorretti: [String: Double] = [:]
     /// Contare anche gli appuntamenti senza cliente fatti fuori (i km solo dalla correzione del giorno).
@@ -321,7 +319,7 @@ struct ImpostazioniSpese: Codable, Equatable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case partenza, kmAndataRitornoPerCliente, kmCorretti, contaVisiteSenzaCliente, oreAggiornamentoAnno
+        case partenza, kmCorretti, contaVisiteSenzaCliente, oreAggiornamentoAnno
         case enteAggiornamento, giornoCambioMese, nomiNelPacchetto, euroPerKm
     }
 
@@ -334,7 +332,6 @@ struct ImpostazioniSpese: Codable, Equatable {
             return grezzi.filter { $0.value.isFinite && $0.value >= 0 }
         }
         partenza = ((try? c.decodeIfPresent(String.self, forKey: .partenza)) ?? nil) ?? ""
-        kmAndataRitornoPerCliente = numeri(.kmAndataRitornoPerCliente)
         kmCorretti = numeri(.kmCorretti)
         contaVisiteSenzaCliente = ((try? c.decodeIfPresent(Bool.self, forKey: .contaVisiteSenzaCliente)) ?? nil) ?? false
         for (chiave, valore) in numeri(.oreAggiornamentoAnno) {
@@ -351,7 +348,6 @@ struct ImpostazioniSpese: Codable, Equatable {
     func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(partenza, forKey: .partenza)
-        try c.encode(kmAndataRitornoPerCliente, forKey: .kmAndataRitornoPerCliente)
         try c.encode(kmCorretti, forKey: .kmCorretti)
         try c.encode(contaVisiteSenzaCliente, forKey: .contaVisiteSenzaCliente)
         var perAnno: [String: Double] = [:]

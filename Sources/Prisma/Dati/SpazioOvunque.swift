@@ -148,6 +148,7 @@ enum SpazioOvunque {
         // Spese, scadenze, corsi e le loro impostazioni (km per cliente, correzioni) restano sul Mac («Luce» giro 9):
         // sono dati personali del consulente e l'iPhone non ha Studio › Spese
         x.speseStudio = ArchivioSpese()
+        x.kmClienti = [:]
         x.impostazioni.studio.spese = ImpostazioniSpese()
         x.giornaleOvunque = []
         x.impostazioni.ovunque = ImpostazioniOvunque()
@@ -461,6 +462,7 @@ enum SincroniaOvunque {
         nuovo.conversazioni = locale.conversazioni
         nuovo.partiteRischio = locale.partiteRischio
         nuovo.speseStudio = locale.speseStudio
+        nuovo.kmClienti = locale.kmClienti
         let mie = locale.impostazioni
         var imp = nuovo.impostazioni
         imp.vera = mie.vera

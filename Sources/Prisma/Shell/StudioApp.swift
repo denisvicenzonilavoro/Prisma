@@ -31,6 +31,27 @@ enum SchedaStudio: String, CaseIterable, Identifiable, Hashable {
         }
     }
 
+    /// Studio › Spese c'è solo sul Mac: iPhone e iPad non la hanno (decisione 34), e le spese restano fuori da «Prisma
+    /// ovunque».
+    static var speseSulDispositivo: Bool {
+        #if os(macOS)
+        return true
+        #else
+        return false
+        #endif
+    }
+
+    /// Le schede del segmentato: Spese solo sul Mac e mai in modalità cliente (§6.3.1 punto 1.7: «la scheda Spese non si
+    /// vede»; le altre schede in modalità cliente mostrano «Studio resta tuo»).
+    static func visibili(modoCliente: Bool) -> [SchedaStudio] {
+        allCases.filter { $0 != .spese || (speseSulDispositivo && !modoCliente) }
+    }
+
+    /// La scheda da mostrare al posto di una che qui non si vede: il Cruscotto.
+    static func mostrabile(_ s: SchedaStudio, modoCliente: Bool) -> SchedaStudio {
+        visibili(modoCliente: modoCliente).contains(s) ? s : .cruscotto
+    }
+
     /// Cosa arriverà nelle schede che in questo giro non ci sono ancora (nil per il Cruscotto).
     var prossima: String? {
         switch self {
@@ -119,7 +140,7 @@ enum TestiStudio {
 extension StatoShell {
     /// Apre Studio sulla scheda data (dalla scrivania, dalle novità, dal dock con la scheda di prima).
     func apriStudio(_ scheda: SchedaStudio = .cruscotto) {
-        schedaStudio = scheda
+        schedaStudio = SchedaStudio.mostrabile(scheda, modoCliente: inModoCliente)
         apri(.studio)
     }
 
@@ -184,7 +205,8 @@ struct AzioniStudio: View {
                 .fixedSize()
                 .help("Il tuo anno da consulente, in un minuto")
             }
-            SegmentatoPillola(selezione: Bindable(stato).schedaStudio, valori: SchedaStudio.allCases, titolo: { $0.titolo })
+            SegmentatoPillola(selezione: Bindable(stato).schedaStudio,
+                              valori: SchedaStudio.visibili(modoCliente: stato.inModoCliente), titolo: { $0.titolo })
                 .fixedSize()
         }
     }
@@ -232,7 +254,7 @@ private struct CorpoStudio: View, Equatable {
     }
 
     var body: some View {
-        let s = mostrata ?? scheda
+        let s = SchedaStudio.mostrabile(mostrata ?? scheda, modoCliente: chiave.modo != nil)
         let m = Tema.Apple.Studio.Moto.self
         return contenuto(s)
             .id(s)

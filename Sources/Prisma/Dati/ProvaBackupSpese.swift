@@ -2,8 +2,9 @@ import Foundation
 
 // Chilometri, spese e scadenze (versione 27, «Luce» giro 9) dentro `Prisma --prova-backup`:
 // - spese (con scontrino, IVA, canale, cliente, da controllare), scadenze (ricorrente, fatta, con importo), corsi (con
-//   attestato), impostazioni (partenza, km per cliente, correzioni, ore per anno, ente, giorno di cambio, nomi nel
-//   pacchetto, valore per km) e il luogo degli appuntamenti (`presso`) tornano uguali dal backup;
+//   attestato), impostazioni (partenza, correzioni, ore per anno, ente, giorno di cambio, nomi nel pacchetto, valore per
+//   km), i km per cliente (`kmClienti`, nel file di ogni cliente, non nell'indice) e il luogo degli appuntamenti
+//   (`presso`) tornano uguali dal backup;
 // - un archivio senza i campi nuovi si apre con le spese vuote, le impostazioni di base e `presso` non indicato;
 // - una spesa senza id, una scadenza senza data, un corso illeggibile si scartano, gli altri restano; valori illeggibili
 //   (categoria sconosciuta, km negativi, giorno di cambio fuori scala) diventano quelli di base;
@@ -36,7 +37,6 @@ extension ProvaBackup {
     static func impostazioniSpeseDiProvaBackup() -> ImpostazioniSpese {
         var i = ImpostazioniSpese()
         i.partenza = "Studio di prova"
-        i.kmAndataRitornoPerCliente = ["giulia": 14, "marco": 41.5]
         i.kmCorretti = ["2026-10-03": 47]
         i.contaVisiteSenzaCliente = true
         i.oreAggiornamentoAnno = [2026: 30, 2027: 32]
@@ -47,8 +47,12 @@ extension ProvaBackup {
         return i
     }
 
+    /// I km di andata e ritorno per cliente di prova.
+    static let kmClientiDiProvaBackup: [String: Double] = ["giulia": 14, "marco": 41.5]
+
     static func aggiungiSpeseDiProva(_ d: inout DatiPrisma) {
         d.speseStudio = speseDiProvaBackup()
+        d.kmClienti = kmClientiDiProvaBackup
         d.impostazioni.studio.spese = impostazioniSpeseDiProvaBackup()
         if let i = d.appuntamenti.indices.first { d.appuntamenti[i].presso = .cliente }
         if d.appuntamenti.count > 1 { d.appuntamenti[1].presso = .altro }
@@ -63,9 +67,11 @@ extension ProvaBackup {
         }
         guard estratto.speseStudio == originale.speseStudio else { return "spese, scadenze o corsi non tornano uguali dal backup" }
         guard estratto.impostazioni.studio.spese == originale.impostazioni.studio.spese,
-              estratto.impostazioni.studio.spese.oreAggiornamentoAnno[2026] == 30,
-              estratto.impostazioni.studio.spese.kmAndataRitornoPerCliente["marco"] == 41.5 else {
+              estratto.impostazioni.studio.spese.oreAggiornamentoAnno[2026] == 30 else {
             return "le impostazioni dei chilometri e delle spese non tornano uguali dal backup"
+        }
+        guard originale.kmClienti == kmClientiDiProvaBackup, estratto.kmClienti == originale.kmClienti else {
+            return "i km di andata e ritorno per cliente non tornano uguali dal backup"
         }
         guard estratto.appuntamenti.map(\.presso) == originale.appuntamenti.map(\.presso) else {
             return "il luogo degli appuntamenti (dal cliente, in studio, altrove) non torna uguale dal backup"
@@ -74,6 +80,7 @@ extension ProvaBackup {
         let codificato = try Archivio.codificatore.encode(originale)
         guard var radice = try JSONSerialization.jsonObject(with: codificato) as? [String: Any],
               radice.removeValue(forKey: "speseStudio") != nil,
+              radice.removeValue(forKey: "kmClienti") != nil,
               var impostazioni = radice["impostazioni"] as? [String: Any],
               var studio = impostazioni["studio"] as? [String: Any],
               studio.removeValue(forKey: "spese") != nil,
@@ -87,7 +94,7 @@ extension ProvaBackup {
         radice["appuntamenti"] = appuntamenti
         let letto = try Archivio.decodifica(JSONSerialization.data(withJSONObject: radice))
         let atteso = try Archivio.decodifica(codificato)
-        guard letto.speseStudio == ArchivioSpese(), letto.impostazioni.studio.spese == ImpostazioniSpese(),
+        guard letto.speseStudio == ArchivioSpese(), letto.impostazioni.studio.spese == ImpostazioniSpese(), letto.kmClienti.isEmpty,
               letto.appuntamenti.allSatisfy({ $0.presso == nil }), letto.appuntamenti.count == atteso.appuntamenti.count,
               letto.impostazioni.studio.aliquote == atteso.impostazioni.studio.aliquote,
               letto.clienti == atteso.clienti, letto.posizioni == atteso.posizioni else {
@@ -115,10 +122,10 @@ extension ProvaBackup {
         spese["corsi"] = corsi
         var radiceStrana = originaliRadice
         radiceStrana["speseStudio"] = spese
+        radiceStrana["kmClienti"] = ["giulia": -5, "marco": 41.5]
         if var imp = radiceStrana["impostazioni"] as? [String: Any], var st = imp["studio"] as? [String: Any],
            var sp = st["spese"] as? [String: Any] {
             sp["giornoCambioMese"] = 45
-            sp["kmAndataRitornoPerCliente"] = ["giulia": -5, "marco": 41.5]
             sp["oreAggiornamentoAnno"] = ["anno": 3, "2026": 30]
             st["spese"] = sp
             imp["studio"] = st
@@ -131,7 +138,7 @@ extension ProvaBackup {
             return "spese illeggibili: elementi non scartati o campi leggibili persi"
         }
         let sp = illeggibile.impostazioni.studio.spese
-        guard sp.giornoCambioMese == 10, sp.kmAndataRitornoPerCliente == ["marco": 41.5], sp.oreAggiornamentoAnno == [2026: 30],
+        guard sp.giornoCambioMese == 10, illeggibile.kmClienti == ["marco": 41.5], sp.oreAggiornamentoAnno == [2026: 30],
               sp.partenza == "Studio di prova" else {
             return "impostazioni delle spese illeggibili: valori non tornati quelli di base o valori leggibili persi"
         }
@@ -149,8 +156,21 @@ extension ProvaBackup {
         defer { try? fm.removeItem(at: base) }
         var archivio = DatiPrisma.demo()
         archivio.speseStudio = speseDiProvaBackup()
+        archivio.kmClienti = kmClientiDiProvaBackup
         try fm.createDirectory(at: dati, withIntermediateDirectories: true)
         try Archivio.salva(archivio, in: dati)
+        // I km per cliente stanno nel file di ogni cliente della cartella a pezzi, non nell'indice né nella sezione «studio»
+        let pezzi = ArchivioPezzi.cartellaPezzi(in: dati)
+        let indice = try ArchivioPezzi.leggiIndice(pezzi)
+        guard let voce = indice.clienti.first(where: { $0.id == "marco" }),
+              let fileMarco = try JSONSerialization.jsonObject(with: Data(contentsOf: pezzi.appendingPathComponent("Clienti/" + voce.file))) as? [String: Any],
+              (fileMarco["kmClienti"] as? [String: Double]) == ["marco": 41.5],
+              let testoIndice = String(data: try Data(contentsOf: pezzi.appendingPathComponent(ArchivioPezzi.nomeIndice)), encoding: .utf8),
+              !testoIndice.contains("kmClienti"),
+              let testoStudio = String(data: try Data(contentsOf: pezzi.appendingPathComponent("studio.json")), encoding: .utf8),
+              !testoStudio.contains("kmClienti") else {
+            return "spese: i km per cliente non stanno nel file del cliente della cartella a pezzi"
+        }
         let scontrini = Archivio.cartellaScontrini(in: dati)
         let attestati = Archivio.cartellaAttestati(in: dati)
         let jpg = Data("scontrino finto".utf8)
@@ -179,6 +199,44 @@ extension ProvaBackup {
               (try? Data(contentsOf: Archivio.cartellaAttestati(in: ripristinata).appendingPathComponent("efgh5678-attestato.pdf"))) == pdf else {
             return "spese: i file degli scontrini e degli attestati non tornano dal backup"
         }
+        return nil
+    }
+
+    /// Un cliente tolto porta via i suoi km di andata e ritorno (dato del suo file) e le spese restano senza il legame a
+    /// lui; in modalità cliente la scheda Spese non si vede e il suo foglio si chiude (§6.3.1 punto 1.7).
+    static func provaClienteToltoSpese() -> String? {
+        let stato = StatoShell(persistente: false)
+        stato.dati.speseStudio = speseDiProvaBackup()
+        stato.dati.kmClienti = kmClientiDiProvaBackup
+        guard stato.dati.clienti.contains(where: { $0.id == "giulia" }), stato.dati.clienti.contains(where: { $0.id == "marco" }) else {
+            return "spese: i clienti di prova giulia e marco non ci sono"
+        }
+        stato.eliminaCliente("giulia")
+        guard stato.dati.kmClienti == ["marco": 41.5] else { return "spese: i km di un cliente tolto restano nell'archivio" }
+        guard stato.dati.speseStudio.spese.count == 2,
+              stato.dati.speseStudio.spese.allSatisfy({ $0.clienteId != "giulia" }) else {
+            return "spese: una spesa resta legata al cliente tolto (o è sparita con lui)"
+        }
+        // Modalità cliente: niente scheda Spese, niente foglio aperto
+        guard !SchedaStudio.visibili(modoCliente: true).contains(.spese) else {
+            return "spese: la scheda Spese si vede in modalità cliente"
+        }
+        stato.dati.clienteAttivoId = "marco"
+        stato.apriStudio(.spese)
+        stato.studioSpese.foglio = .corsi
+        stato.entraModoCliente(avviso: false)
+        guard stato.schedaStudio != .spese, stato.studioSpese.foglio == nil else {
+            return "spese: entrando in modalità cliente Studio resta sulla scheda Spese o il suo foglio resta aperto"
+        }
+        stato.apriStudio(.spese)
+        guard stato.schedaStudio != .spese else { return "spese: in modalità cliente Studio si apre sulla scheda Spese" }
+        stato.esciModoCliente()
+        #if os(macOS)
+        stato.apriStudio(.spese)
+        guard stato.schedaStudio == .spese else { return "spese: fuori dalla modalità cliente la scheda Spese non si apre sul Mac" }
+        #else
+        guard !SchedaStudio.visibili(modoCliente: false).contains(.spese) else { return "spese: Studio › Spese si apre su iPhone e iPad" }
+        #endif
         return nil
     }
 }

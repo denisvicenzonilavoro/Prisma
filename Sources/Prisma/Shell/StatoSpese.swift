@@ -91,7 +91,8 @@ extension StatoShell {
     func nomeClienteSpese(_ id: String) -> String { dati.clienti.first { $0.id == id }?.nome ?? "" }
 
     /// Aggiunge o sostituisce una spesa confermata dall'utente. Con `fileScontrino` copia prima il file nella cartella
-    /// degli scontrini (se la copia non riesce la spesa non si salva e lo dice).
+    /// degli scontrini (se la copia non riesce la spesa non si salva e lo dice); lo scontrino di prima della stessa spesa,
+    /// se c'era e non serve più, si toglie (niente file orfani nei backup).
     @discardableResult
     func salvaSpesa(_ spesa: SpesaStudio, fileScontrino: URL? = nil, evidenzia: Bool = false) -> Bool {
         guard !solaLettura else { return false }
@@ -105,8 +106,12 @@ extension StatoShell {
             }
         }
         var a = dati.speseStudio
+        let vecchio = a.spese.first(where: { $0.id == s.id })?.scontrino
         if let i = a.spese.firstIndex(where: { $0.id == s.id }) { a.spese[i] = s } else { a.spese.append(s) }
         dati.speseStudio = a
+        if let vecchio, vecchio != s.scontrino, persistente {
+            try? FileManager.default.removeItem(at: Archivio.cartellaScontrini().appendingPathComponent(vecchio))
+        }
         if evidenzia { studioSpese.nuovaSpesaId = s.id }
         return true
     }
@@ -140,7 +145,8 @@ extension StatoShell {
         if nuove != dati.speseStudio.scadenze { dati.speseStudio.scadenze = nuove }
     }
 
-    /// Aggiunge o sostituisce un corso; con `fileAttestato` copia prima l'attestato nella sua cartella.
+    /// Aggiunge o sostituisce un corso; con `fileAttestato` copia prima l'attestato nella sua cartella e toglie quello di
+    /// prima dello stesso corso («Cambia file…»), che non serve più.
     func salvaCorso(_ corso: CorsoAggiornamento, fileAttestato: URL? = nil) {
         guard !solaLettura else { return }
         var c = corso
@@ -153,8 +159,12 @@ extension StatoShell {
             }
         }
         var a = dati.speseStudio
+        let vecchio = a.corsi.first(where: { $0.id == c.id })?.attestato
         if let i = a.corsi.firstIndex(where: { $0.id == c.id }) { a.corsi[i] = c } else { a.corsi.append(c) }
         dati.speseStudio = a
+        if let vecchio, vecchio != c.attestato, persistente {
+            try? FileManager.default.removeItem(at: Archivio.cartellaAttestati().appendingPathComponent(vecchio))
+        }
     }
 
     func eliminaCorso(_ id: String) {
@@ -169,8 +179,8 @@ extension StatoShell {
     func impostaKmCliente(_ clienteId: String, _ km: Double?) {
         guard !solaLettura else { return }
         let pulito = km.flatMap { $0.isFinite && $0 >= 0 && $0 < 100_000 ? $0 : nil }
-        guard dati.impostazioni.studio.spese.kmAndataRitornoPerCliente[clienteId] != pulito else { return }
-        dati.impostazioni.studio.spese.kmAndataRitornoPerCliente[clienteId] = pulito
+        guard dati.kmClienti[clienteId] != pulito else { return }
+        dati.kmClienti[clienteId] = pulito
     }
 
     /// La correzione a mano dei km di un giro (nil la toglie).
@@ -250,7 +260,8 @@ extension StatoShell {
     @MainActor
     func contenutoPacchetto(mese: Date) -> PacchettoCommercialista.Contenuto {
         let imp = dati.impostazioni.studio.spese
-        let riepilogo = MotoreChilometri.riepilogo(mese: mese, appuntamenti: dati.appuntamenti, impostazioni: imp)
+        let riepilogo = MotoreChilometri.riepilogo(mese: mese, appuntamenti: dati.appuntamenti, impostazioni: imp,
+                                                   kmClienti: dati.kmClienti)
         let spese = MotoreSpese.delMese(dati.speseStudio.spese, mese: mese)
         let nomi: [String: String]? = imp.nomiNelPacchetto
             ? Dictionary(dati.clienti.map { ($0.id, $0.nome) }, uniquingKeysWith: { a, _ in a }) : nil

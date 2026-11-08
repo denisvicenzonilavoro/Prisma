@@ -57,7 +57,7 @@ enum ArchivioPezzi {
             return .indice
         case .clienti, .posizioni, .simulazioni, .analisi, .incontri, .obiettivi, .documenti, .valutazioni, .commenti,
              .note, .fotografie, .schedeAdeguatezza, .confrontiTFR, .parcelle, .raccomandazioni, .messaggi, .eventiVita,
-             .sessioniCopilota, .partiteRischio, .promesse, .confrontiDocumenti, .coperture:
+             .sessioniCopilota, .partiteRischio, .promesse, .confrontiDocumenti, .coperture, .kmClienti:
             return .cliente
         case .appuntamenti: return .sezione("agenda")
         case .attivita: return .sezione("attivita")
@@ -104,6 +104,7 @@ enum ArchivioPezzi {
         .elenco(.promesse, \.promesse),
         .elenco(.confrontiDocumenti, \.confrontiDocumenti),
         .elenco(.coperture, \.coperture),
+        .dizionario(.kmClienti, \.kmClienti),
     ]
 
     /// Un archivio vuoto, base di ogni pezzo (le impostazioni di base si costruiscono una volta sola).
@@ -182,6 +183,7 @@ enum ArchivioPezzi {
         case .confrontiDocumenti: return a.confrontiDocumenti == b.confrontiDocumenti
         case .coperture: return a.coperture == b.coperture
         case .speseStudio: return a.speseStudio == b.speseStudio
+        case .kmClienti: return a.kmClienti == b.kmClienti
         case .clienteAttivoId: return a.clienteAttivoId == b.clienteAttivoId
         case .impostazioni: return a.impostazioni == b.impostazioni
         }
@@ -228,6 +230,7 @@ enum ArchivioPezzi {
         case .confrontiDocumenti: b.confrontiDocumenti = a.confrontiDocumenti
         case .coperture: b.coperture = a.coperture
         case .speseStudio: b.speseStudio = a.speseStudio
+        case .kmClienti: b.kmClienti = a.kmClienti
         case .clienteAttivoId: b.clienteAttivoId = a.clienteAttivoId
         case .impostazioni: b.impostazioni = a.impostazioni
         }

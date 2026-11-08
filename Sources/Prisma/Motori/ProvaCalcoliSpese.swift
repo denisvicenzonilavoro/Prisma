@@ -28,11 +28,10 @@ enum ProvaCalcoliSpese {
                             note: "", stato: stato, tipo: tipo, presso: presso)
     }
 
-    private static func impostazioni() -> ImpostazioniSpese {
-        var i = ImpostazioniSpese()
-        i.kmAndataRitornoPerCliente = ["a": 28, "b": 36, "c": 41]
-        return i
-    }
+    private static func impostazioni() -> ImpostazioniSpese { ImpostazioniSpese() }
+
+    /// I km di andata e ritorno per cliente di prova (nel file di ogni cliente, `DatiPrisma.kmClienti`).
+    private static let km: [String: Double] = ["a": 28, "b": 36, "c": 41]
 
     private static func giri(_ verifica: VerificaCalcoli) {
         let ottobre = AiutiProva.data(2026, 10, 1)
@@ -47,17 +46,17 @@ enum ProvaCalcoliSpese {
             visita("p1", cliente: "c", 20, ora: 9, stato: .pianificato),
             visita("n1", cliente: "a", 2, ora: 9, mese: 11),
         ]
-        let g = MotoreChilometri.giri(mese: ottobre, appuntamenti: appuntamenti, impostazioni: imp, calendario: cal)
+        let g = MotoreChilometri.giri(mese: ottobre, appuntamenti: appuntamenti, impostazioni: imp, kmClienti: km, calendario: cal)
         verifica("Spese: giri di ottobre (telefonate, studio, pianificati e novembre esclusi)", Double(g.count), 2)
         verifica("Spese: giro di due visite = 28 + 36 dalla tabella andata e ritorno", g.first?.km ?? -1, 64)
         verifica.vero("Spese: visite del giro in ordine d'orario", g.first?.visite.map(\.appuntamentoId) == ["v1", "v2"])
         verifica.vero("Spese: chiave del giorno del giro", g.first?.chiave == "2026-10-03")
         // La correzione a mano vince
         imp.kmCorretti["2026-10-03"] = 47
-        let corretto = MotoreChilometri.giri(mese: ottobre, appuntamenti: appuntamenti, impostazioni: imp, calendario: cal)
+        let corretto = MotoreChilometri.giri(mese: ottobre, appuntamenti: appuntamenti, impostazioni: imp, kmClienti: km, calendario: cal)
         verifica("Spese: la correzione a mano vince sulla tabella", corretto.first?.km ?? -1, 47)
         verifica.vero("Spese: giro corretto segnato «a mano»", corretto.first?.corretto == true)
-        let r = MotoreChilometri.riepilogo(mese: ottobre, appuntamenti: appuntamenti, impostazioni: imp, calendario: cal)
+        let r = MotoreChilometri.riepilogo(mese: ottobre, appuntamenti: appuntamenti, impostazioni: imp, kmClienti: km, calendario: cal)
         verifica("Spese: totale del mese con la correzione", r.totale, 47 + 41)
         verifica("Spese: visite del mese", Double(r.visite), 3)
         verifica("Spese: clienti del mese", Double(r.clienti), 3)
@@ -66,21 +65,21 @@ enum ProvaCalcoliSpese {
         verifica.vero("Spese: completo senza visite senza km", r.completo)
         // Visite senza km: luogo non indicato e cliente senza distanza
         let senza = appuntamenti + [visita("x1", cliente: "d", 14, ora: 10), visita("x2", cliente: "a", 21, ora: 10, presso: nil)]
-        let r2 = MotoreChilometri.riepilogo(mese: ottobre, appuntamenti: senza, impostazioni: imp, calendario: cal)
+        let r2 = MotoreChilometri.riepilogo(mese: ottobre, appuntamenti: senza, impostazioni: imp, kmClienti: km, calendario: cal)
         verifica("Spese: visite senza km contate a parte", Double(r2.senzaKm), 2)
         verifica("Spese: visite senza luogo («Dove eri?»)", Double(r2.senzaLuogo), 1)
         verifica("Spese: il totale conta solo i km noti («almeno»)", r2.totale, 88)
         verifica.vero("Spese: «almeno» quando mancano dei km", !r2.completo)
         verifica.vero("Spese: giro senza distanza da completare", r2.giri.first { $0.chiave == "2026-10-14" }?.km == nil)
         // Una visita altrove non prende i km della tabella
-        let altrove = MotoreChilometri.visita(visita("y1", cliente: "a", 22, ora: 10, presso: .altro), impostazioni: imp)
+        let altrove = MotoreChilometri.visita(visita("y1", cliente: "a", 22, ora: 10, presso: .altro), kmClienti: km)
         verifica.vero("Spese: visita altrove senza km dalla tabella", altrove.km == nil && altrove.motivo == .altrove)
         // Senza cliente: solo se l'utente lo chiede
         let libero = visita("z1", cliente: "", 23, ora: 10)
         verifica.vero("Spese: appuntamento senza cliente escluso di base", !MotoreChilometri.eVisita(libero, contaSenzaCliente: false))
         verifica.vero("Spese: appuntamento senza cliente contato se richiesto", MotoreChilometri.eVisita(libero, contaSenzaCliente: true))
         // Nessuna stima inventata: senza tabella nessun km
-        let vuoto = MotoreChilometri.riepilogo(mese: ottobre, appuntamenti: appuntamenti, impostazioni: ImpostazioniSpese(), calendario: cal)
+        let vuoto = MotoreChilometri.riepilogo(mese: ottobre, appuntamenti: appuntamenti, impostazioni: ImpostazioniSpese(), kmClienti: [:], calendario: cal)
         verifica("Spese: senza km scritti dall'utente il totale è 0", vuoto.totale, 0)
         verifica("Spese: senza km scritti tutte le visite sono senza km", Double(vuoto.senzaKm), 3)
     }
@@ -154,6 +153,16 @@ enum ProvaCalcoliSpese {
         verifica("Spese: 22 ore su 30 → 73%", MotoreSpese.percentualeOre(fatte: ore, obiettivo: 30) ?? -1, 73.33, tolleranza: 0.01)
         verifica.vero("Spese: senza obiettivo nessun anello", MotoreSpese.percentualeOre(fatte: ore, obiettivo: nil) == nil)
         verifica("Spese: oltre l'obiettivo ferma a 100", MotoreSpese.percentualeOre(fatte: 40, obiettivo: 30) ?? -1, 100)
+        // La prossima di una scadenza di prova resta di prova: «Togli i clienti di prova» la toglie
+        let rc = ScadenzaStudio(id: SpeseDiProva.prefisso + "scadenza-rc", titolo: "Polizza di prova", data: AiutiProva.data(2026, 12, 1),
+                                ricorrenza: .annuale, tipo: .polizza, nota: SpeseDiProva.nota)
+        var archivioRC = ArchivioSpese(scadenze: MotoreSpese.segnaFatta(rc.id, in: [rc], il: AiutiProva.data(2026, 11, 20), calendario: cal))
+        verifica.vero("Spese: la prossima di una scadenza di prova resta di prova",
+                      archivioRC.scadenze.count == 2 && archivioRC.scadenze.allSatisfy { $0.id.hasPrefix(SpeseDiProva.prefisso) })
+        SpeseDiProva.togli(&archivioRC)
+        verifica.vero("Spese: «Togli i clienti di prova» toglie anche la prossima", archivioRC.scadenze.isEmpty)
+        verifica.vero("Spese: la prossima di una scadenza dell'utente non diventa di prova",
+                      dopo.last.map { !$0.id.hasPrefix(SpeseDiProva.prefisso) } ?? false)
         verifica.vero("Spese: titoli suggeriti senza date né importi (decisione 66)",
                       ScadenzaStudio.titoliSuggeriti.allSatisfy { $0.titolo.range(of: #"(?<![A-Za-z0-9])\d"#, options: .regularExpression) == nil })
     }
@@ -204,13 +213,36 @@ enum ProvaCalcoliSpese {
         verifica.vero("Scontrino: senza totale né data è da controllare", c.incerto && c.totale == nil && c.data == nil)
         verifica.vero("Scontrino: categoria proposta (parcheggio)", c.categoria == .parcheggio)
         verifica.vero("Scontrino: importi con la virgola", LettoreScontrino.importi("Importo 6,50") == [6.5])
+
+        // Il totale con l'IVA dentro è il totale, non l'IVA; l'aliquota con i decimali non è l'IVA
+        let quattro = """
+        BAR DI PROVA
+        TOTALE COMPLESSIVO IVA INCLUSA 36,00
+        DI CUI IVA 3,27
+        05/10/2026
+        """
+        let d = LettoreScontrino.leggi(quattro, calendario: cal)
+        verifica("Scontrino: «TOTALE … IVA INCLUSA» è il totale", d.totale ?? -1, 36)
+        verifica("Scontrino: l'IVA dalla riga «DI CUI IVA», non dal totale", d.iva ?? -1, 3.27)
+        let cinque = """
+        CARTOLERIA DI PROVA
+        IVA 22,00% 5,41
+        TOTALE 30,00
+        """
+        let e = LettoreScontrino.leggi(cinque, calendario: cal)
+        verifica("Scontrino: l'aliquota «22,00%» non è l'IVA", e.iva ?? -1, 5.41)
+        verifica("Scontrino: totale con l'aliquota sopra", e.totale ?? -1, 30)
+        let sei = LettoreScontrino.leggi("NEGOZIO DI PROVA\nIVA 22,00%\nTOTALE IVA INCLUSA 12,20", calendario: cal)
+        verifica.vero("Scontrino: solo l'aliquota, nessuna IVA inventata", sei.iva == nil && sei.totale == 12.20)
+        let sette = LettoreScontrino.leggi("NEGOZIO DI PROVA\nTOTALE IVA 2,20\nTOTALE 12,20", calendario: cal)
+        verifica.vero("Scontrino: «TOTALE IVA 2,20» è l'IVA, non il totale", sette.iva == 2.20 && sette.totale == 12.20)
     }
 
     private static func pacchetto(_ verifica: VerificaCalcoli) {
         let ottobre = AiutiProva.data(2026, 10, 1)
         let appuntamenti = [visita("v1", cliente: "a", 3, ora: 10), visita("v2", cliente: "b", 3, ora: 15),
                             visita("v3", cliente: "c", 8, ora: 11)]
-        let giri = MotoreChilometri.giri(mese: ottobre, appuntamenti: appuntamenti, impostazioni: impostazioni(), calendario: cal)
+        let giri = MotoreChilometri.giri(mese: ottobre, appuntamenti: appuntamenti, impostazioni: impostazioni(), kmClienti: km, calendario: cal)
         let nomi = ["a": "Cliente Prova Uno", "b": "Cliente Prova Due", "c": "Cliente Prova Tre"]
         let senza = PacchettoCommercialista.csvChilometri(giri, nomi: nil, euroPerKm: nil)
         verifica.vero("Pacchetto: CSV con il BOM per Excel", senza.hasPrefix(PacchettoCommercialista.bom))
@@ -226,6 +258,36 @@ enum ProvaCalcoliSpese {
         verifica.vero("Pacchetto: campo con «;» tra virgolette", csv.contains("\"Pranzo; con \"\"virgolette\"\"\""))
         verifica.vero("Pacchetto: importo con la virgola", csv.contains(";48,00;"))
         verifica.vero("Pacchetto: la spesa legata al cliente non porta il nome", !csv.contains("Cliente Prova Uno"))
+        // Un testo che Excel leggerebbe come formula prende l'apostrofo davanti; i numeri restano come sono
+        verifica.vero("Pacchetto: «=HYPERLINK(…)» non è una formula", PacchettoCommercialista.campo("=HYPERLINK(\"x\")").hasPrefix("\"'="))
+        verifica.vero("Pacchetto: «+39 …», «-x», «@x» neutralizzati",
+                      ["+39 000", "-somma", "@prova"].allSatisfy { PacchettoCommercialista.campo($0).hasPrefix("'") })
+        verifica.vero("Pacchetto: i numeri restano numeri", PacchettoCommercialista.campo("48,00") == "48,00"
+                          && PacchettoCommercialista.campo("-5") == "-5" && PacchettoCommercialista.campo("Pranzo") == "Pranzo")
+        // I km del PDF e del CSV tornano fra loro: un giro da completare porta i km noti in tutti e due
+        var kmMezzi = km
+        kmMezzi["a"] = 20.5
+        kmMezzi["b"] = 41.5
+        let incompleti = [visita("m1", cliente: "a", 3, ora: 10), visita("m2", cliente: "a", 5, ora: 10),
+                          visita("m3", cliente: "b", 9, ora: 10), visita("m4", cliente: "c", 9, ora: 15, presso: nil)]
+        let rm = MotoreChilometri.riepilogo(mese: ottobre, appuntamenti: incompleti, impostazioni: ImpostazioniSpese(),
+                                            kmClienti: kmMezzi, calendario: cal)
+        let csvKm = PacchettoCommercialista.csvChilometri(rm.giri, nomi: nil, euroPerKm: 0.3)
+        let righeKm = csvKm.dropFirst().components(separatedBy: "\r\n").dropFirst().filter { !$0.isEmpty }
+            .map { $0.components(separatedBy: ";") }
+        let sommaKm = righeKm.compactMap { Double($0[2].replacingOccurrences(of: ",", with: ".")) }.reduce(0, +)
+        let sommaEuro = righeKm.compactMap { Double($0[4].replacingOccurrences(of: ",", with: ".")) }.reduce(0, +)
+        verifica.vero("Pacchetto: il giro da completare porta i km noti nel CSV",
+                      righeKm.last.map { $0[2] == "41,5" && $0[3] == "da completare: solo i km noti" } ?? false)
+        verifica("Pacchetto: la somma dei km del CSV = il totale del riepilogo", sommaKm, rm.totale, tolleranza: 0.001)
+        let testiKm = TestiRiepilogoSpese(mese: ottobre, riepilogo: rm, spese: [], nomi: nil, consulente: "Consulente di prova",
+                                          euroPerKm: 0.3)
+        verifica.vero("Pacchetto: il PDF scrive il totale al decimo («almeno 82,5 km»)",
+                      testiKm.totali.first { $0.etichetta == "Chilometri" }?.valore == "almeno 82,5 km")
+        verifica.vero("Pacchetto: i giri del PDF al decimo («20,5 km»)", testiKm.righe.first?.riga.numero == "20,5 km")
+        verifica.vero("Pacchetto: il giro da completare nel PDF con «almeno»", testiKm.righe.last?.riga.numero == "almeno 41,5 km")
+        verifica.vero("Pacchetto: «Km × valore» del PDF = la somma degli euro del CSV",
+                      testiKm.totali.first { $0.etichetta == "Km × valore scritto da te" }?.valore == Formati.euroDecimali(sommaEuro))
         verifica.vero("Pacchetto: nome dello zip «Ottobre-2026»", PacchettoCommercialista.nome(mese: ottobre, calendario: cal) == "Ottobre-2026")
         verifica.vero("Pacchetto: suffisso «2026-10»", PacchettoCommercialista.suffisso(mese: ottobre, calendario: cal) == "2026-10")
         // Lo zip scritto si rilegge con LettoreZip: i due CSV, il PDF e lo scontrino

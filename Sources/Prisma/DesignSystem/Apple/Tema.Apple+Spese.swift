@@ -106,6 +106,8 @@ extension Tema.Apple.Studio {
             static let spazio: CGFloat = 8
             static let raggioSopra: CGFloat = 5
             static let raggioSotto: CGFloat = 2
+            /// La scala di partenza della colonna che cresce dal basso (quasi zero: a zero la forma non si disegna).
+            static let scalaIniziale: CGFloat = 0.001
             /// L'iniziale del mese: 10,5 `inchiostro2`, 4 sopra.
             static let etichetta = Carattere(dimensione: 10.5, peso: .regular)
             static let coloreEtichetta = Colore.inchiostro2
@@ -243,6 +245,10 @@ extension Tema.Apple.Studio {
             static let coloreTitoloGruppo = Colore.inchiostro2
             static let filo = Colore.separatore
             static let paddingRiga: CGFloat = 7
+            /// Fra la scelta della categoria e la nota «proposta da Prisma» sotto.
+            static let spazioNota: CGFloat = 2
+            /// Il pulsante principale finché il modulo non è completo.
+            static let opacitaDisattivo: Double = 0.5
             /// Il velo sotto il modulo disegnato nelle istantanee (i fogli di sistema non si fotografano).
             static let velo = Color(r: 5, g: 12, b: 18, a: 0.30)
         }
@@ -273,6 +279,7 @@ extension Tema.Apple.Studio {
             static let testo = Tema.Apple.Carta.testo
             static let etichetta = Tema.Apple.Carta.etichetta
             static let filetto = Tema.Apple.Carta.filetto
+            static let spessoreFiletto = Tema.Apple.Misura.bordo
             static let sopratitolo = Tema.Apple.Carta.sopratitolo
             static let logo = Tema.Apple.CartaFattura.Colore.logo
             static let altezzaLogo: CGFloat = 22

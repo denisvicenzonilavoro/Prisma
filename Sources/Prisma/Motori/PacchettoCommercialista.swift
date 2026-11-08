@@ -53,10 +53,17 @@ enum PacchettoCommercialista {
     static let bom = "\u{FEFF}"
     private static let formatoData = Formati.formato("dd/MM/yyyy")
 
-    /// Un campo CSV: tra virgolette se contiene «;», virgolette o un a capo.
+    /// Un campo CSV: tra virgolette se contiene «;», virgolette o un a capo. Un testo che comincia con «=», «+», «-», «@»
+    /// o un tabulatore (per esempio un esercente letto male dallo scontrino) prende davanti un apostrofo: Excel non lo
+    /// esegue come formula. I numeri del pacchetto restano come sono.
     static func campo(_ s: String) -> String {
-        guard s.contains(";") || s.contains("\"") || s.contains("\n") || s.contains("\r") else { return s }
-        return "\"" + s.replacingOccurrences(of: "\"", with: "\"\"") + "\""
+        var t = s
+        if let primo = t.unicodeScalars.first, "=+-@\t\r".unicodeScalars.contains(primo),
+           t.range(of: #"^-?\d+(,\d+)?$"#, options: .regularExpression) == nil {
+            t = "'" + t
+        }
+        guard t.contains(";") || t.contains("\"") || t.contains("\n") || t.contains("\r") else { return t }
+        return "\"" + t.replacingOccurrences(of: "\"", with: "\"\"") + "\""
     }
 
     /// Un numero con la virgola dei decimali e senza separatore delle migliaia: «28», «92,40».
@@ -73,10 +80,14 @@ enum PacchettoCommercialista {
         if nomi != nil { intestazione.append("Clienti") }
         var righe = [riga(intestazione)]
         for g in giri {
+            // Un giro da completare porta i km noti (come il PDF, che li somma con «almeno»), vuoto se non ne ha
+            let km: Double? = g.km ?? (g.kmNoti > 0 ? g.kmNoti : nil)
             var campi = [formatoData.string(from: g.giorno), String(g.visite.count),
-                         g.km.map { numero($0, decimali: 1) } ?? "",
-                         g.corretto ? "corretto a mano" : (g.km == nil ? "da completare" : "km andata e ritorno per cliente")]
-            if let e = euroPerKm { campi.append(g.km.map { numero($0 * e, decimali: 2) } ?? "") }
+                         km.map { numero($0, decimali: 1) } ?? "",
+                         g.corretto ? "corretto a mano"
+                             : (g.km == nil ? (km == nil ? "da completare" : "da completare: solo i km noti")
+                                            : "km andata e ritorno per cliente")]
+            if let e = euroPerKm { campi.append(km.map { numero(MotoreChilometri.euro($0, perKm: e), decimali: 2) } ?? "") }
             if let nomi {
                 campi.append(g.visite.map { nomi[$0.clienteId] ?? "" }.filter { !$0.isEmpty }.joined(separator: " · "))
             }

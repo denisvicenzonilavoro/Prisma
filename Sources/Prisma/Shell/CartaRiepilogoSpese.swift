@@ -24,17 +24,22 @@ struct TestiRiepilogoSpese {
 
     private static let formatoData = Formati.formato("d MMM")
 
+    /// «41,5 km», «64 km»: al decimo, come nel CSV (i giri e il totale tornano fra loro).
+    static func km(_ v: Double) -> String { FormatoCifra.mesi.testo(v) + " km" }
+
     init(mese: Date, riepilogo: MotoreChilometri.Riepilogo, spese: [SpesaStudio], nomi: [String: String]?, consulente: String,
          euroPerKm: Double?) {
         titolo = "Chilometri e spese · " + Formati.meseAnno.string(from: mese).capitalizzaPrima
         self.consulente = consulente
         var t: [(String, String)] = [
-            ("Chilometri", (riepilogo.completo ? "" : "almeno ") + FormatoCifra.migliaia(riepilogo.totale) + " km"),
+            ("Chilometri", (riepilogo.completo ? "" : "almeno ") + Self.km(riepilogo.totale)),
             ("Visite", "\(riepilogo.visite)"),
             ("Spese", Formati.euroDecimali(MotoreSpese.totale(spese))),
         ]
         if let e = euroPerKm {
-            t.append(("Km × valore scritto da te", Formati.euroDecimali(riepilogo.totale * e)))
+            // La somma dei valori dei giri, al centesimo come nel CSV dei chilometri
+            let valore = riepilogo.giri.map { MotoreChilometri.euro($0.km ?? $0.kmNoti, perKm: e) }.reduce(0, +)
+            t.append(("Km × valore scritto da te", Formati.euroDecimali(valore)))
         }
         for c in MotoreSpese.perCategoria(spese) { t.append((c.categoria.nome, Formati.euroDecimali(c.totale))) }
         totali = t
@@ -48,7 +53,7 @@ struct TestiRiepilogoSpese {
             if g.corretto { testo += " · corretto a mano" }
             r.append((i == 0 ? "I giri" : nil,
                       Riga(data: Self.formatoData.string(from: g.giorno), testo: testo,
-                           numero: g.km.map { FormatoCifra.migliaia($0) + " km" } ?? "— km")))
+                           numero: g.km.map(Self.km) ?? (g.kmNoti > 0 ? "almeno " + Self.km(g.kmNoti) : "— km"))))
         }
         for (i, s) in spese.enumerated() {
             var testo = s.descrizione.isEmpty ? s.categoria.nome : s.descrizione
@@ -175,6 +180,6 @@ private struct PaginaRiepilogoSpese: View {
                 .frame(minWidth: C.colonnaNumero, alignment: .trailing)
         }
         .padding(.vertical, C.paddingVoce)
-        .overlay(alignment: .bottom) { Rectangle().fill(C.filetto).frame(height: 1) }
+        .overlay(alignment: .bottom) { Rectangle().fill(C.filetto).frame(height: C.spessoreFiletto) }
     }
 }

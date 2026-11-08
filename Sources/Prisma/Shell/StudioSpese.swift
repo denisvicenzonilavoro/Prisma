@@ -82,7 +82,7 @@ enum TestiSpese {
     }
 
     /// «28 km», «— km».
-    static func km(_ v: Double?) -> String { v.map { FormatoCifra.migliaia($0) + " km" } ?? "— km" }
+    static func km(_ v: Double?) -> String { v.map { FormatoCifra.mesi.testo($0) + " km" } ?? "— km" }
 
     /// Il fumetto di un giro: «Studio → Giulia Rossi → Laura Moretti → Studio · 28 km».
     static func percorso(_ g: MotoreChilometri.Giro, partenza: String, nome: (String) -> String) -> String {
@@ -122,7 +122,8 @@ struct SpeseStudioVista: View {
         let imp = stato.dati.impostazioni.studio.spese
         let mese = s.mese(impostazioni: imp)
         // I motori sono puri e leggeri (un mese di appuntamenti): si calcolano qui, sui campi osservati dell'archivio
-        let km = MotoreChilometri.riepilogo(mese: mese, appuntamenti: stato.dati.appuntamenti, impostazioni: imp)
+        let km = MotoreChilometri.riepilogo(mese: mese, appuntamenti: stato.dati.appuntamenti, impostazioni: imp,
+                                            kmClienti: stato.dati.kmClienti)
         let spese = MotoreSpese.delMese(stato.dati.speseStudio.spese, mese: mese)
         let archivio = stato.dati.speseStudio
         return GeometryReader { geo in
@@ -326,7 +327,7 @@ private struct CardKmSpese: View {
                     .foregroundColor(Tema.Apple.Studio.Spese.Card.coloreAvviso)
                     .padding(.bottom, K.sopraBase)
             }
-            NumeroCheConta(km.totale, formato: .intero)
+            NumeroCheConta(km.totale, formato: .mesi)
                 .carattereApple(K.numero)
                 .foregroundColor(K.coloreNumero)
                 .lineLimit(1)
@@ -452,7 +453,7 @@ private struct ColonnaKmSpese: View {
             .fill(colore)
             .frame(maxWidth: .infinity)
             .frame(height: max(0, altezza))
-            .scaleEffect(x: 1, y: (fermo || cresciuta) ? 1 : 0.001, anchor: .bottom)
+            .scaleEffect(x: 1, y: (fermo || cresciuta) ? 1 : t.scalaIniziale, anchor: .bottom)
             .onAppear {
                 guard !fermo else {
                     if !scatto { cresciuta = true }

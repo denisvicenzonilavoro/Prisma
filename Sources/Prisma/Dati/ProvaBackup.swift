@@ -596,6 +596,11 @@ enum ProvaBackup {
                 print("ERRORE: \(errore)")
                 return 1
             }
+            // Un cliente tolto porta via i suoi km; Studio › Spese non si vede in modalità cliente (ProvaBackupSpese.swift)
+            if let errore = provaClienteToltoSpese() {
+                print("ERRORE: \(errore)")
+                return 1
+            }
             // L'archivio a pezzi su disco: conversione, backup, file rovinati, soli file cambiati, interruzioni (ProvaBackupArchivioPezzi.swift)
             if let errore = try provaArchivioPezzi(radice: radice, originale: originale) {
                 print("ERRORE: \(errore)")

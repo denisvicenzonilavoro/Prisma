@@ -33,7 +33,7 @@ extension Istantanee {
         }
         una("782-studio-spese-km-mancanti") { s in
             speseDiProvaScena(s)
-            s.dati.impostazioni.studio.spese.kmAndataRitornoPerCliente["sofia"] = nil
+            s.dati.kmClienti["sofia"] = nil
             if let i = s.dati.appuntamenti.firstIndex(where: { $0.id == SpeseDiProva.prefisso + "visita-21" }) {
                 s.dati.appuntamenti[i].presso = nil
             }
@@ -104,9 +104,9 @@ extension Istantanee {
     nonisolated static func speseDiProvaScena(_ s: StatoShell) {
         var imp = s.dati.impostazioni.studio.spese
         imp.partenza = "Studio (dati di prova)"
-        imp.kmAndataRitornoPerCliente = ["giulia": 14, "laura": 14, "marco": 41, "sofia": 18, "andrea": 22]
         imp.oreAggiornamentoAnno[Calendar.current.component(.year, from: Date())] = 30
         s.dati.impostazioni.studio.spese = imp
+        s.dati.kmClienti = ["giulia": 14, "laura": 14, "marco": 41, "sofia": 18, "andrea": 22]
         // I giri del mese mostrato: il 28 unisce due clienti e l'utente l'ha corretto a mano (47 invece di 55)
         let giri: [(Int, [String])] = [(3, ["giulia", "laura"]), (8, ["marco"]), (14, ["sofia", "andrea"]), (21, ["andrea"]),
                                        (24, ["laura"]), (28, ["giulia", "marco"])]

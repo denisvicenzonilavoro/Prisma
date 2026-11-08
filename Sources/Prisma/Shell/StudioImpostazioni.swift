@@ -98,8 +98,11 @@ struct PaginaImpostazioniStudio: View {
                 NotaImpostazioni("Un obiettivo vuoto non disegna il suo anello. Quanto hai fatto lo calcola Prisma dai tuoi dati.")
             }
             // Chilometri, spese e scadenze («Luce» giro 9, ImpostazioniSpeseVista.swift), con la sua ancora
+            #if os(macOS)
+            // Solo sul Mac, come Studio › Spese (decisione 34)
             SezioneImpostazioniSpese()
                 .id(SezioneImpostazioniSpese.ancora)
+            #endif
             // I dati fiscali per le parcelle e il file XML della fattura (giro 2, ImpostazioniFatture.swift)
             SezioneDatiFatture()
                 .id(SezioneDatiFatture.ancora)

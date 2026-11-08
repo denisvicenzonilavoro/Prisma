@@ -102,6 +102,13 @@ enum MotoreChilometri {
         return cal.date(byAdding: .month, value: -1, to: inizio) ?? inizio
     }
 
+    /// Un numero di km al decimo («41,5»).
+    static func decimo(_ v: Double) -> Double { (v * 10).rounded() / 10 }
+
+    /// Il valore in euro dei km di un giro, al centesimo, con il valore per km scritto dall'utente (lo stesso nel CSV e nel
+    /// PDF del pacchetto, che ne fa la somma).
+    static func euro(_ km: Double, perKm: Double) -> Double { (km * perKm * 100).rounded() / 100 }
+
     static func inizioMese(_ d: Date, _ cal: Calendar = .current) -> Date {
         cal.date(from: cal.dateComponents([.year, .month], from: d)) ?? cal.startOfDay(for: d)
     }
@@ -115,7 +122,7 @@ enum MotoreChilometri {
     }
 
     /// Una visita con i suoi km secondo la tabella dell'utente.
-    static func visita(_ a: Appuntamento, impostazioni: ImpostazioniSpese) -> Visita {
+    static func visita(_ a: Appuntamento, kmClienti: [String: Double]) -> Visita {
         let km: Double?
         let motivo: MotivoSenzaKm?
         if a.clienteId.isEmpty {
@@ -127,7 +134,7 @@ enum MotoreChilometri {
             case .altro:
                 (km, motivo) = (nil, .altrove)
             case .cliente, .studio:
-                if let v = impostazioni.kmAndataRitornoPerCliente[a.clienteId] {
+                if let v = kmClienti[a.clienteId] {
                     (km, motivo) = (v, nil)
                 } else {
                     (km, motivo) = (nil, .distanzaMancante)
@@ -138,7 +145,7 @@ enum MotoreChilometri {
     }
 
     /// I giri del mese che comincia in `mese`, in ordine di data.
-    static func giri(mese: Date, appuntamenti: [Appuntamento], impostazioni: ImpostazioniSpese,
+    static func giri(mese: Date, appuntamenti: [Appuntamento], impostazioni: ImpostazioniSpese, kmClienti: [String: Double],
                      calendario cal: Calendar = .current) -> [Giro] {
         let inizio = inizioMese(mese, cal)
         guard let fine = cal.date(byAdding: .month, value: 1, to: inizio) else { return [] }
@@ -148,10 +155,11 @@ enum MotoreChilometri {
         let perGiorno = Dictionary(grouping: delMese) { cal.startOfDay(for: $0.inizio) }
         return perGiorno.keys.sorted().map { giorno in
             let visite = (perGiorno[giorno] ?? []).sorted { ($0.inizio, $0.id) < ($1.inizio, $1.id) }
-                .map { visita($0, impostazioni: impostazioni) }
+                .map { visita($0, kmClienti: kmClienti) }
             let chiave = ImpostazioniSpese.chiaveGiorno(giorno, calendario: cal)
-            let noti = visite.compactMap(\.km).reduce(0, +)
-            if let corretti = impostazioni.kmCorretti[chiave] {
+            // Al decimo di km, come si scrivono: i giri, il totale, il PDF e il CSV del pacchetto tornano fra loro
+            let noti = decimo(visite.compactMap(\.km).reduce(0, +))
+            if let corretti = impostazioni.kmCorretti[chiave].map(decimo) {
                 return Giro(chiave: chiave, giorno: giorno, visite: visite, km: corretti, kmNoti: corretti, origine: .manuale)
             }
             let completo = visite.allSatisfy { $0.km != nil }
@@ -162,17 +170,17 @@ enum MotoreChilometri {
 
     /// Il riepilogo del mese: giri, totale dei km noti, visite, clienti, visite senza km e la serie dei mesi.
     static func riepilogo(mese: Date, appuntamenti: [Appuntamento], impostazioni: ImpostazioniSpese,
-                          calendario cal: Calendar = .current) -> Riepilogo {
+                          kmClienti: [String: Double], calendario cal: Calendar = .current) -> Riepilogo {
         let inizio = inizioMese(mese, cal)
-        let g = giri(mese: inizio, appuntamenti: appuntamenti, impostazioni: impostazioni, calendario: cal)
+        let g = giri(mese: inizio, appuntamenti: appuntamenti, impostazioni: impostazioni, kmClienti: kmClienti, calendario: cal)
         let visite = g.flatMap(\.visite)
         let serie: [Mese] = (0..<mesiSerie).reversed().compactMap { indietro in
             guard let m = cal.date(byAdding: .month, value: -indietro, to: inizio) else { return nil }
             let km = indietro == 0 ? g.map(\.kmNoti).reduce(0, +)
-                : giri(mese: m, appuntamenti: appuntamenti, impostazioni: impostazioni, calendario: cal).map(\.kmNoti).reduce(0, +)
+                : giri(mese: m, appuntamenti: appuntamenti, impostazioni: impostazioni, kmClienti: kmClienti, calendario: cal).map(\.kmNoti).reduce(0, +)
             return Mese(inizio: m, km: km)
         }
-        return Riepilogo(mese: inizio, giri: g, totale: g.map(\.kmNoti).reduce(0, +), visite: visite.count,
+        return Riepilogo(mese: inizio, giri: g, totale: decimo(g.map(\.kmNoti).reduce(0, +)), visite: visite.count,
                          clienti: Set(visite.map(\.clienteId).filter { !$0.isEmpty }).count,
                          senzaKm: g.map(\.senzaKm).reduce(0, +),
                          senzaLuogo: g.filter { !$0.corretto }.flatMap(\.visite).filter { $0.motivo == .luogoMancante }.count,

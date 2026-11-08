@@ -264,7 +264,7 @@ struct ModuloSpesaStudio: View {
                         CampoCifraFacoltativa(valore: $bozza.iva, unita: "€, se stampata", larghezza: M.campoImporto)
                     }
                     CampoModulo(etichetta: "Categoria") {
-                        VStack(alignment: .leading, spacing: 2) {
+                        VStack(alignment: .leading, spacing: M.spazioNota) {
                             MenuTendina(selezione: $bozza.categoria, opzioni: CategoriaSpesa.allCases.map { ($0, $0.nome) },
                                         larghezza: M.sceltaPresso)
                             if proposta?.categoria != nil, bozza.categoria == proposta?.categoria {
@@ -317,7 +317,7 @@ struct ModuloSpesaStudio: View {
             }
             .buttonStyle(StileBlu())
             .disabled(!valido || stato.solaLettura)
-            .opacity(valido ? 1 : 0.5)
+            .opacity(valido ? 1 : M.opacitaDisattivo)
             .keyboardShortcut(.defaultAction)
         }
         .frame(width: M.foglioLargo.width, height: M.foglioLargo.height)
@@ -403,6 +403,7 @@ private struct ModuloScadenzaStudio: View {
     @Environment(StatoShell.self) private var stato
     @State private var bozza: ScadenzaStudio
     @State private var fatta: Bool
+    @State private var daEliminare = false
     let nuova: Bool
     let chiudi: () -> Void
 
@@ -463,8 +464,7 @@ private struct ModuloScadenzaStudio: View {
         } piede: {
             if !nuova {
                 Button {
-                    stato.eliminaScadenza(bozza.id)
-                    chiudi()
+                    daEliminare = true
                 } label: {
                     Text("Elimina").foregroundColor(Colori.Rubrica.pericolo)
                 }
@@ -485,10 +485,19 @@ private struct ModuloScadenzaStudio: View {
             }
             .buttonStyle(StileBlu())
             .disabled(!valido || stato.solaLettura)
-            .opacity(valido ? 1 : 0.5)
+            .opacity(valido ? 1 : M.opacitaDisattivo)
             .keyboardShortcut(.defaultAction)
         }
         .frame(width: M.foglioLargo.width, height: M.foglio.height)
+        .alert("Eliminare la scadenza?", isPresented: $daEliminare) {
+            Button("Elimina", role: .destructive) {
+                stato.eliminaScadenza(bozza.id)
+                chiudi()
+            }
+            Button("Lascia com’è", role: .cancel) {}
+        } message: {
+            Text("La scadenza si toglie da Prisma. Resta nei backup già fatti.")
+        }
     }
 }
 
@@ -501,6 +510,8 @@ private struct FoglioCorsiStudio: View {
     @State private var ore: Double?
     @State private var attestato: URL?
     @State private var modifica = false
+    /// Il corso da togliere, dopo la conferma (si toglie anche il suo attestato).
+    @State private var daEliminare: CorsoAggiornamento?
 
     var body: some View {
         let anno = Calendar.current.component(.year, from: Date())
@@ -538,7 +549,7 @@ private struct FoglioCorsiStudio: View {
                             } label: { Image(systemName: "pencil") }
                             .buttonStyle(.plain)
                             .help("Modifica il corso")
-                            Button { stato.eliminaCorso(c.id) } label: { Image(systemName: "minus.circle") }
+                            Button { daEliminare = c } label: { Image(systemName: "minus.circle") }
                                 .buttonStyle(.plain)
                                 .help("Togli il corso e il suo attestato")
                         }
@@ -601,6 +612,20 @@ private struct FoglioCorsiStudio: View {
                 .keyboardShortcut(.defaultAction)
         }
         .frame(width: M.foglioLargo.width, height: M.foglioLargo.height)
+        .alert("Togliere il corso?", isPresented: Binding(get: { daEliminare != nil }, set: { if !$0 { daEliminare = nil } })) {
+            Button("Togli", role: .destructive) {
+                if let c = daEliminare {
+                    stato.eliminaCorso(c.id)
+                    if bozza.id == c.id { azzera() }
+                }
+                daEliminare = nil
+            }
+            Button("Lascia com’è", role: .cancel) { daEliminare = nil }
+        } message: {
+            Text(daEliminare?.attestato == nil
+                 ? "Il corso «\(daEliminare?.titolo ?? "")» si toglie da Prisma. Resta nei backup già fatti."
+                 : "Il corso «\(daEliminare?.titolo ?? "")» e il file del suo attestato si tolgono da Prisma. Restano nei backup già fatti.")
+        }
     }
 
     private func azzera() {
@@ -632,7 +657,8 @@ private struct FoglioVisiteSpese: View {
     var body: some View {
         let imp = stato.dati.impostazioni.studio.spese
         let mese = stato.studioSpese.mese(impostazioni: imp)
-        let km = MotoreChilometri.riepilogo(mese: mese, appuntamenti: stato.dati.appuntamenti, impostazioni: imp)
+        let km = MotoreChilometri.riepilogo(mese: mese, appuntamenti: stato.dati.appuntamenti, impostazioni: imp,
+                                            kmClienti: stato.dati.kmClienti)
         return CorniceModulo(titolo: "Le visite di \(TestiSpese.mese(mese))") {
             VStack(alignment: .leading, spacing: M.spazioRighe) {
                 NotaFoglio(testo: "I km sono quelli di andata e ritorno che scrivi per ogni cliente; se un giro unisce più "
@@ -678,7 +704,7 @@ private struct FoglioVisiteSpese: View {
                         larghezza: M.sceltaPresso)
                 .disabled(stato.solaLettura)
             if !v.clienteId.isEmpty {
-                CampoCifraFacoltativa(valore: Binding(get: { imp.kmAndataRitornoPerCliente[v.clienteId] },
+                CampoCifraFacoltativa(valore: Binding(get: { stato.dati.kmClienti[v.clienteId] },
                                                       set: { stato.impostaKmCliente(v.clienteId, $0) }),
                                       unita: "km a/r", larghezza: M.campoKm)
                     .disabled(stato.solaLettura)

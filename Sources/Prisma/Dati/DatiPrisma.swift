@@ -86,6 +86,10 @@ struct DatiPrisma: Codable, Equatable {
     /// Studio › Spese («Luce» giro 9, versione 27, SpeseStudio.swift): le spese con gli scontrini, le scadenze e i corsi di
     /// aggiornamento del consulente, scritti da lui. Restano sul Mac: non entrano in «Prisma ovunque».
     var speseStudio = ArchivioSpese()
+    /// I km di andata e ritorno fra la partenza del consulente e ogni cliente (clienteId → km), scritti dall'utente per
+    /// Studio › Spese (versione 27, «Luce» giro 9). Un dato del cliente: sta nel suo file della cartella a pezzi e se ne va
+    /// con lui. Resta sul Mac: non entra in «Prisma ovunque».
+    var kmClienti: [String: Double] = [:]
     var clienteAttivoId: String
     var impostazioni: Impostazioni
 
@@ -152,9 +156,10 @@ struct DatiPrisma: Codable, Equatable {
     ///     clienti (`promesse`), i confronti tra documenti (`confrontiDocumenti`), le coperture delle polizze
     ///     (`coperture`) e il resoconto dell'incontro (`Incontro.resoconto`), tutti letti con tolleranza.
     ///     Giro 9: chilometri, spese e scadenze del consulente (`speseStudio`: spese con gli scontrini, scadenze, corsi di
-    ///     aggiornamento, letti con tolleranza), le loro impostazioni (`Impostazioni.studio.spese`: partenza, km di
-    ///     andata e ritorno per cliente, correzioni dei giri, ore richieste per anno, nomi nel pacchetto spenti) e dove si
+    ///     aggiornamento, letti con tolleranza), le loro impostazioni (`Impostazioni.studio.spese`: partenza,
+    ///     correzioni dei giri, ore richieste per anno, nomi nel pacchetto spenti) e dove si
     ///     è svolto un appuntamento (`Appuntamento.presso`: dal cliente, in studio, altrove; nil = da chiedere).
+    ///     I km di andata e ritorno per cliente (`kmClienti`), nel file di ogni cliente.
     static let versioneAttuale = 27
 
     init(clienti: [Cliente], appuntamenti: [Appuntamento], attivita: [Attivita], posizioni: [Posizione],
@@ -223,7 +228,7 @@ struct DatiPrisma: Codable, Equatable {
         case pratiche
         case partiteRischio
         case promesse, confrontiDocumenti, coperture
-        case speseStudio
+        case speseStudio, kmClienti
     }
 
     /// Lettura tollerante: gli archivi delle versioni precedenti non hanno tutte le sezioni.
@@ -289,6 +294,9 @@ struct DatiPrisma: Codable, Equatable {
         coperture = ((try? c.decodeIfPresent(ElencoTollerante<CoperturaPolizza>.self, forKey: .coperture)) ?? nil)?.elementi ?? []
         // Chilometri, spese e scadenze (versione 27, giro 9): illeggibili = archivio delle spese vuoto
         speseStudio = ((try? c.decodeIfPresent(ArchivioSpese.self, forKey: .speseStudio)) ?? nil) ?? ArchivioSpese()
+        // I km per cliente: un valore negativo o non finito si scarta, gli altri restano
+        kmClienti = (((try? c.decodeIfPresent([String: Double].self, forKey: .kmClienti)) ?? nil) ?? [:])
+            .filter { $0.value.isFinite && $0.value >= 0 }
         clienteAttivoId = try c.decodeIfPresent(String.self, forKey: .clienteAttivoId) ?? (clienti.first?.id ?? "")
         impostazioni = try c.decodeIfPresent(Impostazioni.self, forKey: .impostazioni) ?? Impostazioni()
     }
@@ -343,6 +351,7 @@ struct DatiPrisma: Codable, Equatable {
         try metti(confrontiDocumenti, .confrontiDocumenti)
         try metti(coperture, .coperture)
         try metti(speseStudio, .speseStudio)
+        try metti(kmClienti, .kmClienti)
         try metti(clienteAttivoId, .clienteAttivoId)
         try metti(impostazioni, .impostazioni)
     }

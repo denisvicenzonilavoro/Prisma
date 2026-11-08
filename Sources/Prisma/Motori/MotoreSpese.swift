@@ -56,7 +56,8 @@ enum MotoreSpese {
         return cal.date(from: c) ?? data
     }
 
-    /// Segna fatta la scadenza `id`: resta nell'archivio con la data, e se è ricorrente nasce la prossima.
+    /// Segna fatta la scadenza `id`: resta nell'archivio con la data, e se è ricorrente nasce la prossima. La prossima di una
+    /// scadenza di prova resta di prova (id con «prova-»): «Togli i clienti di prova» la toglie e la card la segna.
     static func segnaFatta(_ id: String, in scadenze: [ScadenzaStudio], il: Date,
                            calendario cal: Calendar = .current) -> [ScadenzaStudio] {
         guard let i = scadenze.firstIndex(where: { $0.id == id }), scadenze[i].fattaIl == nil else { return scadenze }
@@ -64,8 +65,10 @@ enum MotoreSpese {
         nuove[i].fattaIl = il
         if let r = nuove[i].ricorrenza {
             let s = nuove[i]
-            nuove.append(ScadenzaStudio(titolo: s.titolo, data: prossimaData(s.data, ricorrenza: r, calendario: cal),
-                                        ricorrenza: r, tipo: s.tipo, importo: nil, nota: s.nota))
+            var prossima = ScadenzaStudio(titolo: s.titolo, data: prossimaData(s.data, ricorrenza: r, calendario: cal),
+                                          ricorrenza: r, tipo: s.tipo, importo: nil, nota: s.nota)
+            if s.id.hasPrefix(SpeseDiProva.prefisso) { prossima.id = SpeseDiProva.prefisso + prossima.id }
+            nuove.append(prossima)
         }
         return nuove
     }
@@ -143,8 +146,9 @@ enum LettoreScontrino {
         let chiavi = ["TOTALE", "TOTAL", "IMPORTO PAGATO", "DA PAGARE"]
         for (i, r) in righe.enumerated() {
             let m = maiuscolo(r)
+            // Una riga «… IVA …» è il totale solo se è un totale con l'IVA dentro («TOTALE IVA INCLUSA»), non «DI CUI IVA»
             guard chiavi.contains(where: { m.contains($0) }), !m.contains("SUBTOTALE"), !m.contains("SUB TOTALE"),
-                  !m.contains("IVA") else { continue }
+                  !m.contains("IVA") || eTotale(m) else { continue }
             if let v = importi(r).last { return v }
             if i + 1 < righe.count, let v = importi(righe[i + 1]).first { return v }
         }
@@ -195,14 +199,29 @@ enum LettoreScontrino {
         return nil
     }
 
-    /// L'IVA stampata («DI CUI IVA 3,27», «IVA 10% 3,27»): l'ultimo importo della riga, non la partita IVA.
+    /// L'IVA stampata («DI CUI IVA 3,27», «IVA 10% 3,27»): l'ultimo importo della riga che non sia un'aliquota («22,00%»),
+    /// non la partita IVA e non il totale («TOTALE IVA INCLUSA 36,00»).
     private static func iva(_ righe: [String]) -> Double? {
         for r in righe {
             let m = maiuscolo(r)
-            guard m.contains("IVA"), !m.contains("P.IVA"), !m.contains("P. IVA"), !m.contains("PARTITA") else { continue }
-            if let v = importi(r).last { return v }
+            guard m.contains("IVA"), !m.contains("P.IVA"), !m.contains("P. IVA"), !m.contains("PARTITA"), !eTotale(m)
+            else { continue }
+            if let v = importi(senzaAliquote(r)).last { return v }
         }
         return nil
+    }
+
+    /// Vero per una riga di totale con l'IVA dentro: «TOTALE IVA INCLUSA», «TOTALE COMPLESSIVO IVA COMPRESA», «IVA INCL.».
+    /// «TOTALE IVA 3,27» (l'IVA di tutto lo scontrino) non è il totale.
+    private static func eTotale(_ m: String) -> Bool {
+        let chiavi = ["TOTALE", "TOTAL", "IMPORTO PAGATO", "DA PAGARE"]
+        guard chiavi.contains(where: m.contains), !m.contains("SUBTOTALE"), !m.contains("SUB TOTALE") else { return false }
+        return m.contains("INCLUSA") || m.contains("COMPRESA") || m.contains("IVA INCL")
+    }
+
+    /// La riga senza le aliquote scritte con il segno di percento («22,00%», «10 %»), perché non siano lette come importi.
+    private static func senzaAliquote(_ riga: String) -> String {
+        riga.replacingOccurrences(of: #"\d+(?:[.,]\d+)?\s?%"#, with: " ", options: .regularExpression)
     }
 
     /// Una categoria proposta dalle parole dello scontrino; nil se non si capisce (la sceglie l'utente).

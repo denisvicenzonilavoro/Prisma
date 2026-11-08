@@ -61,7 +61,7 @@ struct SezioneImpostazioniSpese: View {
                         RigaImpostazione(titolo: c.nome, sottotitolo: c.indirizzo.isEmpty ? nil : c.indirizzo,
                                          ultima: i == clienti.count - 1) {
                             CampoNumeroStudio(etichetta: nil, unita: "km", larghezza: f.campoNumero, decimali: 1,
-                                              valore: Binding(get: { imp.kmAndataRitornoPerCliente[c.id] },
+                                              valore: Binding(get: { stato.dati.kmClienti[c.id] },
                                                               set: { stato.impostaKmCliente(c.id, $0) }))
                         }
                     }
