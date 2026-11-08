@@ -260,6 +260,11 @@ enum VoceConfronto: Hashable {
     /// (non a ogni disegno della barra in alto).
     private(set) var notifiche: [Notifica] = []
     @ObservationIgnored private var timerNotifiche: Timer?
+    /// Il giorno e l'ora intera di adesso, osservati: `chiaveVista` e `derivatiValidi` li leggono, così le viste che
+    /// mostrano dati ricavati (e i corpi `Equatable` con la `ChiaveVista`) si rifanno allo scoccare dell'ora e a
+    /// mezzanotte anche senza modifiche ai dati. Li aggiornano il timer delle notifiche (al minuto) e il cambio di
+    /// giorno o di fuso (`riverificaGiornoDerivati`).
+    private(set) var orologioVista = OrologioVista.di(Date())
     /// Le notifiche già viste in questa sessione (la campanella conta le altre).
     var notificheViste: Set<String> = []
     /// Eventi interni della shell (sblocco, notifica nuova con la posizione della campanella): EventiShell.swift.
@@ -1199,7 +1204,7 @@ enum VoceConfronto: Hashable {
         case .annoInsieme?:
             return .annoInsieme
         case .confronto(let a, let b)?:
-            let voci = ElementoConfronto.elenco(dati.istantanea, cliente: clienteAttivoId)
+            let voci = ElementoConfronto.elenco(dati, cliente: clienteAttivoId)
             if voci.contains(where: { $0.voce == a }) && voci.contains(where: { $0.voce == b }) { return .confronto(a, b) }
             return predefinita
         default:
@@ -1349,7 +1354,7 @@ enum VoceConfronto: Hashable {
 
     /// Il confronto proposto di partenza: quello aperto in Confronti o la proposta contro la posizione in essere.
     func confrontoPredefinito() -> SceltaProspetto? {
-        let voci = ElementoConfronto.elenco(dati.istantanea, cliente: clienteAttivoId)
+        let voci = ElementoConfronto.elenco(dati, cliente: clienteAttivoId)
         let coppia = ElementoConfronto.coppia(voci, a: confrontoA, b: confrontoB, posizioni: posizioniCliente(clienteAttivoId))
         guard let a = coppia.0, let b = coppia.1 else { return nil }
         return .confronto(a.voce, b.voce)
@@ -2572,12 +2577,22 @@ enum VoceConfronto: Hashable {
     /// con la tolleranza che lascia a macOS raggruppare i risvegli.
     private func avviaTimerNotifiche() {
         timerNotifiche?.invalidate()
+        aggiornaOrologioVista()
         let timer = Timer(timeInterval: StatoShell.intervalloNotifiche, repeats: true) { [weak self] _ in
-            DispatchQueue.main.async { self?.ricalcolaNotifiche() }
+            DispatchQueue.main.async {
+                self?.aggiornaOrologioVista()
+                self?.ricalcolaNotifiche()
+            }
         }
         timer.tolerance = StatoShell.tolleranzaNotifiche
         RunLoop.main.add(timer, forMode: .default)
         timerNotifiche = timer
+    }
+
+    /// Porta `orologioVista` al giorno e all'ora di `adesso`; non tocca nulla (e non ridisegna nessuno) se sono gli stessi.
+    func aggiornaOrologioVista(_ adesso: Date = Date()) {
+        let nuovo = OrologioVista.di(adesso)
+        if nuovo != orologioVista { orologioVista = nuovo }
     }
 
     func ricalcolaNotifiche() {

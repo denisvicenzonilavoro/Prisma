@@ -715,7 +715,7 @@ struct AppProspetti: View {
     }
 
     private func sceltaConfronto(_ a: VoceConfronto, _ b: VoceConfronto) -> some View {
-        let voci = ElementoConfronto.elenco(stato.dati.istantanea, cliente: cliente)
+        let voci = ElementoConfronto.elenco(stato.dati, cliente: cliente)
         return VStack(alignment: .leading, spacing: 10) {
             sceltaVoce("A", voci: voci, selezione: Binding(get: { a }, set: { stato.prospetto = .confronto($0, b) }))
             sceltaVoce("B", voci: voci, selezione: Binding(get: { b }, set: { stato.prospetto = .confronto(a, $0) }))

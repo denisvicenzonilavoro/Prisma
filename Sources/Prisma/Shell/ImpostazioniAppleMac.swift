@@ -81,12 +81,24 @@ extension AppImpostazioni {
                     .entrataCascata(primo)
             }
             ForEach(Array(pagine.enumerated()), id: \.element) { i, p in
-                VoceLateraleImpostazioniApple(titolo: p.titolo, attiva: stato.schedaImpostazioni == p,
-                                              stato: statoVoceLaterale(p)) {
-                    stato.schedaImpostazioni = p
+                Group {
+                    if p == .ovunque {
+                        // Il pallino legge `stato.ovunque.problema` (@Published di StatoOvunque, non di StatoShell):
+                        // senza osservarlo un errore della sincronizzazione in background non lo accenderebbe
+                        OsservaOggetto(stato.ovunque) { voceLateraleApple(p) }
+                    } else {
+                        voceLateraleApple(p)
+                    }
                 }
                 .entrataCascata(primo + i + (titolo == nil ? 0 : 1), sfocatura: false)
             }
+        }
+    }
+
+    private func voceLateraleApple(_ p: SchedaImpostazioni) -> some View {
+        VoceLateraleImpostazioniApple(titolo: p.titolo, attiva: stato.schedaImpostazioni == p,
+                                      stato: statoVoceLaterale(p)) {
+            stato.schedaImpostazioni = p
         }
     }
 

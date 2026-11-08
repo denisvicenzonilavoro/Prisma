@@ -268,7 +268,8 @@ private struct ElencoTrackRecord: View, Equatable {
 
     private func pieno(_ t: TrackRecord, prova: Bool, larghezza: CGFloat) -> some View {
         let d = Tema.Apple.Studio.Track.Disposizione.self
-        let tabella = TabellaRiferimenti(stato.dati.impostazioni.riferimenti)
+        // Senza iscrivere il corpo alle impostazioni: i riferimenti entrano nei calcoli, quindi nella chiave
+        let tabella = TabellaRiferimenti(stato.dati.impostazioniDeiCalcoli.riferimenti)
         let voci = PresentazioneTrackRecord.ordinate(t.voci)
         let conGrafico = larghezza >= d.larghezzaConGrafico
         let colonne = larghezza < d.larghezzaTileStrette ? d.colonneTileStrette : d.colonneTile

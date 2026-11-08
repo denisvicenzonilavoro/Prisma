@@ -95,6 +95,8 @@ extension ProvaBackup {
         stato.dati.clienti[0].nome += "·"
         guard clientiToccati else { return "dati a pezzi: una modifica a un cliente non avvisa chi legge i clienti" }
 
+        if let errore = provaOsservazioniMirate(stato) { return errore }
+
         // `carica` sostituisce tutto, con un solo segnale e le cache rifatte
         let fittizi = ClientiFittizi.completi()
         let (s1, c1) = (segnali, stato.versioneCalcoli)
@@ -107,6 +109,60 @@ extension ProvaBackup {
         // Dopo carica le modifiche continuano a partire (l'aggancio resta)
         stato.dati.clienti[0].nome += "·"
         guard segnali == s1 + 2 else { return "dati a pezzi: dopo carica le modifiche non fanno più partire il salvataggio" }
+        return nil
+    }
+
+    /// Le letture mirate della revisione della tappa 1: l'ora e il giorno arrivano alle viste dei dati ricavati,
+    /// le impostazioni dei calcoli si leggono senza iscriversi a tutte le impostazioni, l'elenco dei confronti legge
+    /// solo clienti, posizioni e simulazioni.
+    static func provaOsservazioniMirate(_ stato: StatoShell) -> String? {
+        // L'ora e il giorno: chi legge la ChiaveVista o una cache giornaliera si rifà allo scoccare dell'ora
+        let adesso = Date()
+        stato.aggiornaOrologioVista(adesso)
+        var chiaveToccata = false
+        var prossimiToccati = false
+        withObservationTracking { _ = stato.chiaveVista } onChange: { chiaveToccata = true }
+        withObservationTracking { _ = stato.prossimiAppuntamenti } onChange: { prossimiToccati = true }
+        stato.aggiornaOrologioVista(adesso)
+        guard !chiaveToccata, !prossimiToccati else {
+            return "dati a pezzi: lo stesso giorno e la stessa ora ridisegnano le viste dei dati ricavati"
+        }
+        stato.aggiornaOrologioVista(adesso.addingTimeInterval(3600))
+        guard chiaveToccata else { return "dati a pezzi: allo scoccare dell'ora chi legge la chiave delle viste non si rifà" }
+        guard prossimiToccati else { return "dati a pezzi: allo scoccare dell'ora chi legge i prossimi appuntamenti non si rifà" }
+        var giornoToccato = false
+        withObservationTracking { _ = stato.chiaveVista } onChange: { giornoToccato = true }
+        stato.riverificaGiornoDerivati()
+        stato.aggiornaOrologioVista(adesso.addingTimeInterval(86_400))
+        guard giornoToccato else { return "dati a pezzi: a mezzanotte chi legge la chiave delle viste non si rifà" }
+        stato.aggiornaOrologioVista(adesso)
+
+        // Le impostazioni dei calcoli: l'aspetto non rifà chi le legge; i giorni del seguito e i riferimenti cambiano
+        // la versione dei calcoli, quindi la chiave dei corpi Equatable che le leggono
+        var impostazioniToccate = false
+        withObservationTracking { _ = stato.dati.impostazioniDeiCalcoli } onChange: { impostazioniToccate = true }
+        stato.dati.impostazioni.aspetto = stato.dati.impostazioni.aspetto == .scuro ? .chiaro : .scuro
+        stato.dati.impostazioni.nomeUtente += "·"
+        guard !impostazioniToccate else { return "dati a pezzi: le impostazioni dei calcoli si rifanno per l'aspetto o il nome" }
+        let c0 = stato.versioneCalcoli
+        let altriGiorni = Impostazioni.sceltaGiorniSeguito.first { $0 != stato.dati.impostazioni.giorniSeguitoProposte }
+        stato.dati.impostazioni.giorniSeguitoProposte = altriGiorni ?? stato.dati.impostazioni.giorniSeguitoProposte + 1
+        guard stato.versioneCalcoli != c0 else { return "dati a pezzi: i giorni del seguito non cambiano la chiave del portafoglio" }
+        let c1 = stato.versioneCalcoli
+        stato.dati.impostazioni.riferimenti.perMercato = "prova"
+        guard stato.versioneCalcoli != c1 else { return "dati a pezzi: i riferimenti non cambiano la chiave del track record" }
+
+        // L'elenco dei confronti dai dati vivi: lo stesso di quello dall'istantanea, e una nota non lo tocca
+        let cliente = stato.dati.clienti[0].id
+        let daVivi = ElementoConfronto.elenco(stato.dati, cliente: cliente).map(\.voce)
+        let daIstantanea = ElementoConfronto.elenco(stato.dati.istantanea, cliente: cliente).map(\.voce)
+        guard daVivi == daIstantanea else { return "dati a pezzi: l'elenco dei confronti dai dati vivi non è quello dell'archivio" }
+        var confrontiToccati = false
+        withObservationTracking { _ = ElementoConfronto.elenco(stato.dati, cliente: cliente) } onChange: { confrontiToccati = true }
+        stato.dati.note[0].testo += "·"
+        guard !confrontiToccati else { return "dati a pezzi: una nota rifà l'elenco dei confronti di Prospetti" }
+        stato.dati.posizioni[0].nome += "·"
+        guard confrontiToccati else { return "dati a pezzi: una posizione cambiata non rifà l'elenco dei confronti" }
         return nil
     }
 }

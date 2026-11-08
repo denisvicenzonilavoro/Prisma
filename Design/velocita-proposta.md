@@ -146,6 +146,12 @@ fermo.
 | Aprire il radar | 93 → 172 ms | 1.577 → 564 ms | 3 · 0 |
 | Tornare dal radar | 182 → 270 ms | 2.023 → 1.855 ms | 8 · 0 |
 
+Dopo le correzioni della revisione (l'ora e il giorno osservati per le viste dei dati ricavati, le impostazioni dei
+calcoli lette senza iscriversi a tutte le impostazioni, l'elenco dei confronti dai soli clienti, posizioni e
+simulazioni), stessa prova l'8 novembre, aggiornamento 5 · 200 clienti: tasto in una nota 3 · 24 ms, aprire Posizioni
+283 · 420 ms, aspetto scuro 348 · 517 ms, avvio 356 · 663 ms, aprire il radar 90 · 181 ms, tornare dal radar
+165 · 330 ms.
+
 Prima, ogni azione mandava 1-3 avvisi a StatoShell, e ognuno rivalutava **tutte** le viste che lo osservano (circa 300):
 ora un tasto in una nota rivaluta 0-2 corpi. Resta da fare (tappa 2): dividere ancora i dati per cliente e per nota, e
 guardare le viste che leggono l'archivio intero con `istantanea` nel body (Confronti, Esame OCF).

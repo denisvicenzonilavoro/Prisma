@@ -18,7 +18,7 @@ struct ConfrontoIpotesi: View {
     private var cliente: String { stato.clienteAttivoId }
 
     /// Tutte le voci confrontabili del cliente.
-    private var voci: [ElementoConfronto] { ElementoConfronto.elenco(stato.dati.istantanea, cliente: cliente) }
+    private var voci: [ElementoConfronto] { ElementoConfronto.elenco(stato.dati, cliente: cliente) }
 
     var body: some View {
         let _ = ContaCorpi.segna()

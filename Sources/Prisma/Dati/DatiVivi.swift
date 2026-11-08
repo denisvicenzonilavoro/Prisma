@@ -119,6 +119,12 @@ import Observation
         impostazioni = d.impostazioni
     }
 
+    /// Le impostazioni lette senza iscrivere la vista, per i corpi `Equatable` con la `ChiaveVista` (CorpoPortafoglio,
+    /// ElencoTrackRecord). Solo per i campi che entrano nei calcoli (`Impostazioni.stessiCalcoli`): cambiandoli cambia
+    /// `versioneCalcoli`, quindi la chiave, e il corpo si ridisegna lo stesso. Letta con `impostazioni` iscriverebbe il
+    /// corpo a ogni impostazione (aspetto, sfondo, un tasto nel nome utente…) scavalcando l'uguaglianza della chiave.
+    var impostazioniDeiCalcoli: Impostazioni { _impostazioni }
+
     private func segnala(_ cambio: Cambio) {
         if !inCarica { aggancio?(cambio) }
     }

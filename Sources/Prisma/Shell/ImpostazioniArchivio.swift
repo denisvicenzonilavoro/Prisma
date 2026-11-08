@@ -66,12 +66,16 @@ extension AppImpostazioni {
 
             // «Luce» giro 6: la Biblioteca (PDF di condizioni, KID, circolari) nel backup di base, con l'interruttore
             GruppoImpostazioni(titolo: "Biblioteca") {
-                RigaImpostazione(titolo: "Escludi la Biblioteca dal backup",
-                                 sottotitolo: testoMisuraBiblioteca,
-                                 aiuto: "Circolari e manuali interni possono essere riservati: decidi tu se possono stare in un backup su iCloud Drive. Se la escludi, un ripristino tiene la Biblioteca di questo Mac",
-                                 ultima: true) {
-                    interruttore(Binding(get: { stato.dati.impostazioni.backup.escludiBiblioteca == true },
-                                         set: { stato.dati.impostazioni.backup.escludiBiblioteca = $0 ? true : nil }))
+                // Il numero dei documenti viene da StatoBiblioteca (ObservableObject, non osservato da StatoShell):
+                // osservato qui, la riga si aggiorna anche quando si aggiunge un documento con la pagina aperta
+                OsservaOggetto(stato.biblioteca) {
+                    RigaImpostazione(titolo: "Escludi la Biblioteca dal backup",
+                                     sottotitolo: testoMisuraBiblioteca,
+                                     aiuto: "Circolari e manuali interni possono essere riservati: decidi tu se possono stare in un backup su iCloud Drive. Se la escludi, un ripristino tiene la Biblioteca di questo Mac",
+                                     ultima: true) {
+                        interruttore(Binding(get: { stato.dati.impostazioni.backup.escludiBiblioteca == true },
+                                             set: { stato.dati.impostazioni.backup.escludiBiblioteca = $0 ? true : nil }))
+                    }
                 }
             }
             .cascataImpostazioni(6)
