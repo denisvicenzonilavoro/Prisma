@@ -180,6 +180,19 @@ enum ProvaCalcoliStorie {
         } else {
             verifica.vero("Storie: la pagina dei clienti nuovi c'è", false)
         }
+        // Con due presentatori («Luce» giro 12): Bruno (dell'anno) presentato da Carla, Carla presentata da Anna
+        var conPassaparola = dati
+        if let b = conPassaparola.clienti.firstIndex(where: { $0.id == "bruno" }),
+           let c = conPassaparola.clienti.firstIndex(where: { $0.id == "carla" }) {
+            conPassaparola.clienti[b].presentatoDa = "carla"
+            conPassaparola.clienti[c].presentatoDa = "anna"
+        }
+        if case .nuoviClienti(_, let passaparola)? = MotoreStorie.anno(dati: conPassaparola, anno: 2026, oggi: oggi, cal: cal)
+            .first(where: { $0.nome == "nuoviClienti" }) {
+            verifica("Storie: dal passaparola solo i clienti nuovi dell'anno con «Presentato da»", Double(passaparola ?? -1), 1)
+        } else {
+            verifica.vero("Storie: la pagina dei clienti nuovi c'è (con il passaparola)", false)
+        }
         if case .patrimonio(let valore, _, let variazione)? = p.first(where: { $0.nome == "patrimonio" }) {
             verifica("Storie: il patrimonio seguito è il valore di oggi", valore, 30_000)
             verifica.vero("Storie: al primo anno (niente prima del 1° gennaio) nessuna variazione", variazione == nil)

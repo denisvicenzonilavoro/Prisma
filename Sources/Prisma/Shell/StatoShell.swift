@@ -3371,6 +3371,10 @@ enum VoceConfronto: Hashable {
         }
         // E i moduli fac-simile («Luce» giro 10)
         togliEsempiModuli()
+        // I potenziali clienti di prova («Luce» giro 12)
+        var potenziali = dati.potenziali
+        PotenzialiDiProva.togli(&potenziali)
+        if potenziali != dati.potenziali { dati.potenziali = potenziali }
     }
 
     /// Torna ai dati di prova (con backup di sicurezza dello stato attuale): i 5 clienti del template,
