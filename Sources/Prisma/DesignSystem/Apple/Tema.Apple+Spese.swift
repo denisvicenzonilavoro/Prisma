@@ -294,9 +294,14 @@ extension Tema.Apple.Studio {
             static let paddingVoce: CGFloat = 4
             static let colonnaData: CGFloat = 70
             static let colonnaNumero: CGFloat = 70
-            /// Quante righe stanno su una pagina (le altre continuano sulla pagina dopo).
-            static let righePrimaPagina = 26
-            static let righeAltrePagine = 38
+            // La paginazione per altezza (le righe che non stanno continuano sulla pagina dopo), con stime prudenti dei
+            // blocchi disegnati: una voce (10,5 pt più il padding 2 × 4), un'intestazione di sezione (con lo spazio sopra),
+            // il titolo con il consulente, «Il mese» e il piede (fino a tre righe da 8,5 pt).
+            static let altezzaVoce: CGFloat = 22
+            static let altezzaSezione: CGFloat = 36
+            static let altezzaTitoli: CGFloat = 50
+            static let altezzaIlMese: CGFloat = 18
+            static let altezzaPiede: CGFloat = 36
         }
     }
 }

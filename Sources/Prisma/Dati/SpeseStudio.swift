@@ -258,6 +258,40 @@ struct CorsoAggiornamento: Codable, Identifiable, Equatable {
     }
 }
 
+// MARK: - Visite di clienti eliminati
+
+/// Una visita conclusa di un cliente poi eliminato, tenuta per i chilometri dei mesi già chiusi: senza nome, titolo,
+/// luogo né note, solo l'ora, dove si è svolta e i km di andata e ritorno che valevano quel giorno. `gruppo` è una sigla a
+/// caso, uguale per le visite dello stesso cliente (due visite di fila sono una sola andata e ritorno) e senza legami con
+/// il cliente tolto.
+struct VisitaTolta: Codable, Identifiable, Equatable {
+    /// L'id dell'appuntamento di allora.
+    var id: String
+    var inizio: Date
+    var presso: LuogoIncontro?
+    var km: Double?
+    var gruppo: String
+
+    init(id: String, inizio: Date, presso: LuogoIncontro?, km: Double?, gruppo: String) {
+        self.id = id
+        self.inizio = inizio
+        self.presso = presso
+        self.km = km
+        self.gruppo = gruppo
+    }
+
+    private enum CodingKeys: String, CodingKey { case id, inizio, presso, km, gruppo }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        inizio = try c.decode(Date.self, forKey: .inizio)
+        presso = (try? c.decodeIfPresent(LuogoIncontro.self, forKey: .presso)) ?? nil
+        km = ((try? c.decodeIfPresent(Double.self, forKey: .km)) ?? nil).flatMap { $0.isFinite && $0 >= 0 ? $0 : nil }
+        gruppo = ((try? c.decodeIfPresent(String.self, forKey: .gruppo)) ?? nil) ?? id
+    }
+}
+
 // MARK: - L'archivio delle spese
 
 /// Spese, scadenze e corsi del consulente (`DatiPrisma.speseStudio`, versione 27, «Luce» giro 9).
@@ -265,16 +299,20 @@ struct ArchivioSpese: Codable, Equatable {
     var spese: [SpesaStudio] = []
     var scadenze: [ScadenzaStudio] = []
     var corsi: [CorsoAggiornamento] = []
+    /// Le visite concluse dei clienti eliminati, perché i km dei mesi già chiusi col commercialista non cambino.
+    var visiteTolte: [VisitaTolta] = []
 
-    init(spese: [SpesaStudio] = [], scadenze: [ScadenzaStudio] = [], corsi: [CorsoAggiornamento] = []) {
+    init(spese: [SpesaStudio] = [], scadenze: [ScadenzaStudio] = [], corsi: [CorsoAggiornamento] = [],
+         visiteTolte: [VisitaTolta] = []) {
         self.spese = spese
         self.scadenze = scadenze
         self.corsi = corsi
+        self.visiteTolte = visiteTolte
     }
 
-    var vuoto: Bool { spese.isEmpty && scadenze.isEmpty && corsi.isEmpty }
+    var vuoto: Bool { spese.isEmpty && scadenze.isEmpty && corsi.isEmpty && visiteTolte.isEmpty }
 
-    private enum CodingKeys: String, CodingKey { case spese, scadenze, corsi }
+    private enum CodingKeys: String, CodingKey { case spese, scadenze, corsi, visiteTolte }
 
     /// Lettura tollerante: un elemento illeggibile si scarta, gli altri restano; un elenco illeggibile si apre vuoto.
     init(from decoder: Decoder) throws {
@@ -282,6 +320,7 @@ struct ArchivioSpese: Codable, Equatable {
         spese = ((try? c.decodeIfPresent(ElencoTollerante<SpesaStudio>.self, forKey: .spese)) ?? nil)?.elementi ?? []
         scadenze = ((try? c.decodeIfPresent(ElencoTollerante<ScadenzaStudio>.self, forKey: .scadenze)) ?? nil)?.elementi ?? []
         corsi = ((try? c.decodeIfPresent(ElencoTollerante<CorsoAggiornamento>.self, forKey: .corsi)) ?? nil)?.elementi ?? []
+        visiteTolte = ((try? c.decodeIfPresent(ElencoTollerante<VisitaTolta>.self, forKey: .visiteTolte)) ?? nil)?.elementi ?? []
     }
 }
 

@@ -1,6 +1,7 @@
 import Foundation
 
 // Chilometri, spese e scadenze (versione 27, «Luce» giro 9) dentro `Prisma --prova-backup`:
+// - le visite tenute dei clienti eliminati (`visiteTolte`, per i km dei mesi chiusi);
 // - spese (con scontrino, IVA, canale, cliente, da controllare), scadenze (ricorrente, fatta, con importo), corsi (con
 //   attestato), impostazioni (partenza, correzioni, ore per anno, ente, giorno di cambio, nomi nel pacchetto, valore per
 //   km), i km per cliente (`kmClienti`, nel file di ogni cliente, non nell'indice) e il luogo degli appuntamenti
@@ -31,6 +32,10 @@ extension ProvaBackup {
                 CorsoAggiornamento(id: "corso-backup-1", titolo: "Corso di prova", ente: "Ente di prova", data: d(3, 12), ore: 14,
                                    attestato: "efgh5678-attestato.pdf", canale: .alleanza),
                 CorsoAggiornamento(id: "corso-backup-2", titolo: "Seminario di prova", data: d(6, 20), ore: 8.5),
+            ],
+            visiteTolte: [
+                VisitaTolta(id: "event-tolto-1", inizio: d(9, 15), presso: .cliente, km: 22, gruppo: "ab12cd34"),
+                VisitaTolta(id: "event-tolto-2", inizio: d(9, 18), presso: nil, km: nil, gruppo: "ab12cd34"),
             ])
     }
 
@@ -65,6 +70,7 @@ extension ProvaBackup {
               originale.impostazioni.studio.spese.nomiNelPacchetto, originale.appuntamenti.first?.presso == .cliente else {
             return "l'archivio di prova non ha spese, scadenze, corsi, impostazioni delle spese e luogo degli appuntamenti"
         }
+        guard originale.speseStudio.visiteTolte.count == 2 else { return "l'archivio di prova non ha visite di clienti eliminati" }
         guard estratto.speseStudio == originale.speseStudio else { return "spese, scadenze o corsi non tornano uguali dal backup" }
         guard estratto.impostazioni.studio.spese == originale.impostazioni.studio.spese,
               estratto.impostazioni.studio.spese.oreAggiornamentoAnno[2026] == 30 else {
@@ -120,6 +126,9 @@ extension ProvaBackup {
         spese["scadenze"] = scadenze
         corsi.append(7)
         spese["corsi"] = corsi
+        var tolte = spese["visiteTolte"] as? [Any] ?? []
+        tolte.append(["gruppo": "senza-id-ne-data"])
+        spese["visiteTolte"] = tolte
         var radiceStrana = originaliRadice
         radiceStrana["speseStudio"] = spese
         radiceStrana["kmClienti"] = ["giulia": -5, "marco": 41.5]
@@ -133,6 +142,7 @@ extension ProvaBackup {
         }
         let illeggibile = try Archivio.decodifica(JSONSerialization.data(withJSONObject: radiceStrana))
         guard illeggibile.speseStudio.spese.count == 2, illeggibile.speseStudio.scadenze.count == 2, illeggibile.speseStudio.corsi.count == 2,
+              illeggibile.speseStudio.visiteTolte == originale.speseStudio.visiteTolte,
               illeggibile.speseStudio.spese.first?.categoria == .altro, illeggibile.speseStudio.spese.first?.iva == nil,
               illeggibile.speseStudio.spese.first?.importo == 48, illeggibile.speseStudio.spese.first?.scontrino == "abcd1234-scontrino.jpg" else {
             return "spese illeggibili: elementi non scartati o campi leggibili persi"

@@ -34,6 +34,9 @@ enum TestiSpese {
     static let aggiungiAMano = "+ Aggiungi a mano"
     static let aggiungiScadenza = "+ Aggiungi scadenza"
     static let nessunaScadenza = "Aggiungi le tue scadenze: F24, acconti, polizza RC, aggiornamento."
+    static let nessunaVicina = "Nessuna scadenza nei prossimi 90 giorni."
+    /// «Tutte le scadenze (7)»: l'elenco completo, anche le lontane e le fatte.
+    static func tutteLeScadenze(_ n: Int) -> String { "Tutte le scadenze (\(n))" }
     static let verificaCommercialista = "Le date le decidi tu: verificale con il tuo commercialista."
     static let corsiAttestati = "Gli attestati sono nei tuoi corsi."
     static let inPreparazione = "Preparo il pacchetto…"
@@ -123,7 +126,7 @@ struct SpeseStudioVista: View {
         let mese = s.mese(impostazioni: imp)
         // I motori sono puri e leggeri (un mese di appuntamenti): si calcolano qui, sui campi osservati dell'archivio
         let km = MotoreChilometri.riepilogo(mese: mese, appuntamenti: stato.dati.appuntamenti, impostazioni: imp,
-                                            kmClienti: stato.dati.kmClienti)
+                                            kmClienti: stato.dati.kmClienti, visiteTolte: stato.dati.speseStudio.visiteTolte)
         let spese = MotoreSpese.delMese(stato.dati.speseStudio.spese, mese: mese)
         let archivio = stato.dati.speseStudio
         return GeometryReader { geo in
@@ -135,6 +138,8 @@ struct SpeseStudioVista: View {
             FoglioSpese(foglio: f)
                 .environment(stato)
         }
+        // La spesa appena inquadrata resta evidenziata finché si resta qui: chiusa la scheda (o Studio) torna normale
+        .onDisappear { s.nuovaSpesaId = nil }
         .overlay {
             // Nelle istantanee il foglio non si disegna da sé: sta sopra la scheda, con il velo
             if istantanea, let f = s.foglio {
@@ -513,7 +518,9 @@ private struct CardSpeseStudio: View {
                 NotaSpese(TestiSpese.sottoTotale(mese, spese: spese))
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(visibili) { s in
-                        RigaSpesaStudio(spesa: s, nuova: s.id == nuova) { stato.studioSpese.foglio = .spesa(s.id) }
+                        RigaSpesaStudio(spesa: s, nuova: s.id == nuova, stato: stato.studioSpese) {
+                            stato.studioSpese.foglio = .spesa(s.id)
+                        }
                     }
                 }
                 .padding(.top, p.elencoSopra)
@@ -550,11 +557,22 @@ private struct CardSpeseStudio: View {
 private struct RigaSpesaStudio: View {
     let spesa: SpesaStudio
     let nuova: Bool
+    /// Per ricordare che l'entrata è già fatta (la riga ridisegnata da capo non la rifà).
+    let stato: StatoSpese
     let apri: () -> Void
 
     @Environment(\.prismaStatoFinale) private var fermo
     @Environment(\.prismaScatto) private var scatto
-    @State private var entrata = false
+    @State private var entrata: Bool
+
+    init(spesa: SpesaStudio, nuova: Bool, stato: StatoSpese, apri: @escaping () -> Void) {
+        self.spesa = spesa
+        self.nuova = nuova
+        self.stato = stato
+        self.apri = apri
+        // Una riga che ha già fatto l'entrata, ridisegnata da capo, parte già al suo posto
+        _entrata = State(initialValue: stato.entrataFatta == spesa.id)
+    }
 
     var body: some View {
         let r = Tema.Apple.Studio.Spese.Riga.self
@@ -601,6 +619,7 @@ private struct RigaSpesaStudio: View {
                 if fermo && !scatto { entrata = true }
                 return
             }
+            stato.entrataFatta = spesa.id
             withAnimation(m.animazioneScontrino) { entrata = true }
         }
     }
@@ -656,12 +675,15 @@ private struct CardScadenzeSpese: View {
                 Spacer(minLength: 0)
             }
             if prossime.isEmpty {
-                NotaSpese(TestiSpese.nessunaScadenza)
+                NotaSpese(archivio.scadenze.isEmpty ? TestiSpese.nessunaScadenza : TestiSpese.nessunaVicina)
                     .padding(.top, c.vuotoSopra)
                 Button(TestiSpese.aggiungi) { stato.studioSpese.foglio = .nuovaScadenza }
                     .buttonStyle(.apple)
                     .padding(.top, c.pulsanteSopra)
                     .disabled(stato.solaLettura)
+                if !archivio.scadenze.isEmpty {
+                    CollegamentoSpese(testo: TestiSpese.tutteLeScadenze(archivio.scadenze.count)) { stato.studioSpese.foglio = .scadenze }
+                }
             } else {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(prossime) { s in
@@ -669,6 +691,10 @@ private struct CardScadenzeSpese: View {
                                           apri: { stato.studioSpese.foglio = .scadenza(s.id) },
                                           fatta: { stato.segnaScadenzaFatta(s.id) })
                     }
+                }
+                // Le lontane, quelle oltre le prime quattro e le fatte (da riaprire) sono nell'elenco completo
+                if archivio.scadenze.count > prossime.count {
+                    CollegamentoSpese(testo: TestiSpese.tutteLeScadenze(archivio.scadenze.count)) { stato.studioSpese.foglio = .scadenze }
                 }
                 CollegamentoSpese(testo: TestiSpese.aggiungiScadenza) { stato.studioSpese.foglio = .nuovaScadenza }
                     .disabled(stato.solaLettura)

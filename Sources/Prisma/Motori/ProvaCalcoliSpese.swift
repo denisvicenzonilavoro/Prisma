@@ -82,6 +82,27 @@ enum ProvaCalcoliSpese {
         let vuoto = MotoreChilometri.riepilogo(mese: ottobre, appuntamenti: appuntamenti, impostazioni: ImpostazioniSpese(), kmClienti: [:], calendario: cal)
         verifica("Spese: senza km scritti dall'utente il totale è 0", vuoto.totale, 0)
         verifica("Spese: senza km scritti tutte le visite sono senza km", Double(vuoto.senzaKm), 3)
+        // Due visite di fila dallo stesso cliente: una sola andata e ritorno (sede → cliente → sede)
+        let stessoCliente = [visita("g1", cliente: "a", 3, ora: 10), visita("g2", cliente: "a", 3, ora: 11)]
+        let gs = MotoreChilometri.giri(mese: ottobre, appuntamenti: stessoCliente, impostazioni: ImpostazioniSpese(), kmClienti: km, calendario: cal)
+        verifica("Spese: due visite di fila dallo stesso cliente = una andata e ritorno (28, non 56)", gs.first?.km ?? -1, 28)
+        // Con un altro cliente in mezzo si torna dallo stesso cliente: due andate e ritorno più quella in mezzo
+        let inMezzo = stessoCliente + [visita("g3", cliente: "b", 3, ora: 15), visita("g4", cliente: "a", 3, ora: 17)]
+        let gm = MotoreChilometri.giri(mese: ottobre, appuntamenti: inMezzo, impostazioni: ImpostazioniSpese(), kmClienti: km, calendario: cal)
+        verifica("Spese: a, a, b, a = 28 + 36 + 28", gm.first?.km ?? -1, 92)
+        // Un cliente eliminato: le sue visite concluse restano (senza testi) e i km del mese chiuso non cambiano
+        let prima = MotoreChilometri.riepilogo(mese: ottobre, appuntamenti: appuntamenti, impostazioni: ImpostazioniSpese(), kmClienti: km, calendario: cal)
+        let tolte = MotoreChilometri.visiteDaTenere(clienteId: "b", appuntamenti: appuntamenti, kmClienti: km)
+        verifica("Spese: cliente eliminato, si tengono solo le visite concluse fuori dallo studio", Double(tolte.count), 1)
+        var senzaB = km
+        senzaB["b"] = nil
+        let dopo = MotoreChilometri.riepilogo(mese: ottobre, appuntamenti: appuntamenti.filter { $0.clienteId != "b" },
+                                              impostazioni: ImpostazioniSpese(), kmClienti: senzaB, visiteTolte: tolte, calendario: cal)
+        verifica("Spese: dopo l'eliminazione i km del mese non cambiano", dopo.totale, prima.totale)
+        verifica("Spese: dopo l'eliminazione le visite del mese non cambiano", Double(dopo.visite), Double(prima.visite))
+        verifica("Spese: dopo l'eliminazione i clienti del mese non cambiano", Double(dopo.clienti), Double(prima.clienti))
+        verifica.vero("Spese: la visita tenuta non porta nome né appuntamento",
+                      dopo.giri.flatMap(\.visite).contains { $0.tolta && $0.clienteId.isEmpty && $0.km == 36 })
     }
 
     private static func mese(_ verifica: VerificaCalcoli) {
@@ -128,6 +149,18 @@ enum ProvaCalcoliSpese {
         verifica.vero("Spese: ricorrenza mensile al 16 → 16 dicembre",
                       dopo.last.map { cal.dateComponents([.month, .day], from: $0.data) == DateComponents(month: 12, day: 16) } ?? false)
         verifica.vero("Spese: la nuova non ha l'importo di prima", dopo.last?.importo == nil && dopo.last?.fattaIl == nil)
+        // «Riapri» dopo un clic sbagliato: torna da fare e la volta dopo nata da «fatta» si toglie
+        let riaperta = MotoreSpese.riapri("s-f24", in: dopo, calendario: cal)
+        verifica.vero("Spese: «Riapri» rimette da fare la scadenza e toglie la volta dopo",
+                      riaperta.count == 1 && riaperta.first?.fattaIl == nil && riaperta.first?.id == "s-f24")
+        var toccata = dopo
+        toccata[1].importo = 50
+        verifica("Spese: «Riapri» non toglie una volta dopo già modificata", Double(MotoreSpese.riapri("s-f24", in: toccata, calendario: cal).count), 2)
+        let lontana = ScadenzaStudio(titolo: "Lontana", data: AiutiProva.data(2027, 4, 30))
+        verifica.vero("Spese: l'elenco completo mostra anche le scadenze oltre i 90 giorni",
+                      MotoreSpese.daFare([lontana] + dopo).map(\.titolo) == ["Prova mensile", "Lontana"]
+                          && MotoreSpese.prossime([lontana], oggi: AiutiProva.data(2026, 11, 8)).isEmpty)
+        verifica.vero("Spese: le fatte restano raggiungibili", MotoreSpese.fatte(dopo).map(\.id) == ["s-f24"])
         let fine = MotoreSpese.prossimaData(AiutiProva.data(2026, 1, 31), ricorrenza: .mensile, calendario: cal)
         verifica.vero("Spese: il 31 gennaio → 28 febbraio", cal.dateComponents([.month, .day], from: fine) == DateComponents(month: 2, day: 28))
         let annuale = MotoreSpese.prossimaData(AiutiProva.data(2026, 12, 31), ricorrenza: .annuale, calendario: cal)
@@ -286,10 +319,41 @@ enum ProvaCalcoliSpese {
                       testiKm.totali.first { $0.etichetta == "Chilometri" }?.valore == "almeno 82,5 km")
         verifica.vero("Pacchetto: i giri del PDF al decimo («20,5 km»)", testiKm.righe.first?.riga.numero == "20,5 km")
         verifica.vero("Pacchetto: il giro da completare nel PDF con «almeno»", testiKm.righe.last?.riga.numero == "almeno 41,5 km")
-        verifica.vero("Pacchetto: «Km × valore» del PDF = la somma degli euro del CSV",
-                      testiKm.totali.first { $0.etichetta == "Km × valore scritto da te" }?.valore == Formati.euroDecimali(sommaEuro))
+        verifica.vero("Pacchetto: «Km × valore» del PDF = la somma degli euro del CSV, con «almeno» se mancano dei km",
+                      testiKm.totali.first { $0.etichetta == "Km × valore scritto da te" }?.valore == "almeno " + Formati.euroDecimali(sommaEuro))
+        let testiCompleti = TestiRiepilogoSpese(mese: ottobre, riepilogo: MotoreChilometri.riepilogo(
+            mese: ottobre, appuntamenti: appuntamenti, impostazioni: ImpostazioniSpese(), kmClienti: km, calendario: cal),
+            spese: [], nomi: nil, consulente: "Consulente di prova", euroPerKm: 0.3)
+        verifica.vero("Pacchetto: «Km × valore» senza «almeno» quando i km sono completi",
+                      testiCompleti.totali.first { $0.etichetta == "Km × valore scritto da te" }?.valore.hasPrefix("almeno") == false)
+        // La paginazione del PDF per altezza: 15 giri, 11 spese, 6 categorie non stanno su una pagina; nessuna pagina
+        // supera l'altezza utile del foglio A4
+        let quindiciGiri = (1...15).map { visita("p\($0)", cliente: "a", $0, ora: 10) }
+        let undiciSpese = (1...11).map { i in
+            SpesaStudio(data: AiutiProva.data(2026, 10, i), descrizione: "Spesa di prova \(i)", importo: 10,
+                        categoria: CategoriaSpesa.allCases[i % 6])
+        }
+        let pieno = TestiRiepilogoSpese(mese: ottobre, riepilogo: MotoreChilometri.riepilogo(
+            mese: ottobre, appuntamenti: quindiciGiri, impostazioni: ImpostazioniSpese(), kmClienti: km, calendario: cal),
+            spese: undiciSpese, nomi: nil, consulente: "Consulente di prova", euroPerKm: 0.3)
+        let gruppi = CartaRiepilogoSpese.gruppi(pieno)
+        verifica.vero("Pacchetto: il PDF pieno continua sulla pagina dopo", gruppi.count >= 2)
+        verifica("Pacchetto: nel PDF nessuna riga persa fra le pagine", Double(gruppi.map(\.count).reduce(0, +)), Double(pieno.righe.count))
+        verifica.vero("Pacchetto: nessuna pagina vuota nel PDF", gruppi.allSatisfy { !$0.isEmpty })
         verifica.vero("Pacchetto: nome dello zip «Ottobre-2026»", PacchettoCommercialista.nome(mese: ottobre, calendario: cal) == "Ottobre-2026")
         verifica.vero("Pacchetto: suffisso «2026-10»", PacchettoCommercialista.suffisso(mese: ottobre, calendario: cal) == "2026-10")
+        // Le cartelle di lavoro di un pacchetto interrotto si tolgono all'avvio (qui in una cartella di prova)
+        let avanzi = FileManager.default.temporaryDirectory.appendingPathComponent("Prisma-prova-avanzi-\(UUID().uuidString)", isDirectory: true)
+        let rimasta = avanzi.appendingPathComponent(PacchettoCommercialista.prefissoLavoro + "interrotto/Ottobre-2026", isDirectory: true)
+        let estranea = avanzi.appendingPathComponent("altro-file.txt")
+        try? FileManager.default.createDirectory(at: rimasta, withIntermediateDirectories: true)
+        try? Data("nomi di prova".utf8).write(to: rimasta.appendingPathComponent("chilometri-2026-10.csv"))
+        try? Data("estraneo".utf8).write(to: estranea)
+        PacchettoCommercialista.pulisciAvanzi(in: avanzi)
+        verifica.vero("Pacchetto: la cartella di lavoro di un pacchetto interrotto si toglie, il resto no",
+                      !FileManager.default.fileExists(atPath: rimasta.deletingLastPathComponent().path)
+                          && FileManager.default.fileExists(atPath: estranea.path))
+        try? FileManager.default.removeItem(at: avanzi)
         // Lo zip scritto si rilegge con LettoreZip: i due CSV, il PDF e lo scontrino
         let fm = FileManager.default
         let base = fm.temporaryDirectory.appendingPathComponent("Prisma-prova-pacchetto-\(UUID().uuidString)", isDirectory: true)

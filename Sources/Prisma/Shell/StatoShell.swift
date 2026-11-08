@@ -528,6 +528,8 @@ enum VoceConfronto: Hashable {
         avviaSalvataggio()
         #if os(macOS)
         avviaBackupAutomatico()
+        // Le cartelle di lavoro di un pacchetto per il commercialista interrotto (Studio › Spese, «Luce» giro 9)
+        DispatchQueue.global(qos: .utility).async { PacchettoCommercialista.pulisciAvanzi() }
         #elseif os(iOS)
         // Su iPhone e iPad niente backup automatico: i dati arrivano dal backup del Mac
         #endif
@@ -774,6 +776,13 @@ enum VoceConfronto: Hashable {
         compitoVera = nil
         veraInCorso = false
         dati.clienti.removeAll { $0.id == id }
+        // Studio › Spese («Luce» giro 9): le visite concluse restano, senza nome né testi, per i km dei mesi già chiusi
+        let tolte = MotoreChilometri.visiteDaTenere(clienteId: id, appuntamenti: dati.appuntamenti, kmClienti: dati.kmClienti)
+        if !tolte.isEmpty {
+            var spese = dati.speseStudio
+            spese.visiteTolte.append(contentsOf: tolte)
+            dati.speseStudio = spese
+        }
         dati.appuntamenti.removeAll { $0.clienteId == id }
         dati.attivita.removeAll { $0.clienteId == id }
         dati.posizioni.removeAll { $0.clienteId == id }

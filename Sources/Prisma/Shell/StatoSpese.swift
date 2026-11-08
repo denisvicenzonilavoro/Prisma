@@ -25,6 +25,8 @@ import UniformTypeIdentifiers
         case visite
         /// L'elenco completo delle spese del mese.
         case spese
+        /// L'elenco completo delle scadenze: da fare (anche le lontane) e fatte, da riaprire.
+        case scadenze
         /// La correzione a mano dei km di un giro («aaaa-mm-gg»).
         case correzione(String)
 
@@ -38,6 +40,7 @@ import UniformTypeIdentifiers
             case .corsi: return "corsi"
             case .visite: return "visite"
             case .spese: return "spese"
+            case .scadenze: return "scadenze"
             case .correzione(let g): return "correzione-\(g)"
             }
         }
@@ -54,8 +57,11 @@ import UniformTypeIdentifiers
 
     /// Il mese scelto con le frecce o le colonne (nil = quello automatico: il mese prima fino al giorno di cambio).
     var meseScelto: Date?
-    /// La spesa appena aggiunta da uno scontrino: in cima all'elenco, evidenziata.
+    /// La spesa appena aggiunta da uno scontrino: in cima all'elenco, evidenziata, finché si resta sulla scheda Spese
+    /// (si toglie quando la scheda si chiude o si cambia scheda di Studio).
     var nuovaSpesaId: String?
+    /// La spesa nuova la cui riga ha già fatto l'entrata: ridisegnata, non la rifà.
+    @ObservationIgnored var entrataFatta: String?
     var foglio: Foglio?
     var pacchetto = Pacchetto.nessuno
     /// Solo per l'istantanea 787: Impostazioni › Studio mostra in cima la sezione dei chilometri e delle spese.
@@ -112,6 +118,10 @@ extension StatoShell {
         if let vecchio, vecchio != s.scontrino, persistente {
             try? FileManager.default.removeItem(at: Archivio.cartellaScontrini().appendingPathComponent(vecchio))
         }
+        // La card mostra un mese solo: se la spesa è di un altro (per esempio uno scontrino di oggi mentre fino al giorno
+        // di cambio si mostra il mese prima), Studio › Spese va sul suo mese, così la spesa confermata si vede
+        let meseSpesa = MotoreChilometri.inizioMese(s.data)
+        if meseSpesa != studioSpese.mese(impostazioni: dati.impostazioni.studio.spese) { studioSpese.scegli(meseSpesa) }
         if evidenzia { studioSpese.nuovaSpesaId = s.id }
         return true
     }
@@ -142,6 +152,13 @@ extension StatoShell {
     func segnaScadenzaFatta(_ id: String, il: Date = Date()) {
         guard !solaLettura else { return }
         let nuove = MotoreSpese.segnaFatta(id, in: dati.speseStudio.scadenze, il: il)
+        if nuove != dati.speseStudio.scadenze { dati.speseStudio.scadenze = nuove }
+    }
+
+    /// Riapre una scadenza segnata fatta (dall'elenco completo delle scadenze).
+    func riapriScadenza(_ id: String) {
+        guard !solaLettura else { return }
+        let nuove = MotoreSpese.riapri(id, in: dati.speseStudio.scadenze)
         if nuove != dati.speseStudio.scadenze { dati.speseStudio.scadenze = nuove }
     }
 
@@ -261,7 +278,7 @@ extension StatoShell {
     func contenutoPacchetto(mese: Date) -> PacchettoCommercialista.Contenuto {
         let imp = dati.impostazioni.studio.spese
         let riepilogo = MotoreChilometri.riepilogo(mese: mese, appuntamenti: dati.appuntamenti, impostazioni: imp,
-                                                   kmClienti: dati.kmClienti)
+                                                   kmClienti: dati.kmClienti, visiteTolte: dati.speseStudio.visiteTolte)
         let spese = MotoreSpese.delMese(dati.speseStudio.spese, mese: mese)
         let nomi: [String: String]? = imp.nomiNelPacchetto
             ? Dictionary(dati.clienti.map { ($0.id, $0.nome) }, uniquingKeysWith: { a, _ in a }) : nil

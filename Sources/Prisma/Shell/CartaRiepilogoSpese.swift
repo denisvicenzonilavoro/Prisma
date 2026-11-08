@@ -39,7 +39,8 @@ struct TestiRiepilogoSpese {
         if let e = euroPerKm {
             // La somma dei valori dei giri, al centesimo come nel CSV dei chilometri
             let valore = riepilogo.giri.map { MotoreChilometri.euro($0.km ?? $0.kmNoti, perKm: e) }.reduce(0, +)
-            t.append(("Km × valore scritto da te", Formati.euroDecimali(valore)))
+            // Con giri da completare il valore conta solo i km noti: «almeno», come il totale dei chilometri
+            t.append(("Km × valore scritto da te", (riepilogo.completo ? "" : "almeno ") + Formati.euroDecimali(valore)))
         }
         for c in MotoreSpese.perCategoria(spese) { t.append((c.categoria.nome, Formati.euroDecimali(c.totale))) }
         totali = t
@@ -86,13 +87,29 @@ extension DocumentoStampabile {
 }
 
 enum CartaRiepilogoSpese {
-    static func pagine(_ t: TestiRiepilogoSpese) -> [AnyView] {
-        var gruppi: [[(sezione: String?, riga: TestiRiepilogoSpese.Riga)]] = [Array(t.righe.prefix(C.righePrimaPagina))]
-        var resto = t.righe.dropFirst(C.righePrimaPagina)
-        while !resto.isEmpty {
-            gruppi.append(Array(resto.prefix(C.righeAltrePagine)))
-            resto = resto.dropFirst(C.righeAltrePagine)
+    /// Le righe di ogni pagina, divise per altezza: la prima pagina ha anche il titolo e i totali del mese, ogni pagina il
+    /// logo e il piede; un'intestazione di sezione («I giri», «Le spese») conta con la sua riga.
+    static func gruppi(_ t: TestiRiepilogoSpese) -> [[(sezione: String?, riga: TestiRiepilogoSpese.Riga)]] {
+        let utile = C.formato.height - C.margine.top - C.margine.bottom
+        // Logo, piede e gli spazi fra logo, righe, spaziatore e piede
+        let comune = C.altezzaLogo + C.altezzaPiede + 3 * C.spazioSezioni
+        let testa = C.altezzaTitoli + C.spazioSezioni + C.altezzaIlMese + CGFloat(t.totali.count) * C.altezzaVoce + C.spazioSezioni
+        var gruppi: [[(sezione: String?, riga: TestiRiepilogoSpese.Riga)]] = [[]]
+        var libero = utile - comune - testa
+        for r in t.righe {
+            let costo = C.altezzaVoce + (r.sezione == nil ? 0 : C.altezzaSezione)
+            if costo > libero, !(gruppi.last?.isEmpty ?? true) {
+                gruppi.append([])
+                libero = utile - comune
+            }
+            gruppi[gruppi.count - 1].append(r)
+            libero -= costo
         }
+        return gruppi
+    }
+
+    static func pagine(_ t: TestiRiepilogoSpese) -> [AnyView] {
+        let gruppi = gruppi(t)
         return gruppi.enumerated().map { i, righe in
             AnyView(PaginaRiepilogoSpese(t: t, righe: righe, prima: i == 0, numero: i + 1, totale: gruppi.count))
         }

@@ -73,6 +73,35 @@ enum MotoreSpese {
         return nuove
     }
 
+    /// Riapre una scadenza segnata fatta (per esempio per un clic sbagliato): torna da fare e, se era ricorrente, la
+    /// volta dopo nata da «fatta» si toglie solo se è ancora com'era nata (da fare, senza importo, stessa data calcolata).
+    static func riapri(_ id: String, in scadenze: [ScadenzaStudio], calendario cal: Calendar = .current) -> [ScadenzaStudio] {
+        guard let i = scadenze.firstIndex(where: { $0.id == id }), scadenze[i].fattaIl != nil else { return scadenze }
+        var nuove = scadenze
+        nuove[i].fattaIl = nil
+        let s = nuove[i]
+        if let r = s.ricorrenza {
+            let data = prossimaData(s.data, ricorrenza: r, calendario: cal)
+            if let j = nuove.firstIndex(where: {
+                $0.id != s.id && $0.fattaIl == nil && $0.importo == nil && $0.titolo == s.titolo && $0.tipo == s.tipo
+                    && $0.ricorrenza == r && $0.nota == s.nota && cal.isDate($0.data, inSameDayAs: data)
+            }) {
+                nuove.remove(at: j)
+            }
+        }
+        return nuove
+    }
+
+    /// Tutte le scadenze da fare, in ordine di data (anche oltre i 90 giorni e oltre le quattro della card).
+    static func daFare(_ scadenze: [ScadenzaStudio]) -> [ScadenzaStudio] {
+        scadenze.filter { $0.fattaIl == nil }.sorted { ($0.data, $0.titolo) < ($1.data, $1.titolo) }
+    }
+
+    /// Le scadenze fatte, la più recente prima.
+    static func fatte(_ scadenze: [ScadenzaStudio]) -> [ScadenzaStudio] {
+        scadenze.filter { $0.fattaIl != nil }.sorted { ($0.fattaIl ?? $0.data, $0.data) > ($1.fattaIl ?? $1.data, $1.data) }
+    }
+
     // MARK: Ore di aggiornamento
 
     /// Le ore dei corsi di un anno.

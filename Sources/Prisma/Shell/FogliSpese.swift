@@ -43,6 +43,8 @@ struct FoglioSpese: View {
             FoglioVisiteSpese(chiudi: chiudi)
         case .spese:
             FoglioElencoSpese(chiudi: chiudi)
+        case .scadenze:
+            FoglioElencoScadenze(chiudi: chiudi)
         case .correzione(let chiave):
             ModuloCorrezioneKm(chiave: chiave, chiudi: chiudi)
         }
@@ -658,7 +660,7 @@ private struct FoglioVisiteSpese: View {
         let imp = stato.dati.impostazioni.studio.spese
         let mese = stato.studioSpese.mese(impostazioni: imp)
         let km = MotoreChilometri.riepilogo(mese: mese, appuntamenti: stato.dati.appuntamenti, impostazioni: imp,
-                                            kmClienti: stato.dati.kmClienti)
+                                            kmClienti: stato.dati.kmClienti, visiteTolte: stato.dati.speseStudio.visiteTolte)
         return CorniceModulo(titolo: "Le visite di \(TestiSpese.mese(mese))") {
             VStack(alignment: .leading, spacing: M.spazioRighe) {
                 NotaFoglio(testo: "I km sono quelli di andata e ritorno che scrivi per ogni cliente; se un giro unisce più "
@@ -689,7 +691,7 @@ private struct FoglioVisiteSpese: View {
     }
 
     private func riga(_ v: MotoreChilometri.Visita, imp: ImpostazioniSpese) -> some View {
-        let nome = v.clienteId.isEmpty ? "Senza cliente" : stato.nomeClienteSpese(v.clienteId)
+        let nome = v.tolta ? "Cliente eliminato" : v.clienteId.isEmpty ? "Senza cliente" : stato.nomeClienteSpese(v.clienteId)
         return HStack(alignment: .center, spacing: M.spazio) {
             VStack(alignment: .leading, spacing: 0) {
                 Text(nome).carattereApple(M.rigaForte).foregroundColor(M.coloreRiga).lineLimit(1)
@@ -699,10 +701,12 @@ private struct FoglioVisiteSpese: View {
                     .lineLimit(1)
             }
             Spacer(minLength: M.spazio)
-            MenuTendina(selezione: Binding(get: { v.presso }, set: { stato.impostaPresso(v.appuntamentoId, $0) }),
-                        opzioni: [(LuogoIncontro?.none, "Dove eri?")] + LuogoIncontro.allCases.map { (Optional($0), $0.nome) },
-                        larghezza: M.sceltaPresso)
-                .disabled(stato.solaLettura)
+            if !v.tolta {
+                MenuTendina(selezione: Binding(get: { v.presso }, set: { stato.impostaPresso(v.appuntamentoId, $0) }),
+                            opzioni: [(LuogoIncontro?.none, "Dove eri?")] + LuogoIncontro.allCases.map { (Optional($0), $0.nome) },
+                            larghezza: M.sceltaPresso)
+                    .disabled(stato.solaLettura)
+            }
             if !v.clienteId.isEmpty {
                 CampoCifraFacoltativa(valore: Binding(get: { stato.dati.kmClienti[v.clienteId] },
                                                       set: { stato.impostaKmCliente(v.clienteId, $0) }),
@@ -718,6 +722,7 @@ private struct FoglioVisiteSpese: View {
         case .distanzaMancante: return " · mancano i km di andata e ritorno"
         case .altrove: return " · altrove: correggi il giro a mano"
         case .senzaCliente: return " · senza cliente: correggi il giro a mano"
+        case .clienteEliminato: return " · senza km: correggi il giro a mano"
         case nil: return ""
         }
     }
@@ -772,6 +777,81 @@ private struct FoglioElencoSpese: View {
                 .keyboardShortcut(.defaultAction)
         }
         .frame(width: M.foglio.width, height: M.foglio.height)
+    }
+}
+
+// MARK: - L'elenco delle scadenze
+
+/// Tutte le scadenze: da fare (anche oltre i 90 giorni e oltre le quattro della card), da aprire e correggere; le fatte,
+/// da riaprire se segnate per sbaglio.
+private struct FoglioElencoScadenze: View {
+    @Environment(StatoShell.self) private var stato
+    let chiudi: () -> Void
+
+    var body: some View {
+        let tutte = stato.dati.speseStudio.scadenze
+        let daFare = MotoreSpese.daFare(tutte)
+        let fatte = MotoreSpese.fatte(tutte)
+        let oggi = Date()
+        return CorniceModulo(titolo: "Le tue scadenze") {
+            VStack(alignment: .leading, spacing: 0) {
+                TitoloGruppoFoglio(testo: "Da fare")
+                if daFare.isEmpty { NotaFoglio(testo: "Nessuna scadenza da fare.").padding(.top, M.spazioRighe) }
+                ForEach(daFare) { s in
+                    RigaFoglio {
+                        HStack(spacing: M.spazio) {
+                            testi(s, sotto: TestiSpese.giorno(s.data) + " " + String(Calendar.current.component(.year, from: s.data))
+                                  + (MotoreSpese.passata(s, oggi: oggi) ? " · passata" : "")
+                                  + (s.ricorrenza.map { " · " + $0.nome.lowercased() } ?? ""),
+                                  avviso: MotoreSpese.passata(s, oggi: oggi))
+                            Spacer()
+                            Button("Segna fatta") { stato.segnaScadenzaFatta(s.id) }
+                                .buttonStyle(StileVetro())
+                                .disabled(stato.solaLettura)
+                        }
+                        .contentShape(Rectangle())
+                        .onTapGesture { stato.studioSpese.foglio = .scadenza(s.id) }
+                    }
+                }
+                if !fatte.isEmpty {
+                    TitoloGruppoFoglio(testo: "Fatte")
+                    ForEach(fatte) { s in
+                        RigaFoglio {
+                            HStack(spacing: M.spazio) {
+                                testi(s, sotto: TestiSpese.giorno(s.data) + " " + String(Calendar.current.component(.year, from: s.data))
+                                      + (s.fattaIl.map { " · fatta il " + TestiSpese.giorno($0) } ?? ""), avviso: false)
+                                Spacer()
+                                Button("Riapri") { stato.riapriScadenza(s.id) }
+                                    .buttonStyle(StileVetro())
+                                    .disabled(stato.solaLettura)
+                            }
+                            .contentShape(Rectangle())
+                            .onTapGesture { stato.studioSpese.foglio = .scadenza(s.id) }
+                        }
+                    }
+                }
+            }
+        } piede: {
+            Button(TestiSpese.aggiungiScadenza) { stato.studioSpese.foglio = .nuovaScadenza }
+                .buttonStyle(StileVetro())
+                .disabled(stato.solaLettura)
+            Spacer()
+            Button("Fine", action: chiudi)
+                .buttonStyle(StileBlu())
+                .keyboardShortcut(.defaultAction)
+        }
+        .frame(width: M.foglio.width, height: M.foglio.height)
+    }
+
+    private func testi(_ s: ScadenzaStudio, sotto: String, avviso: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(s.titolo.isEmpty ? s.tipo.nome : s.titolo)
+                .carattereApple(M.rigaForte).foregroundColor(M.coloreRiga).lineLimit(1)
+            Text(sotto)
+                .carattereApple(M.rigaSotto)
+                .foregroundColor(avviso ? M.coloreAvviso : M.coloreRigaSotto)
+                .lineLimit(1)
+        }
     }
 }
 

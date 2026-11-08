@@ -84,7 +84,8 @@ struct DatiPrisma: Codable, Equatable {
     var confrontiDocumenti: [ConfrontoDocumenti] = []
     var coperture: [CoperturaPolizza] = []
     /// Studio › Spese («Luce» giro 9, versione 27, SpeseStudio.swift): le spese con gli scontrini, le scadenze e i corsi di
-    /// aggiornamento del consulente, scritti da lui. Restano sul Mac: non entrano in «Prisma ovunque».
+    /// aggiornamento del consulente, scritti da lui, e le visite concluse dei clienti eliminati (senza nome né testi, per i
+    /// km dei mesi già chiusi). Restano sul Mac: non entrano in «Prisma ovunque».
     var speseStudio = ArchivioSpese()
     /// I km di andata e ritorno fra la partenza del consulente e ogni cliente (clienteId → km), scritti dall'utente per
     /// Studio › Spese (versione 27, «Luce» giro 9). Un dato del cliente: sta nel suo file della cartella a pezzi e se ne va
@@ -156,7 +157,7 @@ struct DatiPrisma: Codable, Equatable {
     ///     clienti (`promesse`), i confronti tra documenti (`confrontiDocumenti`), le coperture delle polizze
     ///     (`coperture`) e il resoconto dell'incontro (`Incontro.resoconto`), tutti letti con tolleranza.
     ///     Giro 9: chilometri, spese e scadenze del consulente (`speseStudio`: spese con gli scontrini, scadenze, corsi di
-    ///     aggiornamento, letti con tolleranza), le loro impostazioni (`Impostazioni.studio.spese`: partenza,
+    ///     aggiornamento e le visite tenute dei clienti eliminati `visiteTolte`, letti con tolleranza), le loro impostazioni (`Impostazioni.studio.spese`: partenza,
     ///     correzioni dei giri, ore richieste per anno, nomi nel pacchetto spenti) e dove si
     ///     è svolto un appuntamento (`Appuntamento.presso`: dal cliente, in studio, altrove; nil = da chiedere).
     ///     I km di andata e ritorno per cliente (`kmClienti`), nel file di ogni cliente.

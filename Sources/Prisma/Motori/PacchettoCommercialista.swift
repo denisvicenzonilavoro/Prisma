@@ -142,12 +142,23 @@ enum PacchettoCommercialista {
 
     // MARK: Scrittura
 
+    /// Il prefisso delle cartelle di lavoro nella cartella temporanea.
+    static let prefissoLavoro = "Prisma-pacchetto-"
+
+    /// Toglie le cartelle di lavoro rimaste da un pacchetto interrotto (Prisma chiuso a forza o andato in crash a metà):
+    /// contengono CSV (con i nomi dei clienti, se accesi), il PDF e le copie degli scontrini. All'avvio del Mac.
+    static func pulisciAvanzi(in cartella: URL = FileManager.default.temporaryDirectory) {
+        let fm = FileManager.default
+        guard let voci = try? fm.contentsOfDirectory(at: cartella, includingPropertiesForKeys: nil) else { return }
+        for voce in voci where voce.lastPathComponent.hasPrefix(prefissoLavoro) { try? fm.removeItem(at: voce) }
+    }
+
     /// Scrive lo zip in `destinazione` (fuori dal thread principale): i file uno per volta in una cartella temporanea
     /// (`avanzamento(fatti, totale)` dopo ognuno), poi lo zip, poi lo spostamento al posto scelto. Niente a metà: un errore
     /// toglie i file temporanei e lascia com'era la destinazione.
     static func scrivi(_ c: Contenuto, in destinazione: URL, avanzamento: (Int, Int) -> Void) throws {
         let fm = FileManager.default
-        let lavoro = fm.temporaryDirectory.appendingPathComponent("Prisma-pacchetto-\(UUID().uuidString)", isDirectory: true)
+        let lavoro = fm.temporaryDirectory.appendingPathComponent(prefissoLavoro + UUID().uuidString, isDirectory: true)
         defer { try? fm.removeItem(at: lavoro) }
         let cartella = lavoro.appendingPathComponent(c.nome, isDirectory: true)
         let totale = 2 + (c.pdf == nil ? 0 : 1) + c.scontrini.count + 1
