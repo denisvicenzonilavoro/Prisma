@@ -79,6 +79,10 @@ extension Tema.Apple {
             static let coloreSottotitolo = K.inchiostro2
             static let secondi = C(dimensione: 24, peso: .bold, tabellare: true)
             static let etichettaSecondi = C.secondario
+            /// Fra il nome e il sottotitolo, fra «secondi» e il contatore.
+            static let spazioNome: CGFloat = 2
+            /// La zona dove trascinare: aria ai lati del testo.
+            static let paddingZona: CGFloat = 12
             /// Le righe: 12 sopra, etichetta larga 140 (Inquadra 150), spunta verde, «—» grigio, «!» arancio.
             static let righeSopra: CGFloat = 12
             static let larghezzaEtichetta: CGFloat = 140
@@ -116,6 +120,8 @@ extension Tema.Apple {
             static let coloreCanaleDaScegliere = K.inchiostro2
             static let fondoCanaleDaScegliere = K.chip
             static let paddingCanaleDaScegliere = Tema.Apple.Misura.padding(3, 8)
+            /// Il glifo `scan` del pulsante «Nuovo cliente» nella testata di Clienti.
+            static let glifoTestata: CGFloat = 14
         }
 
         // MARK: iPhone e iPad

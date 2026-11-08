@@ -38,8 +38,11 @@ struct AppClienti: View {
         .onAppear {
             controllaRichiesta(stato.richiestaNuovoCliente)
             controllaCompletamento(stato.richiestaCompletamento)
+            controllaBozza(stato.bozzaNuovoCliente)
         }
         .onChange(of: stato.richiestaNuovoCliente) { controllaRichiesta($0) }
+        // «Luce» giro 13: «Scrivi a mano» dalla scena del nuovo cliente apre il modulo con i dati letti
+        .onChange(of: stato.bozzaNuovoCliente) { controllaBozza($0) }
         .onChange(of: stato.richiestaCompletamento) { controllaCompletamento($0) }
     }
 
@@ -115,10 +118,23 @@ struct AppClienti: View {
         stato.richiestaCompletamento = nil
     }
 
+    /// «Nuovo cliente» da un altro punto (Prova del fuoco…): sul Mac apre la scena della carta d'identità («Luce» giro 13),
+    /// su iPhone e iPad il modulo vuoto.
     private func controllaRichiesta(_ richiesta: Bool) {
         guard richiesta else { return }
         stato.richiestaNuovoCliente = false
+        #if os(macOS)
+        stato.apriNuovoCliente()
+        #else
         modulo = Cliente.nuovo(tinta: stato.prossimaTinta)
+        #endif
+    }
+
+    /// La bozza del nuovo cliente con i dati letti dalla carta: il modulo si apre già compilato (si consuma subito).
+    private func controllaBozza(_ bozza: Cliente?) {
+        guard let bozza else { return }
+        stato.bozzaNuovoCliente = nil
+        modulo = bozza
     }
 
     #if os(iOS)

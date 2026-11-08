@@ -440,6 +440,12 @@ struct ModuloCliente: View {
                             bozza.luogoNascita = $0.trimmingCharacters(in: .whitespaces).isEmpty ? nil : $0
                         })).textFieldStyle(.roundedBorder)
                     }
+                    // «Luce» giro 13: la cittadinanza (letta dalla carta d'identità o scritta a mano)
+                    CampoModulo(etichetta: "Cittadinanza") {
+                        TextField("Per esempio Italiana", text: Binding(get: { bozza.cittadinanza ?? "" }, set: {
+                            bozza.cittadinanza = $0.trimmingCharacters(in: .whitespaces).isEmpty ? nil : $0
+                        })).textFieldStyle(.roundedBorder)
+                    }
                     CampoModulo(etichetta: "Codice fiscale") {
                         TextField("", text: $bozza.codiceFiscale).textFieldStyle(.roundedBorder)
                     }

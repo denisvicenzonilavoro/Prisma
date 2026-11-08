@@ -570,6 +570,8 @@ struct TestataDossierApple: View {
         let t = Tema.Apple.Clienti.Testata.self
         return HStack(spacing: t.spazioComandi) {
             ForEach(cliente.canali) { EtichettaCanaleApple(canale: $0, compatta: compatti) }
+            // «Luce» giro 13 (§9.1.6): il cliente nato dalla carta d'identità non ha ancora un canale
+            if cliente.canali.isEmpty { EtichettaCanaleDaScegliere() }
             stella
             if compatti {
                 Button(action: modifica) { Image(systemName: "pencil") }
@@ -825,3 +827,17 @@ private final class BersaglioMenuAltro: NSObject {
     @objc func scegli(_ voce: NSMenuItem) { scelto(voce.tag) }
 }
 #endif
+
+/// «Canale da scegliere»: l'etichetta grigia del cliente senza canale («Luce» giro 13, §9.1.6). La scheda della carta
+/// d'identità non sceglie il canale: lo indica l'utente nella scheda del cliente.
+struct EtichettaCanaleDaScegliere: View {
+    var body: some View {
+        let s = Tema.Apple.NuovoCliente.Scheda.self
+        Text("Canale da scegliere")
+            .carattereApple(s.canaleDaScegliere)
+            .foregroundColor(s.coloreCanaleDaScegliere)
+            .padding(s.paddingCanaleDaScegliere)
+            .background(Capsule().fill(s.fondoCanaleDaScegliere))
+            .help("Indica il canale (Alleanza, indipendente o entrambi) nella scheda del cliente")
+    }
+}
