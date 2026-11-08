@@ -270,3 +270,22 @@ varrebbe all'avvio, mai la copia d'avvio o il segno, e senza archivio non si fa.
 24): scrittura intera 198 ms, indice 2 ms, lettura intera 75 ms, salvataggio di una nota 14 ms (1 file, invariato);
 un cambio delle sole impostazioni scrive due file da 67 KB (riserva e indice) invece di uno. La prova della fluidità
 non legge il disco e con il Mac a carico 24-26 non ha dato numeri utili (disegni da 2 a 16 s, 62 azioni non misurate).
+
+## Giro 0 unito (8 novembre 2026, versione installata, d8f758c)
+
+Tappe 1-4 insieme, build di release, prova completa della fluidità (127 misure, carico medio 4-9). «Aggiornamento»,
+mediana, prima del giro 0 (7 novembre, cec9d4c) → dopo la tappa 1 → giro 0 completo:
+
+| Azione | 5 clienti | 200 clienti |
+|---|---:|---:|
+| Aprire Posizioni | 211 → 216 → **132 ms** | 411 → 403 → **131 ms** |
+| Aspetto scuro | 372 → 355 → **296 ms** | 698 → 545 → **404 ms** |
+| Aprire il radar | 79 → 87 → **42 ms** | 331 → 184 → **63 ms** |
+| Tornare dal radar | 185 → 177 → **66 ms** | 491 → 389 → **95 ms** |
+| Tasto in una nota | 23 → 3 → **3 ms** | 70 → 21 → **23 ms** |
+| Avvio (stato in memoria) | 265 → 280 → 301 ms | 469 → 479 → 476 ms |
+
+L'obiettivo «aprire Posizioni con 200 clienti sotto 150 ms» è raggiunto nella build di release (131 ms). Il disegno
+completo della finestra (`cacheDisplay`, circa 1,9 s) è uguale a prima: è il costo della misura, non dell'app.
+Memoria con 200 clienti: 684 MB di impronta con la shell aperta, 308 MB alla fine. Prove verdi: `--prove` (risorse,
+backup, calcoli, Vera, ovunque), carico (memoria sotto 1200 MB), tavolo, prospetti, fluidità.
