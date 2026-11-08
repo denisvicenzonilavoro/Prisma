@@ -124,3 +124,28 @@ Ogni tappa si chiude con la tabella prima e dopo (prova della fluidità sul runn
 
 1. **Passiamo a macOS 14 e usiamo il framework Observation (proposta A)?** Sì / No. *(Con il no si fa la proposta B, restando su macOS 13.)*
 2. **Cambiamo il formato dell'archivio in una cartella a pezzi, con la conversione automatica dei vecchi archivi e dei vecchi backup?** Sì / No. *(Con il no si resta su un file unico, migliorando solo lettura e salvataggio dove si può.)*
+
+## Tappa 1 della proposta A (8 novembre 2026, branch giro-0-observation)
+
+Fatto: minimo macOS 14; `StatoShell` è `@Observable`; `stato.dati` è un `DatiVivi` (un campo osservato per ogni campo di
+`DatiPrisma`, `istantanea` per le copie, `carica` per sostituire tutto); ogni modifica passa da `datiCambiati` (contatori
+delle cache con la regola di `stessiCalcoli`, Vera, il segnale `modificheDati` per salvataggio, notifiche, promemoria e
+Prisma ovunque). Il formato dell'archivio non cambia. La prova della fluidità conta ora i **body rivalutati**
+(`ContaCorpi`) al posto degli `objectWillChange` di StatoShell.
+
+Prova della fluidità, build di sviluppo, stesso Mac, «aggiornamento» (mediana). Il Mac era molto carico da altre
+sessioni (carico medio 15-28): i tempi oltre il tasto nella nota oscillano più della differenza e vanno rimisurati a Mac
+fermo.
+
+| Azione | 5 clienti prima → dopo | 200 clienti prima → dopo | Corpi rivalutati (dopo) |
+|---|---:|---:|---:|
+| Un tasto in una nota | 31 → **3 ms** | 59 → **28 ms** | 0 (5) · 2 (200) |
+| Aprire Posizioni | 462 → 218 ms | 484 → 781 ms | 15 · 12 |
+| Aspetto scuro | 465 → 384 ms | 663 → 1.410 ms | 7 · 9 |
+| Avvio | 868 → 322 ms | 706 → 811 ms | — |
+| Aprire il radar | 93 → 172 ms | 1.577 → 564 ms | 3 · 0 |
+| Tornare dal radar | 182 → 270 ms | 2.023 → 1.855 ms | 8 · 0 |
+
+Prima, ogni azione mandava 1-3 avvisi a StatoShell, e ognuno rivalutava **tutte** le viste che lo osservano (circa 300):
+ora un tasto in una nota rivaluta 0-2 corpi. Resta da fare (tappa 2): dividere ancora i dati per cliente e per nota, e
+guardare le viste che leggono l'archivio intero con `istantanea` nel body (Confronti, Esame OCF).
