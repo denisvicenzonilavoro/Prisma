@@ -21,8 +21,9 @@ Tutto resta in locale sul Mac: niente server, niente cloud (unica eccezione, str
 - Dopo ogni modifica compila e lancia le prove: un lavoro che non compila o con prove rosse non è finito.
 - Si lavora con git in locale: un branch per lavoro, unito in main solo quando compila e le prove passano; main deve restare sempre compilabile.
 - Nessuna dipendenza esterna senza chiedere prima.
-- Target minimo macOS 13. Il Mac dell'utente è un MacBook Pro M1 con 8 GB di RAM (macOS 27): codice leggero, attenzione alla memoria.
+- Target minimo macOS 14 (dal giro 0 di «Prisma istantaneo»: framework Observation). Il Mac dell'utente è un MacBook Pro M1 con 8 GB di RAM (macOS 27): codice leggero, attenzione alla memoria.
 - Le schermate si vedono con `Prisma.app/Contents/MacOS/Prisma --istantanee <cartella>` (PNG chiare e scure): guardale prima di chiedere screenshot all'utente e aggiorna la pagina online delle anteprime (https://claude.ai/artifact/EauRU1ohEGjHj4zvTomDvb). Per ciò che le istantanee non mostrano (ombre, menu, interazioni) chiedi uno screenshot.
+- Stato e dati in memoria (giro 0 di «Prisma istantaneo», Design/velocita-proposta.md): `StatoShell` è `@Observable` (nelle viste `@Environment(StatoShell.self) var stato`, `.environment(stato)`, i binding con `Bindable(stato)` e `Bindable(stato.dati)`), e `stato.dati` è un `DatiVivi`, l'archivio a pezzi con un campo osservato per ogni campo di `DatiPrisma`. È un oggetto, non un valore: per una copia (salvataggio, motori, confronti prima e dopo) `stato.dati.istantanea`, per sostituire tutto `stato.dati.carica(_:)`; chi segue le modifiche ascolta `stato.modificheDati`. Su disco resta `DatiPrisma`.
 - Backup e ripristino sono verificati con `Prisma --prova-backup`: se tocchi l'archivio o i backup, mantieni la prova aggiornata.
 
 ## Grafica (priorità assoluta)
@@ -41,7 +42,7 @@ Tutto resta in locale sul Mac: niente server, niente cloud (unica eccezione, str
 - Dati di prova: i 5 clienti del template (più i 30 clienti fittizi caricabili da Impostazioni), per valutare i motori di calcolo.
 - Tutti i colori, font, misure, raggi, ombre e superfici di vetro vanno centralizzati in Sources/Prisma/DesignSystem/ e ricavati dal tema: mai valori sparsi nel codice.
 - Le icone vanno convertite nel formato adatto a SwiftUI senza asset catalog (PNG caricati dalle risorse) mantenendo l'aspetto originale; il logo è disegnato in vettoriale (LogoPrisma).
-- Le API di macOS 26 (vetro nativo) vanno protette con `#if compiler(>=6.2)` e `if #available(macOS 26.0, *)`, con un ripiego per macOS 13-25.
+- Le API di macOS 26 (vetro nativo) vanno protette con `#if compiler(>=6.2)` e `if #available(macOS 26.0, *)`, con un ripiego per macOS 14-25.
 
 ## Dati e privacy
 - I dati dei clienti sono personali e patrimoniali: restano sul Mac, mai inviati a servizi esterni.

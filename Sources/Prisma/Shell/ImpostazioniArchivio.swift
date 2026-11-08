@@ -22,7 +22,7 @@ extension AppImpostazioni {
                     RigaImpostazione(titolo: "Backup automatico settimanale", sottotitolo: testoAutomatico,
                                      stato: b.automatico ? nil : Pillola(testo: "Spento", tono: .neutro),
                                      aiuto: testoProssimo, avvertenza: avvertenzaBackup) {
-                        interruttore($stato.dati.impostazioni.backup.automatico)
+                        interruttore(Bindable(stato.dati).impostazioni.backup.automatico)
                     }
                     .cascataImpostazioni(2)
                     RigaImpostazione(
@@ -54,7 +54,7 @@ extension AppImpostazioni {
                                                      if acceso { stato.chiediPasswordBackup = true } else { confermaTogliPassword = true }
                                                  }))
                         }
-                        .popover(isPresented: $stato.chiediPasswordBackup, arrowEdge: .leading) { moduloPassword }
+                        .popover(isPresented: Bindable(stato).chiediPasswordBackup, arrowEdge: .leading) { moduloPassword }
                     }
                     .cascataImpostazioni(5)
                 }
@@ -66,12 +66,16 @@ extension AppImpostazioni {
 
             // «Luce» giro 6: la Biblioteca (PDF di condizioni, KID, circolari) nel backup di base, con l'interruttore
             GruppoImpostazioni(titolo: "Biblioteca") {
-                RigaImpostazione(titolo: "Escludi la Biblioteca dal backup",
-                                 sottotitolo: testoMisuraBiblioteca,
-                                 aiuto: "Circolari e manuali interni possono essere riservati: decidi tu se possono stare in un backup su iCloud Drive. Se la escludi, un ripristino tiene la Biblioteca di questo Mac",
-                                 ultima: true) {
-                    interruttore(Binding(get: { stato.dati.impostazioni.backup.escludiBiblioteca == true },
-                                         set: { stato.dati.impostazioni.backup.escludiBiblioteca = $0 ? true : nil }))
+                // Il numero dei documenti viene da StatoBiblioteca (ObservableObject, non osservato da StatoShell):
+                // osservato qui, la riga si aggiorna anche quando si aggiunge un documento con la pagina aperta
+                OsservaOggetto(stato.biblioteca) {
+                    RigaImpostazione(titolo: "Escludi la Biblioteca dal backup",
+                                     sottotitolo: testoMisuraBiblioteca,
+                                     aiuto: "Circolari e manuali interni possono essere riservati: decidi tu se possono stare in un backup su iCloud Drive. Se la escludi, un ripristino tiene la Biblioteca di questo Mac",
+                                     ultima: true) {
+                        interruttore(Binding(get: { stato.dati.impostazioni.backup.escludiBiblioteca == true },
+                                             set: { stato.dati.impostazioni.backup.escludiBiblioteca = $0 ? true : nil }))
+                    }
                 }
             }
             .cascataImpostazioni(6)

@@ -6,13 +6,14 @@ import SwiftUI
 /// 3. eventi di vita, che generano da soli i bisogni collegati.
 /// Il risultato è la ruota dei bisogni, che orienta l'Analisi 360 e la traccia di Vera.
 struct BisogniCliente: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let cliente: Cliente
     @State var mostraScartati = false
 
     private var profilo: ProfiloBisogni { cliente.bisogni }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let rilevati = stato.bisogniRilevati(cliente.id)
         let ruota = MotoreBisogni.ruota(rilevati, profilo: profilo)
         let priorita = MotoreBisogni.priorita(rilevati, profilo: profilo)

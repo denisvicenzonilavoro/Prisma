@@ -6,7 +6,7 @@ import SwiftUI
 /// prodotto collegata: tabella delle voci, scelte, aggiornamento con lo storico, impatto di un nuovo KID sui clienti.
 /// Senza collegamento propone la posizione o la scheda più probabile.
 struct ConfrontoDossierVista: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let documento: Documento
 
     /// nil = il bersaglio predefinito.
@@ -19,6 +19,7 @@ struct ConfrontoDossierVista: View {
     @State private var sceltaCollegamento = ""
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let d = stato.documento(documento.id) ?? documento
         let elenco = stato.bersagli(d)
         let b = bersaglio.flatMap { elenco.contains($0) ? $0 : nil } ?? elenco.first
@@ -436,11 +437,12 @@ private struct OcchielloConfronto: View {
 /// Chi ha posizioni o proposte del prodotto quando un nuovo KID alza rischio o costi: costi in più all'anno,
 /// «oltre il profilo», attività per ciascun cliente.
 private struct ImpattoNuovoKID: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let esito: EsitoImpatto
     let prodotto: Prodotto
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let m = Misure.ConfrontoDossier.self
         VStack(alignment: .leading, spacing: m.spazio) {
             OcchielloConfronto(testo: TestiConfrontoDossier.occhielloImpatto)
@@ -495,11 +497,12 @@ struct FraseAumenti: View {
 /// Un cliente toccato dal nuovo KID: nome, posizioni, canale, «oltre il profilo», costi in più. Un clic apre la prima
 /// posizione. `compatta` (avviso di Prodotti): nome, «oltre il profilo» e costo annuo.
 struct RigaClienteImpatto: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let cliente: ImpattoCliente
     let compatta: Bool
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let m = Misure.ConfrontoDossier.self
         let colori = Colori.ConfrontoDossier.self
         Button {
@@ -557,7 +560,7 @@ struct RigaClienteImpatto: View {
 /// Lo storico degli aggiornamenti dai documenti di una posizione o di una scheda, dal più recente, con «Ripristina»
 /// dove si può. Lo usano la scheda «Confronto», la scheda «Dati» di Documenti e Prodotti.
 struct ElencoVariazioni: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let variazioni: [VariazioneDossier]
     /// Quante se ne vedono prima di «Mostra tutti» (nil = tutte).
     var limite: Int? = nil
@@ -567,6 +570,7 @@ struct ElencoVariazioni: View {
     @State private var tutte = false
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let m = Misure.ConfrontoDossier.self
         let colori = Colori.ConfrontoDossier.self
         let mostrate = tutte ? variazioni : Array(variazioni.prefix(limite ?? variazioni.count))

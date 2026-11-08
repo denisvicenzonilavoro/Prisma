@@ -128,7 +128,7 @@ extension StatoShell {
         if let r = p.cacheCostruite.valore[chiave] { return r }
         guard let fonte = fonteProposta(b.clienteId) else { return nil }
         let bozza = b.propostaId.flatMap { id in dati.posizioni.first { $0.id == id } }
-        let r = MotoreProposta.costruisci(b, fonte: fonte, dati: dati, bozzaEsistente: bozza,
+        let r = MotoreProposta.costruisci(b, fonte: fonte, dati: dati.istantanea, bozzaEsistente: bozza,
                                           prodottoScelto: p.sceltaProdotto[b.id],
                                           ultimo: p.ultimoProdotto[StatoPraticheProposta.chiaveProdotto(b)],
                                           contaPagine: { ImpaginatoreProspetto.pagine($0).count })

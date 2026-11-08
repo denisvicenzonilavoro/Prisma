@@ -105,10 +105,11 @@ struct CampoNumeroMercato: View {
 
 /// Il foglio aperto.
 struct FoglioMercatoVista: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let foglio: FoglioMercato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let f = Tema.Apple.Mercato.Foglio.self
         Group {
             switch foglio {
@@ -160,9 +161,10 @@ private struct CampoFoglioMercato<Contenuto: View>: View {
 // MARK: - Soglie
 
 struct FoglioSoglieMercato: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let f = Tema.Apple.Mercato.Foglio.self
         VStack(alignment: .leading, spacing: f.spazio) {
             TestataFoglioMercato(titolo: TestiAppMercato.soglieGruppo, testo: TestiAppMercato.soglieNota)
@@ -195,7 +197,7 @@ struct FoglioSoglieMercato: View {
 // MARK: - Importazione di un file
 
 struct FoglioImportaMercato: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @ObservedObject var sessione: SessioneMercato
 
     @State private var fonte = ""
@@ -205,6 +207,7 @@ struct FoglioImportaMercato: View {
     @State private var frequenza = FrequenzaMercato.giornaliera
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let f = Tema.Apple.Mercato.Foglio.self
         VStack(alignment: .leading, spacing: f.spazio) {
             TestataFoglioMercato(titolo: TestiAppMercato.importaTitolo, testo: TestiAppMercato.importaSpiegazione)
@@ -301,7 +304,7 @@ struct FoglioImportaMercato: View {
 // MARK: - A mano
 
 struct FoglioAManoMercato: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     private enum Cosa: Hashable { case serie, quota }
 

@@ -269,7 +269,7 @@ extension StatoShell {
 
     /// Mentre la scena aspetta, il testo che arriva dall'iPhone entra da solo (`riceviDalPonte` lo mette in arrivo).
     func osservaInquadrature() {
-        $inquadratureInArrivo
+        inquadratureCambiate
             .receive(on: DispatchQueue.main)
             .sink { [weak self] elenco in
                 // Con lo Smontaggio davanti le righe le legge MotoreSmontaggio («Luce» giro 2)

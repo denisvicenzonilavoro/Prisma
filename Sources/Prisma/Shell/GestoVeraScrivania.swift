@@ -17,7 +17,7 @@ extension View {
 }
 
 private struct ModificatoreGestoVera: ViewModifier {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @Environment(\.modoIstantanea) private var modoIstantanea
     #if os(macOS)
     @State private var monitor = MonitorGestoVera()

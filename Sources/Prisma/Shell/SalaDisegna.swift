@@ -22,10 +22,11 @@ import AppKit
 // compare subito con la dissolvenza; istantanee: il tratto di prova (`StatoSala.provaDisegno`) già trasformato.
 
 struct DisegnaIlFuturo: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let cliente: Cliente
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let id = cliente.id
         let attuale = stato.cliente(id) ?? cliente
         let prep = CacheLineaVita.preparazione(cliente: attuale, posizioni: stato.posizioniCliente(id),

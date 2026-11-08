@@ -3,10 +3,11 @@ import SwiftUI
 /// Il passaggio generazionale nel dossier Posizioni: cosa va ai beneficiari e cosa agli eredi,
 /// con quali tempi e quali imposte, e cosa sistemare (beneficiari mancanti, convivente escluso…).
 struct PannelloSuccessione: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let s: Successione
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         PannelloAnalisi(titolo: "Passaggio generazionale", nota: "Se mancasse oggi, senza testamento: una stima per parlarne, non un parere legale o notarile") {
             HStack(spacing: 8) {
                 if !s.daSistemare.isEmpty || s.conviventeEscluso != nil {

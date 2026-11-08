@@ -17,7 +17,7 @@ import SwiftUI
 // MARK: - Investimenti
 
 struct DettaglioInvestimentiApple: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @EnvironmentObject var cache: CacheAree360
     let cliente: Cliente
     @State private var canale: Canale
@@ -28,6 +28,7 @@ struct DettaglioInvestimentiApple: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let d = Tema.Apple.Aree360.Dettaglio.self
         let c = Tema.Apple.Aree360.Composizione.self
         let k = cache.aree(stato, cliente: cliente.id).composizione
@@ -143,7 +144,7 @@ struct DettaglioInvestimentiApple: View {
 // MARK: - Risparmio e liquidità
 
 struct DettaglioLiquiditaApple: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @EnvironmentObject var cache: CacheAree360
     let cliente: Cliente
     @State private var canale: Canale
@@ -154,6 +155,7 @@ struct DettaglioLiquiditaApple: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let d = Tema.Apple.Aree360.Dettaglio.self
         let l = cache.aree(stato, cliente: cliente.id).liquidita
         return VStack(alignment: .leading, spacing: 0) {
@@ -243,13 +245,14 @@ private func coloreCanale360(_ c: Canale) -> Color {
 
 /// `.lbl` «AREA · Nome Cognome» nel colore dell'area, titolo 28 bold e, a destra, «Apri l'analisi completa ›».
 private struct TestataDettaglioArea360: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @Environment(\.statoDettaglioApple) private var dettaglio
     let area: AreaAnalisi
     let nome: String
     let titolo: String
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let d = Tema.Apple.Aree360.Dettaglio.self
         let margine = max(0, d.margineChiudi - Tema.Apple.Misura.Padding.dettaglio.trailing)
         return HStack(alignment: .top, spacing: d.spazioTestata) {
@@ -348,12 +351,13 @@ private struct IpotesiDettaglioArea360: View {
 
 /// «Salva come proposta» (sul canale scelto, sempre riconoscibile), «Chiedi a Vera di spiegarlo».
 private struct PiedeDettaglioArea360: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @Environment(\.statoDettaglioApple) private var dettaglio
     let area: AreaAnalisi
     @Binding var canale: Canale
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let d = Tema.Apple.Aree360.Dettaglio.self
         return HStack(alignment: .center, spacing: d.spazioPulsanti) {
             Button(action: salva) {

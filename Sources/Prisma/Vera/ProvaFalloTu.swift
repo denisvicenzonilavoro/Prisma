@@ -364,7 +364,7 @@ enum ProvaFalloTu {
 
     private static func clientela(_ controlla: (Bool, String) -> Void) {
         let s = StatoShell(persistente: false)
-        s.dati = ClientiFittizi.completi()
+        s.dati.carica(ClientiFittizi.completi())
         let cal = Calendar.current
         let oggi = cal.date(from: DateComponents(year: 2026, month: 11, day: 7, hour: 10)) ?? Date()
         // Un cliente che compie 50 anni a dicembre (i dati di prova non ne hanno)

@@ -68,12 +68,13 @@ struct FinestraMobile<Contenuto: View>: View {
 /// La barra del titolo della finestra sull'iPad (.tbar e .win-title del tema): la ✕ al posto dei semafori, l'icona,
 /// il nome dell'app e, a destra, di chi parla la finestra. Piena in alto, poi sfuma nel contenuto, come sul Mac.
 private struct BarraTitoloMobile: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let app: AppPrisma
 
     private typealias F = Tema.Misura.Mobile.Finestra
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         HStack(spacing: F.spazioTitolo) {
             PulsanteChiudiFinestra(app: app)
             IconaApp(app: app, lato: Tema.Misura.iconaFinestra)

@@ -45,7 +45,7 @@ extension ProvaBackup {
             return "misura della velocità: l'app non lancia la prova della fluidità"
         }
         let righe = MisuraVelocita.leggi("""
-            | Scenario | Azione | Mediana | Massimo | Aggiornamento | Disegno | Prima volta | Avvisi StatoShell | Avvisi StatoFinestre |
+            | Scenario | Azione | Mediana | Massimo | Aggiornamento | Disegno | Prima volta | Corpi rivalutati | Avvisi StatoFinestre |
             |---|---|---:|---:|---:|---:|---:|---:|---:|
             | 5 clienti | Luce · apri il radar | 12 ms | 15 ms | 10 ms | 2 ms | 30 ms | 1 | 2 |
             """)

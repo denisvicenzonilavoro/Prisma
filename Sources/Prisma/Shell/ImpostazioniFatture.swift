@@ -12,7 +12,7 @@ import SwiftUI
 // - I campi del contributo, della ritenuta e del bollo compaiono quando si sceglie «Sì».
 
 struct SezioneDatiFatture: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     /// L'ancora della sezione (`StatoShell.apriImpostazioniFatture`).
     static var ancora: String { TestiParcelle.ancoraImpostazioni }
@@ -20,6 +20,7 @@ struct SezioneDatiFatture: View {
     private typealias I = Tema.Apple.Parcelle.Impostazioni
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let f = stato.datiFatturazione
         let mancanti = MotoreFattura.mancantiConsulente(f)
         let anno = Calendar.current.component(.year, from: Date())

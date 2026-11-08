@@ -18,13 +18,14 @@ import SwiftUI
 //   studio non si mostrano.
 
 struct RiquadroStudioScrivania: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let pronto: Bool
     let ritardoAnelli: Double
     /// L'altezza della riga: sugli schermi bassi gli anelli si stringono per restare nel riquadro.
     let altezza: CGFloat
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let s = Tema.Apple.Studio.Scrivania.self
         let r = Tema.Apple.Scrivania.Riquadro.self
         let lato = min(s.anelli, max(s.anelliMinimi, altezza - r.padding.top - r.padding.bottom))

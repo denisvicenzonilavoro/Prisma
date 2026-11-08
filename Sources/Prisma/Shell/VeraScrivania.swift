@@ -88,7 +88,7 @@ extension StatoShell {
 
 /// La scrivania con i widget e, a destra, Vera. Sta dove prima c'era solo `Scrivania()` (ShellView.livelliScrivania).
 struct PagineScrivania: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @ObservedObject var sistema: StatoFinestre
     @ObservedObject var gesto: GestoPaginaVera
     let misura: CGSize
@@ -104,6 +104,7 @@ struct PagineScrivania: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let m = Tema.Misura.VeraScrivania.self
         let p = sistema.paginaVera + gesto.spostamento
         let visibile = min(max(p, 0), 1)
@@ -232,7 +233,7 @@ struct PuntiPagineVera: View {
 /// Vera sulla scrivania: vetro trasparente (l'acqua si vede e si muove dietro), piccola finché non si parla,
 /// poi si allarga con la molla della mini Vera in una conversazione comoda. Solo testo (Qwen), niente microfono.
 struct VeraScrivania: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     /// La pagina di Vera è davanti, ferma: il cursore va nel campo.
     let attiva: Bool
     @Environment(\.accessibilityReduceMotion) private var movimentoRidotto
@@ -253,6 +254,7 @@ struct VeraScrivania: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let m = Tema.Misura.VeraScrivania.self
         let grande = allargata
         let moto: Animation? = modoIstantanea ? nil : (movimentoRidotto ? Tema.Moto.dissolvenzaCalma : Tema.Moto.VeraScrivania.forma)
@@ -481,7 +483,7 @@ struct VeraScrivania: View {
         let c = Tema.Apple.Vera.Campo.self
         return HStack(alignment: .bottom, spacing: c.spazio) {
             TextField(portafoglio ? "Chiedi del portafoglio…" : c.segnaposto,
-                      text: $stato.domandaVera, axis: .vertical)
+                      text: Bindable(stato).domandaVera, axis: .vertical)
                 .textFieldStyle(.plain)
                 .carattereApple(c.testo)
                 .foregroundColor(c.coloreTesto)

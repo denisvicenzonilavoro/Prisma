@@ -8,7 +8,7 @@ import SwiftUI
 /// solo (resta il pulsante «Dati» con il numero da confermare) e, se il consulente lo apre, diventa un cassetto in basso.
 /// La vista non riscrive mai `documentoSelezionato`.
 struct DettaglioDocumento: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let voce: MotoreDocumenti.Voce
     /// Chiede conferma prima di eliminare (l'avviso sta nell'app, che lo usa anche da tastiera).
     let chiediEliminazione: (Documento) -> Void
@@ -61,6 +61,7 @@ struct DettaglioDocumento: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         VStack(spacing: 0) {
             barra
             GeometryReader { geo in
@@ -184,7 +185,7 @@ struct DettaglioDocumento: View {
         // Il modulo «Crea…» si apre dal menu «⋯»
         .popover(isPresented: $moduloMenu, arrowEdge: .bottom) {
             ModuloCreaDaDocumento(documento: d, cosa: cosaCrea) { moduloMenu = false }
-                .environmentObject(stato)
+                .environment(stato)
         }
     }
 
@@ -324,7 +325,7 @@ struct DettaglioDocumento: View {
         // Fuori da ViewThatFits: un popover solo, qualunque fila si veda
         .popover(isPresented: $moduloAzione, arrowEdge: .bottom) {
             ModuloCreaDaDocumento(documento: d, cosa: cosaCrea) { moduloAzione = false }
-                .environmentObject(stato)
+                .environment(stato)
         }
     }
 
@@ -624,7 +625,7 @@ struct DettaglioDocumento: View {
 /// Popover per creare dal documento una scheda prodotto, una posizione in essere o una proposta: canale (riconoscibile
 /// prima di creare) e area, con quanti dati entrano.
 struct ModuloCreaDaDocumento: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let documento: Documento
     let cosa: CreaDaDocumento
     let chiudi: () -> Void
@@ -641,6 +642,7 @@ struct ModuloCreaDaDocumento: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let m = Tema.Misura.Documenti.self
         let d = stato.documento(documento.id) ?? documento
         let confermati = d.campi.filter(\.confermato).count
@@ -715,7 +717,7 @@ struct ModuloCreaDaDocumento: View {
 /// La scheda leggibile di un documento: banner, sezioni (Chi, Che cosa, Cifre chiave, Costi, Rischio, Date) con la
 /// fonte di ogni dato, i dati non trovati da aggiungere a mano e ciò che il documento ha già portato in Prisma.
 struct SchedaDatiDocumento: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let voce: MotoreDocumenti.Voce
     let mostraFonte: (Int, CampoDocumento) -> Void
 
@@ -725,6 +727,7 @@ struct SchedaDatiDocumento: View {
     private var d: Documento { voce.documento }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let m = Tema.Misura.Documenti.self
         let sezioni = MotoreDocumenti.scheda(d, cliente: stato.dati.clienti.first { $0.id == d.clienteId }, oggi: Date())
         let inLettura = stato.documentiInLettura.contains(d.id)
@@ -960,7 +963,7 @@ private struct SezioneSchedaDocumento: View {
 /// Una riga della scheda: spunta, nome del dato sopra il valore leggibile (doppio clic o matita per correggerlo),
 /// nota e fonte.
 private struct RigaDatoDocumento: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let documento: Documento
     let riga: MotoreDocumenti.RigaScheda
     let mostraFonte: (Int, CampoDocumento) -> Void
@@ -969,6 +972,7 @@ private struct RigaDatoDocumento: View {
     @State private var sopra = false
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let m = Tema.Misura.Documenti.self
         let c = riga.campo
         let id = documento.id
@@ -1070,7 +1074,7 @@ private struct RigaDatoDocumento: View {
 /// Identità e questionari contro il dossier e «In regola» (giro 4): stessa forma della tabella della specifica 9, con
 /// i gettoni dell'app Documenti. Si aggiornano solo i dati confermati e scelti.
 struct ConfrontoClienteVista: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let documento: Documento
     var mostraFonte: (Int, CampoDocumento) -> Void = { _, _ in }
 
@@ -1080,6 +1084,7 @@ struct ConfrontoClienteVista: View {
     @State private var sceltePer = ""
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let m = Tema.Misura.Documenti.self
         let d = stato.documento(documento.id) ?? documento
         let questionario = d.genere == .questionario
@@ -1252,10 +1257,11 @@ struct ConfrontoClienteVista: View {
 
 /// Il testo letto, pagina per pagina (la stessa pagina dell'anteprima), con le righe dei dati letti evidenziate.
 private struct SchedaTestoDocumento: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let documento: Documento
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let m = Tema.Misura.Documenti.self
         let pagine = stato.testoDocumento(documento)
         VStack(alignment: .leading, spacing: m.spazioSezioni) {

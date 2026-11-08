@@ -164,9 +164,10 @@ extension StatoShell {
 
 /// «▶︎ Il tuo anno» e il segmentato a pillola delle quattro schede, a destra nella testata della finestra.
 struct AzioniStudio: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         HStack(spacing: Tema.Apple.Scrivania.Saluto.spazioPulsanti) {
             // «▶︎ Il tuo anno» in tutte le schede (Luce giro 5, StoriaLuce.swift); non in modalità cliente
             if !stato.inModoCliente {
@@ -179,7 +180,7 @@ struct AzioniStudio: View {
                 .fixedSize()
                 .help("Il tuo anno da consulente, in un minuto")
             }
-            SegmentatoPillola(selezione: $stato.schedaStudio, valori: SchedaStudio.allCases, titolo: { $0.titolo })
+            SegmentatoPillola(selezione: Bindable(stato).schedaStudio, valori: SchedaStudio.allCases, titolo: { $0.titolo })
                 .fixedSize()
         }
     }
@@ -189,9 +190,10 @@ struct AzioniStudio: View {
 
 /// Il contenuto della finestra di Studio.
 struct AppStudio: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         CorpoStudio(stato: stato, chiave: stato.chiaveVista, scheda: stato.schedaStudio)
             .equatable()
     }

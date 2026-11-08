@@ -4,19 +4,20 @@ import SwiftUI
 /// promemoria, i gruppi di tipi accesi e le età limite di TCM e LTC. Si salva con le altre impostazioni e vale
 /// subito. AppImpostazioni la mette sotto i promemoria, con `.id("impostazioni-occasioni")`.
 struct GruppoOccasioniImpostazioni: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let m = Misure.Occasioni.self
         GruppoImpostazioni(titolo: "Occasioni") {
             RigaImpostazione(titolo: "Nel calendario", sottotitolo: "Settimana e mese dell'Agenda",
                              aiuto: "Le date in cui cambia qualcosa nella settimana e nel mese dell'Agenda; la vista «Occasioni» c'è sempre") {
-                Toggle("", isOn: $stato.dati.impostazioni.occasioni.inAgenda)
+                Toggle("", isOn: Bindable(stato.dati).impostazioni.occasioni.inAgenda)
                     .toggleStyle(StileInterruttore())
                     .labelsHidden()
             }
             RigaImpostazione(titolo: "Anticipo", sottotitolo: "Notifiche e promemoria del Mac") {
-                MenuTendina(selezione: $stato.dati.impostazioni.occasioni.anticipoGiorni,
+                MenuTendina(selezione: Bindable(stato.dati).impostazioni.occasioni.anticipoGiorni,
                             opzioni: ImpostazioniOccasioni.anticipi.map { ($0, "\($0) giorni prima") },
                             larghezza: m.menuImpostazioni)
             }
@@ -34,8 +35,8 @@ struct GruppoOccasioniImpostazioni: View {
                              aiuto: "Oltre queste età di solito non si sottoscrivono: controlla quelle del prodotto",
                              ultima: true) {
                 HStack(alignment: .bottom, spacing: Tema.Misura.Impostazioni.spazioGriglia) {
-                    eta("TCM", $stato.dati.impostazioni.occasioni.etaLimiteTCM)
-                    eta("LTC", $stato.dati.impostazioni.occasioni.etaLimiteLTC)
+                    eta("TCM", Bindable(stato.dati).impostazioni.occasioni.etaLimiteTCM)
+                    eta("LTC", Bindable(stato.dati).impostazioni.occasioni.etaLimiteLTC)
                 }
             }
         }

@@ -10,13 +10,14 @@ import SwiftUI
 /// compilati.
 @MainActor
 struct MessaggiTelefono: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @StateObject private var sessione = SessioneMessaggi()
     @Environment(\.prismaScatto) private var scatto
 
     private typealias T = Tema.Apple.Messaggi.Telefono
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let richiesta = scatto ? RichiestaIstantaneaMessaggi.per(stato) : nil
         let elenco = sessione.elenco(stato.occasioniMessaggiConRichieste())
         let scelta = richiesta?.occasione(in: elenco) ?? sessione.occasione(in: elenco)

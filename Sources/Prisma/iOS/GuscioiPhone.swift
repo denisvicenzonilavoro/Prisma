@@ -7,7 +7,7 @@ import SwiftUI
 /// animata di RadiceMobile. Si torna alla scrivania con l'icona Scrivania del dock, con il marchio o con la ✕.
 struct GuscioiPhone: View {
     @EnvironmentObject var mobile: StatoMobile
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     /// Sotto una finestra, a movimento d'apertura finito, la scrivania esce dalla gerarchia (memoria, vetri).
     @State private var scrivaniaTolta = false
     @State private var giroMovimento = 0
@@ -15,6 +15,7 @@ struct GuscioiPhone: View {
     private typealias D = Tema.Misura.Mobile.Dock
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         // La safe area si legge da fuori: dentro una vista che la ignora i margini valgono zero
         GeometryReader { esterno in
         let sicuro = esterno.safeAreaInsets
@@ -359,10 +360,11 @@ struct SegmentatoTelefono<Valore: Hashable>: View {
 // MARK: - Clienti
 
 private struct ClientiTelefono: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @State private var cerca = ""
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let elenco = stato.clienti
             .filter { cerca.isEmpty || $0.nome.localizedCaseInsensitiveContains(cerca) }
             .sorted { $0.nome.localizedCaseInsensitiveCompare($1.nome) == .orderedAscending }
@@ -384,10 +386,11 @@ private struct ClientiTelefono: View {
 }
 
 private struct RigaClienteTelefono: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let cliente: Cliente
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let posizioni = stato.posizioni.filter { $0.clienteId == cliente.id && $0.stato != .chiusa }
         let canali = Canale.allCases.filter { c in posizioni.contains { $0.canale == c } }
         // Il nome ha tutta la riga: i canali stanno sotto, mai al posto del nome (sul telefono c'è poco spazio)
@@ -420,7 +423,7 @@ private struct RigaClienteTelefono: View {
 /// barra dei canali, quattro cifre su due colonne, poi le schede a pillola Sintesi, Posizioni, Agenda e Documenti
 /// (non una pagina infinita).
 private struct SchedaClienteTelefono: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let clienteId: String
     @State private var scheda = Scheda.sintesi
 
@@ -669,7 +672,7 @@ private struct SchedaClienteTelefono: View {
 /// Posizioni sull'iPhone (Design/iphone.html, schermata 3), il fulcro: il filtro dei canali a pillola, il totale
 /// grande che conta con la barra dei canali, le aree con il loro peso, poi le posizioni più grandi.
 private struct PosizioniTelefono: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @State private var filtro = FiltroPosizioniTelefono.tutte
 
     /// Le aree con le loro posizioni: le attività dalla più grande, i debiti in fondo.
@@ -685,6 +688,7 @@ private struct PosizioniTelefono: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let scelte = filtro.applica(stato.posizioni)
         // Il totale e i canali sono le attività: i debiti stanno a parte, in fondo alle aree, in negativo
         let attive = scelte.filter { !$0.area.passivo }
@@ -939,11 +943,12 @@ private struct RigaAreaTelefono: View {
 
 /// Le posizioni di un'area (dal riquadro «Per area»), con lo stesso filtro.
 struct ElencoAreaTelefono: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let area: AreaPosizione
     let filtro: FiltroPosizioniTelefono
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let elenco = filtro.applica(stato.posizioni).filter { $0.area == area }.sorted { $0.valore > $1.valore }
         FondoTelefono {
             TotaleTelefono(titolo: area.nome, totale: elenco.reduce(0) { $0 + $1.valore },
@@ -963,11 +968,12 @@ struct ElencoAreaTelefono: View {
 
 /// Una posizione: il nome (fino a due righe), cliente e area, il canale e lo stato sotto; l'importo a destra.
 private struct RigaPosizioneTelefono: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let posizione: Posizione
     let conCliente: Bool
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         HStack(spacing: E.spazioRiga) {
             VStack(alignment: .leading, spacing: E.spazioTesto) {
                 Text(posizione.nome)
@@ -1003,10 +1009,11 @@ private struct RigaPosizioneTelefono: View {
 /// Il dettaglio della posizione: canale (etichetta estesa), stato, valore che conta, poi prodotto, flussi, valori e
 /// costi (le cifre di Prisma, in sola lettura).
 private struct DettaglioPosizioneTelefono: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let posizioneId: String
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let posizione = stato.posizioni.first { $0.id == posizioneId }
         FondoTelefono {
             if let p = posizione {
@@ -1084,11 +1091,12 @@ private struct DettaglioPosizioneTelefono: View {
 /// L'agenda dell'iPhone (Design/iphone.html, schermata 4): il mese intero con un puntino blu per gli appuntamenti
 /// e uno arancio per le cose da fare; sotto, il giorno scelto con i suoi appuntamenti e le sue attività.
 private struct AgendaTelefono: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @State private var mese = Calendar.current.dateInterval(of: .month, for: Date())?.start ?? Date()
     @State private var giorno = Calendar.current.startOfDay(for: Date())
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let cal = Calendar.current
         let delGiorno = stato.appuntamenti.filter { cal.isDate($0.inizio, inSameDayAs: giorno) }.sorted { $0.inizio < $1.inizio }
         let daFare = stato.attivitaAperte.filter { cal.isDate($0.scadenza, inSameDayAs: giorno) }
@@ -1252,11 +1260,12 @@ private struct MeseTelefono: View {
 /// Un appuntamento: la barra di 3 nel colore del cliente, l'ora e la durata, il titolo, cliente e luogo, il canale
 /// sotto (titolo e cliente restano interi). `conGiorno`: il giorno sopra l'ora (elenchi di più giorni).
 private struct RigaAppuntamentoTelefono: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let appuntamento: Appuntamento
     var conGiorno = false
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let cliente = stato.cliente(appuntamento.clienteId)
         HStack(spacing: E.spazioRiga) {
             RoundedRectangle(cornerRadius: E.barra / 2, style: .continuous)
@@ -1308,10 +1317,11 @@ private struct RigaAppuntamentoTelefono: View {
 /// Il dettaglio dell'appuntamento: il blocco della data, il titolo, giorno e ore, il canale; poi cliente, tipo,
 /// luogo, stato, posizione collegata e note.
 private struct DettaglioAppuntamentoTelefono: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let appuntamentoId: String
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let appuntamento = stato.appuntamenti.first { $0.id == appuntamentoId }
         FondoTelefono {
             if let a = appuntamento {

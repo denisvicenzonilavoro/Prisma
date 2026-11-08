@@ -9,12 +9,13 @@ import SwiftUI
 /// (`StatoShell.apriVoceNovita`); un clic fuori o Esc lo chiude. Con «Riduci movimento» pannello e voci compaiono già
 /// fermi con la dissolvenza del contenitore; nelle istantanee sono subito nello stato finale.
 struct PannelloNovita: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @Environment(\.prismaCalmo) private var calmo
 
     private typealias N = Tema.Apple.Novita
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         GeometryReader { geo in
             let larghezza = max(0, min(N.larghezzaDueGruppi, geo.size.width - 2 * N.bordo))
             ZStack(alignment: .top) {
@@ -120,13 +121,14 @@ struct PannelloNovita: View {
 /// Una voce della griglia: il tassello colorato con il glifo, il titolo in grassetto e la frase in grigio, su una riga
 /// sola con i puntini. Sotto il puntatore il fondo `chip`; le voci non si inclinano.
 private struct RigaNovitaLuce: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let voce: NovitaLuce
     @State private var sopra = false
 
     private typealias N = Tema.Apple.Novita
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let forma = RoundedRectangle(cornerRadius: N.raggioVoce, style: .continuous)
         Button { stato.apriVoceNovita(voce) } label: {
             HStack(spacing: N.spazioVoceGriglia) {

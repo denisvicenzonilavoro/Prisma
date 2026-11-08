@@ -7,7 +7,7 @@ import SwiftUI
 struct AppAnalisi360: View {
     enum Scheda: Hashable { case sintesi, dettaglio, metodo }
 
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @State var scheda: Scheda = .sintesi
     @State var confermaRicalcolo = false
 
@@ -20,6 +20,7 @@ struct AppAnalisi360: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         // Il dettaglio che nasce da una card delle aree si apre sopra tutta l'app (Analisi360Apple.swift)
         PresentatoreAree360(stato: stato) {
             cornice

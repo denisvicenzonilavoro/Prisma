@@ -7,6 +7,8 @@ import Foundation
 /// aggiorna dai getter senza pubblicare StatoShell. Ogni voce si calcola alla prima richiesta dopo un
 /// cambiamento, non tutte insieme. Si usa solo dal thread principale.
 final class DerivatiDati {
+    /// Il radar del portafoglio (Posizioni › Radar): con Observation la vista lo chiede a ogni rivalutazione.
+    var radar: RadarPortafoglio?
     /// Ciò da cui dipende tutto il resto: con una chiave nuova si riparte da zero.
     struct Chiave: Equatable {
         let versione: Int
@@ -190,6 +192,7 @@ final class DerivatiDati {
         cruscottoStudio = nil
         trackRecord = nil
         occasioniMessaggi = nil
+        radar = nil
     }
 }
 
@@ -197,6 +200,9 @@ extension StatoShell {
     /// I dati ricavati validi per lo stato di adesso (azzerati se i dati dei calcoli, il giorno o la modalità
     /// cliente sono cambiati).
     func derivatiValidi() -> DerivatiDati {
+        // Iscrive la vista che chiede dati ricavati al giorno e all'ora: le cache giornaliere e orarie (prossimi
+        // appuntamenti, appuntamenti di oggi, portafoglio…) si rileggono allo scoccare dell'ora e a mezzanotte
+        _ = orologioVista
         let adesso = Date()
         // La via breve: stessa versione e modalità, e siamo ancora nello stesso giorno (due confronti, niente calendario)
         if let k = derivati.chiave, k.versione == versioneCalcoli, k.modo == modoCliente,
@@ -212,11 +218,23 @@ extension StatoShell {
         return derivati
     }
 
+    /// Il radar del portafoglio, in cache per `versioneCalcoli` e giorno: legge solo clienti, posizioni, prodotti, portafogli
+    /// modello e la tolleranza del radar, tutti campi «dei calcoli». Così la vista del radar non legge l'archivio intero.
+    func radarPortafoglio() -> RadarPortafoglio {
+        let d = derivatiValidi()
+        if let r = d.radar { return r }
+        let r = MotoreRadar.calcola(dati.istantanea)
+        d.radar = r
+        return r
+    }
+
     /// Cambio di giorno, d'orario o di fuso: la prossima richiesta rifà il giorno delle chiavi.
     func riverificaGiornoDerivati() {
         derivati.inizioGiorno = .distantPast
         derivati.fineGiorno = .distantPast
         derivati.vista = nil
+        // Il giorno nuovo arriva anche alle viste (derivati non è osservato, orologioVista sì)
+        aggiornaOrologioVista()
     }
 
     /// Il cliente con questo id tra quelli visibili (in modalità cliente solo il suo): ricerca in un dizionario.
@@ -396,6 +414,8 @@ extension StatoShell {
 
     /// La chiave delle viste che mostrano dati ricavati, per le sottoviste `Equatable` che non osservano StatoShell.
     var chiaveVista: ChiaveVista {
+        // Iscrive chi legge la chiave al giorno e all'ora (osservati), oltre a versioneCalcoli e modoCliente
+        _ = orologioVista
         let adesso = Date()
         if let v = derivati.vista, v.chiave.calcoli == versioneCalcoli, v.chiave.modo == modoCliente,
            adesso >= v.da, adesso < v.scade {
@@ -411,6 +431,17 @@ extension StatoShell {
         let fineGiorno = calendario.date(byAdding: .day, value: 1, to: giorno) ?? fineOra
         derivati.vista = (k, max(giorno, inizioOra), min(fineOra, fineGiorno))
         return k
+    }
+}
+
+/// Il giorno (inizio, nel fuso di adesso) e l'ora intera come `DerivatiDati.ora`: il valore osservato di
+/// `StatoShell.orologioVista`, che cambia allo scoccare dell'ora, a mezzanotte e con un altro fuso.
+struct OrologioVista: Equatable {
+    let giorno: Date
+    let ora: Int
+
+    static func di(_ data: Date) -> OrologioVista {
+        OrologioVista(giorno: Calendar.current.startOfDay(for: data), ora: DerivatiDati.ora(data))
     }
 }
 

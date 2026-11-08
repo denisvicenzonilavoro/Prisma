@@ -3,10 +3,11 @@ import SwiftUI
 /// Il patrimonio nel tempo nel dossier Posizioni: tutte le posizioni insieme, com'è oggi e con le proposte,
 /// con gli obiettivi lungo la strada.
 struct PannelloPatrimonio: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let p: PatrimonioNelTempo
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         PannelloAnalisi(titolo: "Il patrimonio nel tempo",
                         nota: "Tutte le posizioni insieme, con i rendimenti ipotizzati: immobili al valore di oggi, debiti che si estinguono, prima delle imposte finali") {
             HStack(spacing: 8) {

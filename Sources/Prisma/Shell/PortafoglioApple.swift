@@ -25,7 +25,7 @@ import SwiftUI
 /// Il portafoglio del tema Apple con sotto i pannelli di sempre (`sotto`): scorre tutto insieme; il dettaglio
 /// di una scheda si apre sopra, centrato nello spazio del portafoglio.
 struct PortafoglioApple<Sotto: View>: View {
-    @ObservedObject var stato: StatoShell
+    let stato: StatoShell
     @Environment(\.prismaCalmo) private var calmo
     @Environment(\.modoIstantanea) private var istantanea
     @StateObject private var dettaglio: StatoDettaglio
@@ -36,7 +36,7 @@ struct PortafoglioApple<Sotto: View>: View {
     /// Le istantanee possono chiedere «Con le proposte» o il dettaglio della prima scheda già aperto
     /// (RichiestaIstantaneaPortafoglio): così sono nello stato voluto dal primo disegno.
     init(stato: StatoShell, @ViewBuilder sotto: () -> Sotto) {
-        _stato = ObservedObject(wrappedValue: stato)
+        self.stato = stato
         self.sotto = sotto()
         // Gli oggetti nascono una volta sola (`StateObject` valuta l'espressione solo alla prima comparsa)
         _dettaglio = StateObject(wrappedValue: Self.dettaglioIniziale(stato))
@@ -744,10 +744,11 @@ private struct DettaglioDaFareApple: View {
     let fatto: () -> Void
     let dossier: () -> Void
 
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @Environment(\.statoDettaglioApple) private var dettaglio
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let d = Tema.Apple.Posizioni.Dettaglio.self
         VStack(alignment: .leading, spacing: 0) {
             testata

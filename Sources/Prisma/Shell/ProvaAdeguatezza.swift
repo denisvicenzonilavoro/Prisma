@@ -179,7 +179,7 @@ enum ProvaAdeguatezza {
         do {
             let s = StatoShell(persistente: false)
             if let dati = try? ProvaCarico.moltiplica(DatiPrisma.demo(), copie: ProvaCarico.copie) {
-                s.dati = dati
+                s.dati.carica(dati)
                 let proposte = s.dati.posizioni.filter { MotoreAdeguatezza.pertinente($0, scheda: nil) }
                 var calcolate = 0
                 let inizio = Date()

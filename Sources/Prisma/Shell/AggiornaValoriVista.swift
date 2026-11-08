@@ -9,7 +9,7 @@ enum CampoGrigliaValori: Hashable {
 /// fermi, poi il riepilogo. È una vista dentro la finestra (non un foglio), così le istantanee la fotografano.
 /// Lo stato locale sta qui: le battute nelle caselle non pubblicano StatoShell.
 struct PannelloAggiornaValori: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @Environment(\.modoIstantanea) private var modoIstantanea
     let sessione: AggiornaValori.Sessione
 
@@ -44,6 +44,7 @@ struct PannelloAggiornaValori: View {
     private var m: Tema.Misura.AggiornaValori.Type { Tema.Misura.AggiornaValori.self }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         VStack(alignment: .leading, spacing: 0) {
             testata
                 .padding(m.margine)

@@ -13,12 +13,13 @@ import UniformTypeIdentifiers
 /// prova…» di Analisi 360 (solo con un file di prova caricato) porta qui
 /// (`TestiFamiglie.ancoraImpostazioni`).
 struct ImpostazioniFamiglie: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @State private var errore: String?
     /// Su iPhone e iPad: il selettore dei file è aperto.
     @State private var sceltaFile = false
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let caricate = stato.dati.famiglie
         let predefinite = TabelleFamiglie.tabellePredefinite
         let diProva = caricate.map { $0.tabelle.diProva } ?? (predefinite?.diProva ?? false)

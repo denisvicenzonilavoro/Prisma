@@ -113,10 +113,11 @@ extension TintaAvatar {
 
 /// Elenco dei clienti in un riquadro a comparsa, per scegliere il cliente in primo piano.
 struct ElencoClienti: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @Binding var aperto: Bool
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         VStack(alignment: .leading, spacing: 0) {
             ForEach(stato.clienti) { c in
                 Button {

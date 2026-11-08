@@ -33,7 +33,7 @@ struct PuntoGiocoRischio {
 
 /// Il contenuto del palco per il gioco del rischio.
 struct GiocoRischioVista: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let cliente: Cliente
     /// Fuori dalla presentazione: i comandi del consulente (salva, apri il profilo, nascondi i secondi).
     var consulente = true

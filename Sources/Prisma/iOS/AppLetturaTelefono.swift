@@ -10,7 +10,7 @@ private typealias E = Tema.Apple.Telefono.Elenco
 
 /// Le attività aperte, per scadenza: scadute, oggi, domani, più avanti. La casella è ferma (si spunta sul Mac).
 struct AttivitaTelefono: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     private enum Gruppo: Int, CaseIterable, Identifiable {
         case scadute, oggi, domani, avanti
@@ -54,11 +54,12 @@ struct AttivitaTelefono: View {
 }
 
 private struct RigaAttivitaTelefono: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let attivita: Attivita
     let scaduta: Bool
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         HStack(alignment: .top, spacing: E.spazioRiga) {
             CerchioAttivitaTelefono(fatta: attivita.completata)
                 .padding(.top, E.spazioTesto * 2)
@@ -94,9 +95,10 @@ private struct RigaAttivitaTelefono: View {
 
 /// Le note del taccuino, le fissate in cima e poi dalla più recente; un tocco apre il testo intero.
 struct NoteTelefono: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let note = stato.dati.note.filter { !$0.vuota }.sorted(by: Nota.ordina)
         FondoTelefono {
             if note.isEmpty {
@@ -116,10 +118,11 @@ struct NoteTelefono: View {
 }
 
 private struct RigaNotaTelefono: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let nota: Nota
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         HStack(alignment: .top, spacing: E.spazioRiga) {
             VStack(alignment: .leading, spacing: E.spazioTesto) {
                 HStack(spacing: E.spazioEtichette) {
@@ -151,10 +154,11 @@ private struct RigaNotaTelefono: View {
 }
 
 private struct DettaglioNotaTelefono: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let notaId: String
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let nota = stato.dati.note.first { $0.id == notaId }
         FondoTelefono {
             if let nota {
@@ -189,9 +193,10 @@ private struct DettaglioNotaTelefono: View {
 
 /// I documenti dei clienti (KID, polizze, estratti, prospetti), per cliente: prima quello in primo piano.
 struct DocumentiTelefono: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let attivo = stato.clienteAttivoId
         let clienti = stato.clienti.sorted { a, b in
             a.id == attivo ? true : b.id == attivo ? false : a.nome.localizedCaseInsensitiveCompare(b.nome) == .orderedAscending
@@ -216,10 +221,11 @@ struct DocumentiTelefono: View {
 }
 
 struct RigaDocumentoTelefono: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let documento: Documento
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         HStack(spacing: E.spazioRiga) {
             Image(systemName: documento.tipo.creatoDaPrisma ? "doc.richtext" : "doc.text")
                 .carattereApple(E.titolo)
@@ -264,9 +270,10 @@ struct RigaDocumentoTelefono: View {
 /// automatico), l'acqua della scrivania e la pioggia, poi l'archivio (il backup dal Mac e quello da rimandare al Mac).
 /// Le altre scelte stanno in Prisma sul Mac.
 struct ImpostazioniTelefono: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         FondoTelefono {
             // Prisma ovunque (giro 8): la copia cifrata del Mac in iCloud Drive, la stessa pagina del Mac in una colonna
             SezioneTelefono(titolo: "iPhone e iPad")
@@ -275,16 +282,16 @@ struct ImpostazioniTelefono: View {
             SezioneTelefono(titolo: "Aspetto")
             VStack(alignment: .leading, spacing: E.spazioRiga) {
                 scelta("Aspetto", sottotitolo: "Automatico segue l'iPhone, di giorno e di sera") {
-                    SegmentatoTelefono(selezione: $stato.dati.impostazioni.aspetto,
+                    SegmentatoTelefono(selezione: Bindable(stato.dati).impostazioni.aspetto,
                                        voci: AspettoInterfaccia.allCases.map { ($0, $0.nome) })
                 }
                 scelta("Sfondo", sottotitolo: "L'acqua della scrivania con le gocce al rallentatore") {
-                    SegmentatoTelefono(selezione: $stato.dati.impostazioni.sfondoAnimato,
+                    SegmentatoTelefono(selezione: Bindable(stato.dati).impostazioni.sfondoAnimato,
                                        voci: [(true, "Animato"), (false, "Fermo")])
                 }
                 scelta("Pioggia", sottotitolo: stato.dati.impostazioni.sfondoAnimato ? "Quante gocce cadono sull'acqua"
                                                                                      : "Con lo sfondo fermo non piove") {
-                    SegmentatoTelefono(selezione: $stato.dati.impostazioni.pioggia,
+                    SegmentatoTelefono(selezione: Bindable(stato.dati).impostazioni.pioggia,
                                        voci: IntensitaPioggia.allCases.map { ($0, $0.nome) })
                         .disabled(!stato.dati.impostazioni.sfondoAnimato)
                         .allowsHitTesting(stato.dati.impostazioni.sfondoAnimato)
@@ -307,7 +314,7 @@ struct ImpostazioniTelefono: View {
                         .carattereApple(E.dettaglio)
                         .foregroundColor(stato.disponibilitaLocale.pronto ? Tema.Apple.Colore.verde : E.coloreDettaglio)
                         .fixedSize(horizontal: false, vertical: true)
-                    TextField("ABCD-EFGH-JKLM", text: $stato.dati.impostazioni.vera.ponte.codice)
+                    TextField("ABCD-EFGH-JKLM", text: Bindable(stato.dati).impostazioni.vera.ponte.codice)
                         .carattereApple(E.valore)
                         .textInputAutocapitalization(.characters)
                         .autocorrectionDisabled()
@@ -346,7 +353,7 @@ struct ImpostazioniTelefono: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
-            Toggle(isOn: $stato.dati.impostazioni.acquaDellaScrivania) { EmptyView() }
+            Toggle(isOn: Bindable(stato.dati).impostazioni.acquaDellaScrivania) { EmptyView() }
                 .toggleStyle(.appleSenzaEtichetta)
                 .accessibilityLabel("L'acqua della scrivania")
                 .disabled(!animato)
@@ -367,7 +374,7 @@ struct ImpostazioniTelefono: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
-            Toggle(isOn: $stato.dati.impostazioni.riduciMovimento) { EmptyView() }
+            Toggle(isOn: Bindable(stato.dati).impostazioni.riduciMovimento) { EmptyView() }
                 .toggleStyle(.appleSenzaEtichetta)
                 .accessibilityLabel("Riduci movimento")
         }

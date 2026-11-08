@@ -7,15 +7,16 @@ import SwiftUI
 // StatoPraticheProposta; qui solo le viste, con i valori di Tema.Apple.Pratiche.
 
 struct PratichePropostaApple: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         CorpoPraticheProposta(stato: stato, proposta: stato.praticheProposta)
     }
 }
 
 private struct CorpoPraticheProposta: View {
-    @ObservedObject var stato: StatoShell
+    let stato: StatoShell
     @ObservedObject var proposta: StatoPraticheProposta
 
     @Environment(\.prismaCalmo) private var calmo

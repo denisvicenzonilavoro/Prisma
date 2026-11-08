@@ -12,7 +12,7 @@ import SwiftUI
 // Valori in DesignSystem/Apple/Tema.Apple+Parcelle.swift (`Parcelle.Modulo`).
 
 struct ModuloParcella: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @State private var bozza: Parcella
     @State private var confermaEmissione = false
     let nuova: Bool
@@ -44,6 +44,7 @@ struct ModuloParcella: View {
     private var regimeCompleto: Bool { MotoreFattura.mancantiRegime(stato.datiFatturazione.regime).isEmpty }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: M.fraVoci) {
                 Text(nuova ? "Nuova parcella" : "Modifica la bozza")

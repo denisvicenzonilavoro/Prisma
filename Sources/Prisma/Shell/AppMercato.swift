@@ -25,16 +25,17 @@ import SwiftUI
 
 @MainActor
 struct AppMercato: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         CorpoMercato(sessione: stato.sessioneMercato, dettaglioAperto: stato.sessioneMercato.dettaglioIstantanea)
     }
 }
 
 @MainActor
 private struct CorpoMercato: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @ObservedObject var sessione: SessioneMercato
     @StateObject private var dettaglio: StatoDettaglio
     @Environment(\.prismaScatto) private var scatto
@@ -50,6 +51,7 @@ private struct CorpoMercato: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let oggi = Date()
         let tessere = stato.tessereMercato(oggi: oggi)
         let eventi = stato.eventiMercato(oggi: oggi)
@@ -77,7 +79,7 @@ private struct CorpoMercato: View {
         .overlay { if scatto { foglioIstantanea } }
         .sheet(item: scatto ? Binding<FoglioMercato?>.constant(nil) : $sessione.foglio) { f in
             FoglioMercatoVista(foglio: f)
-                .environmentObject(stato)
+                .environment(stato)
         }
         .onAppear {
             guard !scatto else { return }
@@ -148,18 +150,20 @@ private struct CorpoMercato: View {
 
 /// L'occhiello di Mercato nella testata, scritto dal motore: «Aggiornato oggi alle 18:00 · valori di prova».
 struct OcchielloMercato: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         OcchielloMercatoCorpo(sessione: stato.sessioneMercato)
     }
 }
 
 private struct OcchielloMercatoCorpo: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @ObservedObject var sessione: SessioneMercato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         Text(stato.occhielloMercato().uppercased())
             .font(Tipo.appOcchiello)
             .foregroundColor(Colori.IntestazioneApp.occhiello)
@@ -170,20 +174,22 @@ private struct OcchielloMercatoCorpo: View {
 /// A destra nella testata: la ricerca per ISIN a pillola con «Cerca» dentro e il pulsante blu delle soglie degli
 /// avvisi (gli avvisi nascono dalle soglie: il pulsante le apre).
 struct AzioniMercato: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         AzioniMercatoCorpo(sessione: stato.sessioneMercato)
     }
 }
 
 private struct AzioniMercatoCorpo: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @ObservedObject var sessione: SessioneMercato
 
     private typealias I = Tema.Apple.Mercato.ISIN
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         HStack(spacing: I.spazio) {
             CampoISINMercato(sessione: sessione)
             if !stato.inModoCliente {
@@ -199,12 +205,13 @@ private struct AzioniMercatoCorpo: View {
 
 /// Il campo ISIN a pillola (`chip`, raggio 99) con «Cerca» dentro: Invio cerca, Esc svuota (sul Mac).
 struct CampoISINMercato: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @ObservedObject var sessione: SessioneMercato
 
     private typealias I = Tema.Apple.Mercato.ISIN
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         HStack(spacing: I.spazio) {
             TextField("", text: $sessione.testoISIN, prompt: Text(TestiAppMercato.cercaISIN))
                 .textFieldStyle(.plain)
@@ -231,12 +238,13 @@ struct CampoISINMercato: View {
 /// La fascia verde in cima (§12.1.3): con l'interruttore acceso escono solo richieste di dati pubblici; spento nulla
 /// esce dal Mac, con il rimando a Impostazioni › Mercato.
 struct FasciaRiservatezzaMercato: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let attivo: Bool
 
     private typealias F = Tema.Apple.Mercato.Fascia
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let testi = TestiAppMercato.fascia(attivo: attivo)
         HStack(alignment: .center, spacing: F.spazio) {
             Image(systemName: F.simbolo)
@@ -279,12 +287,13 @@ extension StatoShell {
 
 /// Nessuna serie e nessuna quota: la tessera larga con l'invito a scaricare (se permesso) o a importare.
 struct VuotoMercato: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let attivo: Bool
 
     private typealias V = Tema.Apple.Mercato.Vuoto
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         VStack(alignment: .leading, spacing: V.spazio) {
             Text(TestiAppMercato.vuotoTitolo)
                 .carattereApple(V.titolo)
@@ -348,7 +357,7 @@ struct StrisciaMercato: View {
 /// Una tessera (§12.1.4): nome, valore che si conta, variazione nel colore del tono (o la data se il dato è vecchio,
 /// o «Da importare»), la mini linea che si disegna nel colore del tono e in fondo la data e la fonte.
 struct TesseraStrisciaMercato: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let tessera: TesseraMercato
     let indice: Int
     let apri: () -> Void
@@ -356,6 +365,7 @@ struct TesseraStrisciaMercato: View {
     private typealias T = Tema.Apple.Mercato.Tessera
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let t = tessera
         let forma = RoundedRectangle(cornerRadius: T.raggio, style: .continuous)
         return VStack(alignment: .leading, spacing: T.spazioRighe) {

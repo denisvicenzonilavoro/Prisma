@@ -583,6 +583,11 @@ enum ProvaBackup {
                 print("ERRORE: \(errore)")
                 return 1
             }
+            // I dati a pezzi: istantanea completa, modifiche annidate salvate, contatori delle cache, carica (ProvaBackupDatiVivi.swift)
+            if let errore = provaDatiVivi() {
+                print("ERRORE: \(errore)")
+                return 1
+            }
             // «Misura la velocità su questo Mac» non tocca l'archivio dell'utente (ProvaBackupMisura.swift)
             if let errore = try provaMisuraVelocita(radice: radice) {
                 print("ERRORE: \(errore)")

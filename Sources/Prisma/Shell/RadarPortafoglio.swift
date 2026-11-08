@@ -43,7 +43,7 @@ struct RadarPortafoglioApple: View, Equatable {
     }
 
     var body: some View {
-        let r = MotoreRadar.calcola(stato.dati)
+        let r = stato.radarPortafoglio()
         let d = dettaglio
         return CorpoRadar(stato: stato, radar: r, solaLettura: solaLettura) { id in
             d.apri(id, misura: Tema.Apple.Posizioni.Radar.Dettaglio.misura)

@@ -3,7 +3,7 @@ import SwiftUI
 /// Modulo di una valutazione d'investimento: premio, intestatari, ipotesi dei tre scenari e testi
 /// del consulente. Le cifre le calcola Prisma; qui si scelgono le ipotesi e si scrive il perché.
 struct ModuloValutazione: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @Environment(\.dismiss) var chiudi
     @State var bozza: ValutazioneInvestimento
     let nuova: Bool
@@ -13,6 +13,7 @@ struct ModuloValutazione: View {
     private var condizioni: CondizioniContratto? { stato.prodotto(bozza.prodottoId)?.condizioni }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         CorniceModulo(titolo: nuova ? "Nuova valutazione d'investimento" : "Modifica la valutazione") {
             VStack(alignment: .leading, spacing: 14) {
                 CampoModulo(etichetta: "Prodotto") {

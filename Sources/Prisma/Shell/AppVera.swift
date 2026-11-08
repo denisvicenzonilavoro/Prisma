@@ -11,7 +11,7 @@ import SwiftUI
 /// Sequenza di una domanda: la bolla dell'utente entra a molla, compaiono i puntini e la sfera pulsa, il testo arriva
 /// parola per parola e alla fine entra la scheda dei calcoli.
 struct AppVera: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     /// Il campo della domanda in primo piano: serve alla dettatura di macOS, che scrive dove c'è il cursore.
     @FocusState private var campoAttivo: Bool
     /// Da quale messaggio in poi le bolle sono nuove (arrivate con l'app aperta): entrano e si scrivono.
@@ -29,6 +29,7 @@ struct AppVera: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let col = Tema.Apple.Vera.Colonna.self
         GeometryReader { geo in
             // Vera a metà schermo: la colonna si stringe e la chat resta sempre dentro la finestra
@@ -220,7 +221,7 @@ struct AppVera: View {
                 .carattereApple(col.etichetta)
                 .foregroundColor(col.coloreEtichetta)
             if !stato.inModoCliente {
-                SegmentatoPillola(selezione: $stato.veraPortafoglio, voci: [(false, "Cliente"), (true, "Portafoglio")],
+                SegmentatoPillola(selezione: Bindable(stato).veraPortafoglio, voci: [(false, "Cliente"), (true, "Portafoglio")],
                                   larghezzaPiena: true)
                     .help("Vera parla di un cliente o di tutto il tuo portafoglio")
             }
@@ -230,7 +231,7 @@ struct AppVera: View {
                     .foregroundColor(col.coloreTesto)
                     .lineLimit(1)
             } else {
-                MenuTendina(selezione: $stato.clienteAttivoId, opzioni: stato.clienti.map { ($0.id, $0.nome) },
+                MenuTendina(selezione: Bindable(stato).clienteAttivoId, opzioni: stato.clienti.map { ($0.id, $0.nome) },
                             stile: .vetro, larghezza: max(0, larghezza))
             }
         }
@@ -474,7 +475,7 @@ struct AppVera: View {
                         .foregroundColor(v.trascritto.isEmpty ? c.fondoAscolto : c.coloreTesto)
                         .lineLimit(4)
                 } else {
-                    TextField(c.segnaposto, text: $stato.domandaVera, axis: .vertical)
+                    TextField(c.segnaposto, text: Bindable(stato).domandaVera, axis: .vertical)
                         .textFieldStyle(.plain)
                         .carattereApple(c.testo)
                         .foregroundColor(c.coloreTesto)
@@ -587,9 +588,10 @@ private struct SegnoNuoviVera: Equatable {
 /// Lavoro: i numeri vengono solo da Prisma e dalla scheda (Vera/Istruzioni/chat.md); conversazione: uso generale
 /// (conversazione.md). Finché non scegli, Vera decide dalla domanda e il selettore mostra cosa ha deciso.
 struct AzioniVera: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let vuota = stato.conversazione(stato.veraPortafoglio ? VeraPortafoglio.chiave : stato.clienteAttivoId).isEmpty
         let fermo = stato.veraPortafoglio || stato.veraInCorso
         return HStack(spacing: Tema.Apple.Vera.Testata.spazio) {

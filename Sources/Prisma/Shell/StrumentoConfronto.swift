@@ -5,7 +5,7 @@ import SwiftUI
 /// di Confronti); in alto la differenza netta, poi le due voci, il grafico e la tabella. Senza cornice: sul Mac
 /// sta negli strumenti di Analisi 360, su iPhone e iPad anche nell'app Confronti.
 struct ConfrontoIpotesi: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     /// Dentro Analisi 360: «Apri il simulatore» passa allo strumento Simulatore nella stessa finestra.
     var inAnalisi = false
     @State private var mostraMetodo = false
@@ -21,6 +21,7 @@ struct ConfrontoIpotesi: View {
     private var voci: [ElementoConfronto] { ElementoConfronto.elenco(stato.dati, cliente: cliente) }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let tutte = voci
         let scelta = ElementoConfronto.coppia(tutte, a: stato.confrontoA, b: stato.confrontoB, posizioni: stato.posizioniCliente(cliente))
         VStack(spacing: 0) {

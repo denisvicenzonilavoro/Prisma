@@ -11,21 +11,21 @@ extension StatoShell {
 
     /// I traguardi degli ultimi 7 giorni dei clienti visibili (in modalità cliente solo i suoi).
     func traguardi(oggi: Date = Date()) -> [Traguardo] {
-        let tutti = MotoreTraguardi.calcola(dati: dati, oggi: oggi)
+        let tutti = MotoreTraguardi.calcola(dati: dati.istantanea, oggi: oggi)
         guard let solo = modoCliente else { return tutti }
         return tutti.filter { $0.clienteId == solo }
     }
 
     /// Il traguardo con quell'id (nil se non c'è più o è uscito dalla finestra).
     func traguardo(_ id: String, oggi: Date = Date()) -> Traguardo? {
-        MotoreTraguardi.calcola(dati: dati, oggi: oggi).first { $0.id == id }
+        MotoreTraguardi.calcola(dati: dati.istantanea, oggi: oggi).first { $0.id == id }
     }
 
     /// Scrive `raggiuntoIl` (oggi) sugli obiettivi raggiunti che non ce l'hanno ancora. Mai nelle istantanee, nelle prove
     /// o in sola lettura. La chiamano lo sblocco e l'apertura di Messaggi.
     func segnaObiettiviRaggiunti(oggi: Date = Date()) {
         guard persistente, !solaLettura else { return }
-        let ids = Set(MotoreTraguardi.daSegnareRaggiunti(dati: dati))
+        let ids = Set(MotoreTraguardi.daSegnareRaggiunti(dati: dati.istantanea))
         guard !ids.isEmpty else { return }
         let giorno = Posizione.oggiArrotondato
         for i in dati.obiettivi.indices where ids.contains(dati.obiettivi[i].id) {

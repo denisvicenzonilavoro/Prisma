@@ -3,12 +3,13 @@ import SwiftUI
 /// Il pannello «Spazi di lavoro»: gli spazi pronti e quelli salvati, con la miniatura della
 /// disposizione; in fondo si salvano le finestre aperte come nuovo spazio.
 struct PannelloSpazi: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     /// Le finestre aperte, da salvare come spazio.
     @EnvironmentObject var sistema: StatoFinestre
     @State private var nome = ""
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         ZStack {
             Colori.Spazi.velo
                 .contentShape(Rectangle())

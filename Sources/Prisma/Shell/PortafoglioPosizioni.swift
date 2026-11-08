@@ -51,7 +51,7 @@ struct CorpoPortafoglio: View, Equatable {
         let r = p.riepilogo
         // Le proposte ferme (cache oraria) e i giorni del seguito scelti in Impostazioni
         let ferme = stato.proposteInSospeso
-        let giorniSeguito = stato.dati.impostazioni.giorniSeguitoProposte
+        let giorniSeguito = stato.dati.impostazioniDeiCalcoli.giorniSeguitoProposte
         // Motivi e tempi delle decisioni, con gli stessi filtri di canale e area del riepilogo
         let statistiche = statisticheEsiti()
         return VStack(alignment: .leading, spacing: 18) {

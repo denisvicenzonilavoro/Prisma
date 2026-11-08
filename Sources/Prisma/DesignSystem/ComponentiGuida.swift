@@ -6,12 +6,13 @@ import SwiftUI
 /// La «i» accanto a un'etichetta tecnica: il suggerimento dice la riga breve, il clic apre la scheda della parola.
 /// Sui documenti (`\.etichetteStampa`) non c'è. Lo stato si legge solo nell'azione, mai nel `body`.
 struct InfoTermine: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let voce: VoceGlossario
     @State private var aperta = false
     @Environment(\.etichetteStampa) private var stampa
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         if !stampa {
             let m = Tema.Misura.Guida.self
             Button { aperta.toggle() } label: {

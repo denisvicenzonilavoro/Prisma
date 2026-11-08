@@ -2,7 +2,7 @@ import SwiftUI
 
 /// App Attività (.os-app-tasks): testata, riepilogo, registro delle attività e dettaglio, su schede del tema.
 struct AppAttivita: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @State var modulo: Attivita?
 
     private var cal: Calendar { CalendarioAgenda.cal }
@@ -36,6 +36,7 @@ struct AppAttivita: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         VStack(spacing: 8) {
             testata
                 .entrataCascata(0, base: Tema.Apple.Moto.Cascata.baseDentroApp)
@@ -49,7 +50,7 @@ struct AppAttivita: View {
         .sheet(item: $modulo) { t in
             ModuloAttivita(bozza: t, nuova: !stato.attivita.contains { $0.id == t.id },
                            salva: { stato.salvaAttivita($0) }, elimina: { stato.eliminaAttivita(t.id) })
-                .environmentObject(stato)
+                .environment(stato)
         }
         .onAppear { controllaRichiesta(stato.richiestaNuovaAttivita) }
         .onChange(of: stato.richiestaNuovaAttivita) { controllaRichiesta($0) }
@@ -163,14 +164,14 @@ struct AppAttivita: View {
     private var filtri: some View {
         HStack(spacing: 9) {
             // Largo quanto le sue voci: con i testi più grandi nessuna voce si taglia
-            SegmentatoPillola(selezione: $stato.filtroStatoAttivita,
+            SegmentatoPillola(selezione: Bindable(stato).filtroStatoAttivita,
                               voci: [(FiltroAttivita.aperte, "Aperte"), (FiltroAttivita.completate, "Completate"), (FiltroAttivita.tutte, "Tutte")])
                 .fixedSize()
             Spacer(minLength: 0)
-            MenuTendina(selezione: $stato.filtroClienteAttivita,
+            MenuTendina(selezione: Bindable(stato).filtroClienteAttivita,
                         opzioni: [(String?.none, "Tutti i clienti")] + stato.clienti.map { (Optional($0.id), $0.nome) },
                         larghezza: 180)
-            MenuTendina(selezione: $stato.filtroPrioritaAttivita,
+            MenuTendina(selezione: Bindable(stato).filtroPrioritaAttivita,
                         opzioni: [(Attivita.Priorita?.none, "Tutte le priorità")] + Attivita.Priorita.allCases.map { (Optional($0), $0.nome) },
                         larghezza: 150)
         }
@@ -401,11 +402,12 @@ struct PrioritaAttivita: View {
 // MARK: - Dettaglio dell'attività
 
 struct DettaglioAttivita: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let attivita: Attivita
     let modifica: () -> Void
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         corpo
             // Tema Apple anche dentro l'Agenda del Mac, dove l'attività è accorpata
             .altreAppApple()

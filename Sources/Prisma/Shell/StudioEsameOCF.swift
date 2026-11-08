@@ -260,7 +260,7 @@ final class RichiestaIstantaneaOCF {
 // MARK: - La scheda
 
 struct EsameOCFStudioVista: View {
-    @ObservedObject private var stato: StatoShell
+    private let stato: StatoShell
     /// La base della cascata (0,14 all'apertura, 0 dopo un cambio di scheda) e il ritardo dell'anello.
     let base: Double
     let ritardoAnelli: Double
@@ -273,7 +273,7 @@ struct EsameOCFStudioVista: View {
     private typealias M = Tema.Apple.Studio.OCF.Moto
 
     init(stato: StatoShell, base: Double, ritardoAnelli: Double) {
-        _stato = ObservedObject(wrappedValue: stato)
+        self.stato = stato
         self.base = base
         self.ritardoAnelli = ritardoAnelli
         _sessione = StateObject(wrappedValue: SessioneEsameOCF.iniziale(stato))
@@ -673,7 +673,7 @@ private struct CardDomandaOCFVista: View {
         let scelta = sessione.scelta
         let nomeMateria = archivio.materia(d.materia)?.nome ?? d.materia
         let caso = scelta == nil ? nil
-            : MotoreOCF.casoVero(per: d, dati: stato.dati, clienteAttivo: stato.clienteAttivoId)
+            : MotoreOCF.casoVero(per: d, dati: stato.dati.istantanea, clienteAttivo: stato.clienteAttivoId)
         return VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline, spacing: Dm.spazioRigaAlta) {
                 Text(nomeMateria)

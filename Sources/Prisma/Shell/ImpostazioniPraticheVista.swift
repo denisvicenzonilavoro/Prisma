@@ -5,11 +5,12 @@ import SwiftUI
 // pratiche ferme compaiono solo dentro Prisma: nel centro notifiche, gruppo «Da sistemare», e nella scheda Dopo la firma.
 
 struct PaginaImpostazioniPratiche: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     private typealias I = ImpostazioniPratiche
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let giorni = stato.dati.impostazioni.pratiche.giorniFerma
         return VStack(alignment: .leading, spacing: Tema.Apple.Impostazioni.Pagina.spazioGruppi) {
             NotaImpostazioni("Una pratica nasce quando una proposta viene accettata e segue i passi fino alla consegna "

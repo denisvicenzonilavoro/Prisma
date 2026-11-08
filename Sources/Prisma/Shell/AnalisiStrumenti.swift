@@ -7,9 +7,10 @@ import SwiftUI
 /// Simulazioni e Confronti di iPhone e iPad. Tutti nel tema Apple (`.strumentiApple()`): caratteri, superfici,
 /// cursori, segmentati ed etichette del canale; contenuti e calcoli quelli di sempre.
 struct StrumentiAnalisi360: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         Group {
             switch stato.strumentoAnalisi {
             case .simulatore: SimulatoreIpotesi(inAnalisi: true)

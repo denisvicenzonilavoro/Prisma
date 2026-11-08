@@ -3,7 +3,7 @@ import SwiftUI
 /// Modulo per aggiungere o modificare una posizione (in essere o proposta).
 struct ModuloPosizione: View {
     @Environment(\.dismiss) var chiudi
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @State var bozza: Posizione
     let nuova: Bool
     let salva: (Posizione) -> Void
@@ -12,6 +12,7 @@ struct ModuloPosizione: View {
     private static let numero = FloatingPointFormatStyle<Double>.number.locale(Formati.italiano)
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         CorniceModulo(titolo: titolo) {
             VStack(alignment: .leading, spacing: 20) {
                 if !stato.dati.prodotti.isEmpty {

@@ -11,7 +11,7 @@ import SwiftUI
 /// Tre casi: il PDF vero (`VistaPDF`, un solo `PDFDocument` aperto alla volta), l'immagine ridotta con ImageIO, oppure
 /// (senza file o nelle istantanee) la pagina ricostruita dal testo letto. Il foglio è carta: bianco anche in scuro.
 struct AnteprimaDocumento: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @Environment(\.modoIstantanea) private var modoIstantanea
     let documento: Documento
 
@@ -144,7 +144,7 @@ private struct FoglioRicostruito: View {
 /// La barra delle pagine che galleggia sul foglio: ‹ Pagina 2 di 3 ›, zoom − + e «adatta alla larghezza», e il
 /// file fuori da Prisma (Anteprima sul Mac, Condividi su iPhone e iPad).
 private struct BarraPagineDocumento: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let documento: Documento
     let pagina: Int
     let totale: Int
@@ -152,6 +152,7 @@ private struct BarraPagineDocumento: View {
     @Binding var zoom: CGFloat
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let m = Tema.Misura.Documenti.self
         HStack(spacing: m.spazioPagine) {
             PulsanteIcona(simbolo: "chevron.left", aiuto: "Pagina precedente", taglia: .compatta, vetro: false) {

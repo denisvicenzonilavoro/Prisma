@@ -26,11 +26,11 @@ extension Istantanee {
         coppia("890-posizioni-radar") { s in preparaRadar(s) }
         coppia("891-posizioni-radar-dettaglio") { s in
             preparaRadar(s)
-            s.radarDettaglioIstantanea = MotoreRadar.calcola(s.dati).fuori.first?.id
+            s.radarDettaglioIstantanea = MotoreRadar.calcola(s.dati.istantanea).fuori.first?.id
         }
         una("892-posizioni-radar-dentro") { s in
             preparaRadar(s)
-            s.radarDettaglioIstantanea = MotoreRadar.calcola(s.dati).voci.filter { !$0.fuori }.max { $0.distanza < $1.distanza }?.id
+            s.radarDettaglioIstantanea = MotoreRadar.calcola(s.dati.istantanea).voci.filter { !$0.fuori }.max { $0.distanza < $1.distanza }?.id
         }
         coppia("893-posizioni-radar-senza-modelli") { s in
             preparaRadar(s)
@@ -40,7 +40,7 @@ extension Istantanee {
         }
         una("894-posizioni-radar-bozze") { s in
             preparaRadar(s)
-            s.preparaBozzeRiequilibrio(MotoreRadar.calcola(s.dati).daRiequilibrare)
+            s.preparaBozzeRiequilibrio(MotoreRadar.calcola(s.dati.istantanea).daRiequilibrare)
         }
         una("895-posizioni-radar-carico") { s in
             if let d = try? ProvaCarico.moltiplica(DatiPrisma.demo(), copie: ProvaCarico.copie) {

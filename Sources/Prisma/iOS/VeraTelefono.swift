@@ -6,7 +6,7 @@ import SwiftUI
 /// di Qwen) sta in una riga in alto, gli spunti a capsula e il campo in basso. Risponde Qwen del Mac in Wi‑Fi (PonteVera):
 /// se il Mac non c'è, Vera lo dice e non risponde. Le cifre le prepara Prisma, qui sul telefono.
 struct VeraTelefono: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @EnvironmentObject var mobile: StatoMobile
     @FocusState private var campoAttivo: Bool
 
@@ -17,6 +17,7 @@ struct VeraTelefono: View {
     private var messaggi: [MessaggioVera] { stato.conversazione(chiave) }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         VStack(spacing: 0) {
             testata
             if !stato.disponibilitaLocale.pronto { avviso }
@@ -199,7 +200,7 @@ struct VeraTelefono: View {
         let forma = Capsule(style: .continuous)
         let vuota = stato.domandaVera.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         return HStack(alignment: .bottom, spacing: C.spazio) {
-            TextField("Chiedi a Vera…", text: $stato.domandaVera, axis: .vertical)
+            TextField("Chiedi a Vera…", text: Bindable(stato).domandaVera, axis: .vertical)
                 .carattereApple(C.testo)
                 .foregroundColor(C.coloreTesto)
                 .lineLimit(1...5)

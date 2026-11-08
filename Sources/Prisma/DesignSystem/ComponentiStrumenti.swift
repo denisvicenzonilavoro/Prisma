@@ -160,12 +160,13 @@ struct CorniceStrumento<Rail: View, Contenuto: View>: View {
 
 /// "Dossier di …" in cima all'elenco laterale, con la scelta del cliente.
 struct DossierRail: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @State var scelta = false
     /// Nel tema Apple (`.altreAppApple()`): occhiello `.sub`, nome 15 bold, tema `.k`.
     @Environment(\.altreAppApple) private var apple
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let l = Tema.Apple.AltreApp.Laterale.self
         VStack(alignment: .leading, spacing: 2) {
             Text("Dossier di")
@@ -225,12 +226,13 @@ struct ArchivioLocaleRail: View {
 
 /// Collegamenti alle altre app di analisi, in fondo all'elenco laterale.
 struct CollegatiRail: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let app: [AppPrisma]
     /// Gli strumenti di Analisi 360 (simulatore, confronto…): sul Mac si aprono dentro Analisi 360.
     var strumenti: [StrumentoAnalisi] = []
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         EtichettaRail(testo: "Collegati")
         VStack(spacing: 0) {
             ForEach(app) { a in

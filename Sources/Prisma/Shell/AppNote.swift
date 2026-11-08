@@ -9,7 +9,7 @@ import UniformTypeIdentifiers
 /// App Note: il taccuino personale. A sinistra l'indice con ricerca e filtro per cliente,
 /// a destra la pagina a righe appena accennate. Ogni nota appartiene a un cliente e si salva da sola.
 struct AppNote: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @State private var modulo: Attivita?
     @State private var confermaEliminazione = false
     /// Quanto è scorso il testo della nota: le righe della pagina lo seguono.
@@ -26,6 +26,7 @@ struct AppNote: View {
     static let attesaNota = 0.3
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let elenco = stato.noteFiltrate
         // La nota scelta resta aperta anche se la ricerca la nasconde dall'elenco: non se ne apre un'altra sotto le dita
         let scelta = stato.nota(stato.notaSelezionata) ?? elenco.first
@@ -56,7 +57,7 @@ struct AppNote: View {
         .altreAppApple()
         .sheet(item: $modulo) { a in
             ModuloAttivita(bozza: a, nuova: true, salva: { stato.salvaAttivita($0) }, elimina: {})
-                .environmentObject(stato)
+                .environment(stato)
         }
         .confirmationDialog("Eliminare questa nota?", isPresented: $confermaEliminazione) {
             Button("Elimina la nota", role: .destructive) {
@@ -102,7 +103,7 @@ struct AppNote: View {
                     .padding(.horizontal, 10)
                     .frame(height: Misure.Note.campoAltezza)
                     .background(Capsule(style: .continuous).fill(Colori.Note.campo))
-                MenuTendina(selezione: $stato.filtroClienteNote,
+                MenuTendina(selezione: Bindable(stato).filtroClienteNote,
                             opzioni: [(String?.none, "Tutti i clienti")] + stato.clienti.map { (Optional($0.id), $0.nome) },
                             stile: .carta)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -306,11 +307,12 @@ struct AppNote: View {
 /// Il campo di ricerca del taccuino: il testo resta qui e passa allo stato poco dopo l'ultimo tasto,
 /// così ogni lettera ridisegna solo il campo (l'elenco si filtra un attimo dopo).
 private struct CampoCercaNote: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @State private var testo = ""
     @State private var invio = Rinvio()
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         HStack(spacing: 6) {
             Image(systemName: "magnifyingglass").foregroundColor(Colori.Note.etichetta)
             TextField("Cerca nelle note", text: $testo)
@@ -341,7 +343,7 @@ private struct CampoCercaNote: View {
 /// così ogni lettera ridisegna solo la pagina e non tutta Prisma. La prima lettera di una pagina nuova
 /// va subito nell'archivio: cambiando nota, una pagina ancora vuota sparirebbe con quello che c'è scritto.
 private struct CampiNota: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let nota: Nota
     @Binding var scorrimento: CGFloat
     let scrittura: Rinvio
@@ -357,6 +359,7 @@ private struct CampiNota: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         TextField("Dai un titolo alla tua idea…", text: $titolo)
             .textFieldStyle(.plain)
             .font(Tipo.noteTitolo)
@@ -464,9 +467,10 @@ final class Rinvio {
 }
 
 struct AzioneNuovaNota: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         Button { stato.nuovaNota() } label: { Label("Nuova nota", systemImage: "plus") }
             .buttonStyle(StileAqua())
             .fixedSize()

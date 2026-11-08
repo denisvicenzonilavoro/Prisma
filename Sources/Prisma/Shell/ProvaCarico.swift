@@ -62,7 +62,7 @@ enum ProvaCarico {
 
         // Vera e motori su ogni cliente
         let stato = StatoShell(persistente: false)
-        stato.dati = dati
+        stato.dati.carica(dati)
         stato.rispostePreparate = true
         let spunti: [SpuntoVera] = [.riepilogo, .checkUp, .proposte, .pensione, .resoconto]
         var peggiore = (nome: "", tempo: 0.0)
@@ -209,7 +209,7 @@ enum ProvaCarico {
 
         // Il radar del portafoglio («Luce» giro 2): tutti i clienti con un modello, in un passaggio
         var radar: RadarPortafoglio?
-        let tempoRadar = tempo { radar = MotoreRadar.calcola(stato.dati) }
+        let tempoRadar = tempo { radar = MotoreRadar.calcola(stato.dati.istantanea) }
         print("INFO Radar: \(radar?.voci.count ?? 0) clienti sul radar, \(radar?.fuori.count ?? 0) fuori tolleranza, in \(secondi(tempoRadar))")
         controlla((radar?.voci.count ?? 0) >= stato.dati.clienti.count / 2, "Radar: i clienti con un modello sono sul radar")
         controlla(tempoRadar < 0.5 * fattoreTempo, "Radar con \(stato.dati.clienti.count) clienti sotto 0,5 s")

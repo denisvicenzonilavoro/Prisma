@@ -9,7 +9,7 @@ import SwiftUI
 
 @MainActor
 struct VerbaleCopilotaVista: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @ObservedObject var copilota: StatoCopilotaIncontro
     let clienteId: String
     let incontro: Incontro?
@@ -17,6 +17,7 @@ struct VerbaleCopilotaVista: View {
     private typealias V = Tema.Apple.Copilota.Verbale
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let cliente = stato.cliente(clienteId)
         let nome = cliente?.nome ?? "Cliente"
         let sessione = copilota.sessione(per: clienteId, in: stato)

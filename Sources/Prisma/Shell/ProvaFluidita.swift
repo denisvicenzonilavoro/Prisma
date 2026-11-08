@@ -18,8 +18,9 @@ import SwiftUI
 /// - disegno: `cacheDisplay(in:to:)` completo in un bitmap riusato (riferimento, non incrementale), una volta
 ///   sola per azione (al primo giro misurato): sul runner costa circa 1 s e varia poco;
 /// - mediana e massimo: dell'aggiornamento, più il disegno;
-/// - avvisi: gli `objectWillChange` di `StatoShell` durante l'azione (ogni avviso rivaluta tutte le viste che lo osservano,
-///   cioè le app aperte e i widget) e quelli di `StatoFinestre` (finestre, pannelli e blocco: shell, dock, barra e pannelli).
+/// - corpi: i body delle viste che leggono `StatoShell` rivalutati durante l'azione (`ContaCorpi`; fino al giro 0 di
+///   «Prisma istantaneo» erano gli `objectWillChange` di StatoShell, che con Observation non c'è più), e gli avvisi di
+///   `StatoFinestre` (finestre, pannelli e blocco: shell, dock, barra e pannelli).
 ///
 /// Due scenari: i clienti di prova, e 200 clienti con quattro app pesanti aperte sotto (Posizioni in modalità
 /// portafoglio, Prospetti e report, Clienti, Agenda). Dopo ogni scenario la shell si chiude davvero e si stampa
@@ -502,7 +503,7 @@ private final class BancoFluidita {
         let misura = ProvaFluidita.misura
         stato.area = ShellView.area(per: misura, dockNascosto: !stato.finestreVisibili.isEmpty)
         let vista = ShellView()
-            .environmentObject(stato)
+            .environment(stato)
             .environment(\.modoIstantanea, true)
             .frame(width: misura.width, height: misura.height)
         let h = NSHostingView(rootView: AnyView(vista))
@@ -516,9 +517,10 @@ private final class BancoFluidita {
         aspetto(scuro: false)
         f.orderFront(nil)
         let conti = self.conti
-        stato.objectWillChange.sink { _ in conti.avvisi += 1 }.store(in: &abbonamenti)
+        // StatoShell è @Observable: niente avviso unico, si contano i body rivalutati (ContaCorpi)
+        ContaCorpi.attivo = true
         stato.sistema.objectWillChange.sink { _ in conti.avvisiFinestre += 1 }.store(in: &abbonamenti)
-        stato.$dati.dropFirst().sink { _ in conti.modificheDati += 1 }.store(in: &abbonamenti)
+        stato.modificheDati.sink { _ in conti.modificheDati += 1 }.store(in: &abbonamenti)
     }
 
     /// Aspetto della finestra (i colori dinamici del tema e il colorScheme di SwiftUI lo seguono).
@@ -530,6 +532,7 @@ private final class BancoFluidita {
 
     func azzeraConti() {
         conti.avvisi = 0
+        ContaCorpi.azzera()
         conti.avvisiFinestre = 0
         conti.modificheDati = 0
     }
@@ -626,7 +629,7 @@ private final class SessioneFluidita {
                 let inizio = CACurrentMediaTime()
                 let stato = StatoShell(persistente: false)
                 if let dati {
-                    stato.dati = dati
+                    stato.dati.carica(dati)
                     // Come all'avvio vero, le notifiche si calcolano subito su tutto l'archivio
                     stato.ricalcolaNotifiche()
                 }
@@ -708,6 +711,7 @@ private final class SessioneFluidita {
         -> (aggiornamento: Double, disegno: Double?, avvisi: Int, avvisiFinestre: Int, datiCambiati: Bool) {
         banco.azzeraConti()
         let t = banco.aggiorna(passo.azione)
+        banco.conti.avvisi = ContaCorpi.conteggio
         var d: Double?
         if disegno {
             d = banco.disegna()
@@ -733,9 +737,10 @@ private final class SessioneFluidita {
                 + "\(ProvaFluidita.giriPesanti) con le app pesanti, dopo un giro di riscaldamento) + un disegno per azione. "
                 + "Aggiornamento = azione, run loop e impaginazione; disegno = cacheDisplay completo; "
                 + "prima volta = aggiornamento del giro di riscaldamento; "
-                + "avvisi = objectWillChange di StatoShell (app e widget) e di StatoFinestre (shell, dock, barra, pannelli) durante l'azione.",
+                + "corpi = body rivalutati delle viste che leggono StatoShell (con Observation, al posto degli objectWillChange di prima); "
+                + "avvisi StatoFinestre = objectWillChange di StatoFinestre (shell, dock, barra, pannelli) durante l'azione.",
             "",
-            "| Scenario | Azione | Mediana | Massimo | Aggiornamento | Disegno | Prima volta | Avvisi StatoShell | Avvisi StatoFinestre |",
+            "| Scenario | Azione | Mediana | Massimo | Aggiornamento | Disegno | Prima volta | Corpi rivalutati | Avvisi StatoFinestre |",
             "|---|---|---:|---:|---:|---:|---:|---:|---:|",
         ]
         for r in righe {
@@ -752,7 +757,7 @@ private final class SessioneFluidita {
                          "aggiornamento \(ProvaFluidita.ms(aggiornamento))"]
             if let disegno { parti.append("disegno \(ProvaFluidita.ms(disegno))") }
             if let p = r.primaVolta { parti.append("prima volta \(ProvaFluidita.ms(p))") }
-            if let avvisi { parti.append(avvisi == 1 ? "1 avviso di cambiamento" : "\(avvisi) avvisi di cambiamento") }
+            if let avvisi { parti.append(avvisi == 1 ? "1 corpo rivalutato" : "\(avvisi) corpi rivalutati") }
             if let avvisiFinestre { parti.append("\(avvisiFinestre) delle finestre") }
             print("INFO fluidità · \(r.scenario) · \(r.azione): \(parti.joined(separator: " · "))")
 

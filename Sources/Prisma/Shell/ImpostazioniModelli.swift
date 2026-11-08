@@ -7,13 +7,14 @@ import SwiftUI
 // Come le altre pagine del tema Apple: righe come card senza ombra, titolo a sinistra, campi a destra.
 
 struct PaginaImpostazioniModelli: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     private typealias F = Tema.Apple.Studio.Impostazioni
     private typealias Riga = Tema.Apple.Impostazioni.Riga
     private typealias C = ComposizioneInvestimenti360.Classe
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let modelli = stato.dati.portafogliModello
         let clienti = clientiConInvestimenti
         return VStack(alignment: .leading, spacing: Tema.Apple.Impostazioni.Pagina.spazioGruppi) {

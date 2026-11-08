@@ -5,7 +5,7 @@ import SwiftUI
 /// Finder): i dati arrivano dal backup del Mac e tornano al Mac con un backup protetto salvato in File o iCloud
 /// Drive. L'aspetto (chiaro, scuro, automatico) resta nella pagina Aspetto, come sul Mac.
 struct ArchivioMobile: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @EnvironmentObject var mobile: StatoMobile
     @State private var password = ""
     @State private var conferma = ""

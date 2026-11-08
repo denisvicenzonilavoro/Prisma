@@ -41,12 +41,13 @@ private struct RigaSemaforo<Contenuto: View>: View {
 // MARK: - 8 · Le promesse
 
 struct PromesseVeraVista: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let ids: [String]
 
     private var oggi: Date { Date() }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let elenco = ids.compactMap { id in stato.dati.promesse.first { $0.id == id } }.filter { stato.visibileAlCliente($0.clienteId) }
         VStack(alignment: .leading, spacing: F.spazioRighe) {
             ForEach(elenco) { p in riga(p) }
@@ -194,7 +195,7 @@ struct FoglioSecondaLettura: View {
 // MARK: - 11 · Trova le differenze
 
 struct ConfrontoVeraVista: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let id: String
 
     static func colore(_ e: RigaDifferenza.Esito) -> Color {
@@ -207,6 +208,7 @@ struct ConfrontoVeraVista: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         if let c = stato.confronto(id), stato.visibileAlCliente(c.clienteId) {
             VStack(alignment: .leading, spacing: 8) {
                 Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 0) {
@@ -239,7 +241,7 @@ struct ConfrontoVeraVista: View {
 // MARK: - 12 · Cosa non copre
 
 struct CoperturaVeraVista: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let documentoId: String
     @State private var perCliente = false
 
@@ -253,6 +255,7 @@ struct CoperturaVeraVista: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         if let c = stato.copertura(documentoId), stato.visibileAlCliente(c.clienteId) {
             VStack(alignment: .leading, spacing: 10) {
                 Picker("", selection: $perCliente) {
@@ -303,10 +306,11 @@ struct CoperturaVeraVista: View {
 // MARK: - 16 · Il resoconto dell'incontro
 
 struct ResocontoVeraVista: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let incontroId: String
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         if let i = stato.incontro(incontroId), let r = i.resoconto, stato.visibileAlCliente(i.clienteId) {
             VStack(alignment: .leading, spacing: F.spazioSezioniResoconto) {
                 VStack(alignment: .leading, spacing: 3) {
@@ -386,7 +390,7 @@ struct ResocontoVeraVista: View {
 /// «Rileggi la scheda»: i controlli del profilo, le cifre, le parole e i documenti mancanti; poi la bozza della
 /// motivazione (di Prisma, riscritta da Qwen se è pronto) che entra nella scheda solo con «Inserisci», mai se è firmata.
 struct LetturaAdeguatezzaVista: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let posizione: Posizione
     let firmata: Bool
     @State private var esito: EsitoSecondaLettura?
@@ -395,6 +399,7 @@ struct LetturaAdeguatezzaVista: View {
     @State private var inserita = false
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         VStack(alignment: .leading, spacing: F.spazioRighe) {
             HStack(spacing: 8) {
                 Button(esito == nil ? "Rileggi con Vera" : "Rileggi di nuovo") {
