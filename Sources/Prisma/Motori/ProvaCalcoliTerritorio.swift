@@ -1,5 +1,6 @@
-import Foundation
 import CoreGraphics
+import Foundation
+import SwiftUI
 
 /// Prove del Territorio («Luce» giro 11, §5.1 «Il tuo territorio»): la tabella dei comuni (di prova, senza codici
 /// catastali), il riconoscimento del comune (niente CAP), i luoghi e lo sparpaglio deterministico, le distanze stimate,
@@ -46,7 +47,7 @@ enum ProvaCalcoliTerritorio {
         verifica("Territorio: 32 comuni nella tabella di prova", Double(t.comuni.count), 32)
         verifica.vero("Territorio: il codice di ogni comune è <SIGLA>-<nome normalizzato>",
                       t.comuni.allSatisfy { $0.codice == "\($0.provincia)-\(TabellaTerritorio.normalizza($0.nome))" })
-        let etichette = t.comuni.first.map { Mirror(reflecting: $0).children.compactMap(\.label) } ?? []
+        let etichette = t.comuni.first.map { Mirror(reflecting: $0).children.compactMap { $0.label } } ?? []
         verifica.vero("Territorio: nessun codice catastale nella tabella (decisione 70)",
                       !etichette.isEmpty && !etichette.contains { $0.lowercased().contains("catast") })
         verifica.vero("Territorio: i confini di prova di Bologna si leggono", TabellaTerritorio.caricaConfini(provincia: "BO")?.comuni["BO-bologna"] != nil)
@@ -268,6 +269,13 @@ enum ProvaCalcoliTerritorio {
         let domenica = AiutiProva.data(2026, 11, 15)
         let dd = datiGiro(domenica)
         verifica.vero("Territorio: di domenica nessun suggerimento", giroDi(dd, domenica, t, daFare: daFare).suggerimenti.isEmpty)
+        // I dati di prova del giro si tolgono tutti (appuntamenti, attività, posizioni a mano, partenza)
+        var tolto = datiGiro(martedi)
+        TerritorioDiProva.togli(&tolto)
+        let p = TerritorioDiProva.prefisso
+        verifica.vero("Territorio: i dati di prova del giro si tolgono",
+                      !tolto.appuntamenti.contains { $0.id.hasPrefix(p) } && !tolto.attivita.contains { $0.id.hasPrefix(p) }
+                          && tolto.clienti.allSatisfy { $0.luogo == nil } && tolto.impostazioni.territorio.partenza == nil)
         // Il giorno del giro di prova: di sabato è il lunedì
         verifica.vero("Territorio: il giorno del giro di prova di sabato è il lunedì",
                       TerritorioDiProva.giorno(da: AiutiProva.data(2026, 11, 14), orari: OrariLavoro(), calendario: cal)

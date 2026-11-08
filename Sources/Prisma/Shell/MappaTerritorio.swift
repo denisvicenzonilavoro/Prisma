@@ -84,27 +84,9 @@ struct MappaTerritorio: View {
                     if stato.territorio.lucePuntata != nil { stato.territorio.lucePuntata = nil }
                 }
             }
-            .gesture(
-                SpatialTapGesture(count: 2).onEnded { _ in tornaATutti() }
-                    .exclusively(before: SpatialTapGesture().onEnded { v in clic(v.location, posate, proiezione, misura) })
-            )
-            .simultaneousGesture(
-                MagnifyGesture()
-                    .onChanged { v in
-                        let base = zoomBase ?? stato.territorio.zoom
-                        if zoomBase == nil { zoomBase = base }
-                        stato.territorio.zoom = min(M.zoomMassimo, max(M.zoomMinimo, base * v.magnification))
-                    }
-                    .onEnded { _ in zoomBase = nil }
-                    .simultaneously(with: DragGesture(minimumDistance: M.distanzaTrascinamento)
-                        .onChanged { v in
-                            let base = spostamentoBase ?? stato.territorio.spostamento
-                            if spostamentoBase == nil { spostamentoBase = base }
-                            stato.territorio.spostamento = CGSize(width: base.width + v.translation.width,
-                                                                  height: base.height + v.translation.height)
-                        }
-                        .onEnded { _ in spostamentoBase = nil })
-            )
+            .gesture(gestoTocco(posate, proiezione, misura))
+            .simultaneousGesture(gestoZoom)
+            .simultaneousGesture(gestoSpostamento)
         }
         .background(M.terra)
         .accessibilityElement(children: .ignore)
@@ -342,6 +324,36 @@ struct MappaTerritorio: View {
         }
         #endif
         stato.apriCliente(l.luce.id)
+    }
+
+    /// Doppio clic: torna a vedere tutti; clic: dossier (⌥ clic: Posizioni) o, in «Sposta», il punto.
+    private func gestoTocco(_ posate: [LucePosata], _ proiezione: ProiezioneMappa?, _ misura: CGSize) -> some Gesture {
+        let doppio = SpatialTapGesture(count: 2).onEnded { _ in tornaATutti() }
+        let singolo = SpatialTapGesture().onEnded { v in clic(v.location, posate, proiezione, misura) }
+        return doppio.exclusively(before: singolo)
+    }
+
+    /// Pizzico: zoom fra i limiti del tema.
+    private var gestoZoom: some Gesture {
+        MagnifyGesture()
+            .onChanged { v in
+                let base = zoomBase ?? stato.territorio.zoom
+                if zoomBase == nil { zoomBase = base }
+                stato.territorio.zoom = min(M.zoomMassimo, max(M.zoomMinimo, base * v.magnification))
+            }
+            .onEnded { _ in zoomBase = nil }
+    }
+
+    /// Trascinamento: sposta la mappa.
+    private var gestoSpostamento: some Gesture {
+        DragGesture(minimumDistance: M.distanzaTrascinamento)
+            .onChanged { v in
+                let base = spostamentoBase ?? stato.territorio.spostamento
+                if spostamentoBase == nil { spostamentoBase = base }
+                stato.territorio.spostamento = CGSize(width: base.width + v.translation.width,
+                                                      height: base.height + v.translation.height)
+            }
+            .onEnded { _ in spostamentoBase = nil }
     }
 
     private func tornaATutti() {

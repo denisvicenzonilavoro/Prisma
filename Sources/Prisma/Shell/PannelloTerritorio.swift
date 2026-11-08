@@ -25,8 +25,8 @@ struct TileTerritorio: View {
     let titolo: String
     let valore: String
     var nota: String? = nil
-    var coloreValore: Color = P.coloreTesto
-    var bordo: Color = P.bordoTile
+    var coloreValore: Color = Tema.Apple.Territorio.Pannello.coloreTesto
+    var bordo: Color = Tema.Apple.Territorio.Pannello.bordoTile
     var accesa = false
     var azione: (() -> Void)? = nil
 
