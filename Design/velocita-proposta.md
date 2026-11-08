@@ -155,3 +155,20 @@ simulazioni), stessa prova l'8 novembre, aggiornamento 5 · 200 clienti: tasto i
 Prima, ogni azione mandava 1-3 avvisi a StatoShell, e ognuno rivalutava **tutte** le viste che lo osservano (circa 300):
 ora un tasto in una nota rivaluta 0-2 corpi. Resta da fare (tappa 2): dividere ancora i dati per cliente e per nota, e
 guardare le viste che leggono l'archivio intero con `istantanea` nel body (Confronti, Esame OCF).
+
+
+## Dopo la tappa 1 (8 novembre 2026, versione installata)
+
+macOS 14, StatoShell con Observation, dati osservati a pezzi. «Aggiornamento», mediana, prima (7 novembre, cec9d4c) → dopo:
+
+| Azione | 5 clienti | 200 clienti |
+|---|---:|---:|
+| Tasto in una nota | 23 → 3 ms | 70 → 21 ms |
+| Aprire il radar | 79 → 87 ms | 331 → 184 ms |
+| Tornare dal radar | 185 → 177 ms | 491 → 389 ms |
+| Aspetto scuro | 372 → 355 ms | 698 → 545 ms |
+| Aprire il prisma di luce | 94 → 78 ms | 147 → 95 ms |
+| Aprire Posizioni | 211 → 216 ms | 411 → 403 ms |
+| Avvio | 265 → 280 ms | 469 → 479 ms |
+
+Memoria con 200 clienti: 337 MB di impronta. Aprire Posizioni e l'avvio aspettano le tappe successive (motori in cache per cliente, archivio a pezzi).
