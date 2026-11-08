@@ -220,6 +220,8 @@ struct AppClienti: View {
                 RigaCampo(etichetta: "Email", valore: c.email)
                 RigaCampo(etichetta: "Telefono", valore: c.telefono)
                 RigaCampo(etichetta: "Indirizzo", valore: c.indirizzo)
+                // «Luce» giro 11: da dove viene la posizione sulla mappa del Territorio, con «Mettila a mano»
+                RigaPosizioneMappa(cliente: c)
                 RigaCampo(etichetta: "In rubrica dal", valore: Formati.dataEstesa.string(from: c.creatoIl))
             }
             // I dati per la fattura (Studio › Parcelle e fatture, giro 2): dal modulo «Modifica la scheda»

@@ -71,7 +71,7 @@ struct MappaTerritorio: View {
                                   y: l.punto.y - l.raggio - T.Fumetto.distanza)
                         .allowsHitTesting(false)
                 }
-                if stato.territorio.spostaClienteId != nil { bandaSposta(misura) }
+                if stato.territorio.spostando { bandaSposta(misura) }
             }
             .frame(width: misura.width, height: misura.height)
             .contentShape(Rectangle())
@@ -324,7 +324,7 @@ struct MappaTerritorio: View {
     // MARK: Interazioni
 
     private func clic(_ q: CGPoint, _ posate: [LucePosata], _ proiezione: ProiezioneMappa?, _ misura: CGSize) {
-        if stato.territorio.spostaClienteId != nil {
+        if stato.territorio.spostando {
             guard let p = proiezione else { return }
             stato.fissaPosizione(coordinata(q, p, misura))
             return
@@ -356,11 +356,15 @@ struct MappaTerritorio: View {
         let s = T.Sposta.self
         let nome = stato.territorio.spostaClienteId.flatMap { id in stato.dati.clienti.first { $0.id == id } }
             .map(MotoreTerritorio.nomeBattesimo) ?? "il cliente"
+        let frase = stato.territorio.spostaPartenza ? "Fai clic sulla mappa da dove parti." : "Fai clic sulla mappa dove sta \(nome)."
         return HStack(spacing: T.Pannello.spazio) {
-            Text("Fai clic sulla mappa dove sta \(nome).")
+            Text(frase)
                 .carattereApple(s.carattere)
                 .foregroundColor(s.testo)
-            Button("Annulla") { stato.territorio.spostaClienteId = nil }
+            Button("Annulla") {
+                stato.territorio.spostaClienteId = nil
+                stato.territorio.spostaPartenza = false
+            }
                 .buttonStyle(.appleSobrio)
         }
         .padding(s.padding)

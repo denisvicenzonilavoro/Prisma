@@ -159,6 +159,7 @@ struct AppImpostazioni: View {
         case .pratiche: PaginaImpostazioniPratiche()
         case .sala: PaginaImpostazioniSala()
         case .moduli: PaginaImpostazioniModuli()
+        case .territorio: PaginaImpostazioniTerritorio()
         case .strumenti: strumenti
         }
     }

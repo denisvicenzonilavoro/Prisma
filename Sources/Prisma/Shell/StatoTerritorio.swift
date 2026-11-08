@@ -28,6 +28,10 @@ import Observation
     var elencoSenzaLuogo = false
     /// Modalità «Sposta» (posizione a mano): il cliente da mettere sulla mappa.
     var spostaClienteId: String?
+    /// Modalità «Sposta» per la partenza del giro (Impostazioni › Territorio › «Mettila a mano»).
+    var spostaPartenza = false
+    /// Vero in una delle due modalità «Sposta».
+    var spostando: Bool { spostaClienteId != nil || spostaPartenza }
     /// L'appuntamento appena aggiunto al giro (riga evidenziata).
     var rigaNuovaId: String?
     /// Zoom e spostamento della mappa (doppio clic: torna a vedere tutti).
@@ -86,6 +90,7 @@ import Observation
         if soloDaFare { soloDaFare = false; return true }
         if filtroZona != nil { filtroZona = nil; return true }
         if spostaClienteId != nil { spostaClienteId = nil; return true }
+        if spostaPartenza { spostaPartenza = false; return true }
         return false
     }
 
@@ -99,6 +104,7 @@ import Observation
         filtroZona = nil
         soloDaFare = false
         spostaClienteId = nil
+        spostaPartenza = false
         elencoSenzaLuogo = false
         rigaNuovaId = nil
         zoom = 1
@@ -279,9 +285,27 @@ extension StatoShell {
         #endif
     }
 
-    /// Il clic sulla mappa in modalità «Sposta»: fissa il punto e torna al dossier.
+    /// «Mettila a mano» per la partenza del giro: apre Territorio in modalità «Sposta». Solo sul Mac.
+    func apriTerritorioSpostaPartenza() {
+        #if os(iOS)
+        mostraAvviso(StatoShell.soloSulMacPerOra)
+        #else
+        territorio.spostaClienteId = nil
+        territorio.spostaPartenza = true
+        apriTerritorio(.giro)
+        #endif
+    }
+
+    /// Il clic sulla mappa in modalità «Sposta»: fissa il punto (del cliente o della partenza).
     func fissaPosizione(_ c: Coordinata) {
-        guard let id = territorio.spostaClienteId, c.valida else { return }
+        guard c.valida else { return }
+        if territorio.spostaPartenza {
+            impostaTerritorio { $0.partenza = LuogoManuale(coordinata: c) }
+            territorio.spostaPartenza = false
+            mostraAvviso("Partenza del giro messa a mano")
+            return
+        }
+        guard let id = territorio.spostaClienteId else { return }
         impostaLuogoManuale(id, LuogoManuale(coordinata: c))
         territorio.spostaClienteId = nil
         let nome = dati.clienti.first { $0.id == id }.map(MotoreTerritorio.nomeBattesimo) ?? "Il cliente"

@@ -3374,6 +3374,13 @@ enum VoceConfronto: Hashable {
         }
         // E i moduli fac-simile («Luce» giro 10)
         togliEsempiModuli()
+        // Il giro di prova del Territorio («Luce» giro 11): appuntamenti e attività con il prefisso (anche se il cliente
+        // è rimasto) e la partenza di prova; le posizioni a mano dei clienti di prova se ne vanno con loro
+        let p = TerritorioDiProva.prefisso
+        if dati.appuntamenti.contains(where: { $0.id.hasPrefix(p) }) { dati.appuntamenti.removeAll { $0.id.hasPrefix(p) } }
+        if dati.attivita.contains(where: { $0.id.hasPrefix(p) }) { dati.attivita.removeAll { $0.id.hasPrefix(p) } }
+        for i in dati.clienti.indices where dati.clienti[i].luogo?.nota == TerritorioDiProva.nota { dati.clienti[i].luogo = nil }
+        if dati.impostazioni.territorio.partenza?.nota == TerritorioDiProva.nota { dati.impostazioni.territorio.partenza = nil }
     }
 
     /// Torna ai dati di prova (con backup di sicurezza dello stato attuale): i 5 clienti del template,
@@ -3404,6 +3411,10 @@ enum VoceConfronto: Hashable {
                     demo.impostazioni = self.dati.impostazioni
                     // La tolleranza del radar di prova, se l'utente non ne ha scritta una
                     if demo.impostazioni.tolleranzaRadar == nil { demo.impostazioni.tolleranzaRadar = tolleranzaProva }
+                    // Il giro di prova del Territorio («Luce» giro 11, §0.7): senza la partenza, che resterebbe nelle
+                    // impostazioni dell'utente
+                    TerritorioDiProva.applica(&demo, giorno: TerritorioDiProva.giorno(da: Date(), orari: demo.impostazioni.orari),
+                                              conPartenza: false)
                     self.dati.carica(demo)
                     self.azzeraNote()
                     // I sei fac-simile della Biblioteca arrivano con i clienti di prova («Luce» giro 6)
@@ -3530,6 +3541,9 @@ enum SchedaImpostazioni: String, CaseIterable, Hashable, Identifiable {
     case sala
     /// I modelli di modulo di Pratiche › Moduli e «Conserva l'IBAN nel dossier» («Luce» giro 10, ImpostazioniModuliVista.swift).
     case moduli
+    /// La stima delle distanze, il giro, la partenza, le zone e l'anello arancio di Territorio («Luce» giro 11,
+    /// PaginaImpostazioniTerritorio.swift).
+    case territorio
     /// Dati di prova, confronto dei modelli, prove di promemoria e voce.
     case strumenti
 
@@ -3555,6 +3569,7 @@ enum SchedaImpostazioni: String, CaseIterable, Hashable, Identifiable {
         case .pratiche: return "Pratiche"
         case .sala: return "Sala"
         case .moduli: return "Moduli"
+        case .territorio: return "Territorio"
         case .strumenti: return "Strumenti"
         }
     }

@@ -539,7 +539,8 @@ extension MotoreNotifiche {
         // Appuntamenti ancora da fare: qualche minuto prima dell'inizio
         if scelte.appuntamenti {
             let anticipo = ImpostazioniPromemoria.nomeAnticipo(scelte.anticipoMinuti)
-            for a in dati.appuntamenti where a.stato == .pianificato {
+            // Gli appuntamenti proposti dal Territorio e non ancora confermati non suonano («Luce» giro 11)
+            for a in dati.appuntamenti where a.stato == .pianificato && a.daConfermare != true {
                 let quando = Appuntamento.alMinuto(a.inizio.addingTimeInterval(-TimeInterval(scelte.anticipoMinuti * 60)))
                 guard quando > adesso else { continue }
                 let ora = Formati.ora.string(from: a.inizio)
