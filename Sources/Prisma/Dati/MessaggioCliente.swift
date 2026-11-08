@@ -22,6 +22,10 @@ enum TipoOccasioneMessaggio: String, Codable, CaseIterable, Identifiable {
     /// I dati che mancano per compilare un modulo (Pratiche › Moduli, «Luce» giro 10): solo il nome del dato, mai il dato
     /// stesso né un dato già in archivio (D2.6). Non commerciale.
     case datiMancanti
+    /// Un messaggio promesso al cliente e detto nella nota vocale dettata sull'iPhone («Luce» giro 13: «mandarle il
+    /// confronto…»): solo la cosa detta, nessuna cifra in più. Non commerciale: è un seguito chiesto dal cliente
+    /// (proposta seguita, domanda per l'utente). In fondo all'enum: l'ordine e il valore salvato restano stabili.
+    case notaVocale
 
     var id: String { rawValue }
 
@@ -40,6 +44,7 @@ enum TipoOccasioneMessaggio: String, Codable, CaseIterable, Identifiable {
         case .pratica: return "Pratica"
         case .traguardo: return "Traguardo"
         case .datiMancanti: return "Dati da completare"
+        case .notaVocale: return "Dalla nota vocale"
         }
     }
 
@@ -47,7 +52,8 @@ enum TipoOccasioneMessaggio: String, Codable, CaseIterable, Identifiable {
     var commerciale: Bool {
         switch self {
         case .riesame, .occasioneAgenda, .avvisoMercato, .provaFuoco: return true
-        case .riepilogoIncontro, .scadenzaPosizione, .compleanno, .consenso, .parcella, .richiestaVera, .pratica, .traguardo, .datiMancanti: return false
+        case .riepilogoIncontro, .scadenzaPosizione, .compleanno, .consenso, .parcella, .richiestaVera, .pratica, .traguardo, .datiMancanti,
+             .notaVocale: return false
         }
     }
 
