@@ -87,6 +87,8 @@ enum Misure {
         /// Icone dei collegamenti del dossier: più grandi perché si riconoscano a colpo d'occhio.
         static let iconaApp: CGFloat = 38
         static let modulo = CGSize(width: 620, height: 560)
+        /// Lo spazio fra un campo e la sua nota sotto (IBAN per i moduli).
+        static let spazioNota: CGFloat = 4
     }
 
     enum Widget {

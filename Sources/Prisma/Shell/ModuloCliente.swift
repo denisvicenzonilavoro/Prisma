@@ -411,6 +411,9 @@ struct ModuloCliente: View {
     let salva: (Cliente) -> Void
     let elimina: () -> Void
     @State var confermaEliminazione = false
+    /// «Conserva l'IBAN nel dossier» acceso (Impostazioni › Moduli, «Luce» giro 10): solo allora c'è il campo dell'IBAN.
+    var conservaIban = false
+    @State private var testoIban: String?
 
     private var valido: Bool { !bozza.nome.trimmingCharacters(in: .whitespaces).isEmpty }
 
@@ -431,6 +434,11 @@ struct ModuloCliente: View {
                     }
                     CampoModulo(etichetta: "Data di nascita") {
                         CampoDataFacoltativa(data: $bozza.dataNascita, predefinita: Formati.dataPredefinitaNascita)
+                    }
+                    CampoModulo(etichetta: "Luogo di nascita") {
+                        TextField("Per esempio Bologna (BO)", text: Binding(get: { bozza.luogoNascita ?? "" }, set: {
+                            bozza.luogoNascita = $0.trimmingCharacters(in: .whitespaces).isEmpty ? nil : $0
+                        })).textFieldStyle(.roundedBorder)
                     }
                     CampoModulo(etichetta: "Codice fiscale") {
                         TextField("", text: $bozza.codiceFiscale).textFieldStyle(.roundedBorder)
@@ -457,6 +465,35 @@ struct ModuloCliente: View {
                     }
                     CampoModulo(etichetta: "Indirizzo") {
                         TextField("", text: $bozza.indirizzo).textFieldStyle(.roundedBorder)
+                    }
+                }
+                // L'IBAN per i moduli, solo con l'interruttore acceso (decisione 40 di «Luce»): mascherato finché non lo si cambia
+                if conservaIban {
+                    sezione("Per i moduli") {
+                        CampoModulo(etichetta: "IBAN per l'addebito") {
+                            VStack(alignment: .leading, spacing: Misure.Rubrica.spazioNota) {
+                                TextField(bozza.iban.map(IBAN.mascherato) ?? "IT00 X000 0000 0000 0000 0000 000",
+                                          text: Binding(get: { testoIban ?? "" }, set: { testoIban = $0 }))
+                                    .textFieldStyle(.roundedBorder)
+                                if let t = testoIban, !t.isEmpty, !IBAN.valido(t) {
+                                    Text("Il codice di controllo non torna: l'IBAN non si salva.")
+                                        .font(Tipo.kpiNota)
+                                        .foregroundColor(Colori.Analisi.erroreTesto)
+                                } else {
+                                    Text("Si mostra mascherato; mai su iPhone e iPad né nei messaggi.")
+                                        .font(Tipo.kpiNota)
+                                        .foregroundColor(Colori.Analisi.kpiNota)
+                                }
+                                // Togliere l'IBAN di un solo cliente (l'interruttore spento li toglie tutti): vale con «Salva»
+                                if bozza.iban != nil {
+                                    Button("Togli l'IBAN di questo cliente") {
+                                        bozza.iban = nil
+                                        testoIban = nil
+                                    }
+                                    .buttonStyle(StileVetro())
+                                }
+                            }
+                        }
                     }
                 }
                 // I dati per la fattura (Studio › Parcelle e fatture): tutti facoltativi, vuoti tornano nil
@@ -607,6 +644,13 @@ struct ModuloCliente: View {
             Button(nuovo ? "Aggiungi" : "Salva") {
                 var c = bozza
                 if c.profilo != ProfiloInvestitore() { c.profilo.aggiornatoIl = Date() }
+                // L'IBAN: solo con l'interruttore acceso e solo valido (mod 97); spento, non si conserva
+                if !conservaIban {
+                    c.iban = nil
+                } else if let t = testoIban, IBAN.valido(t) {
+                    c.iban = IBAN.pulito(t)
+                }
+                // Un campo vuoto lascia l'IBAN di prima (è mascherato nel suggerimento): si toglie con «Togli l'IBAN»
                 salva(c)
                 chiudi()
             }

@@ -150,6 +150,14 @@ enum SpazioOvunque {
         x.speseStudio = ArchivioSpese()
         x.kmClienti = [:]
         x.impostazioni.studio.spese = ImpostazioniSpese()
+        // L'IBAN dei clienti e i moduli compilati restano sul Mac (decisioni 40 e 44; i modelli stanno in Moduli/, fuori
+        // dall'archivio)
+        x.clienti = x.clienti.map { c in
+            var d = c
+            d.iban = nil
+            return d
+        }
+        x.documenti = x.documenti.filter { $0.tipo != .modulo && $0.modulo == nil }
         x.giornaleOvunque = []
         x.impostazioni.ovunque = ImpostazioniOvunque()
         x.impostazioni.vera = ImpostazioniVera()

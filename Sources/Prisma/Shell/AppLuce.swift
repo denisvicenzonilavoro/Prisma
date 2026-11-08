@@ -59,6 +59,9 @@ struct AppPratiche: View {
         } else if stato.schedaPratiche == .proposta {
             // «Luce», giro 3: la proposta si costruisce da sola (Shell/PratichePropostaApple.swift)
             PratichePropostaApple()
+        } else if stato.schedaPratiche == .moduli {
+            // «Luce», giro 10: «Compila da solo» (Shell/PraticheModuli.swift)
+            PraticheModuli()
         } else {
             let n = stato.schedaPratiche.novita
             InArrivoAppLuce(app: .pratiche, glifo: n.glifo, titolo: n.titolo, frase: n.frase + ".",

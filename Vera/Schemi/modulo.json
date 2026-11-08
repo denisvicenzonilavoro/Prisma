@@ -1,0 +1,19 @@
+{
+  "title": "Moduli · mappa dei campi",
+  "description": "La proposta di Qwen per le etichette di un modulo vuoto che le regole di Prisma non hanno riconosciuto (Vera/Istruzioni/moduli.md). A Qwen va solo il testo delle etichette, nessun dato dei clienti. Prisma tiene solo le etichette che aveva dato e i codici di DatoModulo, mai per le risposte del cliente (titolare effettivo, PEP, origine dei fondi, questionario), e ogni proposta resta da confermare nella revisione della mappa (ModuliVera.swift).",
+  "type": "object",
+  "properties": {
+    "campi": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "etichetta": { "type": "string", "description": "L'etichetta ricevuta, copiata esattamente" },
+          "dato": { "type": "string", "description": "Il codice del dato del dossier, o \"\" se nessuno" }
+        },
+        "required": ["etichetta", "dato"]
+      }
+    }
+  },
+  "required": ["campi"]
+}

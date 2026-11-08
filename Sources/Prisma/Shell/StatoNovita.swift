@@ -239,6 +239,7 @@ extension StatoShell {
             // futuro, Lancia l'anno, Quanto vale avermi accanto)
             apriEsperienza(e)
         } else if let scheda = voce.schedaPratiche {
+            // Pratiche sulla scheda della voce: Proposta e Dopo la firma (giro 3), Moduli con «Compila da solo» (giro 10)
             apriPratiche(scheda)
         } else if voce == .territorio {
             apriTerritorio(.oggi)

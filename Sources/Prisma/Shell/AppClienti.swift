@@ -22,7 +22,8 @@ struct AppClienti: View {
                 bozza: c,
                 nuovo: !stato.clienti.contains { $0.id == c.id },
                 salva: { stato.salvaCliente($0) },
-                elimina: { stato.eliminaCliente(c.id) }
+                elimina: { stato.eliminaCliente(c.id) },
+                conservaIban: stato.dati.impostazioni.pratiche.ibanConservato
             )
             .environment(\.fuocoModulo, fuoco)
         }

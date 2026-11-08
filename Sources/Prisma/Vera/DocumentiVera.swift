@@ -32,7 +32,7 @@ extension MotoreSintesi {
                 parti.append("Controvalore \(cifra(c))\(d.campo(.dataValore).map { " al \($0.valore)" } ?? "") \(pagina(c)).")
             }
             if let v = d.campo(.totaleVersato) { parti.append("Versato fino ad allora \(cifra(v)) \(pagina(v)).") }
-        case .altro, .prospetto, .report:
+        case .altro, .prospetto, .report, .modulo:
             break
         }
 
@@ -202,7 +202,7 @@ extension MotoreSintesi {
         case .polizza: return [.contraente, .assicurato, .scadenza, .premio, .capitaleAssicurato]
         case .estrattoConto: return [.controvalore]
         case .proposta: return [.nomeProdotto, .premio]
-        case .altro, .prospetto, .report: return []
+        case .altro, .prospetto, .report, .modulo: return []
         }
     }
 
@@ -212,7 +212,7 @@ extension MotoreSintesi {
         case .polizza: return "Da verificare nelle condizioni di polizza: esclusioni, carenze, franchigie e massimali, che qui non leggo."
         case .estrattoConto: return "Da verificare: la data di riferimento dell'estratto e i movimenti del periodo."
         case .proposta: return "Da verificare: KID e set informativo del prodotto proposto prima della firma."
-        case .altro, .prospetto, .report: return "Il testo completo è nella scheda «Testo letto» di Documenti."
+        case .altro, .prospetto, .report, .modulo: return "Il testo completo è nella scheda «Testo letto» di Documenti."
         }
     }
 }

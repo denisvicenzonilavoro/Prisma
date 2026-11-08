@@ -158,6 +158,7 @@ struct AppImpostazioni: View {
         case .portafogliModello: PaginaImpostazioniModelli()
         case .pratiche: PaginaImpostazioniPratiche()
         case .sala: PaginaImpostazioniSala()
+        case .moduli: PaginaImpostazioniModuli()
         case .strumenti: strumenti
         }
     }

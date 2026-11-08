@@ -75,6 +75,13 @@ struct Cliente: Identifiable, Codable, Hashable {
     /// avermi accanto» (decisione 58: solo ciò che è nato dalle raccomandazioni accettate da allora). nil = non scritta:
     /// vale la prima raccomandazione accettata, poi la data della scheda (`creatoIl`, segnata «dalla scheda»).
     var clienteDal: Date?
+    /// Il luogo di nascita, come va sui moduli («Bologna (BO)»; versione 27, «Luce» giro 10). nil = non inserito: nei
+    /// moduli il campo risulta mancante.
+    var luogoNascita: String?
+    /// L'IBAN per l'addebito (versione 27, «Luce» giro 10, decisione 40): si conserva solo con «Conserva l'IBAN nel
+    /// dossier» acceso (Impostazioni › Moduli), si mostra mascherato, entra nei backup e mai in «Prisma ovunque» né nei
+    /// messaggi. Solo un IBAN valido (mod 97).
+    var iban: String?
 
     init(id: String, nome: String, iniziali: String, tinta: TintaAvatar, tema: String, email: String,
          telefono: String, preferito: Bool, nota: String, creatoIl: Date) {
@@ -117,6 +124,7 @@ struct Cliente: Identifiable, Codable, Hashable {
         case modelloId
         case aziende
         case clienteDal
+        case luogoNascita, iban
     }
 
     /// Lettura tollerante: i campi aggiunti nelle versioni successive possono mancare.
@@ -157,6 +165,10 @@ struct Cliente: Identifiable, Codable, Hashable {
             .flatMap { $0.elementi.isEmpty ? nil : $0.elementi }
         // Inizio del rapporto (versione 27, giro 8): illeggibile = non scritto
         clienteDal = (try? c.decodeIfPresent(Date.self, forKey: .clienteDal)) ?? nil
+        // Luogo di nascita e IBAN (versione 27, giro 10): vuoti o illeggibili = non inseriti; un IBAN non valido si scarta
+        luogoNascita = ((try? c.decodeIfPresent(String.self, forKey: .luogoNascita)) ?? nil)
+            .flatMap { $0.trimmingCharacters(in: .whitespaces).isEmpty ? nil : $0 }
+        iban = ((try? c.decodeIfPresent(String.self, forKey: .iban)) ?? nil).flatMap { IBAN.valido($0) ? IBAN.pulito($0) : nil }
     }
 
     /// Le aziende registrate (vuoto se nessuna).

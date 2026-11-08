@@ -19,6 +19,9 @@ enum TipoOccasioneMessaggio: String, Codable, CaseIterable, Identifiable {
     /// Un traguardo da festeggiare (I traguardi festeggiati, «Luce» giro 5, MotoreTraguardi): mai commerciale. Un Prisma
     /// di prima salta i messaggi con questo tipo (ElencoTollerante) senza perdere gli altri.
     case traguardo
+    /// I dati che mancano per compilare un modulo (Pratiche › Moduli, «Luce» giro 10): solo il nome del dato, mai il dato
+    /// stesso né un dato già in archivio (D2.6). Non commerciale.
+    case datiMancanti
 
     var id: String { rawValue }
 
@@ -36,6 +39,7 @@ enum TipoOccasioneMessaggio: String, Codable, CaseIterable, Identifiable {
         case .richiestaVera: return "Chiesto a Vera"
         case .pratica: return "Pratica"
         case .traguardo: return "Traguardo"
+        case .datiMancanti: return "Dati da completare"
         }
     }
 
@@ -43,7 +47,7 @@ enum TipoOccasioneMessaggio: String, Codable, CaseIterable, Identifiable {
     var commerciale: Bool {
         switch self {
         case .riesame, .occasioneAgenda, .avvisoMercato, .provaFuoco: return true
-        case .riepilogoIncontro, .scadenzaPosizione, .compleanno, .consenso, .parcella, .richiestaVera, .pratica, .traguardo: return false
+        case .riepilogoIncontro, .scadenzaPosizione, .compleanno, .consenso, .parcella, .richiestaVera, .pratica, .traguardo, .datiMancanti: return false
         }
     }
 
@@ -146,6 +150,9 @@ enum VoceCifraMessaggio: String, CaseIterable {
     case passoPratica = "Passo che manca"
     case giorniPratica = "Giorni senza passi nuovi"
     case traguardo = "Traguardo"
+    /// I nomi dei dati che mancano per un modulo («IBAN per l'addebito, CAP»): mai i valori.
+    case datiModulo = "Dati che mancano"
+    case modulo = "Modulo"
 }
 
 /// A che punto è un messaggio. Prisma non spedisce: «aperto» vuol dire aperto già compilato nell'app del Mac

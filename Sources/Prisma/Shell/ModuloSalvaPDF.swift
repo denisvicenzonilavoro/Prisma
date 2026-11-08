@@ -25,9 +25,13 @@ struct ModuloSalvaPDF: View {
     @State private var esporta = false
     #endif
 
-    init(pdf: PDFDaSalvare, impostazioni: ImpostazioniPDF) {
+    /// Solo con la password (il modulo compilato dato al cliente, decisione 13 di «Luce»): niente interruttore.
+    let soloProtetto: Bool
+
+    init(pdf: PDFDaSalvare, impostazioni: ImpostazioniPDF, soloProtetto: Bool = false) {
         self.pdf = pdf
-        _proteggi = State(initialValue: impostazioni.proteggi)
+        self.soloProtetto = soloProtetto
+        _proteggi = State(initialValue: soloProtetto || impostazioni.proteggi)
         _password = State(initialValue: impostazioni.password(per: pdf.cliente))
     }
 
@@ -38,10 +42,17 @@ struct ModuloSalvaPDF: View {
         CorniceModulo(titolo: "Salva il PDF") {
             VStack(alignment: .leading, spacing: 14) {
                 Text(pdf.nome).font(Tipo.campoEtichetta).foregroundColor(Colori.Rubrica.secondario).lineLimit(2)
-                CampoModulo(etichetta: "Proteggi con password") {
-                    Toggle("", isOn: $proteggi)
-                        .toggleStyle(StileInterruttore())
-                        .labelsHidden()
+                if soloProtetto {
+                    Text("Il modulo compilato ha i dati del cliente: esce dal Mac solo protetto da password.")
+                        .font(Tipo.kpiNota)
+                        .foregroundColor(Colori.Analisi.kpiNota)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    CampoModulo(etichetta: "Proteggi con password") {
+                        Toggle("", isOn: $proteggi)
+                            .toggleStyle(StileInterruttore())
+                            .labelsHidden()
+                    }
                 }
                 if proteggi {
                     CampoModulo(etichetta: "Password") {

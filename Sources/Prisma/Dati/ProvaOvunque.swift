@@ -119,6 +119,7 @@ enum ProvaOvunque {
             try provaAziende()
             try provaRacconti()
             try provaSpese()
+            try provaModuliIban()
             try provaSpazio(radice: radice)
             print("Prova di Prisma ovunque riuscita")
             return 0
@@ -319,6 +320,35 @@ enum ProvaOvunque {
             try controlla(mac.appuntamenti[i].presso == .cliente,
                           "il luogo scelto sul dispositivo non arriva sul Mac (esito \(esito))")
         }
+    }
+
+    /// «Compila da solo» («Luce» giro 10, decisioni 40 e 44): l'IBAN dei clienti e i moduli compilati non entrano mai
+    /// nell'istantanea dello spazio (nemmeno con l'interruttore dell'IBAN acceso); il luogo di nascita sì, cifrato come il
+    /// resto dell'anagrafica. I modelli di modulo stanno in Moduli/, fuori dall'archivio.
+    private static func provaModuliIban() throws {
+        var dati = DatiPrisma.demo()
+        guard let i = dati.clienti.firstIndex(where: { $0.id == "giulia" }) else { throw Fallita(motivo: "manca Giulia nei dati di prova") }
+        let iban = "IT60X0542811101000000123456"
+        dati.impostazioni.pratiche.conservaIban = true
+        dati.clienti[i].iban = iban
+        dati.clienti[i].luogoNascita = "Bologna (BO)"
+        var d = Documento(clienteId: "giulia", titolo: "Modulo · Proposta di polizza (prova ovunque)", tipo: .modulo)
+        d.id = "doc-modulo-ovunque"
+        d.modulo = CompilazioneModulo(modelloId: "modulo-prova", titoloModello: "Proposta di polizza", compilatoIl: ora(0),
+                                      mancanti: [.iban], firme: 2)
+        dati.documenti.append(d)
+        let istantanea = SpazioOvunque.datiIstantanea(dati)
+        let chiaro = try JSONOvunque.codificatore().encode(istantanea)
+        let testo = String(decoding: chiaro, as: UTF8.self)
+        try controlla(!testo.contains(iban), "l'IBAN di un cliente è nell'istantanea dello spazio")
+        try controlla(!testo.contains("doc-modulo-ovunque") && !testo.contains("prova ovunque") && !testo.contains("titoloModello"),
+                      "un modulo compilato è nell'istantanea dello spazio")
+        try controlla(istantanea.documenti.count == dati.documenti.count - 1, "l'istantanea ha perso documenti che non sono moduli")
+        let letto = try JSONOvunque.decodificatore().decode(DatiPrisma.self, from: chiaro)
+        try controlla(letto.clienti.first { $0.id == "giulia" }?.luogoNascita == "Bologna (BO)" && letto.clienti.allSatisfy { $0.iban == nil },
+                      "il luogo di nascita non torna dall'istantanea o l'IBAN è tornato")
+        // L'archivio del Mac li tiene
+        try controlla(dati.clienti[i].iban == iban && dati.documenti.contains { $0.id == d.id }, "l'istantanea ha toccato l'archivio del Mac")
     }
 
     private static func provaSpaziLuce() throws {

@@ -119,6 +119,7 @@ extension StatoShell {
         case .proposta: return "una proposta"
         case .prospetto: return "un prospetto di Prisma"
         case .report: return "un report di Prisma"
+        case .modulo: return "un modulo compilato"
         case .altro: return "un documento"
         }
     }

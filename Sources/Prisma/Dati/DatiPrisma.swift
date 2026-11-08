@@ -153,6 +153,12 @@ struct DatiPrisma: Codable, Equatable {
     ///     Giro 7: le aziende dei clienti imprenditori (`Cliente.aziende`: ragione sociale, forma, partita IVA, settore,
     ///     dipendenti, fatturato e anno, utile, quota e ruolo del cliente, reddito che ne ricava, persona chiave, TFM,
     ///     welfare e passi della continuità), lette con tolleranza (un'azienda senza id o ragione sociale si scarta).
+    ///     Giro 10: il luogo di nascita (`Cliente.luogoNascita`) e l'IBAN per l'addebito (`Cliente.iban`, solo con
+    ///     `Impostazioni.pratiche.conservaIban` acceso, letto solo se passa il controllo mod 97; mai in «Prisma
+    ///     ovunque»), i moduli compilati nei Documenti (`Documento.Tipo.modulo` e `Documento.modulo`:
+    ///     `CompilazioneModulo`, un tipo sconosciuto si legge come `.altro`) e i messaggi `datiMancanti` (letti con
+    ///     tolleranza). I modelli di modulo non sono nell'archivio: stanno nella cartella `Moduli/` accanto (PDF e
+    ///     `moduli.json`), nei backup e mai in «Prisma ovunque».
     ///     Vera, fase 3: le promesse ai
     ///     clienti (`promesse`), i confronti tra documenti (`confrontiDocumenti`), le coperture delle polizze
     ///     (`coperture`) e il resoconto dell'incontro (`Incontro.resoconto`), tutti letti con tolleranza.
