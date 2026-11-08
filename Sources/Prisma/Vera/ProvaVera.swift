@@ -1042,6 +1042,8 @@ enum ProvaVera {
         ProvaCollegaPassi.esegui(controlla)
         // Le domande dei passi con il loro seguito, «Rifai i calcoli», il piano vuoto evitato
         StatoShell.provaPassiSeguito(controlla)
+        // La fase 5: su misura (anonimizzazione, pacchetto, importazione, esame e sostituzione con il server finto) (ProvaSuMisuraVera.swift)
+        ProvaSuMisuraVera.esegui(controlla)
         #if os(macOS)
         // La mini finestra: ⌥ Spazio, i cinque stati, cifre e canali, «non pronta» (ProvaMiniVera.swift)
         ProvaMiniVera.esegui(controlla)
