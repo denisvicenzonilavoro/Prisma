@@ -120,6 +120,7 @@ enum ProvaOvunque {
             try provaRacconti()
             try provaSpese()
             try provaModuliIban()
+            try provaLuceClienti()
             try provaSpazio(radice: radice)
             print("Prova di Prisma ovunque riuscita")
             return 0
@@ -349,6 +350,50 @@ enum ProvaOvunque {
                       "il luogo di nascita non torna dall'istantanea o l'IBAN è tornato")
         // L'archivio del Mac li tiene
         try controlla(dati.clienti[i].iban == iban && dati.documenti.contains { $0.id == d.id }, "l'istantanea ha toccato l'archivio del Mac")
+    }
+
+    /// «Luce» giro 12 (decisione 44): campagne e presentatori vanno nello spazio; i potenziali clienti solo con
+    /// «Porta anche i potenziali clienti» acceso; l'archivio del Mac non cambia; sul dispositivo arrivano solo se c'erano.
+    private static func provaLuceClienti() throws {
+        var dati = DatiPrisma.demo()
+        var p = PotenzialeCliente(id: "pot-ovunque", nome: "Potenziale Riservato 8K2W", creatoIl: ora(0))
+        p.patrimonioStimato = 90_000
+        dati.potenziali = [p]
+        dati.campagne = [Campagna(id: "campagna-ovunque", gruppoId: "protezioneFamiglia", gruppoTipo: .protezioneFamiglia,
+                                  titolo: "Famiglia senza protezione", avviataIl: ora(0), tono: .cordiale, canale: .mail,
+                                  clienti: ["giulia"], appuntamenti: [], messaggi: [])]
+        if dati.clienti.count > 1 {
+            dati.clienti[1].presentatoDa = dati.clienti[0].id
+            dati.clienti[1].presentatoIl = ora(0)
+        }
+        // Interruttore spento (di base): niente potenziali, nemmeno un nome nel JSON
+        try controlla(!dati.impostazioni.ovunque.potenzialiNelloSpazio, "l'interruttore dei potenziali è acceso di base")
+        let spento = SpazioOvunque.datiIstantanea(dati)
+        let chiaro = try JSONOvunque.codificatore().encode(spento)
+        let testo = String(decoding: chiaro, as: UTF8.self)
+        try controlla(spento.potenziali.isEmpty && !testo.contains("Potenziale Riservato 8K2W"),
+                      "con l'interruttore spento i potenziali clienti sono nell'istantanea dello spazio")
+        try controlla(spento.campagne == dati.campagne, "le campagne non entrano nell'istantanea dello spazio")
+        try controlla(spento.clienti.map(\.presentatoDa) == dati.clienti.map(\.presentatoDa),
+                      "chi ha presentato i clienti non entra nell'istantanea dello spazio")
+        try controlla(!spento.impostazioni.ovunque.potenzialiNelloSpazio, "l'interruttore del Mac è nell'istantanea")
+        // Interruttore acceso: i potenziali vanno
+        dati.impostazioni.ovunque.potenzialiNelloSpazio = true
+        let acceso = SpazioOvunque.datiIstantanea(dati)
+        try controlla(acceso.potenziali == dati.potenziali, "con l'interruttore acceso i potenziali non entrano nell'istantanea")
+        // L'archivio del Mac li tiene
+        try controlla(dati.potenziali.count == 1 && dati.campagne.count == 1, "l'istantanea ha toccato l'archivio del Mac")
+        // Sul dispositivo arrivano solo se c'erano
+        let ist = IstantaneaOvunque(generazione: 1, mac: idMac, nomeMac: "Mac di prova", scrittaIl: ora(1), vistoFinoA: [:],
+                                    lamport: 1, modificheAmmesse: true, dati: spento)
+        let locale = DatiPrisma.demo()
+        let senza = SpazioOvunque.accogli(ist, in: locale).dati
+        try controlla(senza.potenziali.isEmpty && senza.campagne == dati.campagne,
+                      "sul dispositivo arrivano potenziali che lo spazio non aveva (o non arrivano le campagne)")
+        let ist2 = IstantaneaOvunque(generazione: 2, mac: idMac, nomeMac: "Mac di prova", scrittaIl: ora(2), vistoFinoA: [:],
+                                     lamport: 2, modificheAmmesse: true, dati: acceso)
+        try controlla(SpazioOvunque.accogli(ist2, in: locale).dati.potenziali == dati.potenziali,
+                      "sul dispositivo non arrivano i potenziali dello spazio")
     }
 
     private static func provaSpaziLuce() throws {
