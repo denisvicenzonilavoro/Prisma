@@ -1,0 +1,77 @@
+{
+  "descrizione": "Esame di prova di «Vera su misura» (dati di prova, fac-simile): domande e risposte approvate inventate sui clienti del template, già rese anonime. Servono solo alle prove di --prova-vera.",
+  "domande": [
+    {
+      "id": "es-01",
+      "domanda": "Come spiego a [Cliente] il versamento di 550 € al mese per la casa?",
+      "attesa": "Con 550 € al mese mette da parte l'anticipo per la casa senza toccare la liquidità di emergenza. Le cifre esatte le mostra il prospetto di Prisma.",
+      "modalita": "lavoro"
+    },
+    {
+      "id": "es-02",
+      "domanda": "Cos'è una gestione separata, in parole semplici?",
+      "attesa": "È un fondo dentro la polizza che investe soprattutto in obbligazioni e consolida ogni anno il rendimento ottenuto. Il rendimento non è garantito in anticipo.",
+      "modalita": "conversazione"
+    },
+    {
+      "id": "es-03",
+      "domanda": "[Cliente] chiede se può riscattare in anticipo: cosa le dico?",
+      "attesa": "Il riscatto è possibile, ma nei primi anni ci sono costi: prima di decidere guardiamo insieme il valore di riscatto aggiornato nella scheda della polizza.",
+      "modalita": "lavoro"
+    },
+    {
+      "id": "es-04",
+      "domanda": "Come spiego il rischio a un cliente prudente?",
+      "attesa": "Partirei chiedendo quanto gli darebbe fastidio vedere il valore scendere per qualche mese, poi mostrerei che il rischio si sceglie in base al tempo che ha davanti.",
+      "modalita": "conversazione"
+    },
+    {
+      "id": "es-05",
+      "domanda": "[Cliente] vuole proteggere la famiglia con 30 € al mese: da dove parto?",
+      "attesa": "Partirei dalla protezione del reddito: con 30 € al mese si copre il rischio più grave per la famiglia, poi vediamo nel prospetto quali coperture entrano nel budget.",
+      "modalita": "lavoro"
+    },
+    {
+      "id": "es-06",
+      "domanda": "Traduci in inglese: «la ringrazio per la fiducia».",
+      "attesa": "«Thank you for your trust.»",
+      "modalita": "conversazione"
+    },
+    {
+      "id": "es-07",
+      "domanda": "[Cliente] ha paura di perdere i soldi: come la rassicuro senza promettere niente?",
+      "attesa": "Capisco la preoccupazione e nessuno può promettere un risultato. Posso mostrarle come è costruito il piano: una parte prudente e una che lavora nel tempo, da rivedere insieme.",
+      "modalita": "lavoro"
+    },
+    {
+      "id": "es-08",
+      "domanda": "Che differenza c'è tra un PIP e un fondo aperto?",
+      "attesa": "Il PIP è un piano previdenziale costruito su una polizza; il fondo aperto è gestito da banche o compagnie. Entrambi hanno i vantaggi fiscali della previdenza complementare: cambiano costi e flessibilità.",
+      "modalita": "conversazione"
+    },
+    {
+      "id": "es-09",
+      "domanda": "[Cliente] vuole più flessibilità: come imposto il prossimo incontro?",
+      "attesa": "Partirei dagli obiettivi cambiati e proporrei due strade, una più flessibile e una più stabile, con pro e contro di ciascuna. Le cifre le prepara Prisma.",
+      "modalita": "lavoro"
+    },
+    {
+      "id": "es-10",
+      "domanda": "Scrivi un messaggio breve per spostare l'appuntamento a [Cliente].",
+      "attesa": "Gentile [Cliente], purtroppo devo spostare il nostro appuntamento. Mi dice quando le farebbe comodo nei prossimi giorni? Grazie e a presto.",
+      "modalita": "conversazione"
+    },
+    {
+      "id": "es-11",
+      "domanda": "Cosa significa che una polizza è rivalutabile?",
+      "attesa": "Significa che il capitale si aggiorna ogni anno con il rendimento della gestione separata: la parte acquisita resta, ma il rendimento futuro non è promesso.",
+      "modalita": "conversazione"
+    },
+    {
+      "id": "es-12",
+      "domanda": "Come preparo l'incontro di revisione con [Cliente]?",
+      "attesa": "Riguarderei gli obiettivi e le posizioni in Prisma, segnerei cosa è cambiato dall'ultima volta e preparerei due domande sui progetti dei prossimi anni.",
+      "modalita": "lavoro"
+    }
+  ]
+}

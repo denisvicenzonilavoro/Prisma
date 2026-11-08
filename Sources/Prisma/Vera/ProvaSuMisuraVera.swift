@@ -11,6 +11,28 @@ enum ProvaSuMisuraVera {
         raccolta(controlla)
         pacchetto(dati, controlla)
         risorse(controlla)
+        importazione(controlla)
+        esame(controlla)
+        curva(controlla)
+    }
+
+    /// Aspetta un lavoro asincrono dal thread delle prove (solo per lavori che non toccano il thread principale).
+    static func aspetta<T>(_ lavoro: @escaping () async -> T) -> T {
+        let scatola = ScatolaSuMisura<T>()
+        let fatto = DispatchSemaphore(value: 0)
+        Task.detached {
+            scatola.valore = await lavoro()
+            fatto.signal()
+        }
+        fatto.wait()
+        return scatola.valore!
+    }
+
+    /// Una sessione che parla solo con il server finto.
+    static func sessioneFinta() -> URLSession {
+        let c = URLSessionConfiguration.ephemeral
+        c.protocolClasses = [ServerFintoSuMisura.self]
+        return URLSession(configuration: c)
     }
 
     /// Domenica 8 novembre 2026, 10:00: sempre lo stesso giorno.
@@ -195,4 +217,252 @@ enum ProvaSuMisuraVera {
         let script = Bundle.main.resourceURL?.appendingPathComponent("Vera/Addestramento/\(SuMisuraVera.nomeScript)")
         controlla(script.map { FileManager.default.fileExists(atPath: $0.path) } ?? false, "Su misura: lo script di addestramento è nel pacchetto")
     }
+
+    // MARK: - 5. Importazione in Ollama
+
+    private static func importazione(_ controlla: (Bool, String) -> Void) {
+        let fm = FileManager.default
+        let cartella = fm.temporaryDirectory.appendingPathComponent("Prisma-prova-importa-\(UUID().uuidString)")
+        try? fm.createDirectory(at: cartella, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: cartella) }
+        let noto = cartella.appendingPathComponent("abc.txt")
+        try? Data("abc".utf8).write(to: noto)
+        controlla((try? ImportaSuMisura.impronta(noto)) == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+                  "Su misura: l'impronta SHA256 del file, a pezzi")
+        let p = ImportaSuMisura.parametri(daShow: "stop \"<|im_end|>\"\nstop \"<|endoftext|>\"\ntemperature 0.6\nnum_ctx 8192")
+        controlla((p["stop"] as? [Any])?.count == 2 && (p["temperature"] as? Double) == 0.6 && (p["num_ctx"] as? Int) == 8192,
+                  "Su misura: i parametri di /api/show diventano un oggetto (stop in un array, numeri come numeri)")
+
+        let gguf = cartella.appendingPathComponent("vera.gguf")
+        try? (Data("GGUF".utf8) + Data(repeating: 7, count: 2_048)).write(to: gguf)
+        let finto = cartella.appendingPathComponent("finto.gguf")
+        try? Data(repeating: 1, count: 64).write(to: finto)
+        let impronta = (try? ImportaSuMisura.impronta(gguf)) ?? ""
+        let sessione = sessioneFinta()
+        let ollama = FornitoreOllama(indirizzo: FornitoreOllama.indirizzoPredefinito, modello: MotoreLocale.modelloPredefinito, sessione: sessione)
+        let nome = SuMisuraVera.nomeModello(oggi)
+
+        ServerFintoSuMisura.prepara(installati: [MotoreLocale.modelloPredefinito])
+        let rifiutato = aspetta { () async -> ErroreImporta? in
+            do { try await ImportaSuMisura.importa(gguf: finto, nome: nome, partenza: MotoreLocale.modelloPredefinito, fornitore: ollama); return nil }
+            catch { return error as? ErroreImporta }
+        }
+        controlla(rifiutato == .nonGGUF && ServerFintoSuMisura.registro.isEmpty, "Su misura: un file che non è GGUF è rifiutato senza richieste")
+        let lontano = FornitoreOllama(indirizzo: "http://10.0.0.5:11434", modello: MotoreLocale.modelloPredefinito, sessione: sessione)
+        let fuori = aspetta { () async -> ErroreImporta? in
+            do { try await ImportaSuMisura.importa(gguf: gguf, nome: nome, partenza: MotoreLocale.modelloPredefinito, fornitore: lontano); return nil }
+            catch { return error as? ErroreImporta }
+        }
+        controlla(fuori == .nonLocale && ServerFintoSuMisura.registro.isEmpty, "Su misura: un indirizzo che non è sul Mac è rifiutato")
+
+        let errore = aspetta { () async -> String? in
+            do { try await ImportaSuMisura.importa(gguf: gguf, nome: nome, partenza: MotoreLocale.modelloPredefinito, fornitore: ollama); return nil }
+            catch { return error.localizedDescription }
+        }
+        let percorsi = ServerFintoSuMisura.registro.map { "\($0.metodo) \($0.percorso)" }
+        let blob = "/api/blobs/sha256:" + impronta
+        controlla(errore == nil && percorsi == ["HEAD " + blob, "POST " + blob, "POST /api/show", "POST /api/create"],
+                  "Su misura: blob (prima HEAD, poi la copia), show del modello di partenza, create (\(percorsi.joined(separator: ", "))\(errore.map { " · " + $0 } ?? ""))")
+        let crea = ServerFintoSuMisura.corpo("/api/create")
+        controlla((crea["files"] as? [String: String])?[ImportaSuMisura.nomeFile] == "sha256:" + impronta && (crea["model"] as? String) == nome
+                  && (crea["template"] as? String) == ServerFintoSuMisura.template && ((crea["parameters"] as? [String: Any])?["stop"] as? [Any])?.count == 2,
+                  "Su misura: create con il file per impronta, il template e i parametri del modello di partenza")
+        ServerFintoSuMisura.prepara(installati: [])
+        let eliminato = aspetta { await ImportaSuMisura.elimina(nome, fornitore: ollama) }
+        controlla(eliminato && ServerFintoSuMisura.registro.map { "\($0.metodo) \($0.percorso)" } == ["DELETE /api/delete"]
+                  && (ServerFintoSuMisura.corpo("/api/delete")["model"] as? String) == nome,
+                  "Su misura: «Elimina il modello» manda DELETE /api/delete")
+        // Lo zip dell'addestramento: il .gguf e rapporto.json si trovano anche dentro una cartella
+        let zipDir = cartella.appendingPathComponent("scaricato")
+        try? fm.createDirectory(at: zipDir.appendingPathComponent("vera-su-misura"), withIntermediateDirectories: true)
+        try? fm.copyItem(at: gguf, to: zipDir.appendingPathComponent("vera-su-misura/vera-su-misura-Q4_K_M.gguf"))
+        try? Data(#"{"passi":[{"passo":1,"errore":2.0}]}"#.utf8).write(to: zipDir.appendingPathComponent(SuMisuraVera.nomeFileRapporto))
+        let zip = cartella.appendingPathComponent("vera-su-misura.zip")
+        try? ScrittoreZip.crea(da: zipDir, a: zip)
+        let trovato = try? ImportaSuMisura.trova(in: zip)
+        controlla(trovato.map { ImportaSuMisura.eGGUF($0.gguf) && $0.rapporto != nil } ?? false, "Su misura: nello zip si trovano il modello e rapporto.json")
+        if let t = trovato, t.gguf.path.hasPrefix(fm.temporaryDirectory.path) { try? fm.removeItem(at: t.gguf.deletingLastPathComponent().deletingLastPathComponent()) }
+    }
+
+    // MARK: - 6. Esame
+
+    private static func esame(_ controlla: (Bool, String) -> Void) {
+        let domande = EsameSuMisura.domandeDiProva()
+        controlla(domande.count == 12, "Su misura: l'esame di prova è nel pacchetto (Vera/Esempi/esame-di-prova.json, \(domande.count) domande)")
+        guard let prima = domande.first else { return }
+        // Prima il codice: il punteggio di una risposta
+        controlla(EsameSuMisura.punteggio(risposta: prima.attesa, domanda: prima).passata, "Esame: la risposta approvata passa")
+        let inventata = EsameSuMisura.punteggio(risposta: prima.attesa + " In tutto fanno 12.400 €.", domanda: prima)
+        controlla(!inventata.passata && inventata.cifreInventate == ["12.400 €"], "Esame: una cifra inventata vale 0")
+        let rischio = EsameSuMisura.punteggio(risposta: prima.attesa + " È un rendimento garantito.", domanda: prima)
+        controlla(!rischio.passata && !rischio.paroleARischio.isEmpty, "Esame: «rendimento garantito» vale 0")
+        let lontana = EsameSuMisura.punteggio(risposta: "Oggi piove e il treno è in ritardo.", domanda: prima)
+        controlla(!lontana.passata && lontana.somiglianza < EsameSuMisura.sogliaSomiglianza, "Esame: una risposta che non c'entra non passa")
+        controlla(EsameSuMisura.superato(attuale: (71, 2), nuovo: (84, 0)) && !EsameSuMisura.superato(attuale: (80, 0), nuovo: (76, 0))
+                  && !EsameSuMisura.superato(attuale: (60, 0), nuovo: (69, 0)) && !EsameSuMisura.superato(attuale: (71, 0), nuovo: (84, 1))
+                  && !EsameSuMisura.superato(attuale: (71, 0), nuovo: (72, 0)),
+                  "Esame: superato con almeno 70%, almeno 2 punti in più e non più cifre inventate")
+
+        // L'esame vero, con il server finto: la Vera di oggi risponde male, quella su misura come le risposte approvate
+        let attuale = MotoreLocale.modelloPredefinito, nuovo = SuMisuraVera.nomeModello(oggi)
+        let sessione = sessioneFinta()
+        ServerFintoSuMisura.prepara(installati: [attuale, nuovo],
+                                    risposte: [attuale: domande.map { _ in "Non saprei, chiedi a qualcun altro." }, nuovo: domande.map(\.attesa)])
+        let passi = ScatolaSuMisura<[String]>()
+        passi.valore = []
+        let esito = aspetta { await EsameSuMisura.esegui(domande, attuale: attuale, nuovo: nuovo, vera: ImpostazioniVera(), sessione: sessione) { passi.valore?.append($0) } }
+        controlla(esito.superato && esito.percentuale(nuovo) == 100 && esito.percentuale(attuale) == 0 && esito.breve.superato,
+                  "Esame: la Vera su misura migliore supera l'esame (\(esito.percentuale(attuale))% → \(esito.percentuale(nuovo))%)")
+        let registro = ServerFintoSuMisura.registro.filter { $0.percorso == "/api/chat" }
+        let domandeChat = registro.filter { !$0.precarica }
+        let ordine = domandeChat.map(\.modello)
+        controlla(ordine == Array(repeating: attuale, count: domande.count) + Array(repeating: nuovo, count: domande.count),
+                  "Esame: un modello alla volta, tutte le domande del primo poi tutte del secondo")
+        let liberaPrimo = registro.firstIndex { $0.precarica && $0.modello == attuale && $0.keepAlive == "0" }
+        let primaDelSecondo = registro.firstIndex { !$0.precarica && $0.modello == nuovo }
+        controlla(liberaPrimo != nil && primaDelSecondo != nil && liberaPrimo! < primaDelSecondo!,
+                  "Esame: la memoria della Vera di oggi si libera prima della Vera su misura")
+        controlla(domandeChat.allSatisfy { $0.temperatura == 0 && $0.pensa == false }, "Esame: temperatura 0 e niente ragionamento")
+        controlla((passi.valore ?? []).contains("domanda 1 di \(domande.count) · Vera di oggi"), "Esame: l'avanzamento dice a che domanda è")
+        // Un modello che Ollama non ha: errore, non superato
+        ServerFintoSuMisura.prepara(installati: [attuale], risposte: [attuale: domande.map(\.attesa)])
+        let senza = aspetta { await EsameSuMisura.esegui(domande, attuale: attuale, nuovo: nuovo, vera: ImpostazioniVera(), sessione: sessione) }
+        controlla(!senza.superato && senza.errori[nuovo] != nil, "Esame: senza il modello in Ollama l'esame non è superato")
+    }
+
+    // MARK: - 8. Curva dell'errore
+
+    private static func curva(_ controlla: (Bool, String) -> Void) {
+        let passi = (1...500).map { ["passo": $0, "errore": 2.4 * exp(-Double($0) / 120) + 0.4] as [String: Any] }
+        let dati = (try? JSONSerialization.data(withJSONObject: ["versione": 1, "passi": passi])) ?? Data()
+        let c = SuMisuraVera.curva(daRapporto: dati) ?? []
+        controlla(c.count == SuMisuraVera.puntiCurva && zip(c, c.dropFirst()).allSatisfy { $0 > $1 },
+                  "Su misura: 500 passi diventano \(SuMisuraVera.puntiCurva) punti che scendono")
+        controlla(SuMisuraVera.curva(daRapporto: Data("{rovinato".utf8)) == nil && SuMisuraVera.curva(daRapporto: Data(#"{"passi":[]}"#.utf8)) == nil,
+                  "Su misura: un rapporto rovinato o vuoto non dà curva")
+    }
+}
+
+private final class ScatolaSuMisura<T>: @unchecked Sendable {
+    var valore: T?
+}
+
+/// Un server Ollama finto per «Vera su misura» e i motori: /api/tags con i modelli installati scelti dalla prova, /api/chat
+/// con una coda di risposte per modello (la precarica e la liberazione non la consumano), blob, show, create e delete; tiene
+/// il registro di ogni richiesta.
+final class ServerFintoSuMisura: URLProtocol {
+    struct Voce {
+        var metodo: String
+        var percorso: String
+        var modello: String
+        /// Richiesta senza messaggi: precarica o liberazione della memoria.
+        var precarica: Bool
+        var keepAlive: String
+        var temperatura: Double?
+        var pensa: Bool?
+    }
+
+    static let template = "{{ if .System }}<|im_start|>system\n{{ .System }}<|im_end|>\n{{ end }}<|im_start|>user\n{{ .Prompt }}<|im_end|>\n<|im_start|>assistant\n"
+    private static let blocco = NSLock()
+    private static var _installati: [String] = []
+    private static var _code: [String: [String]] = [:]
+    private static var _registro: [Voce] = []
+    private static var _corpi: [String: [String: Any]] = [:]
+
+    static func prepara(installati: [String], risposte: [String: [String]] = [:]) {
+        blocco.lock(); defer { blocco.unlock() }
+        _installati = installati
+        _code = risposte
+        _registro = []
+        _corpi = [:]
+    }
+
+    static var registro: [Voce] {
+        blocco.lock(); defer { blocco.unlock() }
+        return _registro
+    }
+
+    static func corpo(_ percorso: String) -> [String: Any] {
+        blocco.lock(); defer { blocco.unlock() }
+        return _corpi[percorso] ?? [:]
+    }
+
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+    private static func leggiCorpo(_ r: URLRequest) -> Data {
+        var dati = r.httpBody ?? Data()
+        if dati.isEmpty, let s = r.httpBodyStream {
+            s.open()
+            var buffer = [UInt8](repeating: 0, count: 4_096)
+            while s.hasBytesAvailable {
+                let n = s.read(&buffer, maxLength: buffer.count)
+                if n <= 0 { break }
+                dati.append(buffer, count: n)
+            }
+            s.close()
+        }
+        return dati
+    }
+
+    private static func json(_ o: [String: Any]) -> String {
+        String(data: (try? JSONSerialization.data(withJSONObject: o)) ?? Data(), encoding: .utf8) ?? ""
+    }
+
+    override func startLoading() {
+        let percorso = request.url?.path ?? ""
+        let metodo = request.httpMethod ?? "GET"
+        let dati = Self.leggiCorpo(request)
+        let c = (try? JSONSerialization.jsonObject(with: dati) as? [String: Any]) ?? [:]
+        let modello = c["model"] as? String ?? ""
+        let messaggi = c["messages"] as? [[String: Any]]
+        let keepAlive = (c["keep_alive"] as? String) ?? (c["keep_alive"] as? NSNumber)?.stringValue ?? ""
+        let opzioni = c["options"] as? [String: Any]
+        var codice = 200
+        var testo = ""
+        Self.blocco.lock()
+        let installati = Self._installati
+        if percorso != "/api/version" && percorso != "/api/tags" {
+            Self._registro.append(Voce(metodo: metodo, percorso: percorso, modello: modello, precarica: (messaggi ?? []).isEmpty && percorso == "/api/chat",
+                                       keepAlive: keepAlive, temperatura: (opzioni?["temperature"] as? NSNumber)?.doubleValue, pensa: c["think"] as? Bool))
+            if !c.isEmpty { Self._corpi[percorso] = c }
+        }
+        var risposta: String?
+        if percorso == "/api/chat", !(messaggi ?? []).isEmpty, var coda = Self._code[modello], !coda.isEmpty {
+            risposta = coda.removeFirst()
+            Self._code[modello] = coda
+        }
+        Self.blocco.unlock()
+        switch percorso {
+        case "/api/version":
+            testo = #"{"version":"0.12.0"}"#
+        case "/api/tags":
+            testo = Self.json(["models": installati.map { ["name": $0, "size": 1] as [String: Any] }])
+        case "/api/chat" where !installati.contains(where: { FornitoreOllama.stessoModello($0, modello) }):
+            codice = 404
+            testo = #"{"error":"model not found"}"#
+        case "/api/chat" where (messaggi ?? []).isEmpty:
+            testo = Self.json(["model": modello, "done": true, "done_reason": "load"]) + "\n"
+        case "/api/chat":
+            testo = Self.json(["message": ["role": "assistant", "content": risposta ?? "Non so rispondere."], "done": false]) + "\n"
+                + Self.json(["message": ["role": "assistant", "content": ""], "done": true, "eval_count": 6, "eval_duration": 300_000_000]) + "\n"
+        case let p where p.hasPrefix("/api/blobs/"):
+            codice = metodo == "HEAD" ? 404 : 201
+        case "/api/show":
+            testo = Self.json(["template": Self.template, "parameters": "stop \"<|im_end|>\"\nstop \"<|endoftext|>\"\ntemperature 0.6"])
+        case "/api/create":
+            testo = #"{"status":"success"}"#
+        case "/api/delete":
+            codice = 200
+        default:
+            codice = 404
+            testo = #"{"error":"percorso sconosciuto"}"#
+        }
+        let r = HTTPURLResponse(url: request.url!, statusCode: codice, httpVersion: "HTTP/1.1", headerFields: ["Content-Type": "application/json"])!
+        client?.urlProtocol(self, didReceive: r, cacheStoragePolicy: .notAllowed)
+        if !testo.isEmpty { client?.urlProtocol(self, didLoad: Data(testo.utf8)) }
+        client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
 }
