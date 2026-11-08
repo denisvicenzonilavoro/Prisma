@@ -200,7 +200,7 @@ enum GuidaTesti {
                 inBreve: "I clienti nella tua zona",
                 passi: ["Apri Territorio dal dock.",
                         "Scegli «Oggi», «La crescita» o «Il giro di domani» in alto.",
-                        "Un clic su un cliente apre il suo dossier."],
+                        "Punta una luce per sapere chi è; un clic apre il dossier."],
                 parole: [])
         case .pratiche:
             return AiutoApp(

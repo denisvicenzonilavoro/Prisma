@@ -229,7 +229,7 @@ enum AppPrisma: String, CaseIterable, Identifiable, Codable {
         case .impostazioni: return "Profilo, backup manuale e settimanale, ripristino e impostazioni di Vera."
         // «Luce»: le quattro app nuove, il cui contenuto arriva nei giri successivi
         case .territorio:
-            return "I clienti come luci sulla mappa della tua zona, la crescita negli anni e il giro di domani: arriva con un prossimo aggiornamento, tutto calcolato sul Mac."
+            return "I clienti come luci sulla mappa della tua zona, la crescita negli anni e il giro di domani, con distanze stimate sul Mac."
         case .pratiche:
             return "La proposta che si costruisce dal bisogno, i moduli, le pratiche dopo la firma e i sinistri: arriva con un prossimo aggiornamento."
         case .sala:
