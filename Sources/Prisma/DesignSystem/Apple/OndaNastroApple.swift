@@ -13,11 +13,13 @@ struct OndaNastroApple: View {
     let livelli: [Float]
     /// true durante l'ascolto: barre rosse; false: ferma e grigia.
     let ascolta: Bool
+    /// I valori dell'onda: quelli del copilota, o quelli del telefono della nota vocale («Luce» giro 13).
+    var parametri: ParametriOnda = .copilota
 
     @Environment(\.prismaCalmo) private var calmo
     @Environment(\.prismaScatto) private var scatto
 
-    private typealias O = Tema.Apple.Copilota.Onda
+    private var O: ParametriOnda { parametri }
 
     /// La forma del template (`onda` in template-novita.html) al tempo `t`: a(i) fra 0 e 1.
     static func forma(tempo t: Double, barre: Int = Tema.Apple.Copilota.Onda.barre) -> [Double] {
@@ -31,7 +33,7 @@ struct OndaNastroApple: View {
     /// I valori da disegnare, uno per barra (0…1).
     private var valori: [Double] {
         guard ascolta else { return Array(repeating: 0.0, count: O.barre) }
-        if scatto { return Self.forma(tempo: O.tempoIstantanea) }
+        if scatto { return Self.forma(tempo: O.tempoIstantanea, barre: O.barre) }
         let ultimi = livelli.suffix(O.barre).map { Double(min(max($0, 0), 1)) }
         return Array(repeating: 0.0, count: O.barre - ultimi.count) + ultimi
     }
@@ -46,7 +48,7 @@ struct OndaNastroApple: View {
             }
         }
         .frame(width: O.larghezza, height: O.altezza)
-        .animation(calmo || scatto ? nil : O.passoAnimato, value: livelli)
+        .animation(calmo || scatto ? nil : Tema.Apple.Copilota.Onda.passoAnimato, value: livelli)
         .accessibilityHidden(true)
     }
 }
