@@ -413,6 +413,8 @@ struct ModuloCliente: View {
     @State var confermaEliminazione = false
     /// «Conserva l'IBAN nel dossier» acceso (Impostazioni › Moduli, «Luce» giro 10): solo allora c'è il campo dell'IBAN.
     var conservaIban = false
+    /// I clienti per «Presentato da» («Luce» giro 12, Clienti › Passaparola). Vuoto = la riga non compare.
+    var rubrica: [Cliente] = []
     @State private var testoIban: String?
 
     private var valido: Bool { !bozza.nome.trimmingCharacters(in: .whitespaces).isEmpty }
@@ -446,6 +448,20 @@ struct ModuloCliente: View {
                     // «Luce» giro 8: da quando è cominciata la consulenza (Sala › Quanto vale avermi accanto)
                     CampoModulo(etichetta: "Cliente dal") {
                         CampoDataFacoltativa(data: $bozza.clienteDal, predefinita: Date())
+                    }
+                    // «Luce» giro 12: chi l'ha presentato (l'albero del passaparola)
+                    if !rubrica.isEmpty {
+                        CampoModulo(etichetta: "Presentato da") {
+                            MenuTendina(selezione: $bozza.presentatoDa,
+                                        opzioni: [(String?.none, "Nessuno")]
+                                            + rubrica.filter { $0.id != bozza.id }.map { (Optional($0.id), $0.nome) },
+                                        larghezza: 220)
+                        }
+                        if bozza.presentatoDa != nil {
+                            CampoModulo(etichetta: "Presentato il") {
+                                CampoDataFacoltativa(data: $bozza.presentatoIl, predefinita: Date())
+                            }
+                        }
                     }
                     CampoModulo(etichetta: "Professione") {
                         TextField("", text: $bozza.professione).textFieldStyle(.roundedBorder)

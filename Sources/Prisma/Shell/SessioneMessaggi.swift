@@ -125,6 +125,17 @@ final class SessioneMessaggi: ObservableObject {
     func prepara(_ o: OccasioneMessaggio, stato: StatoShell) {
         let k = chiave(o)
         guard testi[k] == nil, inScrittura != k else { return }
+        // La bozza di una campagna («Luce» giro 12) ha già il suo testo, per il suo tono e il suo canale: si mostra quella,
+        // modificabile come ogni messaggio, senza scriverne una nuova né duplicarla
+        if o.tipo == .campagna, let m = stato.dati.messaggi.first(where: { $0.occasioneId == o.id && $0.stato == .bozza }) {
+            // Salvare o aprire aggiorna sempre la stessa bozza (anche con un altro tono o canale)
+            salvati[k] = m.id
+            if m.tono == k.tono && m.canale == k.canale {
+                testi[k] = TestoScrittoMessaggio(oggetto: m.oggetto, testo: m.testo, autore: m.autore, modello: m.modello, avviso: nil)
+                comparsi.insert(k)
+                return
+            }
+        }
         scrivi(o, chiave: k, stato: stato)
     }
 

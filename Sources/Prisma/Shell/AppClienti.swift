@@ -10,20 +10,37 @@ struct AppClienti: View {
     @State var familiare: ModificaFamiliare?
     /// Il campo su cui si apre il modulo del cliente o del familiare (completezza dei dati).
     @State var fuoco: FuocoModulo?
+    /// Il potenziale da cui nasce il cliente del modulo («Luce» giro 12: arrivo in «Cliente»); nil = modulo normale.
+    @State private var potenzialeDelModulo: String?
 
     var body: some View {
         let _ = ContaCorpi.segna()
-        // Il dettaglio che nasce dalle card del dossier (obiettivi) si apre sopra rubrica e dossier
-        conDettaglio
+        // Rubrica, Potenziali o Passaparola: i fogli e le richieste valgono per tutte e tre le viste
+        contenuto
         // Il modulo del familiare per la scheda Famiglia (anche quella del template)
         .environment(\.azioneFamiliareDossier, AzioneFamiliareDossier(apri: { familiare = $0 }))
-        .sheet(item: $modulo, onDismiss: { fuoco = nil }) { c in
+        .sheet(item: $modulo, onDismiss: {
+            fuoco = nil
+            // Annullato senza salvare: il potenziale resta (o torna) in «Proposta»
+            if let p = potenzialeDelModulo {
+                stato.annullaClienteDaPotenziale(p)
+                potenzialeDelModulo = nil
+            }
+        }) { c in
             ModuloCliente(
                 bozza: c,
                 nuovo: !stato.clienti.contains { $0.id == c.id },
-                salva: { stato.salvaCliente($0) },
+                salva: { cliente in
+                    if let p = potenzialeDelModulo {
+                        stato.confermaClienteDaPotenziale(potenziale: p, cliente: cliente)
+                        potenzialeDelModulo = nil
+                    } else {
+                        stato.salvaCliente(cliente)
+                    }
+                },
                 elimina: { stato.eliminaCliente(c.id) },
-                conservaIban: stato.dati.impostazioni.pratiche.ibanConservato
+                conservaIban: stato.dati.impostazioni.pratiche.ibanConservato,
+                rubrica: stato.clienti
             )
             .environment(\.fuocoModulo, fuoco)
         }
@@ -38,9 +55,27 @@ struct AppClienti: View {
         .onAppear {
             controllaRichiesta(stato.richiestaNuovoCliente)
             controllaCompletamento(stato.richiestaCompletamento)
+            controllaPotenziale(stato.richiestaClienteDaPotenziale)
         }
         .onChange(of: stato.richiestaNuovoCliente) { controllaRichiesta($0) }
+        .onChange(of: stato.richiestaClienteDaPotenziale) { controllaPotenziale($0) }
         .onChange(of: stato.richiestaCompletamento) { controllaCompletamento($0) }
+    }
+
+    /// La vista scelta nella testata (in modalità cliente sempre la Rubrica).
+    @ViewBuilder private var contenuto: some View {
+        switch stato.inModoCliente ? .rubrica : stato.vistaClienti {
+        case .potenziali: VistaPotenziali()
+        case .passaparola: VistaPassaparola()
+        case .rubrica: conDettaglio
+        }
+    }
+
+    /// Il modulo del nuovo cliente già compilato dal potenziale arrivato in «Cliente».
+    private func controllaPotenziale(_ id: String?) {
+        guard let id, modulo == nil, let c = stato.clienteDaPotenziale(id) else { return }
+        potenzialeDelModulo = id
+        modulo = c
     }
 
     /// Rubrica e dossier con sopra il dettaglio delle card. Su iPad il vetro della finestra resta fuori dal

@@ -105,6 +105,27 @@ struct AppMessaggi: View {
 
     var body: some View {
         let _ = ContaCorpi.segna()
+        // «Luce» giro 12: Messaggi · Campagne (il segmentato nella testata, MessaggiCampagne.swift)
+        Group {
+            if stato.vistaMessaggi == .campagne {
+                VistaCampagne()
+            } else {
+                elencoEPannello
+            }
+        }
+        .onAppear {
+            // Gli obiettivi raggiunti prendono la loro data: i traguardi entrano in «Da festeggiare» (StatoTraguardi.swift)
+            stato.segnaObiettiviRaggiunti()
+            prendiRichiesta()
+        }
+        .onChange(of: stato.richiestaMessaggi) { r in
+            if r != nil { prendiRichiesta() }
+        }
+        .onDisappear { sessione.ferma() }
+    }
+
+    /// L'elenco delle occasioni e il pannello del messaggio scelto.
+    private var elencoEPannello: some View {
         let richiesta = scatto ? RichiestaIstantaneaMessaggi.per(stato) : nil
         let elenco = sessione.elenco(stato.occasioniMessaggiConRichieste())
         let scelta = richiesta?.occasione(in: elenco) ?? sessione.occasione(in: elenco)
@@ -123,15 +144,6 @@ struct AppMessaggi: View {
             }
             .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
         }
-        .onAppear {
-            // Gli obiettivi raggiunti prendono la loro data: i traguardi entrano in «Da festeggiare» (StatoTraguardi.swift)
-            stato.segnaObiettiviRaggiunti()
-            prendiRichiesta()
-        }
-        .onChange(of: stato.richiestaMessaggi) { r in
-            if r != nil { prendiRichiesta() }
-        }
-        .onDisappear { sessione.ferma() }
     }
 
     @ViewBuilder private func pannello(_ o: OccasioneMessaggio?, richiesta: RichiestaIstantaneaMessaggi?, compatto: Bool,

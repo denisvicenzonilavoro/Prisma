@@ -84,6 +84,8 @@ extension ContenutoApp {
         case .territorio: AzioniTerritorio()
         case .pratiche: AzioniPratiche()
         case .sala: AzioniSala()
+        // «Luce» giro 12: il segmentato «Messaggi · Campagne» (MessaggiCampagne.swift)
+        case .messaggi: AzioniMessaggi()
         default: EmptyView()
         }
     }
@@ -95,25 +97,37 @@ struct AzioneNuovoCliente: View {
     var body: some View {
         let _ = ContaCorpi.segna()
         HStack(spacing: Misure.IntestazioneApp.spazioAzioni) {
-            Button { stato.importaClientiDaFile() } label: {
-                Label("Importa…", systemImage: "square.and.arrow.down")
+            // «Luce» giro 12: «Rubrica · Potenziali · Passaparola» (non in modalità cliente: mostrano altre persone)
+            if !stato.inModoCliente {
+                SegmentatoPillola(selezione: Bindable(stato).vistaClienti, valori: VistaClienti.allCases, titolo: { $0.titolo })
+                    .fixedSize()
             }
-            .buttonStyle(StileVetro())
-            .disabled(stato.solaLettura)
-            .help("Importa clienti da un file vCard (app Contatti), Excel o CSV. Puoi anche trascinare il file sulla finestra.")
-            Button { stato.incollaDaExcel(posizioni: false) } label: {
-                Label("Incolla da Excel", systemImage: "doc.on.clipboard")
+            if stato.inModoCliente || stato.vistaClienti == .rubrica {
+                pulsantiRubrica
             }
-            .buttonStyle(StileVetro())
-            .disabled(stato.solaLettura)
-            .help("Incolla da Excel: copia in Excel le righe dei clienti con l'intestazione (⌘C), poi premi qui")
-            // Il blu dell'app: la cosa da fare qui
-            Button { stato.richiestaNuovoCliente = true } label: {
-                Label("Nuovo cliente", systemImage: "person.badge.plus")
-            }
-            .buttonStyle(StileAqua())
-            .help("Nuovo cliente: apri la scheda vuota e scrivi nome, contatti e situazione")
         }
+    }
+
+    /// Importa, Incolla da Excel e Nuovo cliente: solo nella Rubrica.
+    @ViewBuilder private var pulsantiRubrica: some View {
+        Button { stato.importaClientiDaFile() } label: {
+            Label("Importa…", systemImage: "square.and.arrow.down")
+        }
+        .buttonStyle(StileVetro())
+        .disabled(stato.solaLettura)
+        .help("Importa clienti da un file vCard (app Contatti), Excel o CSV. Puoi anche trascinare il file sulla finestra.")
+        Button { stato.incollaDaExcel(posizioni: false) } label: {
+            Label("Incolla da Excel", systemImage: "doc.on.clipboard")
+        }
+        .buttonStyle(StileVetro())
+        .disabled(stato.solaLettura)
+        .help("Incolla da Excel: copia in Excel le righe dei clienti con l'intestazione (⌘C), poi premi qui")
+        // Il blu dell'app: la cosa da fare qui
+        Button { stato.richiestaNuovoCliente = true } label: {
+            Label("Nuovo cliente", systemImage: "person.badge.plus")
+        }
+        .buttonStyle(StileAqua())
+        .help("Nuovo cliente: apri la scheda vuota e scrivi nome, contatti e situazione")
     }
 }
 

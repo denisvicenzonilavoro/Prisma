@@ -49,6 +49,8 @@ extension StatoShell {
         if let scelta, !allegati.isEmpty { allegatiMessaggi[scelta] = allegati }
         richiestaMessaggi = RichiestaMessaggi(clienteId: clienteId ?? occasione?.clienteId, occasioneId: scelta,
                                               messaggioId: messaggioId)
+        // Un messaggio si prepara nella vista Messaggi, non in Campagne («Luce» giro 12)
+        if vistaMessaggi != .messaggi { vistaMessaggi = .messaggi }
         apri(.messaggi)
     }
 
