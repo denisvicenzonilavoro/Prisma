@@ -56,6 +56,9 @@ struct ImpostazioniOvunque: Codable, Equatable {
     var ultimoErrore: String?
     /// Dimensione e data dei file della cartella all'ultimo controllo (il controllo all'attivazione le confronta).
     var impronteCartella: [String: String] = [:]
+    /// «Porta anche i potenziali clienti» (Mac, «Luce» giro 12, decisione 44): spento di base. Spento, l'istantanea dello
+    /// spazio non contiene i potenziali clienti (dati di persone che non sono clienti).
+    var potenzialiNelloSpazio = false
 
     init() {}
 
@@ -63,6 +66,7 @@ struct ImpostazioniOvunque: Codable, Equatable {
         case acceso, modificheDaiDispositivi, ruolo, idDispositivo, nomeDispositivo, segnalibro, percorso, generazioneChiave
         case generazione, vistoFinoA, lamport, prossimoSeq, improntaIstantanea, ultimaIstantanea, ultimoControllo, ultimoErrore
         case impronteCartella
+        case potenzialiNelloSpazio
     }
 
     /// Lettura tollerante: ogni campo illeggibile prende il valore di base (lo spazio resta spento, mai acceso per errore).
@@ -85,6 +89,7 @@ struct ImpostazioniOvunque: Codable, Equatable {
         ultimoControllo = (try? c.decodeIfPresent(Date.self, forKey: .ultimoControllo)) ?? nil
         ultimoErrore = (try? c.decodeIfPresent(String.self, forKey: .ultimoErrore)) ?? nil
         impronteCartella = ((try? c.decodeIfPresent([String: String].self, forKey: .impronteCartella)) ?? nil) ?? [:]
+        potenzialiNelloSpazio = ((try? c.decodeIfPresent(Bool.self, forKey: .potenzialiNelloSpazio)) ?? nil) ?? false
     }
 
     /// Un id nuovo per questo archivio nello spazio.

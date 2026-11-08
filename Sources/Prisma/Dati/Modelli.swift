@@ -82,6 +82,11 @@ struct Cliente: Identifiable, Codable, Hashable {
     /// dossier» acceso (Impostazioni › Moduli), si mostra mascherato, entra nei backup e mai in «Prisma ovunque» né nei
     /// messaggi. Solo un IBAN valido (mod 97).
     var iban: String?
+    /// Chi ha presentato il cliente (l'id di un altro cliente; versione 27, «Luce» giro 12, Clienti › Passaparola). nil =
+    /// nessuno o non scritto. Un id che non è più in archivio si ignora (il cliente va al primo livello dell'albero).
+    var presentatoDa: String?
+    /// Quando è stato presentato (versione 27, «Luce» giro 12). nil = data non scritta.
+    var presentatoIl: Date?
 
     init(id: String, nome: String, iniziali: String, tinta: TintaAvatar, tema: String, email: String,
          telefono: String, preferito: Bool, nota: String, creatoIl: Date) {
@@ -125,6 +130,7 @@ struct Cliente: Identifiable, Codable, Hashable {
         case aziende
         case clienteDal
         case luogoNascita, iban
+        case presentatoDa, presentatoIl
     }
 
     /// Lettura tollerante: i campi aggiunti nelle versioni successive possono mancare.
@@ -169,6 +175,11 @@ struct Cliente: Identifiable, Codable, Hashable {
         luogoNascita = ((try? c.decodeIfPresent(String.self, forKey: .luogoNascita)) ?? nil)
             .flatMap { $0.trimmingCharacters(in: .whitespaces).isEmpty ? nil : $0 }
         iban = ((try? c.decodeIfPresent(String.self, forKey: .iban)) ?? nil).flatMap { IBAN.valido($0) ? IBAN.pulito($0) : nil }
+        // Passaparola (versione 27, giro 12): vuoto, illeggibile o sé stesso = nessuno
+        let idLetto = id
+        presentatoDa = ((try? c.decodeIfPresent(String.self, forKey: .presentatoDa)) ?? nil)
+            .flatMap { $0.isEmpty || $0 == idLetto ? nil : $0 }
+        presentatoIl = (try? c.decodeIfPresent(Date.self, forKey: .presentatoIl)) ?? nil
     }
 
     /// Le aziende registrate (vuoto se nessuna).
