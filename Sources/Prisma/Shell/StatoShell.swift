@@ -419,6 +419,17 @@ enum VoceConfronto: Hashable {
     /// `esitoTagliandoAggiornato()` rifà l'elenco prima di usarlo. Non osservata: serve solo alle azioni.
     @ObservationIgnored var versioneEsitoTagliando: Int?
     var paginaTagliandoAperta = false
+    /// Fase 5, «Vera su misura» (CollegaSuMisuraShell.swift): la pagina sopra la chat, l'anteprima degli esempi anonimi,
+    /// il lavoro in corso (importazione o esame: a che punto è), se è l'esame (la chat aspetta: un modello alla volta)
+    /// e l'esito dell'ultimo esame.
+    var paginaSuMisuraAperta = false
+    var anteprimaSuMisuraAperta = false
+    var lavoroSuMisura: String?
+    var esameSuMisuraInCorso = false
+    var esitoEsameSuMisura: EsitoEsame?
+    @ObservationIgnored var compitoSuMisura: Task<Void, Never>?
+    /// Fase 5, «I motori di Vera» (CollegaMotoriShell.swift): la pagina con «Due velocità» e «Il cervello grande».
+    var paginaMotoriAperta = false
     /// Il prossimo turno notturno del tagliando: un lavoro all'ora dell'orologio, niente Timer.
     @ObservationIgnored var lavoroTagliando: DispatchWorkItem?
     /// I vettori della ricerca per significato, in una cache cifrata (RicercaVera.swift).
@@ -2148,6 +2159,8 @@ enum VoceConfronto: Hashable {
     /// Vera risponde con Qwen. Se l'ultima verifica non l'ha trovato pronto, prima chiede di nuovo a Ollama
     /// (magari è stato appena aperto); se ancora non c'è, Vera lo dice e non risponde.
     func conQwen(cliente id: String, _ poi: @escaping ((MotoreVera & MotoreGenerativo)) -> Void) {
+        // L'esame di Vera su misura usa il modello (un modello alla volta sul Mac da 8 GB): la chat aspetta
+        if esameSuMisuraInCorso { return esameSuMisuraInPausa(cliente: id) }
         if let m = generativo {
             poi(m)
             return

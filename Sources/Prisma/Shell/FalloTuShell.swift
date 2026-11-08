@@ -30,6 +30,9 @@ extension StatoShell {
         // «Scrive come te» (funzione 15): «mostra il mio stile», «riscrivi nel mio stile: …», «da ora firma Denis V.»,
         // «dai del tu a Giulia», «niente emoji» (CollegaStileShell.swift)
         if chiediStileVera(testo, chiave: chiaveConversazione) { return true }
+        // Fase 5, frasi strette prima dei comandi a regole (che leggerebbero «apri…»): «Vera su misura», «addestra Vera»,
+        // «com'è andato l'esame?» (CollegaSuMisuraShell.swift); aprono la pagina e rispondono con lo stato, nessuna azione
+        if chiediSuMisura(testo, chiave: chiaveConversazione) { return true }
         // Il tagliando dei dati (funzione 5): «fai il tagliando», «controlla l'archivio», «ci sono doppioni?», «sistema
         // tutto» dopo una risposta del tagliando (CollegaTagliandoShell.swift)
         if chiediTagliando(testo, chiave: chiaveConversazione) { return true }

@@ -147,6 +147,9 @@ extension StatoShell {
         guard !inModoCliente else { return mostraAvviso("Il tagliando riguarda tutto l'archivio: fuori dalla modalità cliente.") }
         esitoTagliandoAggiornato()
         if !aperta(.vera) { apri(.vera) }
+        // Una pagina alla volta sopra la chat (fase 5: su misura e motori)
+        paginaSuMisuraAperta = false
+        paginaMotoriAperta = false
         paginaTagliandoAperta = true
     }
 

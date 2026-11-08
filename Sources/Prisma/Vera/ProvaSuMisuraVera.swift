@@ -14,6 +14,8 @@ enum ProvaSuMisuraVera {
         importazione(controlla)
         esame(controlla)
         curva(controlla)
+        sostituzione(controlla)
+        frasi(controlla)
     }
 
     /// Aspetta un lavoro asincrono dal thread delle prove (solo per lavori che non toccano il thread principale).
@@ -340,6 +342,126 @@ enum ProvaSuMisuraVera {
                   "Su misura: 500 passi diventano \(SuMisuraVera.puntiCurva) punti che scendono")
         controlla(SuMisuraVera.curva(daRapporto: Data("{rovinato".utf8)) == nil && SuMisuraVera.curva(daRapporto: Data(#"{"passi":[]}"#.utf8)) == nil,
                   "Su misura: un rapporto rovinato o vuoto non dà curva")
+    }
+
+    // MARK: - 7. Sostituzione e ritorno alla Vera di prima
+
+    private static func sostituzione(_ controlla: (Bool, String) -> Void) {
+        let nome = SuMisuraVera.nomeModello(oggi)
+        func con(_ stato: VersioneSuMisura.Stato, superato: Bool) -> ImpostazioniVera {
+            var vera = ImpostazioniVera()
+            var v = VersioneSuMisura(id: nome, creataIl: oggi, modelloDiPartenza: MotoreLocale.modelloPredefinito, esempi: 70, stato: stato)
+            v.esame = EsitoEsameBreve(domande: 16, percentualeAttuale: 70, percentualeNuova: superato ? 85 : 66, cifreInventateAttuale: 1,
+                                      cifreInventateNuova: 0, fattoIl: oggi, superato: superato)
+            vera.suMisura.versioni = [v]
+            return vera
+        }
+        var bocciata = con(.nonSuperata, superato: false)
+        controlla(!SuMisuraVera.sostituisci(nome, in: &bocciata) && bocciata.modelloLocale == MotoreLocale.modelloPredefinito,
+                  "Su misura: con l'esame non superato la Vera di oggi resta")
+        var attesa = con(.importata, superato: false)
+        attesa.suMisura.versioni[0].esame = nil
+        controlla(!SuMisuraVera.sostituisci(nome, in: &attesa), "Su misura: senza esame niente sostituzione")
+        var promossa = con(.superata, superato: true)
+        controlla(SuMisuraVera.sostituisci(nome, in: &promossa) && promossa.modelloLocale == nome
+                  && promossa.suMisura.modelloPrecedente == MotoreLocale.modelloPredefinito && promossa.suMisura.versioni[0].stato == .inUso,
+                  "Su misura: con l'esame superato la Vera su misura prende il posto di quella di oggi")
+        controlla(SuMisuraVera.tornaIndietro(in: &promossa) && promossa.modelloLocale == MotoreLocale.modelloPredefinito
+                  && promossa.suMisura.versioni[0].stato == .ritirata,
+                  "Su misura: «Torna alla Vera di prima» rimette qwen3.5:4b e la versione resta")
+        controlla(SuMisuraVera.sostituisci(nome, in: &promossa) && promossa.modelloLocale == nome, "Su misura: una versione ritirata si può riprovare")
+        var openAI = con(.superata, superato: true)
+        openAI.fornitore = .compatibileOpenAI
+        controlla(!SuMisuraVera.sostituisci(nome, in: &openAI) && !SuMisuraVera.tornaIndietro(in: &openAI),
+                  "Su misura: con il fornitore «Compatibile OpenAI» niente sostituzione")
+        controlla(!SuMisuraVera.segnaEliminata(nome, in: &promossa) && SuMisuraVera.tornaIndietro(in: &promossa)
+                  && SuMisuraVera.segnaEliminata(nome, in: &promossa), "Su misura: la versione in uso non si elimina")
+        var tante = ImpostazioniVera()
+        for i in 0..<9 {
+            SuMisuraVera.aggiungi(VersioneSuMisura(id: "\(SuMisuraVera.prefissoModello):v\(i)", creataIl: oggi, modelloDiPartenza: "qwen3.5:4b", esempi: 1, stato: .importata), in: &tante)
+        }
+        controlla(tante.suMisura.versioni.count == SuMisuraVera.massimoVersioni && tante.suMisura.versioni.last?.id == "vera-su-misura:v8",
+                  "Su misura: al massimo \(SuMisuraVera.massimoVersioni) versioni, le più vecchie escono")
+        controlla(MotoreLocale.nome(nome) == "Vera su misura sul Mac" && MotoreLocale.nome("qwen3.5:4b") == "Qwen sul Mac",
+                  "Su misura: sotto le risposte si legge «Vera su misura sul Mac»")
+
+        // Nell'app (senza Ollama: la verifica fallisce in silenzio, conta solo ciò che resta nelle impostazioni)
+        let s = StatoShell(persistente: false)
+        s.dati.impostazioni.vera = con(.nonSuperata, superato: false)
+        controlla(!s.installaSuMisura(nome) && s.dati.impostazioni.vera.modelloLocale == MotoreLocale.modelloPredefinito,
+                  "Su misura nell'app: esame non superato, il modello non cambia")
+        s.dati.impostazioni.vera = con(.superata, superato: true)
+        controlla(s.installaSuMisura(nome) && s.dati.impostazioni.vera.modelloLocale == nome && s.dati.impostazioni.vera.suMisura.modelloPrecedente == "qwen3.5:4b",
+                  "Su misura nell'app: esame superato, la Vera su misura è in uso")
+        if case .inUso = s.faseSuMisura {
+            controlla(true, "Su misura nell'app: la pagina mostra la Vera su misura in uso")
+        } else {
+            controlla(false, "Su misura nell'app: la pagina mostra la Vera su misura in uso")
+        }
+        controlla(s.tornaAllaVeraDiPrima() && s.dati.impostazioni.vera.modelloLocale == "qwen3.5:4b"
+                  && s.dati.impostazioni.vera.suMisura.versioni.first?.stato == .ritirata,
+                  "Su misura nell'app: tornata alla Vera di prima")
+        s.dati.impostazioni.vera.fornitore = .compatibileOpenAI
+        controlla(!s.installaSuMisura(nome) && s.faseSuMisura == .soloOllama, "Su misura nell'app: con «Compatibile OpenAI» la pagina dice «solo con Ollama»")
+        // Pochi esempi: la pagina dice quanti ne mancano
+        let p = StatoShell(persistente: false)
+        for e in SuMisuraDiProva.esempi(oggi: oggi) { p.memoriaVera.approva(domanda: e.domanda, risposta: e.risposta, modalita: e.modalita) }
+        if case .pochiEsempi(let pronti, let mancano) = p.faseSuMisura {
+            controlla(pronti + mancano == SuMisuraVera.minimoEsempi && pronti > 0, "Su misura nell'app: \(pronti) esempi pronti, ne mancano \(mancano)")
+        } else {
+            controlla(false, "Su misura nell'app: con 12 esempi la pagina dice quanti ne mancano (\(p.faseSuMisura))")
+        }
+        controlla((try? p.esportaPacchettoSuMisura(a: FileManager.default.temporaryDirectory.appendingPathComponent("non-\(UUID().uuidString).zip"))) == nil
+                  && p.dati.impostazioni.vera.suMisura.ultimoPacchetto == nil,
+                  "Su misura nell'app: sotto il minimo il pacchetto non si esporta")
+        let anteprima = p.anteprimaSuMisura()
+        controlla(!anteprima.isEmpty && anteprima.allSatisfy { !$0.esempio.domanda.contains("Giulia Rossi") },
+                  "Su misura nell'app: l'anteprima mostra gli esempi già anonimi")
+        if let primo = anteprima.first {
+            p.escludiEsempioSuMisura(primo.id, true)
+            controlla(p.anteprimaSuMisura().first { $0.id == primo.id }?.escluso == true, "Su misura nell'app: un esempio escluso resta fuori")
+        }
+        // L'esportazione vera, con abbastanza esempi: l'esame resta fuori e si ricorda
+        for e in molti(80) { p.memoriaVera.approva(domanda: e.domanda, risposta: e.risposta, modalita: e.modalita) }
+        let zip = FileManager.default.temporaryDirectory.appendingPathComponent("Prisma-prova-pacchetto-\(UUID().uuidString).zip")
+        defer { try? FileManager.default.removeItem(at: zip) }
+        let m = try? p.esportaPacchettoSuMisura(a: zip, oggi: oggi)
+        let su = p.dati.impostazioni.vera.suMisura
+        controlla(m != nil && FileManager.default.fileExists(atPath: zip.path) && su.ultimoPacchetto == oggi && !su.esame.isEmpty
+                  && Set(su.esame).isDisjoint(with: Set(su.usati)) && su.esempiNelPacchetto == m?.esempi,
+                  "Su misura nell'app: pacchetto esportato, esame e esempi usati ricordati e separati")
+        if case .inAttesaModello = p.faseSuMisura {
+            controlla(true, "Su misura nell'app: dopo il pacchetto si aspetta il modello addestrato")
+        } else {
+            controlla(false, "Su misura nell'app: dopo il pacchetto si aspetta il modello addestrato (\(p.faseSuMisura))")
+        }
+    }
+
+    // MARK: - 9. Frasi in chat
+
+    private static func frasi(_ controlla: (Bool, String) -> Void) {
+        let s = StatoShell(persistente: false)
+        s.rispostePreparate = true
+        let prima = s.dati.impostazioni.vera
+        let gestita = s.chiediVera("Addestra Vera")
+        #if os(macOS)
+        controlla(gestita && s.paginaSuMisuraAperta && s.dati.impostazioni.vera == prima, "Su misura: «addestra Vera» apre la pagina e non cambia niente")
+        #else
+        controlla(gestita && s.dati.impostazioni.vera == prima, "Su misura: «addestra Vera» risponde e non cambia niente")
+        #endif
+        let risposta = s.conversazione(s.chiaveConversazione).last
+        controlla(risposta?.titolo == StatoShell.titoloSuMisura && risposta?.autore == .vera, "Su misura: in chat lo stato in una riga")
+        s.chiudiPaginaSuMisura()
+        controlla(s.chiediVera("Vera su misura") && s.chiediVera("com'è andato l'esame?") && s.chiediVera("torna alla Vera di prima")
+                  && s.dati.impostazioni.vera == prima, "Su misura: le altre frasi rispondono senza fare azioni")
+        s.chiudiPaginaSuMisura()
+        s.modoCliente = "giulia"
+        _ = s.chiediVera("Vera su misura")
+        controlla(!s.paginaSuMisuraAperta, "Su misura: in modalità cliente la pagina non si apre")
+        s.apriPaginaSuMisura()
+        controlla(!s.paginaSuMisuraAperta, "Su misura: in modalità cliente la pagina non si apre nemmeno dal pulsante")
+        s.modoCliente = nil
+        controlla(!s.chiediSuMisura("misura la stanza", chiave: s.chiaveConversazione), "Su misura: «misura la stanza» non è Vera su misura")
     }
 }
 
