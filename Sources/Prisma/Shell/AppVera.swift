@@ -817,6 +817,22 @@ struct NuvolaVera: View {
                     if let n = messaggio.norme {
                         NormeVeraVista(risposta: n)
                     }
+                    // Fase 3: promesse, seconda lettura, confronto, coperture e resoconto
+                    if let p = messaggio.promesse, !p.isEmpty {
+                        PromesseVeraVista(ids: p)
+                    }
+                    if let l = messaggio.lettura, !l.avvisi.isEmpty {
+                        SecondaLetturaVeraVista(esito: l)
+                    }
+                    if let c = messaggio.confronto {
+                        ConfrontoVeraVista(id: c)
+                    }
+                    if let c = messaggio.copertura {
+                        CoperturaVeraVista(documentoId: c)
+                    }
+                    if let r = messaggio.resoconto {
+                        ResocontoVeraVista(incontroId: r)
+                    }
                     if let proposte = messaggio.proposte, !proposte.isEmpty {
                         elencoProposte(proposte)
                             .padding(.top, b.sopraScheda)

@@ -29,6 +29,8 @@ struct Incontro: Identifiable, Codable, Hashable {
     var attivitaCreataId: String?
     var appuntamentoCreatoId: String?
     var aggiornatoIl: Date?
+    /// Il resoconto scritto da Vera (fase 3, «Il resoconto dell'incontro»): da rivedere e firmare.
+    var resoconto: ResocontoIncontro?
 
     init(clienteId: String, titolo: String, data: Date, appuntamentoId: String? = nil) {
         self.clienteId = clienteId
@@ -46,7 +48,7 @@ struct Incontro: Identifiable, Codable, Hashable {
 
     private enum CodingKeys: String, CodingKey {
         case id, clienteId, titolo, data, appuntamentoId, stato, temi, preoccupazioni, progetti, esperienza, appunti, decisioni
-        case prossimaAttivita, scadenzaAttivita, prossimoIncontro, attivitaCreataId, appuntamentoCreatoId, aggiornatoIl
+        case prossimaAttivita, scadenzaAttivita, prossimoIncontro, attivitaCreataId, appuntamentoCreatoId, aggiornatoIl, resoconto
     }
 
     init(from decoder: Decoder) throws {
@@ -69,6 +71,7 @@ struct Incontro: Identifiable, Codable, Hashable {
         attivitaCreataId = try c.decodeIfPresent(String.self, forKey: .attivitaCreataId)
         appuntamentoCreatoId = try c.decodeIfPresent(String.self, forKey: .appuntamentoCreatoId)
         aggiornatoIl = try c.decodeIfPresent(Date.self, forKey: .aggiornatoIl)
+        resoconto = (try? c.decodeIfPresent(ResocontoIncontro.self, forKey: .resoconto)) ?? nil
     }
 }
 

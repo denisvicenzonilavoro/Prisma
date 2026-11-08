@@ -1006,6 +1006,8 @@ enum ProvaVera {
         ProvaTrovaPaginaVera.esegui(controlla)
         // Giro 0 di «Prisma istantaneo»: i tempi di Vera (caricamento, prima parola, parole al secondo) (ProvaMisuraVera.swift)
         ProvaMisuraVera.esegui(controlla)
+        // La fase 3: promesse, seconda lettura, differenze, coperture, resoconto (ProvaFaseTreVera.swift)
+        ProvaFaseTreVera.esegui(controlla)
         #if os(macOS)
         // La mini finestra: ⌥ Spazio, i cinque stati, cifre e canali, «non pronta» (ProvaMiniVera.swift)
         ProvaMiniVera.esegui(controlla)

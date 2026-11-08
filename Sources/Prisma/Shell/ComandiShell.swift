@@ -30,7 +30,7 @@ extension StatoShell {
         guard var comando else { return false }
         // «Apri una pratica per Marco»: non è aprire un'app o un dossier, è un'azione per «Fallo tu»
         switch comando {
-        case .apri, .cliente: if FalloTuVera.eUnaRichiesta(testo) { return false }
+        case .apri, .cliente: if FalloTuVera.eUnaRichiesta(testo) || richiestaFaseTre(testo) { return false }
         default: break
         }
         if inModoCliente {

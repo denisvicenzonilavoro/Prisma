@@ -121,7 +121,8 @@ struct QuadroVera: Equatable {
     static func ammessa(_ m: MessaggioVera) -> Bool {
         guard m.autore == .vera, m.azione == nil, m.modalita != .conversazione else { return false }
         // Le risposte con una scheda propria (norme, 30 secondi, clientela, conferma) non portano il quadro del patrimonio
-        guard m.norme == nil, m.trenta == nil, m.clientela == nil, m.conferma == nil else { return false }
+        guard m.norme == nil, m.trenta == nil, m.clientela == nil, m.conferma == nil, m.promesse == nil, m.lettura == nil,
+              m.confronto == nil, m.copertura == nil, m.resoconto == nil else { return false }
         if let t = m.titolo, t == "Qwen non è pronto" || t == "Vera non ha potuto rispondere" { return false }
         return m.motore != StatoShell.motoreAzioni
     }

@@ -36,5 +36,15 @@ L'assistente si chiama Vera (prima si chiamava Ruby, e prima ancora Eve). Le ist
 
 - `biblioteca.md`: Biblioteca · «Trova la pagina» («Luce», giro 6): risposte solo dai 6 passi che Prisma trova con BM25 nei documenti della Biblioteca (condizioni, KID, circolari, normativa), in JSON con lo schema fisso `Vera/Schemi/biblioteca.json` (trovato, passo, frase, risposta). Prisma verifica che la frase stia parola per parola nel passo e che le cifre della risposta siano nel passo: altrimenti mostra la pagina senza citazione. A Qwen non vanno mai dati dei clienti.
 
+- `promesse.md`: «Le promesse» (funzione 8): gli impegni del consulente in note, appunti, resoconti e messaggi aperti, in JSON (frase, cosa, quando). Le regole di Prisma li trovano sempre (`PromesseVera.conRegole`); Qwen li cerca solo su richiesta («cerca le promesse di Marco») e una promessa vale solo se la frase è nella fonte.
+
+- `motivazione.md`: la bozza della motivazione di adeguatezza della «seconda lettura» (funzione 10), dalla bozza di Prisma con i controlli della scheda. Una cifra cambiata o una parola a rischio fanno restare la bozza di Prisma; entra nella scheda solo con «Inserisci» e mai se la scheda è firmata.
+
+- `differenze.md`: «Trova le differenze» (funzione 11): la sintesi di due frasi della tabella del confronto (fatta da `DifferenzeVera` con i dati letti dai documenti); una cifra cambiata fa restare la sintesi di Prisma.
+
+- `coperture.md`: «Cosa non copre» (funzione 12): esclusioni, carenze, franchigie e massimali di una polizza, in JSON, ognuna con l'articolo e la frase copiata. L'app scarta le voci senza articolo, con una frase che non è nell'articolo o con cifre che non sono nell'articolo; senza Qwen restano le voci delle regole.
+
+- `resoconto.md`: «Il resoconto dell'incontro» (funzione 16): le sezioni del formato del consulente (presenti, di cosa abbiamo parlato, cosa abbiamo deciso, prossimi passi, da raccogliere) e la versione breve, in JSON. Le sezioni con una cifra nuova restano quelle di Prisma; il resoconto va nei Documenti del cliente come PDF solo con «Firma».
+
 Modificare qui il testo cambia il comportamento di Vera alla build successiva, senza toccare il codice.
 Tenere il testo ragionevolmente corto: la finestra di Qwen sul Mac è di 8.192 token per istruzioni, scheda, storia e risposta.

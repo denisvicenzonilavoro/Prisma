@@ -79,6 +79,8 @@ extension StatoShell {
         if esito.aperto {
             salvaMessaggio(o, tono: tono, canale: canale, scritto: scritto,
                            stato: canale == .mail ? .apertoInMail : .apertoInMessaggi, id: id)
+            // «Le promesse» (fase 3 di Vera): gli impegni scritti nel messaggio aperto entrano nell'elenco
+            raccogliPromesse(cliente: o.clienteId)
         }
         return esito
     }

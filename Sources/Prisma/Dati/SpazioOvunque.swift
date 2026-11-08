@@ -149,6 +149,20 @@ enum SpazioOvunque {
         x.impostazioni.ovunque = ImpostazioniOvunque()
         x.impostazioni.vera = ImpostazioniVera()
         x.sessioniCopilota = x.sessioniCopilota.map(CampiOvunque.senzaTrascrizione)
+        // Mai la trascrizione della nota vocale (fase 3 di Vera): un resoconto non firmato che viene da una nota vocale
+        // resta sul Mac finché non è firmato (le sue righe possono essere frasi della trascrizione), e delle promesse
+        // dette nella nota vocale va solo la cosa da fare, non la frase
+        x.incontri = x.incontri.map { i in
+            var c = i
+            c.resoconto?.trascrizione = nil
+            if let r = c.resoconto, !r.firmato, r.fonti.contains(.notaVocale) { c.resoconto = nil }
+            return c
+        }
+        x.promesse = x.promesse.map { p in
+            var q = p
+            if q.fonteEtichetta.hasPrefix("dalla nota vocale") { q.frase = "" }
+            return q
+        }
         return x
     }
 

@@ -171,6 +171,8 @@ enum ProvaBackup {
             ProvaBackup.aggiungiPalestraDiProva(&originale)
             // «Luce», giro 7: le aziende dei clienti imprenditori, una completa e una con il solo nome (ProvaBackupAziende.swift)
             ProvaBackup.aggiungiAziendeDiProva(&originale)
+            // Vera, fase 3: promesse, confronti, coperture e un resoconto (ProvaBackupFaseTreVera.swift)
+            ProvaBackup.aggiungiFaseTreVeraDiProva(&originale)
             // Il versamento mensile previsto dell'obiettivo (cursore del dettaglio nel tema Apple)
             if !originale.obiettivi.isEmpty { originale.obiettivi[0].versamentoMensile = 350 }
             guard !originale.simulazioni.isEmpty, !originale.incontri.isEmpty, !originale.prodotti.isEmpty, !originale.obiettivi.isEmpty, !originale.documenti.isEmpty, !originale.valutazioni.isEmpty, originale.clienti.contains(where: { !$0.bisogni.eventi.isEmpty }) else {
@@ -288,6 +290,11 @@ enum ProvaBackup {
             }
             // Il registro della palestra della trattativa (versione 27, «Luce» giro 5) (ProvaBackupPalestra.swift)
             if let e = try verificaPalestra(originale: originale, estratto: estratto.dati) {
+                print("ERRORE: \(e)")
+                return 1
+            }
+            // Vera, fase 3: promesse, confronti, coperture e resoconti (ProvaBackupFaseTreVera.swift)
+            if let e = try verificaFaseTreVera(originale: originale, estratto: estratto.dati) {
                 print("ERRORE: \(e)")
                 return 1
             }

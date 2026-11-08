@@ -22,7 +22,14 @@ extension StatoShell {
         if rispostaAllaSchedaVera(testo, chiave: chiave) { return true }
         // «Ricorda che…» (fase 2): si salva subito, con «Annulla»
         if ricordaVera(testo, chiave: chiave) { return true }
+        // «Rileggi: …» prima dei comandi: il testo da rileggere può contenere giorni, clienti e appuntamenti
+        if chiediSecondaLettura(testo, chiave: chiaveConversazione) { return true }
         if eseguiComandoVera(testo) { return true }
+        // Fase 3: promesse, differenze, coperture e resoconto
+        if chiediResoconto(testo, chiave: chiaveConversazione) { return true }
+        if chiediDifferenze(testo, chiave: chiaveConversazione) { return true }
+        if chiediCopertura(testo, chiave: chiaveConversazione) { return true }
+        if chiediPromesse(testo, chiave: chiaveConversazione) { return true }
         // «Raccontami Marco» (funzione 6) e le domande sulle norme della biblioteca (funzione 13)
         if chiediTrentaSecondi(testo, chiave: chiaveConversazione) { return true }
         if chiediClientela(testo, nelDossier: chiave != VeraPortafoglio.chiave) { return true }

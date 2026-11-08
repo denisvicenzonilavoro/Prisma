@@ -9,6 +9,16 @@ extension StatoShell {
 
     /// I documenti trascinati (al massimo quattro alla volta): Vera li legge e risponde con una scheda per ognuno.
     func lasciaCadere(_ urls: [URL]) {
+        // Fase 3: una nota vocale diventa il resoconto dell'incontro (con il consenso del cliente, l'audio non si salva)
+        if let audio = urls.first(where: { ResocontoVera.estensioniAudio.contains($0.pathExtension.lowercased()) }) {
+            guard !solaLettura else { return mostraAvviso("Archivio in sola lettura: aggiorna Prisma per scrivere resoconti.") }
+            // Una cosa alla volta: la nota vocale ora, i documenti trascinati insieme li chiedo di nuovo
+            if urls.contains(where: { LetturaDocumenti.estensioniAccettate.contains($0.pathExtension.lowercased()) }) {
+                mostraAvviso("Prima trascrivo la nota vocale: trascina di nuovo i documenti quando ho finito.")
+            }
+            notaVocale(audio, chiave: chiaveConversazione)
+            return
+        }
         let documenti = urls.filter { LetturaDocumenti.estensioniAccettate.contains($0.pathExtension.lowercased()) }
         guard !documenti.isEmpty else { return }
         guard !solaLettura else { return mostraAvviso("Archivio in sola lettura: aggiorna Prisma per archiviare documenti.") }
