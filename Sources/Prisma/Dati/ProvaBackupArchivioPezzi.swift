@@ -49,8 +49,23 @@ extension ProvaBackup {
         if let e = try provaRevisioneArchivio(base.appendingPathComponent("Revisione", isDirectory: true)) {
             return "archivio a pezzi: \(e)"
         }
-        print("OK    archivio a pezzi: conversione, backup e ripristino, backup di prima, file rovinati e mancanti, scrittura dei soli file cambiati, salvataggi interrotti (transazioni), file non leggibili adesso, indici più recenti, copie omonime, formato di prima dopo un ripristino, archivio.json vecchio, sole sezioni, ricostruzione senza clienti tolti, NaN, copie d'avvio interrotte, segnaposto per le versioni di prima, backup protetto, copia d'avvio, transazione rimasta nella stessa sessione e due ricostruzioni di fila")
+        if let e = try provaSecondaRevisioneArchivio(base.appendingPathComponent("SecondaRevisione", isDirectory: true)) {
+            return "archivio a pezzi: \(e)"
+        }
+        print("OK    archivio a pezzi: conversione, backup e ripristino, backup di prima, file rovinati e mancanti, scrittura dei soli file cambiati, salvataggi interrotti (transazioni), file non leggibili adesso, indici più recenti, copie omonime, formato di prima dopo un ripristino, archivio.json vecchio, sole sezioni, ricostruzione senza clienti tolti, NaN, copie d'avvio interrotte, segnaposto per le versioni di prima, backup protetto, copia d'avvio, transazione rimasta nella stessa sessione, due ricostruzioni di fila, riserva dell'indice (impostazioni e Prisma ovunque di adesso, clienti tolti che non tornano), conversione interrotta prima della verifica, copia d'avvio più recente, archivio.json di una versione precedente, backup dell'archivio valido (mai copia d'avvio, segno o pezzi sciolti), ripristino interrotto a pezzi e backup a pezzi più recenti")
         return nil
+    }
+
+    /// L'archivio a pezzi sul disco com'è, senza toccarlo (al contrario di `Archivio.leggiPerRipristino`, che completa una
+    /// transazione rimasta): nil se è rimasta una transazione («in-corso»), se un pezzo non si legge, se l'indice manca
+    /// o se la sua riserva non è uguale a lui. Così le prove vedono ciò che lo scrittore ha lasciato davvero.
+    static func archivioSulDisco(_ cartella: URL) -> DatiPrisma? {
+        let pezzi = ArchivioPezzi.cartellaPezzi(in: cartella)
+        guard !FileManager.default.fileExists(atPath: pezzi.appendingPathComponent(ArchivioPezzi.nomeTransazione).path),
+              let indice = try? Data(contentsOf: pezzi.appendingPathComponent(ArchivioPezzi.nomeIndice)),
+              (try? Data(contentsOf: pezzi.appendingPathComponent(ArchivioPezzi.nomeRiserva))) == indice,
+              let r = try? ArchivioPezzi.leggi(pezzi), r.problemi.isEmpty else { return nil }
+        return r.lettura.dati
     }
 
     /// Com'è un archivio dopo il giro nel JSON (date al secondo): ciò che si rilegge dal disco.
@@ -269,8 +284,8 @@ extension ProvaBackup {
             let dopo = date(pezzi)
             let cambiati = Set(dopo.keys.filter { prima[$0] != dopo[$0] })
             guard cambiati == attesi.subtracting(nonAttesi) else { return "\(passo): date di modifica cambiate per \(cambiati.sorted())" }
-            guard let riletto = try? Archivio.leggiPerRipristino(cartella), let atteso = try? passatoDalDisco(d), riletto == atteso else {
-                return "\(passo): l'archivio riletto non è quello salvato"
+            guard let riletto = archivioSulDisco(cartella), let atteso = try? passatoDalDisco(d), riletto == atteso else {
+                return "\(passo): l'archivio riletto non è quello salvato (o è rimasta una transazione, o la riserva dell'indice non è uguale all'indice)"
             }
             return nil
         }
@@ -285,7 +300,7 @@ extension ProvaBackup {
         guard s.sullaCoda({ $0.ultimiScritti }).isEmpty else { return "dati uguali riscritti" }
         // Una nota nuova: il file del cliente e l'indice (l'ordine delle note cambia)
         d.note.append(Nota(clienteId: voce.id, titolo: "Nuova", testo: "testo"))
-        if let e = salva("una nota nuova", attesi: [fileCliente, "indice.json"]) { return e }
+        if let e = salva("una nota nuova", attesi: [fileCliente, "indice-riserva.json", "indice.json"]) { return e }
         // Un appuntamento spostato: solo l'agenda
         if !d.appuntamenti.isEmpty {
             d.appuntamenti[0].titolo += " spostato"
@@ -293,11 +308,11 @@ extension ProvaBackup {
         }
         // Un'impostazione: solo l'indice
         d.impostazioni.nomeUtente = "Prova pezzi"
-        if let e = salva("un'impostazione", attesi: ["indice.json"]) { return e }
+        if let e = salva("un'impostazione", attesi: ["indice-riserva.json", "indice.json"]) { return e }
         // Il nome di un cliente: il suo file e l'indice (che ha i nomi)
         if let i = d.clienti.firstIndex(where: { $0.id == voce.id }) {
             d.clienti[i].nome += " Bis"
-            if let e = salva("il nome di un cliente", attesi: [fileCliente, "indice.json"]) { return e }
+            if let e = salva("il nome di un cliente", attesi: [fileCliente, "indice-riserva.json", "indice.json"]) { return e }
         }
         // Un cliente tolto (con i suoi elementi): l'indice, e il suo file sparisce
         if let tolto = indice.clienti.last(where: { $0.id != voce.id }) {
@@ -308,7 +323,7 @@ extension ProvaBackup {
                 gruppi["via"] = nil
                 campo.raccogli(gruppi, ["resta"], nil, &d)
             }
-            if let e = salva("un cliente tolto", attesi: ["indice.json"]) { return e }
+            if let e = salva("un cliente tolto", attesi: ["indice-riserva.json", "indice.json"]) { return e }
             guard !FileManager.default.fileExists(atPath: pezzi.appendingPathComponent("Clienti/" + tolto.file).path) else {
                 return "il file del cliente tolto è rimasto"
             }

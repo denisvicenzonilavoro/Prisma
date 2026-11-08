@@ -130,6 +130,14 @@ enum Archivio {
     static let nomeFileConvertito = "archivio.json.vecchio"
     /// La copia della cartella a pezzi fatta a ogni avvio (un clone su APFS: non occupa spazio finché non cambia).
     static let nomeCopiaAvvio = "Archivio-all-avvio"
+    /// Il segno di una conversione di archivio.json non ancora verificata (scritto prima di confermare la cartella a
+    /// pezzi, tolto quando la cartella riletta è identica). Finché c'è, l'archivio valido è archivio.json: all'avvio la
+    /// verifica si rifà, i backup prendono archivio.json. Mai nei backup.
+    static let nomeConversioneDaVerificare = "conversione-da-verificare.json"
+    /// Una cartella a pezzi scartata da una conversione non verificata («Archivio.scartata-xxxxxxxx»), da cancellare.
+    static let prefissoCartellaScartata = "Archivio.scartata-"
+    /// Il nome della copia di un archivio.json scritto da una versione di Prisma di prima accanto alla cartella a pezzi.
+    static let prefissoVersionePrecedente = "archivio di una versione precedente"
 
     /// Copia dell'archivio di prima fatta a ogni avvio (formato a file unico).
     static var copiaAvvio: URL { cartella.appendingPathComponent("archivio-all-avvio.json") }
@@ -186,6 +194,16 @@ enum Archivio {
         ArchivioPezzi.presente(in: cartella) || FileManager.default.fileExists(atPath: cartella.appendingPathComponent(nomeFileVecchio).path)
     }
 
+    /// true se in `cartella` un archivio.json vero (non il segnaposto) vale più della cartella a pezzi: conversione non
+    /// ancora verificata (c'è il segno) oppure nessuna cartella a pezzi con l'indice. Lo usano i backup: prendono
+    /// l'archivio che varrebbe all'avvio, mai una cartella a pezzi incompleta o da verificare al posto di archivio.json.
+    static func valeArchivioJson(in cartella: URL) -> Bool {
+        let fm = FileManager.default
+        let vecchio = cartella.appendingPathComponent(nomeFileVecchio)
+        guard fm.fileExists(atPath: vecchio.path), !segnaposto(vecchio) else { return false }
+        return !ArchivioPezzi.presente(in: cartella) || fm.fileExists(atPath: cartella.appendingPathComponent(nomeConversioneDaVerificare).path)
+    }
+
     /// Com'è andata la lettura dell'archivio all'avvio.
     struct EsitoCarica {
         var dati: DatiPrisma
@@ -228,6 +246,10 @@ enum Archivio {
             .filter { $0.hasSuffix(".json") }.isEmpty
         let sezioniSciolte = ArchivioPezzi.sezioni.contains {
             fm.fileExists(atPath: pezzi.appendingPathComponent(ArchivioPezzi.nomeFileSezione($0.nome)).path)
+        } || fm.fileExists(atPath: pezzi.appendingPathComponent(ArchivioPezzi.nomeRiserva).path)
+        // Le cartelle a pezzi scartate da una conversione non verificata (la cancellazione non era riuscita)
+        for nome in (try? fm.contentsOfDirectory(atPath: cartella.path)) ?? [] where nome.hasPrefix(prefissoCartellaScartata) {
+            try? fm.removeItem(at: cartella.appendingPathComponent(nome))
         }
 
         // 1. La cartella a pezzi (anche senza indice, se ci sono i file dei clienti o le sezioni: si ricostruisce)
@@ -236,7 +258,7 @@ enum Archivio {
                 if e.avviso == nil { e.avviso = avvisoRecupero }
                 return e
             }
-            // nil: c'è archivio.json ed è più recente della cartella (conversione non verificata): vale lui
+            // nil: c'è archivio.json con il segno della conversione da verificare, e la cartella riletta non è uguale
         }
         // 2. Il file unico di prima
         if fm.fileExists(atPath: vecchio.path) {
@@ -244,20 +266,31 @@ enum Archivio {
             if e.avviso == nil { e.avviso = avvisoRecupero }
             return e
         }
-        // 3. Niente archivio (nessun pezzo, nessun archivio.json): la copia dell'ultimo avvio (a pezzi, poi quella di prima)
+        // 3. Niente archivio (nessun pezzo, nessun archivio.json): la copia dell'ultimo avvio (a pezzi, poi quella di prima).
+        // Una copia che c'è ma che non si apre (più recente, non leggibile adesso) non lascia mai il posto ai dati di prova:
+        // sola lettura, nulla scritto sopra
+        let mancava = "L'archivio mancava: ho ripreso la copia fatta all'ultimo avvio di Prisma. Controlla gli ultimi inserimenti."
         let copiaPezzi = cartella.appendingPathComponent(nomeCopiaAvvio, isDirectory: true)
         if fm.fileExists(atPath: copiaPezzi.appendingPathComponent(ArchivioPezzi.nomeIndice).path) {
             try? fm.removeItem(at: pezzi)
-            if (try? fm.copyItem(at: copiaPezzi, to: pezzi)) != nil, var e = caricaPezzi(cartella, indiceLetto: nil), !e.solaLettura {
-                let mancava = "L'archivio mancava: ho ripreso la copia fatta all'ultimo avvio di Prisma. Controlla gli ultimi inserimenti."
-                e.avviso = e.avviso.map { mancava + " " + $0 } ?? mancava
-                return e
+            guard (try? fm.copyItem(at: copiaPezzi, to: pezzi)) != nil, var e = caricaPezzi(cartella, indiceLetto: nil) else {
+                return EsitoCarica(dati: ArchivioPezzi.vuoto, avviso: "L'archivio di Prisma manca e non riesco a riprendere la copia fatta all'ultimo avvio: non salvo nulla. Chiudi Prisma e riaprilo; se succede ancora, ripristina un backup da Impostazioni.", solaLettura: true)
             }
+            if !e.solaLettura { e.avviso = e.avviso.map { mancava + " " + $0 } ?? mancava }
+            return e
         }
         let copiaVecchia = cartella.appendingPathComponent("archivio-all-avvio.json")
-        if let grezzo = try? Data(contentsOf: copiaVecchia), let d = try? decodifica(grezzo), !diVersionePiuRecente(d) {
+        if fm.fileExists(atPath: copiaVecchia.path) {
+            guard let grezzo = try? Data(contentsOf: copiaVecchia), let d = try? decodifica(grezzo) else {
+                if let v = (try? Data(contentsOf: copiaVecchia)).flatMap({ try? decodificatore.decode(SoloVersione.self, from: $0) })?.versione,
+                   v > DatiPrisma.versioneAttuale {
+                    return EsitoCarica(dati: ArchivioPezzi.vuoto, avviso: avvisoPiuRecente, solaLettura: true, bloccaRipristino: true)
+                }
+                return EsitoCarica(dati: ArchivioPezzi.vuoto, avviso: "L'archivio di Prisma manca e la copia fatta all'ultimo avvio non si apre: non salvo nulla. Ripristina un backup da Impostazioni (o chiedi aiuto prima di continuare).", solaLettura: true)
+            }
+            if diVersionePiuRecente(d) { return EsitoCarica(dati: d, avviso: avvisoPiuRecente, solaLettura: true, bloccaRipristino: true) }
             try? salva(d, in: cartella)
-            return EsitoCarica(dati: d, avviso: "L'archivio mancava: ho ripreso la copia fatta all'ultimo avvio di Prisma. Controlla gli ultimi inserimenti.")
+            return EsitoCarica(dati: d, avviso: mancava)
         }
         let documenti = (try? fm.contentsOfDirectory(atPath: cartella.appendingPathComponent("Documenti").path)) ?? []
         if !documenti.isEmpty || !copieNonLeggibili(in: cartella).isEmpty {
@@ -316,15 +349,23 @@ enum Archivio {
         return u
     }
 
-    /// La cartella a pezzi. nil se accanto c'è archivio.json più recente di tutti i pezzi, che allora vale di più (una
-    /// conversione non verificata: si è continuato a scrivere archivio.json). Un archivio.json più vecchio è la copia
-    /// di una conversione finita (la rinomina in archivio.json.vecchio non era riuscita): si mette da parte.
+    /// La cartella a pezzi, con un archivio.json accanto:
+    /// - con il segno della conversione da verificare (`nomeConversioneDaVerificare`: Prisma si è fermato fra la conferma
+    ///   della cartella e la verifica, o la verifica era fallita) la verifica si rifà qui: cartella riletta identica ad
+    ///   archivio.json → la conversione vale; diversa (o la cartella non si legge pulita) → nil, vale archivio.json;
+    /// - senza segno e più vecchio della cartella: la copia di una conversione finita (la rinomina in
+    ///   archivio.json.vecchio non era riuscita), si mette da parte come archivio.json.vecchio;
+    /// - senza segno e più recente: l'ha scritto una versione di Prisma di prima (che non conosce la cartella a pezzi).
+    ///   Vale la cartella; archivio.json si mette da parte con il suo nome, mai usato né cancellato, e l'avviso lo dice.
     /// Un indice o un file che adesso non si legge (non rovinato), o scritto da un Prisma più recente: sola lettura.
     private static func caricaPezzi(_ cartella: URL, indiceLetto: ((DatiPrisma) -> Void)?) -> EsitoCarica? {
         let fm = FileManager.default
         let pezzi = ArchivioPezzi.cartellaPezzi(in: cartella)
         let vecchio = cartella.appendingPathComponent(nomeFileVecchio)
         let vecchioPresente = fm.fileExists(atPath: vecchio.path)
+        let segno = cartella.appendingPathComponent(nomeConversioneDaVerificare)
+        if !vecchioPresente { try? fm.removeItem(at: segno) }
+        let daVerificare = vecchioPresente && fm.fileExists(atPath: segno.path)
         let indiceBuono: Bool
         do {
             _ = try ArchivioPezzi.leggiIndice(pezzi)
@@ -334,39 +375,71 @@ enum Archivio {
         } catch {
             return nonApribile(error)
         }
-        if vecchioPresente, dataModifica(vecchio) > ultimaModificaPezzi(pezzi) { return nil }
-        // Senza indice: si ricostruisce partendo dall'indice della copia d'avvio, se c'è, o da uno vuoto
+        // Senza indice: si ricostruisce dalla riserva dell'indice (di adesso) o, se non si legge, dall'indice della copia
+        // d'avvio, o da uno vuoto
         let copia = cartella.appendingPathComponent(nomeCopiaAvvio, isDirectory: true)
-        let riserva = (try? ArchivioPezzi.leggiIndice(copia)) ?? IndiceArchivio()
+        let riserva: (indice: IndiceArchivio, attuale: Bool)
+        do {
+            riserva = indiceBuono ? (IndiceArchivio(), true) : try ArchivioPezzi.indiceDiRiserva(pezzi, copiaAvvio: copia)
+        } catch {
+            return nonApribile(error)
+        }
         let r: (lettura: LetturaArchivio, problemi: [ProblemaPezzo], scartati: [URL])
         do {
-            r = try ArchivioPezzi.leggi(pezzi, indiceLetto: indiceLetto.map { f in { f(ArchivioPezzi.scheletro($0)) } },
-                                        indiceDiRiserva: riserva)
+            // Con la conversione da verificare lo scheletro non si dà: potrebbe valere archivio.json
+            r = try ArchivioPezzi.leggi(pezzi, indiceLetto: daVerificare ? nil : indiceLetto.map { f in { f(ArchivioPezzi.scheletro($0)) } },
+                                        indiceDiRiserva: riserva.indice)
         } catch {
+            if daVerificare { return nil }
             return nonApribile(error)
         }
         let d = r.lettura.dati
         if diVersionePiuRecente(d) { return EsitoCarica(dati: d, avviso: avvisoPiuRecente, solaLettura: true, bloccaRipristino: true) }
+        let quando = Formati.nomeFile.string(from: Date())
+        var avvisoVersionePrecedente: String?
+        if daVerificare {
+            // La verifica della conversione, come in `ScrittorePezzi.convertiSeServe` (sul JSON con le chiavi in ordine)
+            let codificatore = nuovoCodificatore()
+            guard let grezzo = try? Data(contentsOf: vecchio) else { return nil }
+            if var v = try? decodifica(grezzo) {
+                v.versione = DatiPrisma.versioneAttuale
+                guard r.problemi.isEmpty, indiceBuono, let atteso = try? codificatore.encode(v),
+                      let riletto = try? codificatore.encode(d), atteso == riletto else { return nil }
+            } else {
+                // archivio.json si è rovinato dopo la conversione: vale la cartella; lui si mette da parte, mai cancellato
+                guard (try? fm.moveItem(at: vecchio, to: destinazioneLibera("\(prefissoNonLeggibile) \(quando)", in: cartella))) != nil else { return nil }
+            }
+            // Verificata: il segno se ne va, archivio.json diventa archivio.json.vecchio (sotto)
+            try? fm.removeItem(at: segno)
+        } else if vecchioPresente, dataModifica(vecchio) > ultimaModificaPezzi(pezzi) {
+            // Scritto da una versione di Prisma di prima dopo la conversione: non vale e non si perde
+            let destinazione = destinazioneLibera("\(prefissoVersionePrecedente) \(quando)", in: cartella)
+            if (try? fm.moveItem(at: vecchio, to: destinazione)) == nil {
+                return EsitoCarica(dati: d, avviso: "Una versione precedente di Prisma ha scritto archivio.json accanto all'archivio attuale e non riesco a metterlo da parte: apro l'archivio in sola lettura e non salvo nulla. Chiudi Prisma e riaprilo.", solaLettura: true)
+            }
+            avvisoVersionePrecedente = "Una versione precedente di Prisma ha scritto un archivio dopo il passaggio al nuovo formato: non l'ho usato e l'ho messo da parte nella cartella di Prisma («\(destinazione.lastPathComponent)»). I dati aperti sono quelli dell'archivio attuale: se in quella versione hai inserito qualcosa, va riportato a mano."
+        }
         // I file non citati e più vecchi dell'indice (clienti tolti) e i temporanei di un salvataggio interrotto
         for u in r.scartati { try? fm.removeItem(at: u) }
         pulisciTemporanei(in: pezzi)
         let convertito = cartella.appendingPathComponent(nomeFileConvertito)
-        if vecchioPresente {
-            // Più vecchio della cartella: la copia della conversione (resta archivio.json.vecchio fino al prossimo avvio pulito)
+        let vecchioDaParte = fm.fileExists(atPath: vecchio.path)
+        if vecchioDaParte {
+            // Più vecchio della cartella (o appena verificato): la copia della conversione (resta archivio.json.vecchio
+            // fino al prossimo avvio pulito)
             try? fm.removeItem(at: convertito)
             try? fm.moveItem(at: vecchio, to: convertito)
         }
         if r.problemi.isEmpty && indiceBuono {
             // Riaperta bene dopo la conversione: la copia di archivio.json non serve più (verificata due volte)
-            if !vecchioPresente { try? fm.removeItem(at: convertito) }
+            if !vecchioDaParte { try? fm.removeItem(at: convertito) }
             try? fm.removeItem(at: cartella.appendingPathComponent("archivio-all-avvio.json"))
             // La copia d'avvio in background: l'avvio non la aspetta (prima dei salvataggi, che passano dalla stessa coda)
             coda.async { copiaCartella(pezzi, in: copia) }
-            return EsitoCarica(dati: d, sulDisco: r.lettura)
+            return EsitoCarica(dati: d, avviso: avvisoVersionePrecedente, sulDisco: r.lettura)
         }
         // Qualcosa non si è letto: si mette da parte (mai cancellato), il resto si apre e si riscrive tutto. Se una copia
         // non si riesce a mettere da parte, sola lettura: la riscrittura toglierebbe il file che l'indice nuovo non cita
-        let quando = Formati.nomeFile.string(from: Date())
         func pulito(_ t: String) -> String {
             t.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ":", with: "-")
                 .replacingOccurrences(of: "«", with: "").replacingOccurrences(of: "»", with: "")
@@ -400,10 +473,13 @@ enum Archivio {
             } else {
                 try? Data(#"{"mancava": "indice.json"}"#.utf8).write(to: destinazione)
             }
-            voci.insert("l'indice dell'archivio (ricostruito dai file dei clienti: controlla impostazioni e ordine)", at: 0)
+            voci.insert(riserva.attuale
+                        ? "l'indice dell'archivio (ricostruito dalla sua copia di riserva e dai file dei clienti)"
+                        : "l'indice dell'archivio (ricostruito dai file dei clienti e dalla copia dell'ultimo avvio: impostazioni, ordine e contatori di Prisma ovunque sono tornati a quel momento; controlla le impostazioni e, se usi Prisma ovunque, non lasciarlo unire finché non hai verificato i dati)", at: 0)
         }
-        let avviso = "Alcune parti dell'archivio non si sono aperte: " + voci.joined(separator: "; ")
+        var avviso = "Alcune parti dell'archivio non si sono aperte: " + voci.joined(separator: "; ")
             + ". Tutto il resto è aperto. Ne ho messo da parte una copia nella cartella di Prisma; i backup automatici sono fermi finché non ripristini un backup da Impostazioni o confermi che i dati vanno bene."
+        if let a = avvisoVersionePrecedente { avviso += " " + a }
         return EsitoCarica(dati: d, avviso: avviso, daRiscrivere: true)
     }
 

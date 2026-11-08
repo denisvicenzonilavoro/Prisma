@@ -211,3 +211,17 @@ La prova della fluidità non legge il disco (stato non persistente): avvio e tas
 tappa 1 (tasto 4 → 3 ms con 5 clienti; avvio 341 → 721 ms con 5 e 1.467 → 747 ms con 200, oscillazioni del Mac con
 carico medio 12-40, non del codice). Con il Mac così carico la riga del tasto con 200 clienti non è arrivata nel
 tempo limite in nessuna delle due misure.
+
+Seconda revisione (8 novembre 2026): l'indice si scrive sempre insieme a `indice-riserva.json` (stessi byte, prima di
+lui): se l'indice si rovina si ricostruisce dalla riserva, quindi impostazioni, ordine e contatori di Prisma ovunque
+(`vistoFinoA`, `lamport`, `prossimoSeq`) sono quelli di adesso e un cliente tolto nella sessione non torna; solo con
+indice e riserva rovinati insieme si torna alla copia d'avvio, e l'avviso lo dice. La conversione di archivio.json
+lascia il segno `conversione-da-verificare.json` prima di confermare la cartella: finché c'è vale archivio.json (anche
+nei backup) e all'avvio la verifica si rifà. Un archivio.json scritto da una versione di prima dopo la conversione non
+prende più il posto della cartella: si mette da parte con il suo nome e l'avviso. Una conversione non verificata toglie
+la cartella a pezzi con una rinomina (niente pezzi sciolti) e la copia d'avvio. Il backup prende sempre l'archivio che
+varrebbe all'avvio, mai la copia d'avvio o il segno, e senza archivio non si fa. Una copia d'avvio che non si apre
+(più recente) apre in sola lettura, mai i dati di prova sopra. Misure, prova di carico (build di sviluppo, carico medio
+24): scrittura intera 198 ms, indice 2 ms, lettura intera 75 ms, salvataggio di una nota 14 ms (1 file, invariato);
+un cambio delle sole impostazioni scrive due file da 67 KB (riserva e indice) invece di uno. La prova della fluidità
+non legge il disco e con il Mac a carico 24-26 non ha dato numeri utili (disegni da 2 a 16 s, 62 azioni non misurate).

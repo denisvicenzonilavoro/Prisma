@@ -760,8 +760,9 @@ enum ProvaBackup {
     private static func provaSalvataggio(radice: URL, originale: DatiPrisma) throws -> String? {
         let cartella = radice.appendingPathComponent("Salvataggio/Prisma", isDirectory: true)
         let salvataggio = SalvataggioArchivio(cartella: cartella, coda: DispatchQueue(label: "prisma.prova-salvataggio", qos: .utility))
-        // L'archivio a pezzi sul disco (giro 0, tappa 3), riletto per intero
-        func letto() -> DatiPrisma? { try? Archivio.leggiPerRipristino(cartella) }
+        // L'archivio a pezzi sul disco (giro 0, tappa 3), riletto per intero senza toccarlo (una transazione rimasta non
+        // si completa: la prova la vede)
+        func letto() -> DatiPrisma? { archivioSulDisco(cartella) }
 
         // Generazione 1: i dati di partenza, scritti in background
         guard salvataggio.accoda(originale, generazione: 1, fallito: { _ in }) else { return "salvataggio: la prima scrittura non è partita" }

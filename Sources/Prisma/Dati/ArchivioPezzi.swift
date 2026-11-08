@@ -8,6 +8,8 @@ import Foundation
 ///     Archivio/
 ///       indice.json            versione del formato, generazione, versione dei dati, cliente attivo, impostazioni,
 ///                              elenco dei clienti (id, file, nome) e l'ordine degli elenchi divisi per cliente
+///       indice-riserva.json    la copia dell'indice, scritta con lui: se l'indice si rovina si ricostruisce da lei
+///                              (impostazioni, contatori di Prisma ovunque e ordine di adesso, non quelli dell'avvio)
 ///       Clienti/<id>-<impronta>.json   un file per cliente: anagrafica e ciò che è solo suo
 ///       Clienti/senza-cliente.json     gli elementi che nominano un cliente che non c'è più (mai persi)
 ///       agenda.json, attivita.json, conversazioni.json, prodotti.json, spazi.json, pratiche.json,
@@ -31,6 +33,8 @@ enum ArchivioPezzi {
     static let formatoAttuale = 1
     static let nomeCartella = "Archivio"
     static let nomeIndice = "indice.json"
+    /// La copia dell'indice, scritta sempre insieme a lui (prima di lui), letta solo per ricostruire un indice rovinato.
+    static let nomeRiserva = "indice-riserva.json"
     static let nomeClienti = "Clienti"
     static let nomeSenzaCliente = "senza-cliente.json"
     /// Il gruppo degli elementi senza un cliente presente (nessun id vero comincia con il carattere nullo).
@@ -523,7 +527,11 @@ extension ArchivioPezzi {
     /// adesso non si apre), `.formatoPiuRecente` / `.versionePiuRecente` (scritto da un Prisma più recente, anche se il
     /// resto non si decodifica: come `SoloVersione` per archivio.json) oppure `.indiceNonLeggibile` (rovinato).
     static func leggiIndice(_ cartellaPezzi: URL) throws -> IndiceArchivio {
-        let url = cartellaPezzi.appendingPathComponent(nomeIndice)
+        try leggiIndice(file: cartellaPezzi.appendingPathComponent(nomeIndice))
+    }
+
+    /// Come `leggiIndice(_:)`, per un file qualsiasi (l'indice, la sua riserva, quello della copia d'avvio).
+    static func leggiIndice(file url: URL) throws -> IndiceArchivio {
         let grezzo: Data
         do {
             grezzo = try Data(contentsOf: url)
@@ -545,11 +553,31 @@ extension ArchivioPezzi {
         return indice
     }
 
+    /// L'indice da cui ricostruire un indice rovinato o mancante: la sua riserva (scritta con lui, quindi di adesso), se
+    /// si legge e non è più vecchia della copia d'avvio; altrimenti l'indice della copia d'avvio (impostazioni, contatori
+    /// di Prisma ovunque e ordine dell'ultimo avvio: `attuale` false, l'avviso lo dice); senza nessuno dei due, uno vuoto.
+    /// Lancia `.formatoPiuRecente` / `.versionePiuRecente` se la riserva è di un Prisma più recente (sola lettura).
+    static func indiceDiRiserva(_ cartellaPezzi: URL, copiaAvvio: URL) throws -> (indice: IndiceArchivio, attuale: Bool) {
+        let copia = try? leggiIndice(copiaAvvio)
+        do {
+            let r = try leggiIndice(file: cartellaPezzi.appendingPathComponent(nomeRiserva))
+            if r.versione > DatiPrisma.versioneAttuale { throw ErroreArchivioPezzi.versionePiuRecente }
+            if r.generazione >= (copia?.generazione ?? Int.min) { return (r, true) }
+        } catch ErroreArchivioPezzi.formatoPiuRecente {
+            throw ErroreArchivioPezzi.formatoPiuRecente
+        } catch ErroreArchivioPezzi.versionePiuRecente {
+            throw ErroreArchivioPezzi.versionePiuRecente
+        } catch {}
+        if let copia { return (copia, false) }
+        return (IndiceArchivio(), false)
+    }
+
     /// Legge tutta la cartella a pezzi. Non scrive nulla: chi chiama decide che fare dei pezzi non leggibili.
     /// - indiceLetto: chiamato appena l'indice è letto (e solo se il formato e la versione sono di questo Prisma),
     ///   prima dei file dei clienti: StatoShell parte con la schermata di benvenuto senza aspettare il resto.
     /// - indiceDiRiserva: se l'indice è rovinato o manca (mai se è di un Prisma più recente o se adesso non si apre), si
-    ///   ricostruisce l'archivio dai file presenti partendo da questo indice (quello della copia fatta all'avvio): i
+    ///   ricostruisce l'archivio dai file presenti partendo da questo indice (la riserva dell'indice o quello della copia
+    ///   fatta all'avvio, `indiceDiRiserva(_:copiaAvvio:)`): i
     ///   clienti che cita si cercano come sempre (un file che manca si segnala), un file che non cita si riprende solo se
     ///   è stato scritto dopo di lui, altrimenti è il resto di un cliente tolto e si mette da parte (non torna in vita).
     ///   Senza riserva lancia l'errore dell'indice.
@@ -815,6 +843,9 @@ final class ScrittorePezzi {
     var interrompi: Interruzione?
     /// Solo per la prova: la verifica della conversione fallisce (come se la cartella riletta fosse diversa).
     var verificaFallitaPerProva = false
+    /// Solo per la prova: la scrittura completa si ferma dopo la conferma, prima della verifica della conversione (come
+    /// se Prisma si interrompesse lì).
+    var fermaPrimaDellaVerificaPerProva = false
     /// La conversione non si è potuta verificare: si continua a scrivere archivio.json come prima (finché nella cartella
     /// non torna una cartella a pezzi, per esempio con un ripristino).
     private(set) var formatoVecchio = false
@@ -863,9 +894,10 @@ final class ScrittorePezzi {
         ultimiScritti = []
         if formatoVecchio {
             let fm = FileManager.default
-            // Un ripristino ha rimesso la cartella a pezzi (o tolto archivio.json): si torna a scrivere i pezzi, mai
-            // archivio.json accanto a una cartella che all'avvio varrebbe di più
-            if ArchivioPezzi.presente(in: cartella) || !fm.fileExists(atPath: cartella.appendingPathComponent(Archivio.nomeFileVecchio).path) {
+            // Un ripristino ha rimesso la cartella a pezzi (senza il segno della conversione da verificare, che i backup
+            // non portano) o tolto archivio.json: si torna a scrivere i pezzi
+            let segno = fm.fileExists(atPath: cartella.appendingPathComponent(Archivio.nomeConversioneDaVerificare).path)
+            if (ArchivioPezzi.presente(in: cartella) && !segno) || !fm.fileExists(atPath: cartella.appendingPathComponent(Archivio.nomeFileVecchio).path) {
                 formatoVecchio = false
                 scritto = nil
             } else {
@@ -920,9 +952,22 @@ final class ScrittorePezzi {
         let togli = ((try? fm.contentsOfDirectory(atPath: cartellaClienti.path)) ?? [])
             .filter { !validi.contains($0) && !$0.contains(".tmp-") }
             .map { ArchivioPezzi.nomeClienti + "/" + $0 }
+        // Con un archivio.json vero accanto è la conversione: prima di confermare la cartella si lascia il segno che va
+        // ancora verificata. Finché c'è, vale archivio.json (all'avvio la verifica si rifà, i backup prendono lui)
+        let vecchio = cartella.appendingPathComponent(Archivio.nomeFileVecchio)
+        let segno = cartella.appendingPathComponent(Archivio.nomeConversioneDaVerificare)
+        if fm.fileExists(atPath: vecchio.path), !Archivio.segnaposto(vecchio) {
+            if !fm.fileExists(atPath: segno.path) {
+                try Archivio.scriviAtomico(Data("{}".utf8), in: segno)
+                Archivio.sincronizza(cartella)
+            }
+        } else {
+            try? fm.removeItem(at: segno)
+        }
         guard try applica(lavori, indice: Archivio.nuovoCodificatore().encode(indice), togli: togli) else { return }
         Archivio.pulisciTemporanei(in: cartellaPezzi)
         scritto = Scritto(dati: dati, pezzi: pezzi, file: file, indice: indice, firma: firma())
+        if fermaPrimaDellaVerificaPerProva { return }
         try convertiSeServe(dati)
     }
 
@@ -970,16 +1015,19 @@ final class ScrittorePezzi {
         scritto = Scritto(dati: dati, pezzi: pezzi, file: file, indice: indice, firma: firma())
     }
 
-    /// Scrive i file di un giro. Uno solo e niente da togliere: temporaneo e rinomina. Altrimenti una transazione: i
-    /// file nuovi (indice compreso) in «in-corso», poi la conferma, poi tutti al loro posto, l'indice per ultimo.
+    /// Scrive i file di un giro. Uno solo e niente da togliere: temporaneo e rinomina. Il solo indice: la riserva e poi
+    /// l'indice, ognuno con la sua rinomina (un'interruzione in mezzo lascia una riserva più nuova dell'indice, con gli
+    /// stessi file: innocua). Altrimenti una transazione: i file nuovi (indice e riserva compresi) in «in-corso», poi la
+    /// conferma, poi tutti al loro posto, l'indice per ultimo. L'indice si scrive sempre con la sua riserva.
     /// false solo se la prova ha interrotto il giro.
     private func applica(_ lavori: [Lavoro], indice: Data?, togli: [String]) throws -> Bool {
         let fm = FileManager.default
-        let nomi = lavori.map(\.nome) + (indice == nil ? [] : [ArchivioPezzi.nomeIndice])
-        if nomi.count <= 1, togli.isEmpty {
+        let nomi = lavori.map(\.nome) + (indice == nil ? [] : [ArchivioPezzi.nomeRiserva, ArchivioPezzi.nomeIndice])
+        if togli.isEmpty, lavori.count + (indice == nil ? 0 : 1) <= 1 {
             if let l = lavori.first {
                 try Archivio.scriviAtomico(Archivio.nuovoCodificatore().encode(l.pezzo), in: cartellaPezzi.appendingPathComponent(l.nome))
             } else if let indice {
+                try Archivio.scriviAtomico(indice, in: cartellaPezzi.appendingPathComponent(ArchivioPezzi.nomeRiserva))
                 try Archivio.scriviAtomico(indice, in: fileIndice)
             }
             ultimiScritti = nomi
@@ -1009,10 +1057,13 @@ final class ScrittorePezzi {
         if let e = errori.compactMap({ $0 }).first { throw e }
         var sposta = lavori.indices.map { ["\($0).json", lavori[$0].nome] }
         if let indice {
-            let u = tx.appendingPathComponent(ArchivioPezzi.nomeIndice)
-            try indice.write(to: u, options: Archivio.opzioniScritturaDiretta)
-            Archivio.sincronizza(u)
-            sposta.append([ArchivioPezzi.nomeIndice, ArchivioPezzi.nomeIndice])
+            // La riserva prima dell'indice: l'indice resta l'ultimo file messo al suo posto
+            for nome in [ArchivioPezzi.nomeRiserva, ArchivioPezzi.nomeIndice] {
+                let u = tx.appendingPathComponent(nome)
+                try indice.write(to: u, options: Archivio.opzioniScritturaDiretta)
+                Archivio.sincronizza(u)
+                sposta.append([nome, nome])
+            }
         }
         if case .primaDellaConferma = interrompi {
             interrompi = nil
@@ -1087,14 +1138,23 @@ final class ScrittorePezzi {
         let atteso = try codificatore.encode(Archivio.decodifica(codificatore.encode(dati)))
         let riletto = try? ArchivioPezzi.leggi(cartellaPezzi)
         let rilettoJSON = riletto.flatMap { r in r.problemi.isEmpty ? try? codificatore.encode(r.lettura.dati) : nil }
-        if rilettoJSON == atteso, !verificaFallitaPerProva {
+        let segno = cartella.appendingPathComponent(Archivio.nomeConversioneDaVerificare)
+        // Verificata: via il segno (se non si toglie, la conversione non vale: all'avvio vincerebbe archivio.json, che non
+        // avrebbe le modifiche di dopo), poi archivio.json da parte. Se la rinomina non riesce archivio.json resta, più
+        // vecchio della cartella e senza segno: all'avvio vale la cartella e archivio.json si mette da parte
+        if rilettoJSON == atteso, !verificaFallitaPerProva, (try? fm.removeItem(at: segno)) != nil || !fm.fileExists(atPath: segno.path) {
+            Archivio.sincronizza(cartella)
             let copia = cartella.appendingPathComponent(Archivio.nomeFileConvertito)
             try? fm.removeItem(at: copia)
-            // Se la rinomina non riesce archivio.json resta, più vecchio della cartella: all'avvio vale la cartella
-            // (Archivio.caricaPezzi confronta le date) e archivio.json si mette da parte
             try fm.moveItem(at: vecchio, to: copia)
         } else {
-            try? fm.removeItem(at: cartellaPezzi)
+            // La cartella a pezzi non va: via con una rinomina (tutta o niente; poi si cancella con calma), così non
+            // restano pezzi sciolti che all'avvio o in un backup sembrino l'archivio. Il segno resta: anche se la
+            // rinomina non riuscisse, all'avvio e nei backup vale archivio.json. Via anche la copia d'avvio della
+            // cartella a pezzi: è di un altro giorno e non deve fare da riserva
+            let scartata = cartella.appendingPathComponent(Archivio.prefissoCartellaScartata + UUID().uuidString.prefix(8).lowercased(), isDirectory: true)
+            if rename(cartellaPezzi.path, scartata.path) == 0 { try? fm.removeItem(at: scartata) }
+            try? fm.removeItem(at: cartella.appendingPathComponent(Archivio.nomeCopiaAvvio, isDirectory: true))
             scritto = nil
             formatoVecchio = true
             try Archivio.scriviVecchio(dati, in: cartella)

@@ -38,6 +38,9 @@ enum ErroreBackup: LocalizedError {
     case cifratura(String)
     /// Protezione attiva ma password non disponibile: il backup non si fa in chiaro.
     case passwordNonDisponibile
+    /// Nella cartella da salvare non c'è un archivio completo: un backup così non si ripristinerebbe e, con la
+    /// rotazione, sostituirebbe quelli buoni.
+    case senzaArchivio
 
     var errorDescription: String? {
         switch self {
@@ -51,6 +54,7 @@ enum ErroreBackup: LocalizedError {
         case .backupDanneggiato: return "Il backup protetto è danneggiato o incompleto e non si può aprire: prova con un altro backup."
         case .cifratura(let m): return "Protezione del backup non riuscita: \(m)"
         case .passwordNonDisponibile: return "La password dei backup non è disponibile: scrivila in Impostazioni › Archivio. Senza password il backup non si fa, per non salvarlo in chiaro."
+        case .senzaArchivio: return "Nella cartella di Prisma non trovo un archivio completo da salvare: il backup non si fa, per non sostituire quelli buoni. Chiudi Prisma e riaprilo."
         }
     }
 
@@ -96,27 +100,41 @@ enum GestoreBackup {
         var sorgente = sorgente
         var copia: URL?
         defer { if let copia { try? fm.removeItem(at: copia) } }
-        // L'archivio a pezzi si copia a coda dei salvataggi ferma: nel backup mai un salvataggio a metà (un indice nuovo
-        // con i file dei clienti di prima). La copia d'avvio non serve in un backup, nemmeno una rimasta a metà
-        // («Archivio-all-avvio.tmp-…»). Al posto di archivio.json il segnaposto per le versioni di Prisma di prima
-        let conPezzi = fm.fileExists(atPath: sorgente.appendingPathComponent(ArchivioPezzi.nomeCartella).path)
+        // Nel backup va l'archivio che varrebbe all'avvio, uno solo: la cartella a pezzi (con l'indice e senza una
+        // conversione da verificare) con il segnaposto al posto di archivio.json per le versioni di Prisma di prima,
+        // oppure archivio.json (e nessun pezzo sciolto). La scelta e la copia si fanno a coda dei salvataggi ferma: nel
+        // backup mai un salvataggio a metà (un indice nuovo con i file dei clienti di prima). Mai la copia d'avvio
+        // (nemmeno una rimasta a metà, «Archivio-all-avvio.tmp-…»), il segno della conversione o una cartella scartata.
+        // Senza nessun archivio il backup non si fa: con la rotazione sostituirebbe quelli buoni
+        let archivio: Set<String> = [ArchivioPezzi.nomeCartella, Archivio.nomeFileVecchio]
         func lasciaFuori(_ nome: String) -> Bool {
-            escludi.contains(nome) || nome.hasPrefix(Archivio.nomeCopiaAvvio) || (conPezzi && nome == Archivio.nomeFileVecchio)
+            escludi.contains(nome) || archivio.contains(nome) || nome.hasPrefix(Archivio.nomeCopiaAvvio)
+                || nome == Archivio.nomeConversioneDaVerificare || nome.hasPrefix(Archivio.prefissoCartellaScartata)
         }
-        if conPezzi || (!escludi.isEmpty && escludi.contains(where: { fm.fileExists(atPath: sorgente.appendingPathComponent($0).path) })) {
+        let voci = try fm.contentsOfDirectory(atPath: sorgente.path)
+        let soloArchivioJson = !voci.contains { lasciaFuori($0) && $0 != Archivio.nomeFileVecchio }
+        if soloArchivioJson {
+            // Il formato di prima, niente da lasciare fuori: lo zip della cartella com'è
+            guard Archivio.valeArchivioJson(in: sorgente) else { throw ErroreBackup.senzaArchivio }
+        } else {
             let radice = fm.temporaryDirectory.appendingPathComponent("Prisma-copia-\(UUID().uuidString)", isDirectory: true)
             let dentro = radice.appendingPathComponent(sorgente.lastPathComponent, isDirectory: true)
             copia = radice
             try fm.createDirectory(at: dentro, withIntermediateDirectories: true)
-            for voce in try fm.contentsOfDirectory(at: sorgente, includingPropertiesForKeys: nil) where !lasciaFuori(voce.lastPathComponent) {
-                let destinazione = dentro.appendingPathComponent(voce.lastPathComponent)
-                if voce.lastPathComponent == ArchivioPezzi.nomeCartella {
-                    try Archivio.coda.sync { try fm.copyItem(at: voce, to: destinazione) }
+            for nome in voci where !lasciaFuori(nome) {
+                try fm.copyItem(at: sorgente.appendingPathComponent(nome), to: dentro.appendingPathComponent(nome))
+            }
+            let da = sorgente
+            try Archivio.coda.sync {
+                if Archivio.valeArchivioJson(in: da) {
+                    try fm.copyItem(at: da.appendingPathComponent(Archivio.nomeFileVecchio), to: dentro.appendingPathComponent(Archivio.nomeFileVecchio))
+                } else if ArchivioPezzi.presente(in: da) {
+                    try fm.copyItem(at: ArchivioPezzi.cartellaPezzi(in: da), to: ArchivioPezzi.cartellaPezzi(in: dentro))
+                    try Archivio.datiSegnaposto().write(to: dentro.appendingPathComponent(Archivio.nomeFileVecchio))
                 } else {
-                    try fm.copyItem(at: voce, to: destinazione)
+                    throw ErroreBackup.senzaArchivio
                 }
             }
-            if conPezzi { try Archivio.datiSegnaposto().write(to: dentro.appendingPathComponent(Archivio.nomeFileVecchio)) }
             sorgente = dentro
         }
         if creaCartella {
