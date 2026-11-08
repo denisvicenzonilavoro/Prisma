@@ -146,7 +146,7 @@ enum ProvaPalestraVera {
                               prossima: "E i costi?", suggerite: suggeriteBuone)
         controlla(PalestraVera.leggi(inventata, ammesse: ammesse, primo: false, ultimo: false) == .scartata("Vera ha scritto una cifra che non viene da Prisma."),
                   "Palestra: una replica con una cifra che non viene dai motori si rifiuta")
-        let obiezioneInventata = primoTurno(obiezione: "Ho letto che rende l'8% l'anno, è vero?", suggerite: suggeriteBuone)
+        let obiezioneInventata = primoTurno(obiezione: "Ho letto che rende il 7,3% l'anno, è vero?", suggerite: suggeriteBuone)
         controlla({ if case .scartata = PalestraVera.leggi(obiezioneInventata, ammesse: ammesse, primo: true, ultimo: false) { return true }; return false }(),
                   "Palestra: anche un'obiezione con una cifra inventata si rifiuta" + " [\(CommentoVera.cifre(ammesse).sorted().joined(separator: " "))]")
         let conSuggeritaFinta = primoTurno(suggerite: ["Con noi rende il 6% garantito.", suggeriteBuone[1], suggeriteBuone[2]])
