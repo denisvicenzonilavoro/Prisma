@@ -1342,7 +1342,7 @@ enum VoceConfronto: Hashable {
     func testiObiettivo(_ id: String) -> TestiObiettivo? {
         guard let o = dati.obiettivi.first(where: { $0.id == id }) else { return nil }
         let mie = posizioniCliente(o.clienteId)
-        let altri = obiettiviCliente(o.clienteId).map { ($0, AvanzamentoObiettivo($0, posizioni: mie)) }
+        let altri = obiettiviCliente(o.clienteId).map { ($0, avanzamento($0)) }
         return TestiObiettivo(MotoreObiettivo.calcola(o, posizioni: mie), cliente: self.cliente(o.clienteId), altri: altri)
     }
 
@@ -1376,7 +1376,9 @@ enum VoceConfronto: Hashable {
 
     func contenutoProspetto(_ scelta: SceltaProspetto) -> ContenutoProspetto? {
         if case .riesame = scelta { return fonteVera(clienteAttivoId).map { CompositoreProspetti.riesame($0, conformita: conformitaCliente(clienteAttivoId), occasioni: occasioniRiesame(clienteAttivoId), memoria: memoriaRiesame(clienteAttivoId)) } }
-        return CompositoreProspetti.componi(scelta, dati: dati.istantanea, cliente: clienteAttivoId, orizzonteConfronto: orizzonteConfronto)
+        // Dall'archivio dei calcoli (giro 0, tappa 2): il body di Prospetti non si iscrive a tutti i campi (aspetto, note,
+        // conversazioni…); i prospetti leggono solo campi dei calcoli, e il cliente arriva a parte
+        return CompositoreProspetti.componi(scelta, dati: datiDeiCalcoli(), cliente: clienteAttivoId, orizzonteConfronto: orizzonteConfronto)
     }
 
     /// Apre Prospetti e report su una scelta precisa (dal dettaglio di una posizione o da Confronti).
@@ -1653,10 +1655,16 @@ enum VoceConfronto: Hashable {
 
     // MARK: - Obiettivi
 
+    /// Gli obiettivi del cliente, per priorità e scadenza (dalla sua cache per cliente: con 200 clienti non si
+    /// scorre tutto l'elenco degli obiettivi a ogni disegno).
     func obiettiviCliente(_ id: String) -> [Obiettivo] {
-        dati.obiettivi.filter { $0.clienteId == id }.sorted {
+        let v = voceCliente(id)
+        if let o = v.obiettivi { return o }
+        let o = dati.obiettivi.filter { $0.clienteId == id }.sorted {
             $0.priorita != $1.priorita ? $0.priorita > $1.priorita : $0.scadenza < $1.scadenza
         }
+        v.obiettivi = o
+        return o
     }
 
     func salvaObiettivo(_ o: Obiettivo) {

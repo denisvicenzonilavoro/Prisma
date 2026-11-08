@@ -576,9 +576,9 @@ struct PanoramicaCliente: View {
     private var sottotitoloObiettivi: String {
         let elenco = stato.obiettiviCliente(cliente.id)
         guard !elenco.isEmpty else { return "I progetti da realizzare" }
-        let posizioni = stato.posizioniCliente(cliente.id)
+        let avanzamenti = stato.avanzamentiObiettivi(cliente.id)
         let totale = elenco.reduce(0.0) { $0 + max($1.importo, 0) }
-        let coperto = elenco.reduce(0.0) { $0 + min(AvanzamentoObiettivo($1, posizioni: posizioni).accantonato, max($1.importo, 0)) }
+        let coperto = elenco.reduce(0.0) { $0 + min(avanzamenti[$1.id]?.accantonato ?? 0, max($1.importo, 0)) }
         let quota = totale > 0 ? coperto / totale : 1
         return "\(Int((quota * 100).rounded()))% coperto"
     }

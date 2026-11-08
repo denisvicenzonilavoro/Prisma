@@ -107,7 +107,7 @@ struct ObiettiviCliente: View {
     /// gli obiettivi per stato a semaforo e quanto serve al mese. Un solo riquadro.
     private func quadro(_ elenco: [Obiettivo], posizioni: [Posizione]) -> some View {
         let m = Tema.Misura.DossierCliente.self
-        let avanzamenti = elenco.map { ($0, AvanzamentoObiettivo($0, posizioni: posizioni)) }
+        let avanzamenti = elenco.map { ($0, stato.avanzamento($0)) }
         let totale = elenco.reduce(0.0) { $0 + max($1.importo, 0) }
         let coperto = avanzamenti.reduce(0.0) { $0 + min($1.1.accantonato, max($1.0.importo, 0)) }
         let mancante = avanzamenti.reduce(0.0) { $0 + $1.1.mancante }

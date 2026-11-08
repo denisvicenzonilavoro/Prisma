@@ -170,9 +170,11 @@ struct AppPosizioni: View {
     // MARK: - Elenco laterale
 
     private var rail: some View {
-        // Le posizioni filtrate e i conteggi per area si contano una volta sola (con 200 clienti sono migliaia)
-        let tutte = perStato
-        let conteggi = Dictionary(grouping: tutte, by: \.area).mapValues(\.count)
+        // I conteggi per area, in cache per dati, cliente e filtri (con 200 clienti le posizioni sono migliaia: prima si
+        // filtravano e si contavano a ogni disegno della colonna)
+        let statoScelto: StatoPosizione? = filtroStato == .inEssere ? .inEssere : filtroStato == .proposte ? .proposta : nil
+        let conti = stato.contiAreePosizioni(portafoglio: stato.portafoglio, canale: filtroCanale, stato: statoScelto)
+        let conteggi = conti.perArea
         return VStack(alignment: .leading, spacing: 6) {
             // L'elenco scorre dentro la scheda: con tante voci o schermo basso la finestra non si allunga
             // sotto il bordo (le due colonne finiscono con lo stesso margine di Clienti)
@@ -203,7 +205,7 @@ struct AppPosizioni: View {
                     }
                     EtichettaRail(testo: "Aree")
                     VStack(spacing: 0) {
-                        VoceNavigazione(titolo: "Tutte le aree", conteggio: tutte.count, attiva: area == nil) { area = nil }
+                        VoceNavigazione(titolo: "Tutte le aree", conteggio: conti.totale, attiva: area == nil) { area = nil }
                         ForEach(AreaPosizione.allCases) { a in
                             VoceNavigazione(titolo: a.nome, colore: Colori.Analisi.area(a),
                                             conteggio: conteggi[a] ?? 0, attiva: area == a) {
@@ -307,7 +309,8 @@ struct AppPosizioni: View {
         let r = filtroCanale == nil ? stato.riepilogoPosizioniCliente(stato.clienteAttivoId) : RiepilogoPosizioni(delCliente)
         return ScrollViewReader { lettore in
             ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
+                // Pigra (giro 0, tappa 4): i pannelli sotto la piega si costruiscono quando si scorre (stesso aspetto)
+                LazyVStack(alignment: .leading, spacing: 18) {
                     FasciaKPI {
                         KPI(titolo: "Patrimonio netto", valore: Formati.euro(r.patrimonioNetto)) {
                             Chip(testo: "Attività \(Formati.euroBreve(r.attivita))")

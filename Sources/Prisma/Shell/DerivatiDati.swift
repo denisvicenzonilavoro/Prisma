@@ -11,6 +11,13 @@ final class DerivatiDati {
     var radar: RadarPortafoglio?
     /// La copia dell'archivio per i motori che vogliono tutto `DatiPrisma` (StatoShell.datiDeiCalcoli).
     var datiCalcoli: DatiPrisma?
+    /// I conteggi per area della colonna di Posizioni, per vista (cliente o portafoglio), canale e stato.
+    var contiAree: [String: ContiAree] = [:]
+
+    struct ContiAree {
+        let totale: Int
+        let perArea: [AreaPosizione: Int]
+    }
     /// Ciò da cui dipende tutto il resto: con una chiave nuova si riparte da zero.
     struct Chiave: Equatable {
         let versione: Int
@@ -171,6 +178,7 @@ final class DerivatiDati {
         occasioniMessaggi = nil
         radar = nil
         datiCalcoli = nil
+        contiAree = [:]
     }
 }
 
@@ -213,12 +221,36 @@ extension StatoShell {
     /// Il radar del portafoglio: una voce per cliente dalla cache per cliente (CacheClienti), il quadro in cache per
     /// `versioneCalcoli` e giorno. Legge solo clienti, posizioni, prodotti, portafogli modello e la tolleranza del radar,
     /// tutti campi «dei calcoli»: la vista del radar non legge l'archivio intero.
+    /// Con molti clienti da rifare insieme, nell'app vera, le voci si calcolano in sottofondo e intanto si mostra
+    /// l'ultimo radar (CacheClienti.arrivi ridisegna la vista quando arrivano).
     func radarPortafoglio() -> RadarPortafoglio {
+        _ = cacheClienti.arrivi
         let d = derivatiValidi()
         if let r = d.radar { return r }
-        let r = radarDaiClienti()
-        d.radar = r
+        let (r, completo) = radarDaiClienti(sottofondo: persistente || cacheClienti.sottofondoPerProva)
+        if completo { d.radar = r }
+        cacheClienti.ultimoRadar = r
         return r
+    }
+
+    /// Quante posizioni per area mostra la colonna di Posizioni (del cliente attivo o di tutto il portafoglio), con il
+    /// filtro di canale e di stato (nil = tutte), una volta per dati, giorno e modalità cliente.
+    func contiAreePosizioni(portafoglio: Bool, canale: Canale?, stato filtro: StatoPosizione?) -> DerivatiDati.ContiAree {
+        let d = derivatiValidi()
+        let cliente = portafoglio ? "*" : clienteAttivoId
+        let k = "\(cliente)|\(canale?.rawValue ?? "-")|\(filtro.map { "\($0)" } ?? "-")"
+        if let c = d.contiAree[k] { return c }
+        let base = portafoglio ? posizioni : posizioniCliente(clienteAttivoId)
+        var perArea: [AreaPosizione: Int] = [:]
+        var totale = 0
+        for p in base where (canale == nil || p.canale == canale) && (filtro == nil || p.stato == filtro) {
+            perArea[p.area, default: 0] += 1
+            totale += 1
+        }
+        let c = DerivatiDati.ContiAree(totale: totale, perArea: perArea)
+        if d.contiAree.count > DerivatiDati.vociMassimeAgenda { d.contiAree = [:] }
+        d.contiAree[k] = c
+        return c
     }
 
     /// Cambio di giorno, d'orario o di fuso: la prossima richiesta rifà il giorno delle chiavi.

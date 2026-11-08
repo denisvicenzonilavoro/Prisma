@@ -59,7 +59,8 @@ struct PortafoglioApple<Sotto: View>: View {
         let d = Tema.Apple.Posizioni.Disposizione.self
         let chiave = stato.chiaveVista
         return ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
+            // Pigra (giro 0, tappa 4): i pannelli di sotto si costruiscono quando entrano in vista
+            LazyVStack(alignment: .leading, spacing: 0) {
                 VStack(alignment: .leading, spacing: 0) {
                     TestaPortafoglioApple(stato: stato, chiave: chiave, nastro: nastro, sequenza: sequenza)
                         .equatable()
@@ -567,7 +568,8 @@ private struct NastroDaFareApple: View, Equatable {
         let n = Tema.Apple.Posizioni.Nastro.self
         let s = Tema.Apple.Posizioni.Scheda.self
         return ScrollView(.horizontal, showsIndicators: false) {
-            HStack(alignment: .top, spacing: n.spazio) {
+            // Pigro (giro 0, tappa 4): con 200 clienti il nastro ha centinaia di schede, si costruiscono solo quelle in vista
+            LazyHStack(alignment: .top, spacing: n.spazio) {
                 ForEach(m.blocchi) { b in
                     TestaGruppoDaFareApple(blocco: b)
                         .id(Self.idGruppo(b))

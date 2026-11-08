@@ -129,7 +129,9 @@ extension StatoShell {
         if let r = p.cacheCostruite.valore[chiave] { return r }
         guard let fonte = fonteProposta(b.clienteId) else { return nil }
         let bozza = b.propostaId.flatMap { id in dati.posizioni.first { $0.id == id } }
-        let r = MotoreProposta.costruisci(b, fonte: fonte, dati: dati.istantanea, bozzaEsistente: bozza,
+        // La chiave è `versioneDati` (già letta qui sopra, quindi osservata): l'archivio si legge senza iscrivere la
+        // vista a ogni campo
+        let r = MotoreProposta.costruisci(b, fonte: fonte, dati: dati.istantaneaNonOsservata, bozzaEsistente: bozza,
                                           prodottoScelto: p.sceltaProdotto[b.id],
                                           ultimo: p.ultimoProdotto[StatoPraticheProposta.chiaveProdotto(b)],
                                           contaPagine: { ImpaginatoreProspetto.pagine($0).count })

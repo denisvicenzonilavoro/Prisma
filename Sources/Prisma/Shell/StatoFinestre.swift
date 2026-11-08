@@ -14,9 +14,11 @@ import SwiftUI
     /// erano gli `objectWillChange`).
     @ObservationIgnored var avvisi = 0
     /// Il blocco che sta per cambiare, con il valore nuovo (al posto di `$bloccato`: menu Vai, copilota dell'incontro).
-    @ObservationIgnored let bloccatoCambiera = PassthroughSubject<Bool, Never>()
+    /// Come `$bloccato`, all'iscrizione dà subito il valore di adesso.
+    @ObservationIgnored let bloccatoCambiera = CurrentValueSubject<Bool, Never>(false)
     /// L'elenco delle finestre è cambiato (al posto di `$elenco`: le app nella finestra di vetro di iPhone e iPad).
-    @ObservationIgnored let elencoCambiato = PassthroughSubject<Void, Never>()
+    /// Come `$elenco`, avvisa anche all'iscrizione.
+    @ObservationIgnored let elencoCambiato = CurrentValueSubject<Void, Never>(())
 
     /// Finestre aperte; l'ultima è quella in primo piano.
     var elenco: [Finestra] = [] {

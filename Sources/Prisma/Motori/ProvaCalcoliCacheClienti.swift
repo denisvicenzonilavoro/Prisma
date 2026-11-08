@@ -105,6 +105,10 @@ enum ProvaCalcoliCacheClienti {
         verifica.vero("Cache per cliente: archivio sostituito, rifatti tutti", rifatti(s) == tutti)
         uguali(s, verifica, "dopo il ripristino")
 
+        // 11. Il radar in sottofondo: con molti clienti da rifare si mostra l'ultimo radar, poi arriva quello nuovo,
+        // uguale al calcolo da zero
+        radarInSottofondo(verifica)
+
         // 10. Le attribuzioni di DatiVivi: aggiunte, tolte, spostamenti
         let p1 = AiutiProva.posizione("A", .investimento, 1) { $0.clienteId = "a" }
         let p2 = AiutiProva.posizione("B", .investimento, 1) { $0.clienteId = "b" }
@@ -119,6 +123,38 @@ enum ProvaCalcoliCacheClienti {
         p2b.clienteId = "a"
         verifica.vero("Cache per cliente: posizione passata a un altro cliente, toccati il vecchio e il nuovo",
                       DatiVivi.clientiToccati([p1, p2, p3], [p1, p2b, p3], \.clienteId) == ["a", "b"])
+    }
+
+    private static func radarInSottofondo(_ verifica: VerificaCalcoli) {
+        guard let molti = try? ProvaCarico.moltiplica(DatiPrisma.demo(), copie: 8) else {
+            verifica.vero("Cache per cliente: archivio con molti clienti per il radar in sottofondo", false)
+            return
+        }
+        let s = StatoShell(persistente: false)
+        s.dati.carica(molti)
+        s.cacheClienti.sottofondoPerProva = true
+        let primo = s.radarPortafoglio()
+        verifica.vero("Radar in sottofondo: il primo radar si calcola subito (non c'è un radar da mostrare intanto)",
+                      primo == MotoreRadar.calcola(s.dati.istantanea))
+        // Il catalogo cambia per tutti: tutte le voci da rifare
+        if let i = s.dati.prodotti.indices.first { s.dati.prodotti[i].costoAnnuo = (s.dati.prodotti[i].costoAnnuo ?? 1) + 0.5 }
+        // E un modello diverso per un cliente: il radar nuovo deve essere davvero diverso da quello di prima
+        if let i = s.dati.clienti.firstIndex(where: { $0.modelloId != nil }),
+           let altro = s.dati.portafogliModello.first(where: { $0.id != s.dati.clienti[i].modelloId }) {
+            s.dati.clienti[i].modelloId = altro.id
+        }
+        let arriviPrima = s.cacheClienti.arrivi
+        let intanto = s.radarPortafoglio()
+        verifica.vero("Radar in sottofondo: intanto si mostra l'ultimo radar valido", intanto.voci.count == primo.voci.count)
+        verifica.vero("Radar in sottofondo: il calcolo è partito", s.cacheClienti.radarInCorso != nil)
+        let limite = Date().addingTimeInterval(60)
+        while s.cacheClienti.arrivi == arriviPrima, Date() < limite {
+            _ = RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
+        }
+        verifica.vero("Radar in sottofondo: le voci nuove sono arrivate", s.cacheClienti.arrivi > arriviPrima)
+        let dopo = s.radarPortafoglio()
+        verifica.vero("Radar in sottofondo: il radar arrivato è uguale al calcolo da zero", dopo == MotoreRadar.calcola(s.dati.istantanea))
+        verifica.vero("Radar in sottofondo: e diverso da quello di prima (un modello cambiato)", dopo != primo)
     }
 
     /// I clienti rifatti dall'ultimo azzeramento dei conteggi.
@@ -138,8 +174,10 @@ enum ProvaCalcoliCacheClienti {
             _ = s.bisogniRilevati(c.id)
             _ = s.andamentoCliente(c.id)
             _ = s.aree360(c.id)
+            _ = s.avanzamentiObiettivi(c.id)
         }
         _ = s.radarPortafoglio()
+        _ = s.mossaDelGiorno()
         _ = s.portafoglioComune()
     }
 
@@ -171,7 +209,15 @@ enum ProvaCalcoliCacheClienti {
             if s.conformitaCliente(c.id)?.voci.map(\.stato) != zero.conformitaCliente(c.id)?.voci.map(\.stato) {
                 diversi.append("\(c.id): conformità")
             }
+            if s.obiettiviCliente(c.id) != zero.obiettiviCliente(c.id) { diversi.append("\(c.id): obiettivi") }
+            let av = s.avanzamentiObiettivi(c.id), bv = zero.avanzamentiObiettivi(c.id)
+            if av.keys.sorted() != bv.keys.sorted()
+                || av.contains(where: { k, x in bv[k].map { $0.accantonato != x.accantonato || $0.mancante != x.mancante
+                    || $0.versamentoNecessario != x.versamentoNecessario } ?? true }) {
+                diversi.append("\(c.id): avanzamento degli obiettivi")
+            }
         }
+        if s.mossaDelGiorno() != zero.mossaDelGiorno() { diversi.append("mossa del giorno") }
         if s.radarPortafoglio() != MotoreRadar.calcola(s.dati.istantanea) { diversi.append("radar") }
         if s.portafoglioComune().attenzioni.map(\.id) != zero.portafoglioComune().attenzioni.map(\.id) {
             diversi.append("attenzioni")
