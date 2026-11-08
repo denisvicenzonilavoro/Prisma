@@ -138,6 +138,32 @@ enum Archivio {
     /// Solo il numero di versione: si legge anche quando il resto dell'archivio non si legge.
     private struct SoloVersione: Decodable { var versione: Int? }
 
+    /// Il segnaposto messo come archivio.json nei backup della cartella a pezzi, per le versioni di Prisma di prima
+    /// (che cercano archivio.json): lo leggono come un archivio vuoto di una versione molto più recente e rispondono «Il
+    /// backup è stato creato da una versione più recente di Prisma», non «non è un backup di Prisma». Questa versione lo
+    /// riconosce dalla chiave `segnapostoArchivio` e lo ignora: non è mai un archivio.
+    private struct Segnaposto: Decodable { var segnapostoArchivio: String? }
+    static let versioneSegnaposto = 1_000_000
+
+    static func datiSegnaposto() -> Data {
+        let testo = "L'archivio di questo backup è nella cartella Archivio/: si apre con Prisma aggiornato (dal giro 0 di «Prisma istantaneo» in poi)."
+        let oggetto: [String: Any] = ["versione": versioneSegnaposto, "clienti": [Any](), "segnapostoArchivio": testo]
+        return (try? JSONSerialization.data(withJSONObject: oggetto, options: [.prettyPrinted, .sortedKeys])) ?? Data()
+    }
+
+    /// true se `url` è il segnaposto dei backup (piccolo, con la chiave `segnapostoArchivio`).
+    static func segnaposto(_ url: URL) -> Bool {
+        guard let n = (try? FileManager.default.attributesOfItem(atPath: url.path))?[.size] as? Int, n < 4096,
+              let grezzo = try? Data(contentsOf: url) else { return false }
+        return (try? JSONDecoder().decode(Segnaposto.self, from: grezzo))?.segnapostoArchivio != nil
+    }
+
+    /// Toglie il segnaposto da una cartella (estratta da un backup o, per sicurezza, quella dell'archivio).
+    static func togliSegnaposto(in cartella: URL) {
+        let u = cartella.appendingPathComponent(nomeFileVecchio)
+        if segnaposto(u) { try? FileManager.default.removeItem(at: u) }
+    }
+
     static let avvisoPiuRecente = "Questo archivio è stato salvato da una versione più recente di Prisma: lo apro in sola lettura e non salvo nulla, per non perdere dati. Apri l'ultima versione di Prisma."
 
     /// Copie di archivi (o di pezzi dell'archivio) non leggibili non ancora gestite: finché ci sono, i backup
@@ -190,16 +216,27 @@ enum Archivio {
         let avvisoRecupero = recuperato ? "Un ripristino era stato interrotto: ho rimesso l'archivio com'era prima." : nil
         let pezzi = ArchivioPezzi.cartellaPezzi(in: cartella)
         let vecchio = cartella.appendingPathComponent(nomeFileVecchio)
+        pulisciCopieInterrotte(in: cartella)
+        togliSegnaposto(in: cartella)
+        // Un salvataggio di più file confermato e interrotto si completa prima di leggere (uno non confermato si scarta)
+        do {
+            try ArchivioPezzi.completaTransazione(pezzi)
+        } catch {
+            return EsitoCarica(dati: ArchivioPezzi.vuoto, avviso: avvisoNonApribile(error), solaLettura: true)
+        }
         let clientiSciolti = !((try? fm.contentsOfDirectory(atPath: pezzi.appendingPathComponent(ArchivioPezzi.nomeClienti).path)) ?? [])
             .filter { $0.hasSuffix(".json") }.isEmpty
+        let sezioniSciolte = ArchivioPezzi.sezioni.contains {
+            fm.fileExists(atPath: pezzi.appendingPathComponent(ArchivioPezzi.nomeFileSezione($0.nome)).path)
+        }
 
-        // 1. La cartella a pezzi (anche senza indice, se ci sono i file dei clienti: si ricostruisce)
-        if ArchivioPezzi.presente(in: cartella) || (clientiSciolti && !fm.fileExists(atPath: vecchio.path)) {
+        // 1. La cartella a pezzi (anche senza indice, se ci sono i file dei clienti o le sezioni: si ricostruisce)
+        if ArchivioPezzi.presente(in: cartella) || clientiSciolti || sezioniSciolte {
             if var e = caricaPezzi(cartella, indiceLetto: indiceLetto) {
                 if e.avviso == nil { e.avviso = avvisoRecupero }
                 return e
             }
-            // nil: la cartella non è completa ma c'è ancora archivio.json (conversione non finita): vale lui
+            // nil: c'è archivio.json ed è più recente della cartella (conversione non verificata): vale lui
         }
         // 2. Il file unico di prima
         if fm.fileExists(atPath: vecchio.path) {
@@ -207,7 +244,7 @@ enum Archivio {
             if e.avviso == nil { e.avviso = avvisoRecupero }
             return e
         }
-        // 3. Niente archivio: la copia dell'ultimo avvio (a pezzi, poi quella di prima)
+        // 3. Niente archivio (nessun pezzo, nessun archivio.json): la copia dell'ultimo avvio (a pezzi, poi quella di prima)
         let copiaPezzi = cartella.appendingPathComponent(nomeCopiaAvvio, isDirectory: true)
         if fm.fileExists(atPath: copiaPezzi.appendingPathComponent(ArchivioPezzi.nomeIndice).path) {
             try? fm.removeItem(at: pezzi)
@@ -237,15 +274,68 @@ enum Archivio {
             .filter { $0.lastPathComponent.hasPrefix(prefissoNonLeggibile) && !$0.lastPathComponent.contains("(gestito)") }
     }
 
-    /// La cartella a pezzi. nil se non è completa e c'è ancora archivio.json, che allora vale di più.
+    /// L'avviso di un archivio che non si apre e che quindi non si tocca (sola lettura).
+    static func avvisoNonApribile(_ error: Error) -> String {
+        "Non riesco ad aprire l'archivio di Prisma (\(error.localizedDescription)): non salvo nulla e non tocco i file. Chiudi Prisma e riaprilo; se succede ancora, riavvia il dispositivo."
+    }
+
+    /// L'esito di una cartella a pezzi che non si deve toccare: più recente di questo Prisma, o non leggibile adesso.
+    private static func nonApribile(_ error: Error) -> EsitoCarica {
+        switch error {
+        case ErroreArchivioPezzi.formatoPiuRecente, ErroreArchivioPezzi.versionePiuRecente:
+            return EsitoCarica(dati: ArchivioPezzi.vuoto, avviso: avvisoPiuRecente, solaLettura: true, bloccaRipristino: true)
+        default:
+            return EsitoCarica(dati: ArchivioPezzi.vuoto, avviso: avvisoNonApribile(error), solaLettura: true)
+        }
+    }
+
+    private static func dataModifica(_ url: URL) -> Date {
+        ((try? FileManager.default.attributesOfItem(atPath: url.path))?[.modificationDate] as? Date) ?? .distantPast
+    }
+
+    /// L'ultima scrittura nella cartella a pezzi (indice, sezioni, file dei clienti).
+    private static func ultimaModificaPezzi(_ pezzi: URL) -> Date {
+        let fm = FileManager.default
+        var ultima = Date.distantPast
+        for c in [pezzi, pezzi.appendingPathComponent(ArchivioPezzi.nomeClienti, isDirectory: true)] {
+            for nome in (try? fm.contentsOfDirectory(atPath: c.path)) ?? [] where nome.hasSuffix(".json") {
+                ultima = max(ultima, dataModifica(c.appendingPathComponent(nome)))
+            }
+        }
+        return ultima
+    }
+
+    /// Un nome libero nella cartella dell'archivio per una copia messa da parte (mai sopra un'altra copia).
+    private static func destinazioneLibera(_ base: String, in cartella: URL) -> URL {
+        var u = cartella.appendingPathComponent(base + ".json")
+        var n = 2
+        while FileManager.default.fileExists(atPath: u.path) {
+            u = cartella.appendingPathComponent("\(base) \(n).json")
+            n += 1
+        }
+        return u
+    }
+
+    /// La cartella a pezzi. nil se accanto c'è archivio.json più recente di tutti i pezzi, che allora vale di più (una
+    /// conversione non verificata: si è continuato a scrivere archivio.json). Un archivio.json più vecchio è la copia
+    /// di una conversione finita (la rinomina in archivio.json.vecchio non era riuscita): si mette da parte.
+    /// Un indice o un file che adesso non si legge (non rovinato), o scritto da un Prisma più recente: sola lettura.
     private static func caricaPezzi(_ cartella: URL, indiceLetto: ((DatiPrisma) -> Void)?) -> EsitoCarica? {
         let fm = FileManager.default
         let pezzi = ArchivioPezzi.cartellaPezzi(in: cartella)
         let vecchio = cartella.appendingPathComponent(nomeFileVecchio)
         let vecchioPresente = fm.fileExists(atPath: vecchio.path)
-        let indiceBuono = (try? ArchivioPezzi.leggiIndice(pezzi)) != nil
-        if !indiceBuono, vecchioPresente { return nil }
-        // Senza indice: le impostazioni della copia d'avvio, se c'è, o quelle di base
+        let indiceBuono: Bool
+        do {
+            _ = try ArchivioPezzi.leggiIndice(pezzi)
+            indiceBuono = true
+        } catch let e as ErroreArchivioPezzi where e.ricostruibile {
+            indiceBuono = false
+        } catch {
+            return nonApribile(error)
+        }
+        if vecchioPresente, dataModifica(vecchio) > ultimaModificaPezzi(pezzi) { return nil }
+        // Senza indice: si ricostruisce partendo dall'indice della copia d'avvio, se c'è, o da uno vuoto
         let copia = cartella.appendingPathComponent(nomeCopiaAvvio, isDirectory: true)
         let riserva = (try? ArchivioPezzi.leggiIndice(copia)) ?? IndiceArchivio()
         let r: (lettura: LetturaArchivio, problemi: [ProblemaPezzo], scartati: [URL])
@@ -253,51 +343,60 @@ enum Archivio {
             r = try ArchivioPezzi.leggi(pezzi, indiceLetto: indiceLetto.map { f in { f(ArchivioPezzi.scheletro($0)) } },
                                         indiceDiRiserva: riserva)
         } catch {
-            // Un formato su disco più recente: sola lettura, nulla si tocca
-            return EsitoCarica(dati: ArchivioPezzi.vuoto, avviso: avvisoPiuRecente, solaLettura: true, bloccaRipristino: true)
+            return nonApribile(error)
         }
         let d = r.lettura.dati
         if diVersionePiuRecente(d) { return EsitoCarica(dati: d, avviso: avvisoPiuRecente, solaLettura: true, bloccaRipristino: true) }
-        if !r.problemi.isEmpty, vecchioPresente { return nil }
         // I file non citati e più vecchi dell'indice (clienti tolti) e i temporanei di un salvataggio interrotto
         for u in r.scartati { try? fm.removeItem(at: u) }
         pulisciTemporanei(in: pezzi)
+        let convertito = cartella.appendingPathComponent(nomeFileConvertito)
+        if vecchioPresente {
+            // Più vecchio della cartella: la copia della conversione (resta archivio.json.vecchio fino al prossimo avvio pulito)
+            try? fm.removeItem(at: convertito)
+            try? fm.moveItem(at: vecchio, to: convertito)
+        }
         if r.problemi.isEmpty && indiceBuono {
-            if vecchioPresente {
-                // La conversione era finita ma non la rinomina: la cartella si è appena riaperta bene
-                let convertito = cartella.appendingPathComponent(nomeFileConvertito)
-                try? fm.removeItem(at: convertito)
-                try? fm.moveItem(at: vecchio, to: convertito)
-            } else {
-                // Riaperta bene dopo la conversione: la copia di archivio.json non serve più (verificata due volte)
-                try? fm.removeItem(at: cartella.appendingPathComponent(nomeFileConvertito))
-            }
+            // Riaperta bene dopo la conversione: la copia di archivio.json non serve più (verificata due volte)
+            if !vecchioPresente { try? fm.removeItem(at: convertito) }
             try? fm.removeItem(at: cartella.appendingPathComponent("archivio-all-avvio.json"))
             // La copia d'avvio in background: l'avvio non la aspetta (prima dei salvataggi, che passano dalla stessa coda)
             coda.async { copiaCartella(pezzi, in: copia) }
             return EsitoCarica(dati: d, sulDisco: r.lettura)
         }
-        // Qualcosa non si è letto: si mette da parte (mai cancellato), il resto si apre e si riscrive tutto
+        // Qualcosa non si è letto: si mette da parte (mai cancellato), il resto si apre e si riscrive tutto. Se una copia
+        // non si riesce a mettere da parte, sola lettura: la riscrittura toglierebbe il file che l'indice nuovo non cita
         let quando = Formati.nomeFile.string(from: Date())
+        func pulito(_ t: String) -> String {
+            t.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ":", with: "-")
+                .replacingOccurrences(of: "«", with: "").replacingOccurrences(of: "»", with: "")
+        }
         var voci: [String] = []
         for p in r.problemi {
-            let nome = p.descrizione.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ":", with: "-")
-                .replacingOccurrences(of: "«", with: "").replacingOccurrences(of: "»", with: "")
-            let destinazione = cartella.appendingPathComponent("\(prefissoNonLeggibile) \(nome)\(p.mancante ? " (mancante)" : "") \(quando).json")
+            let file = p.file.deletingPathExtension().lastPathComponent
+            let destinazione = destinazioneLibera("\(prefissoNonLeggibile) \(pulito(p.descrizione)) (\(pulito(file)))\(p.mancante ? " (mancante)" : "") \(quando)", in: cartella)
             if p.mancante {
                 // Il segno che manca (ferma i backup automatici: con la rotazione sostituirebbero quelli che lo hanno)
                 let segno = ["mancava": p.file.lastPathComponent, "che cosa": p.descrizione]
                 try? JSONSerialization.data(withJSONObject: segno, options: [.prettyPrinted]).write(to: destinazione)
             } else {
-                try? fm.moveItem(at: p.file, to: destinazione)
+                do {
+                    try fm.moveItem(at: p.file, to: destinazione)
+                } catch {
+                    return EsitoCarica(dati: d, avviso: "Alcune parti dell'archivio non si sono aperte (\(p.descrizione)) e non riesco a metterne da parte una copia: apro l'archivio in sola lettura e non salvo nulla, per non perderle. Chiudi Prisma e riaprilo.", solaLettura: true)
+                }
             }
             voci.append("\(p.descrizione) (\(p.mancante ? "manca" : "non si legge"))")
         }
         if !indiceBuono {
             let indice = pezzi.appendingPathComponent(ArchivioPezzi.nomeIndice)
-            let destinazione = cartella.appendingPathComponent("\(prefissoNonLeggibile) indice \(quando).json")
+            let destinazione = destinazioneLibera("\(prefissoNonLeggibile) indice \(quando)", in: cartella)
             if fm.fileExists(atPath: indice.path) {
-                try? fm.moveItem(at: indice, to: destinazione)
+                do {
+                    try fm.moveItem(at: indice, to: destinazione)
+                } catch {
+                    return EsitoCarica(dati: d, avviso: "L'indice dell'archivio non si legge e non riesco a metterne da parte una copia: apro l'archivio in sola lettura e non salvo nulla. Chiudi Prisma e riaprilo.", solaLettura: true)
+                }
             } else {
                 try? Data(#"{"mancava": "indice.json"}"#.utf8).write(to: destinazione)
             }
@@ -343,15 +442,19 @@ enum Archivio {
     /// mancante o rovinato rende il backup non valido (meglio sceglierne un altro che ripristinarne uno a metà).
     static func leggiPerRipristino(_ radice: URL) throws -> DatiPrisma {
         let vecchio = radice.appendingPathComponent(nomeFileVecchio)
-        let vecchioPresente = FileManager.default.fileExists(atPath: vecchio.path)
+        // Il segnaposto per le versioni di prima non è un archivio
+        let vecchioPresente = FileManager.default.fileExists(atPath: vecchio.path) && !segnaposto(vecchio)
+        let pezzi = ArchivioPezzi.cartellaPezzi(in: radice)
+        // Un backup fatto con una transazione confermata e non finita (non dovrebbe succedere: si copia a salvataggi fermi)
+        try? ArchivioPezzi.completaTransazione(pezzi)
         if ArchivioPezzi.presente(in: radice) {
             do {
-                let r = try ArchivioPezzi.leggi(ArchivioPezzi.cartellaPezzi(in: radice))
+                let r = try ArchivioPezzi.leggi(pezzi)
                 if r.problemi.isEmpty { return r.lettura.dati }
                 if !vecchioPresente {
                     throw ErroreBackup.archivioNonValido("mancano o non si leggono " + r.problemi.map(\.descrizione).joined(separator: ", "))
                 }
-            } catch ErroreArchivioPezzi.formatoPiuRecente {
+            } catch ErroreArchivioPezzi.formatoPiuRecente, ErroreArchivioPezzi.versionePiuRecente {
                 throw ErroreBackup.versionePiuRecente
             } catch let e as ErroreBackup {
                 throw e
@@ -359,6 +462,7 @@ enum Archivio {
                 if !vecchioPresente { throw ErroreBackup.archivioNonValido(error.localizedDescription) }
             }
         }
+        guard vecchioPresente else { throw ErroreBackup.archivioMancante }
         do {
             return try decodifica(Data(contentsOf: vecchio))
         } catch {
@@ -384,16 +488,35 @@ enum Archivio {
         try scriviAtomico(nuovoCodificatore().encode(dati), in: cartella.appendingPathComponent(nomeFileVecchio))
     }
 
-    /// Scrittura atomica: un file temporaneo accanto («nome.tmp-xxxxxxxx») e poi la rinomina, che sostituisce il file in
-    /// un colpo solo. Un'interruzione lascia al più il temporaneo (che la lettura ignora e toglie), mai un file a metà.
-    static func scriviAtomico(_ data: Data, in url: URL) throws {
+    /// Le opzioni di una scrittura diretta (senza `.atomic`: il temporaneo e la rinomina li fa `scriviAtomico`): su
+    /// iPhone e iPad la protezione completa dei file.
+    static var opzioniScritturaDiretta: Data.WritingOptions {
+        #if os(macOS)
+        return []
+        #elseif os(iOS)
+        return [.completeFileProtection]
+        #endif
+    }
+
+    /// Porta sul disco ciò che è stato scritto in `url` (un file o una cartella, per le rinomine fatte dentro). Di base
+    /// con una barriera (`F_BARRIERFSYNC`): tutto ciò che è scritto prima arriva sul disco prima di ciò che viene dopo
+    /// (il contenuto prima della rinomina che lo mette al suo posto), senza aspettare lo svuotamento della cache del
+    /// disco. `completo` (`F_FULLFSYNC`) aspetta anche quello: solo per la conferma di una transazione.
+    static func sincronizza(_ url: URL, completo: Bool = false) {
+        let fd = open(url.path, O_RDONLY)
+        guard fd >= 0 else { return }
+        defer { close(fd) }
+        if fcntl(fd, completo ? F_FULLFSYNC : F_BARRIERFSYNC) == -1 { fsync(fd) }
+    }
+
+    /// Scrittura atomica: un file temporaneo accanto («nome.tmp-xxxxxxxx»), portato sul disco, e poi la rinomina, che
+    /// sostituisce il file in un colpo solo. Un'interruzione (anche un Mac che si spegne) lascia al più il temporaneo
+    /// (che la lettura ignora e toglie), mai un file a metà. `completo`: vedi `sincronizza`.
+    static func scriviAtomico(_ data: Data, in url: URL, completo: Bool = false) throws {
         let temporaneo = url.deletingLastPathComponent()
             .appendingPathComponent(url.lastPathComponent + ".tmp-" + UUID().uuidString.prefix(8).lowercased())
-        #if os(macOS)
-        try data.write(to: temporaneo)
-        #elseif os(iOS)
-        try data.write(to: temporaneo, options: [.completeFileProtection])
-        #endif
+        try data.write(to: temporaneo, options: opzioniScritturaDiretta)
+        sincronizza(temporaneo, completo: completo)
         guard rename(temporaneo.path, url.path) == 0 else {
             let codice = errno
             try? FileManager.default.removeItem(at: temporaneo)
@@ -408,6 +531,15 @@ enum Archivio {
             for nome in (try? fm.contentsOfDirectory(atPath: c.path)) ?? [] where nome.contains(".tmp-") {
                 try? fm.removeItem(at: c.appendingPathComponent(nome))
             }
+        }
+    }
+
+    /// Toglie le copie d'avvio lasciate a metà («Archivio-all-avvio.tmp-xxxxxxxx», un'interruzione durante la copia):
+    /// sono dati dei clienti in più, che nessuno legge e che i backup porterebbero con sé.
+    static func pulisciCopieInterrotte(in cartella: URL) {
+        let fm = FileManager.default
+        for nome in (try? fm.contentsOfDirectory(atPath: cartella.path)) ?? [] where nome.hasPrefix(nomeCopiaAvvio + ".tmp-") {
+            try? fm.removeItem(at: cartella.appendingPathComponent(nome))
         }
     }
 

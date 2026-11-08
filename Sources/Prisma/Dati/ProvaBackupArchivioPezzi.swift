@@ -46,7 +46,10 @@ extension ProvaBackup {
         if let e = try provaInterrotto(base.appendingPathComponent("Interrotto", isDirectory: true)) {
             return "archivio a pezzi: \(e)"
         }
-        print("OK    archivio a pezzi: conversione, backup e ripristino, backup di prima, file rovinati e mancanti, scrittura dei soli file cambiati, salvataggio interrotto")
+        if let e = try provaRevisioneArchivio(base.appendingPathComponent("Revisione", isDirectory: true)) {
+            return "archivio a pezzi: \(e)"
+        }
+        print("OK    archivio a pezzi: conversione, backup e ripristino, backup di prima, file rovinati e mancanti, scrittura dei soli file cambiati, salvataggi interrotti (transazioni), file non leggibili adesso, indici più recenti, copie omonime, formato di prima dopo un ripristino, archivio.json vecchio, sole sezioni, ricostruzione senza clienti tolti, NaN, copie d'avvio interrotte, segnaposto per le versioni di prima, backup protetto, copia d'avvio, transazione rimasta nella stessa sessione e due ricostruzioni di fila")
         return nil
     }
 
@@ -56,7 +59,7 @@ extension ProvaBackup {
     }
 
     /// Una cartella dell'archivio («Prisma») con archivio.json di prima e un documento.
-    private static func archivioDiPrima(_ cartella: URL, _ d: DatiPrisma) throws {
+    static func archivioDiPrima(_ cartella: URL, _ d: DatiPrisma) throws {
         let fm = FileManager.default
         try? fm.removeItem(at: cartella)
         try fm.createDirectory(at: cartella.appendingPathComponent("Documenti"), withIntermediateDirectories: true)
@@ -65,7 +68,7 @@ extension ProvaBackup {
     }
 
     /// Converte come all'avvio: carica e, se serve, riscrive tutto (come `StatoShell.completaAvvio`).
-    private static func caricaEConverti(_ cartella: URL) -> Archivio.EsitoCarica {
+    static func caricaEConverti(_ cartella: URL) -> Archivio.EsitoCarica {
         let e = Archivio.carica(in: cartella)
         if e.daRiscrivere, !e.solaLettura {
             let s = SalvataggioArchivio(cartella: cartella, coda: DispatchQueue(label: "prisma.prova-pezzi", qos: .utility))
@@ -331,27 +334,67 @@ extension ProvaBackup {
         let restati = ((try? fm.contentsOfDirectory(atPath: pezzi.appendingPathComponent("Clienti").path)) ?? []) + ((try? fm.contentsOfDirectory(atPath: pezzi.path)) ?? [])
         guard !restati.contains(where: { $0.contains(".tmp-") }) else { return "i temporanei di un salvataggio interrotto restano" }
 
-        // 2. Un giro interrotto dopo i file dei clienti e prima dell'indice: niente perso
+        // 2. Un giro di più file (una nota cambiata, un cliente nuovo, l'indice) interrotto prima della conferma:
+        // l'archivio resta quello di prima, tutto intero, e i file nuovi a metà se ne vanno
         guard let sulDisco = e1.sulDisco else { return "l'archivio non si riapre pulito" }
         let s = SalvataggioArchivio(cartella: cartella, coda: DispatchQueue(label: "prisma.prova-interrotto", qos: .utility))
         s.prepara(sulDisco)
         var b = a
         if let i = b.note.firstIndex(where: { $0.clienteId == primo.id }) { b.note[i].testo += " cambiata" }
         var nuovo = Cliente.nuovo(tinta: .blu)
-        nuovo.nome = "Cliente Arrivato Prima Dell'Indice"
+        nuovo.nome = "Cliente Arrivato In Una Transazione"
         nuovo.creatoIl = Date(timeIntervalSinceReferenceDate: 800_000_000)
         b.clienti.append(nuovo)
         b.posizioni.append(Posizione(clienteId: nuovo.id, canale: .indipendente, stato: .inEssere, area: .liquidita, nome: "Conto"))
-        b.note.append(Nota(clienteId: primo.id, titolo: "Nuova", testo: "prima dell'indice"))
+        b.note.append(Nota(clienteId: primo.id, titolo: "Nuova", testo: "nella transazione"))
         b = try passatoDalDisco(b)
-        s.sullaCoda { $0.interrompiPrimaDellIndice = true }
+        s.sullaCoda { $0.interrompi = .primaDellaConferma }
         s.accoda(b, generazione: 1) { errore in print("ERRORE: \(errore.localizedDescription)") }
         s.attendi()
-        guard (try? ArchivioPezzi.leggiIndice(pezzi)) == indice else { return "l'indice è stato scritto nonostante l'interruzione" }
+        let transazione = pezzi.appendingPathComponent(ArchivioPezzi.nomeTransazione)
+        guard (try? ArchivioPezzi.leggiIndice(pezzi)) == indice, fm.fileExists(atPath: transazione.path) else {
+            return "l'interruzione prima della conferma non ha lasciato l'archivio com'era"
+        }
         let e2 = Archivio.carica(in: cartella)
         Archivio.coda.sync {}
-        guard e2.dati == b else {
-            return "dopo un salvataggio interrotto prima dell'indice qualcosa si è perso (clienti \(e2.dati.clienti.count) di \(b.clienti.count), note \(e2.dati.note.count) di \(b.note.count))"
+        guard e2.dati == a, e2.avviso == nil, !fm.fileExists(atPath: transazione.path) else {
+            return "dopo un salvataggio interrotto prima della conferma l'archivio non è quello di prima (o i file a metà restano)"
+        }
+
+        // 3. Lo stesso giro confermato e interrotto dopo un solo file al suo posto: all'avvio si completa, tutto nuovo
+        guard let sulDisco2 = e2.sulDisco else { return "l'archivio non si riapre pulito" }
+        let s2 = SalvataggioArchivio(cartella: cartella, coda: DispatchQueue(label: "prisma.prova-interrotto-2", qos: .utility))
+        s2.prepara(sulDisco2)
+        s2.sullaCoda { $0.interrompi = .dopoLaConferma(spostati: 1) }
+        s2.accoda(b, generazione: 1) { errore in print("ERRORE: \(errore.localizedDescription)") }
+        s2.attendi()
+        guard (try? ArchivioPezzi.leggiIndice(pezzi)) == indice else { return "l'indice è al suo posto prima degli altri file" }
+        let e3 = Archivio.carica(in: cartella)
+        Archivio.coda.sync {}
+        guard e3.dati == b, e3.avviso == nil, !fm.fileExists(atPath: transazione.path) else {
+            return "un salvataggio confermato e interrotto non si completa all'avvio (clienti \(e3.dati.clienti.count) di \(b.clienti.count), note \(e3.dati.note.count) di \(b.note.count))"
+        }
+
+        // 4. Una nota spostata da un cliente a un altro (due file dei clienti): mai persa né doppia, a ogni interruzione
+        guard let altro = b.clienti.first(where: { $0.id != primo.id && $0.id != nuovo.id }),
+              let i = b.note.firstIndex(where: { $0.clienteId == primo.id }) else { return "mancano i clienti per spostare una nota" }
+        var c = b
+        c.note[i].clienteId = altro.id
+        let idNota = c.note[i].id
+        for (n, interruzione) in [ScrittorePezzi.Interruzione.primaDellaConferma, .dopoLaConferma(spostati: 1)].enumerated() {
+            guard let base = Archivio.carica(in: cartella).sulDisco else { return "l'archivio non si riapre pulito" }
+            Archivio.coda.sync {}
+            let sn = SalvataggioArchivio(cartella: cartella, coda: DispatchQueue(label: "prisma.prova-sposta-\(n)", qos: .utility))
+            sn.prepara(base)
+            sn.sullaCoda { $0.interrompi = interruzione }
+            sn.accoda(c, generazione: 1) { errore in print("ERRORE: \(errore.localizedDescription)") }
+            sn.attendi()
+            let riaperto = Archivio.carica(in: cartella)
+            Archivio.coda.sync {}
+            let atteso = n == 0 ? b : c
+            guard riaperto.dati.note.filter({ $0.id == idNota }).count == 1, riaperto.dati == atteso else {
+                return "una nota spostata fra due clienti, interruzione \(n + 1): la nota c'è \(riaperto.dati.note.filter { $0.id == idNota }.count) volte"
+            }
         }
         return nil
     }

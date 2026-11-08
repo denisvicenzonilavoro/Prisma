@@ -97,15 +97,18 @@ enum GestoreBackup {
         var copia: URL?
         defer { if let copia { try? fm.removeItem(at: copia) } }
         // L'archivio a pezzi si copia a coda dei salvataggi ferma: nel backup mai un salvataggio a metà (un indice nuovo
-        // con i file dei clienti di prima). La copia d'avvio non serve in un backup
+        // con i file dei clienti di prima). La copia d'avvio non serve in un backup, nemmeno una rimasta a metà
+        // («Archivio-all-avvio.tmp-…»). Al posto di archivio.json il segnaposto per le versioni di Prisma di prima
         let conPezzi = fm.fileExists(atPath: sorgente.appendingPathComponent(ArchivioPezzi.nomeCartella).path)
-        let lasciaFuori = Set(escludi + [Archivio.nomeCopiaAvvio])
+        func lasciaFuori(_ nome: String) -> Bool {
+            escludi.contains(nome) || nome.hasPrefix(Archivio.nomeCopiaAvvio) || (conPezzi && nome == Archivio.nomeFileVecchio)
+        }
         if conPezzi || (!escludi.isEmpty && escludi.contains(where: { fm.fileExists(atPath: sorgente.appendingPathComponent($0).path) })) {
             let radice = fm.temporaryDirectory.appendingPathComponent("Prisma-copia-\(UUID().uuidString)", isDirectory: true)
             let dentro = radice.appendingPathComponent(sorgente.lastPathComponent, isDirectory: true)
             copia = radice
             try fm.createDirectory(at: dentro, withIntermediateDirectories: true)
-            for voce in try fm.contentsOfDirectory(at: sorgente, includingPropertiesForKeys: nil) where !lasciaFuori.contains(voce.lastPathComponent) {
+            for voce in try fm.contentsOfDirectory(at: sorgente, includingPropertiesForKeys: nil) where !lasciaFuori(voce.lastPathComponent) {
                 let destinazione = dentro.appendingPathComponent(voce.lastPathComponent)
                 if voce.lastPathComponent == ArchivioPezzi.nomeCartella {
                     try Archivio.coda.sync { try fm.copyItem(at: voce, to: destinazione) }
@@ -113,6 +116,7 @@ enum GestoreBackup {
                     try fm.copyItem(at: voce, to: destinazione)
                 }
             }
+            if conPezzi { try Archivio.datiSegnaposto().write(to: dentro.appendingPathComponent(Archivio.nomeFileVecchio)) }
             sorgente = dentro
         }
         if creaCartella {
@@ -215,6 +219,8 @@ enum GestoreBackup {
                 throw ErroreBackup.archivioMancante
             }
             let dati = try Archivio.leggiPerRipristino(radice)
+            // Il segnaposto per le versioni di prima non deve arrivare nella cartella dell'archivio
+            Archivio.togliSegnaposto(in: radice)
             // Un backup di una versione più recente perderebbe i dati che questa non conosce
             guard !Archivio.diVersionePiuRecente(dati) else { throw ErroreBackup.versionePiuRecente }
             return (dati, radice)

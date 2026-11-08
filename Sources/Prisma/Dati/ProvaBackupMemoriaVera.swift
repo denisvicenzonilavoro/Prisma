@@ -17,7 +17,7 @@ extension ProvaBackup {
         defer { try? fm.removeItem(at: base) }
         try fm.createDirectory(at: dati.appendingPathComponent("Vera", isDirectory: true), withIntermediateDirectories: true)
         try fm.createDirectory(at: dati.appendingPathComponent("Biblioteca", isDirectory: true), withIntermediateDirectories: true)
-        try Archivio.codificatore.encode(DatiPrisma.demo()).write(to: dati.appendingPathComponent("archivio.json"))
+        try Archivio.salva(DatiPrisma.demo(), in: dati)
 
         // La memoria: un ricordo, una lezione, un riassunto
         guard let chiave = MemoriaVera.nuovaChiave() else { return "memoria di Vera: niente chiave casuale" }

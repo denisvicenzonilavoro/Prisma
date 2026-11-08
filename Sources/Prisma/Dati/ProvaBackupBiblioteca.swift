@@ -18,7 +18,7 @@ extension ProvaBackup {
         try fm.createDirectory(at: cartella, withIntermediateDirectories: true)
         var archivio = DatiPrisma.demo()
         archivio.impostazioni.backup.escludiBiblioteca = true
-        try Archivio.codificatore.encode(archivio).write(to: dati.appendingPathComponent("archivio.json"))
+        try Archivio.salva(archivio, in: dati)
 
         // Un documento con il suo PDF (qui pochi byte finti) e il testo accanto
         var d = DocumentoBiblioteca(titolo: "Piano rivalutabile · Condizioni di assicurazione", sigla: "", edizione: "fac-simile, ed. 01/2026",

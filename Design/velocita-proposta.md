@@ -198,6 +198,15 @@ Prova di carico (200 clienti, build di sviluppo, Mac carico), sul disco:
 | Lettura intera | 71 ms | 46 ms (in parallelo) |
 | Salvataggio di una nota | 60 ms (2,6 MB) | 9 ms (1 file, 22 KB) |
 
+Dopo le correzioni della revisione (8 novembre 2026): un giro che tocca più file (una nota spostata da un cliente a un
+altro, un cliente nuovo o tolto, la scrittura intera) è una transazione: i file nuovi in `Archivio/in-corso/`, ognuno
+portato sul disco (`F_BARRIERFSYNC`), poi la conferma `conferma.json` con `F_FULLFSYNC`, poi le rinomine con l'indice
+per ultimo; una transazione confermata e interrotta si completa all'avvio, una non confermata si scarta. Un file che
+c'è ma adesso non si legge (disco, permessi, iPad bloccato) e un indice di un Prisma più recente (anche se non si
+decodifica) aprono in sola lettura senza toccare nulla. Misure, stessa prova: scrittura intera 198 ms (era 67: il
+prezzo della sincronizzazione, solo alla conversione, dopo un ripristino o una ricostruzione), indice 2 ms, lettura
+intera 51 ms, salvataggio di una nota 9 ms (1 file, invariato).
+
 La prova della fluidità non legge il disco (stato non persistente): avvio e tasto nella nota restano quelli della
 tappa 1 (tasto 4 → 3 ms con 5 clienti; avvio 341 → 721 ms con 5 e 1.467 → 747 ms con 200, oscillazioni del Mac con
 carico medio 12-40, non del codice). Con il Mac così carico la riga del tasto con 200 clienti non è arrivata nel

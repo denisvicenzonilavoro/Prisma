@@ -464,15 +464,42 @@ struct ProblemaPezzo: Equatable {
 }
 
 enum ErroreArchivioPezzi: LocalizedError {
+    /// L'indice c'è ma il contenuto non si decodifica (rovinato): si può ricostruire dai file.
     case indiceNonLeggibile(String)
+    /// L'indice non c'è: si può ricostruire dai file.
+    case indiceMancante
+    /// Formato su disco più recente di questo Prisma: sola lettura, nulla si tocca.
     case formatoPiuRecente
+    /// Versione dei dati più recente (letta anche da un indice che questo Prisma non sa decodificare): sola lettura.
+    case versionePiuRecente
+    /// Un file che c'è ma che adesso non si legge (errore del disco, permessi, protezione dei dati di iPhone e iPad a
+    /// dispositivo bloccato): non è rovinato, quindi non si mette da parte né si ricostruisce. Sola lettura.
+    case nonLeggibileOra(String)
 
     var errorDescription: String? {
         switch self {
         case .indiceNonLeggibile(let m): return "L'indice dell'archivio non è leggibile: \(m)"
-        case .formatoPiuRecente: return "L'archivio è stato scritto da una versione più recente di Prisma."
+        case .indiceMancante: return "L'indice dell'archivio non c'è."
+        case .formatoPiuRecente, .versionePiuRecente: return "L'archivio è stato scritto da una versione più recente di Prisma."
+        case .nonLeggibileOra(let m): return "In questo momento non riesco a leggere \(m)."
         }
     }
+
+    /// true se l'archivio si può ricostruire dai file presenti (indice rovinato o mancante); false se va aperto in sola
+    /// lettura senza toccare nulla (versione più recente, file non leggibili adesso).
+    var ricostruibile: Bool {
+        switch self {
+        case .indiceNonLeggibile, .indiceMancante: return true
+        case .formatoPiuRecente, .versionePiuRecente, .nonLeggibileOra: return false
+        }
+    }
+}
+
+/// Solo formato e versione dell'indice: si leggono anche quando il resto non si decodifica (un indice scritto da un
+/// Prisma più recente, con un campo che questo non conosce, non è un indice rovinato).
+private struct SoloFormatoIndice: Decodable {
+    var formato: Int?
+    var versione: Int?
 }
 
 extension ArchivioPezzi {
@@ -492,21 +519,41 @@ extension ArchivioPezzi {
         }
     }
 
-    /// Legge l'indice (piccolo). Lancia se manca o non si legge.
+    /// Legge l'indice (piccolo). Lancia sempre un `ErroreArchivioPezzi`: `.indiceMancante`, `.nonLeggibileOra` (c'è ma
+    /// adesso non si apre), `.formatoPiuRecente` / `.versionePiuRecente` (scritto da un Prisma più recente, anche se il
+    /// resto non si decodifica: come `SoloVersione` per archivio.json) oppure `.indiceNonLeggibile` (rovinato).
     static func leggiIndice(_ cartellaPezzi: URL) throws -> IndiceArchivio {
-        let grezzo = try Data(contentsOf: cartellaPezzi.appendingPathComponent(nomeIndice))
+        let url = cartellaPezzi.appendingPathComponent(nomeIndice)
+        let grezzo: Data
         do {
-            return try decodificatore.decode(IndiceArchivio.self, from: grezzo)
+            grezzo = try Data(contentsOf: url)
         } catch {
+            guard FileManager.default.fileExists(atPath: url.path) else { throw ErroreArchivioPezzi.indiceMancante }
+            throw ErroreArchivioPezzi.nonLeggibileOra("l'indice dell'archivio (\(error.localizedDescription))")
+        }
+        let indice: IndiceArchivio
+        do {
+            indice = try decodificatore.decode(IndiceArchivio.self, from: grezzo)
+        } catch {
+            if let v = try? decodificatore.decode(SoloFormatoIndice.self, from: grezzo) {
+                if let f = v.formato, f > formatoAttuale { throw ErroreArchivioPezzi.formatoPiuRecente }
+                if let n = v.versione, n > DatiPrisma.versioneAttuale { throw ErroreArchivioPezzi.versionePiuRecente }
+            }
             throw ErroreArchivioPezzi.indiceNonLeggibile(error.localizedDescription)
         }
+        guard indice.formato <= formatoAttuale else { throw ErroreArchivioPezzi.formatoPiuRecente }
+        return indice
     }
 
     /// Legge tutta la cartella a pezzi. Non scrive nulla: chi chiama decide che fare dei pezzi non leggibili.
     /// - indiceLetto: chiamato appena l'indice è letto (e solo se il formato e la versione sono di questo Prisma),
     ///   prima dei file dei clienti: StatoShell parte con la schermata di benvenuto senza aspettare il resto.
-    /// - indiceDiRiserva: se l'indice non si legge, si ricostruisce l'archivio dai file presenti con queste
-    ///   impostazioni (quelle della copia fatta all'avvio); senza, lancia `.indiceNonLeggibile`.
+    /// - indiceDiRiserva: se l'indice è rovinato o manca (mai se è di un Prisma più recente o se adesso non si apre), si
+    ///   ricostruisce l'archivio dai file presenti partendo da questo indice (quello della copia fatta all'avvio): i
+    ///   clienti che cita si cercano come sempre (un file che manca si segnala), un file che non cita si riprende solo se
+    ///   è stato scritto dopo di lui, altrimenti è il resto di un cliente tolto e si mette da parte (non torna in vita).
+    ///   Senza riserva lancia l'errore dell'indice.
+    /// Lancia `.nonLeggibileOra` se un file c'è ma adesso non si legge: non è rovinato, non si deve mettere da parte.
     /// I file dei clienti e le sezioni si leggono in parallelo.
     static func leggi(_ cartellaPezzi: URL, indiceLetto: ((IndiceArchivio) -> Void)? = nil,
                       indiceDiRiserva: IndiceArchivio? = nil) throws -> (lettura: LetturaArchivio, problemi: [ProblemaPezzo], scartati: [URL]) {
@@ -515,12 +562,9 @@ extension ArchivioPezzi {
         var ricostruito = false
         do {
             indice = try leggiIndice(cartellaPezzi)
-        } catch {
-            guard var riserva = indiceDiRiserva else { throw error }
-            // Ricostruzione: nessun cliente citato (si riprendono tutti i file presenti), le sezioni tutte
-            riserva.clienti = []
-            riserva.senzaCliente = nil
-            riserva.generazione = Int.min
+        } catch let e as ErroreArchivioPezzi where e.ricostruibile {
+            guard var riserva = indiceDiRiserva else { throw e }
+            // Ricostruzione: i clienti e la generazione della copia d'avvio, le sezioni tutte
             riserva.sezioni = sezioni.map(\.nome)
             indice = riserva
             ricostruito = true
@@ -537,7 +581,7 @@ extension ArchivioPezzi {
         for nome in presenti.sorted() where !citati.contains(nome) { compiti.append(.sciolto(nome)) }
         for s in sezioni where indice.sezioni.contains(s.nome) { compiti.append(.sezione(s.nome)) }
 
-        enum Esito { case letto(DatiPrisma, generazione: Int?), manca, rovinato(String) }
+        enum Esito { case letto(DatiPrisma, generazione: Int?), manca, rovinato(String), nonLeggibileOra(String) }
         var esiti = [Esito](repeating: .manca, count: compiti.count)
         let blocco = NSLock()
         DispatchQueue.concurrentPerform(iterations: compiti.count) { i in
@@ -552,7 +596,8 @@ extension ArchivioPezzi {
             case .sezione(let n): url = cartellaPezzi.appendingPathComponent(nomeFileSezione(n))
             }
             let esito: Esito
-            if let grezzo = try? Data(contentsOf: url) {
+            do {
+                let grezzo = try Data(contentsOf: url)
                 do {
                     let d = try decodificatore.decode(DatiPrisma.self, from: grezzo)
                     let g = serveGenerazione ? (try? decodificatore.decode(MetaPezzo.self, from: grezzo))?.generazionePezzo : nil
@@ -560,13 +605,17 @@ extension ArchivioPezzi {
                 } catch {
                     esito = .rovinato(error.localizedDescription)
                 }
-            } else {
-                esito = fm.fileExists(atPath: url.path) ? .rovinato("non si apre") : .manca
+            } catch {
+                // Rovinato è solo un contenuto che non si decodifica: un file che c'è e non si apre è un problema del
+                // momento (disco, permessi, dispositivo bloccato), non va messo da parte né riscritto
+                esito = fm.fileExists(atPath: url.path) ? .nonLeggibileOra("«\(url.lastPathComponent)» (\(error.localizedDescription))") : .manca
             }
             blocco.lock()
             esiti[i] = esito
             blocco.unlock()
         }
+
+        for e in esiti { if case .nonLeggibileOra(let m) = e { throw ErroreArchivioPezzi.nonLeggibileOra(m) } }
 
         var pezzi: [String: DatiPrisma] = [:]
         var gruppi: [String] = []
@@ -575,6 +624,8 @@ extension ArchivioPezzi {
         var scartati: [URL] = []
         for (i, compito) in compiti.enumerated() {
             switch (compito, esiti[i]) {
+            case (_, .nonLeggibileOra):
+                break // già lanciato sopra
             case (.cliente(let v), .letto(let d, _)):
                 pezzi[v.id] = d
                 gruppi.append(v.id)
@@ -591,14 +642,18 @@ extension ArchivioPezzi {
                 if case .manca = e { mancante = true } else { mancante = false }
                 problemi.append(ProblemaPezzo(file: cartellaClienti.appendingPathComponent(f), descrizione: "il file degli elementi senza cliente", mancante: mancante))
             case (.sciolto(let f), .letto(let d, let g)):
-                // Scritto dopo l'indice (salvataggio interrotto prima dell'indice): si riprende; più vecchio: un
-                // cliente tolto il cui file non si era ancora cancellato
-                if (g ?? Int.min) > indice.generazione || ricostruito {
+                // Scritto dopo l'indice: si riprende. Più vecchio: un cliente tolto il cui file non si era ancora
+                // cancellato; con l'indice buono si scarta, in una ricostruzione si mette da parte (mai perso, ma il
+                // cliente tolto non torna in vita)
+                if (g ?? Int.min) > indice.generazione {
                     let gruppo = f == nomeSenzaCliente ? gruppoAltri : (d.clienti.first?.id ?? "file:" + f)
                     if pezzi[gruppo] == nil {
                         pezzi[gruppo] = d
                         gruppi.append(gruppo)
                     }
+                } else if ricostruito {
+                    problemi.append(ProblemaPezzo(file: cartellaClienti.appendingPathComponent(f),
+                                                  descrizione: "il file «\(f)» (non era nell'archivio all'ultimo avvio)", mancante: false))
                 } else {
                     scartati.append(cartellaClienti.appendingPathComponent(f))
                 }
@@ -629,6 +684,89 @@ extension ArchivioPezzi {
     }
 }
 
+// MARK: - Transazioni (un cambio che tocca più file)
+
+/// Il manifesto di una transazione (`Archivio/in-corso/conferma.json`). È il punto di conferma: si scrive per ultimo,
+/// dopo tutti i file nuovi, con la sincronizzazione completa del disco. Prima di lui nulla è stato toccato fuori dalla
+/// cartella «in-corso» (un'interruzione lascia l'archivio com'era); dopo di lui la transazione si completa sempre, subito
+/// o al primo avvio (`ArchivioPezzi.completaTransazione`): l'archivio è quello nuovo, tutto intero.
+struct ConfermaTransazione: Codable {
+    /// Coppie [file dentro «in-corso», destinazione relativa ad «Archivio/»], l'indice per ultimo.
+    var sposta: [[String]]
+    /// File da togliere (relativi ad «Archivio/»), dopo l'indice nuovo che non li cita più.
+    var togli: [String]
+}
+
+enum ErroreTransazione: LocalizedError {
+    case nonCompletata(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .nonCompletata(let m): return "L'ultimo salvataggio dell'archivio non si è potuto completare: \(m)"
+        }
+    }
+}
+
+extension ArchivioPezzi {
+    static let nomeTransazione = "in-corso"
+    static let nomeConferma = "conferma.json"
+
+    /// Completa una transazione confermata rimasta a metà, o scarta quella non confermata (i file nuovi non erano
+    /// ancora al loro posto: l'archivio è quello di prima). Si può ripetere quante volte serve: un file già spostato
+    /// non si sposta di nuovo. Lancia se non riesce a finire (allora l'archivio non va letto né scritto). Restituisce i
+    /// file da togliere che non si sono potuti togliere (da riprovare).
+    /// - limite: solo per la prova, quanti spostamenti fare prima di fermarsi, mai i file da togliere (un'interruzione a
+    ///   metà).
+    @discardableResult
+    static func completaTransazione(_ cartellaPezzi: URL, limite: Int? = nil) throws -> [String] {
+        let fm = FileManager.default
+        let tx = cartellaPezzi.appendingPathComponent(nomeTransazione, isDirectory: true)
+        guard fm.fileExists(atPath: tx.path) else { return [] }
+        let fileConferma = tx.appendingPathComponent(nomeConferma)
+        let grezzo: Data
+        do {
+            grezzo = try Data(contentsOf: fileConferma)
+        } catch {
+            guard !fm.fileExists(atPath: fileConferma.path) else {
+                throw ErroreTransazione.nonCompletata("la conferma non si legge (\(error.localizedDescription))")
+            }
+            // Mai confermata: via i file nuovi, l'archivio resta com'era
+            try? fm.removeItem(at: tx)
+            return []
+        }
+        guard let conferma = try? JSONDecoder().decode(ConfermaTransazione.self, from: grezzo) else {
+            // La conferma si scrive con una rinomina: un contenuto rovinato vuol dire un disco rovinato. Si scarta
+            try? fm.removeItem(at: tx)
+            return []
+        }
+        var fatti = 0
+        for coppia in conferma.sposta where coppia.count == 2 {
+            let da = tx.appendingPathComponent(coppia[0])
+            let a = cartellaPezzi.appendingPathComponent(coppia[1])
+            guard fm.fileExists(atPath: da.path) else { continue } // già al suo posto
+            if let limite, fatti >= limite { return [] }
+            try? fm.createDirectory(at: a.deletingLastPathComponent(), withIntermediateDirectories: true)
+            guard rename(da.path, a.path) == 0 else {
+                throw ErroreTransazione.nonCompletata("«\(coppia[1])» non si sposta (errore \(errno))")
+            }
+            fatti += 1
+        }
+        // La prova si ferma comunque prima di togliere i file
+        if limite != nil { return [] }
+        // Le rinomine sul disco prima di togliere i file e la conferma
+        Archivio.sincronizza(cartellaPezzi)
+        Archivio.sincronizza(cartellaPezzi.appendingPathComponent(nomeClienti, isDirectory: true))
+        var falliti: [String] = []
+        for f in conferma.togli {
+            let u = cartellaPezzi.appendingPathComponent(f)
+            if fm.fileExists(atPath: u.path), (try? fm.removeItem(at: u)) == nil { falliti.append(f) }
+        }
+        try? fm.removeItem(at: fileConferma)
+        try? fm.removeItem(at: tx)
+        return falliti
+    }
+}
+
 // MARK: - Scrittura
 
 /// La scrittura della cartella a pezzi: tutta (la prima volta, dopo un ripristino, se l'indice sul disco non è più
@@ -639,6 +777,10 @@ extension ArchivioPezzi {
 /// che non è più lo stesso (un confronto che per gli elenchi non toccati costa quanto un puntatore), si rifà la
 /// parte di ogni cliente e si scrivono solo i file dei clienti la cui parte è diversa. Così nessuna strada di
 /// modifica (un tasto, `carica`, Prisma ovunque, un'importazione) può dimenticare di segnare un cliente.
+///
+/// Un giro che scrive un file solo (il caso di ogni tasto) lo sostituisce con una rinomina. Un giro che tocca più file
+/// (una nota spostata da un cliente a un altro, un cliente nuovo con l'indice, un cliente tolto) è una transazione:
+/// tutto o niente anche se il Mac si spegne a metà (`ConfermaTransazione`).
 final class ScrittorePezzi {
     /// La cartella dell'archivio («Prisma»): i pezzi vanno in «Archivio/».
     let cartella: URL
@@ -656,12 +798,28 @@ final class ScrittorePezzi {
     }
     private var scritto: Scritto?
 
+    /// Un file da scrivere: il nome relativo ad «Archivio/» e il pezzo.
+    private typealias Lavoro = (nome: String, pezzo: PezzoDaScrivere)
+
+    /// Solo per le prove: dove si ferma il prossimo giro, come se il Mac si spegnesse lì.
+    enum Interruzione {
+        /// I file nuovi scritti in «in-corso», la conferma no.
+        case primaDellaConferma
+        /// Confermato, ma solo `spostati` file messi al loro posto e nessun file tolto.
+        case dopoLaConferma(spostati: Int)
+    }
+
     /// I file scritti nell'ultimo giro (nomi relativi a «Archivio/»), per la prova.
     private(set) var ultimiScritti: [String] = []
-    /// Solo per la prova: il giro si ferma dopo i pezzi, prima dell'indice (un salvataggio interrotto a metà).
-    var interrompiPrimaDellIndice = false
-    /// La conversione non si è potuta verificare: si continua a scrivere archivio.json come prima.
+    /// Solo per la prova: il prossimo giro si interrompe a metà.
+    var interrompi: Interruzione?
+    /// Solo per la prova: la verifica della conversione fallisce (come se la cartella riletta fosse diversa).
+    var verificaFallitaPerProva = false
+    /// La conversione non si è potuta verificare: si continua a scrivere archivio.json come prima (finché nella cartella
+    /// non torna una cartella a pezzi, per esempio con un ripristino).
     private(set) var formatoVecchio = false
+    /// File di clienti tolti che non si sono potuti cancellare: si riprova al giro dopo.
+    private var daTogliereInSospeso = Set<String>()
 
     init(cartella: URL) {
         self.cartella = cartella
@@ -704,8 +862,22 @@ final class ScrittorePezzi {
     func scrivi(_ dati: DatiPrisma) throws {
         ultimiScritti = []
         if formatoVecchio {
-            try Archivio.scriviVecchio(dati, in: cartella)
-            return
+            let fm = FileManager.default
+            // Un ripristino ha rimesso la cartella a pezzi (o tolto archivio.json): si torna a scrivere i pezzi, mai
+            // archivio.json accanto a una cartella che all'avvio varrebbe di più
+            if ArchivioPezzi.presente(in: cartella) || !fm.fileExists(atPath: cartella.appendingPathComponent(Archivio.nomeFileVecchio).path) {
+                formatoVecchio = false
+                scritto = nil
+            } else {
+                try Archivio.scriviVecchio(dati, in: cartella)
+                return
+            }
+        }
+        // Una transazione rimasta sul disco (un giro di prima che non si è completato, per esempio una rinomina non
+        // riuscita): si completa e si riscrive tutto. Con le sole differenze un giro di un file solo la scavalcherebbe e
+        // all'avvio dopo la transazione rimetterebbe il contenuto di prima sopra quello nuovo
+        if scritto != nil, FileManager.default.fileExists(atPath: cartellaPezzi.appendingPathComponent(ArchivioPezzi.nomeTransazione).path) {
+            scritto = nil
         }
         guard let s = scritto, !s.firma.isEmpty, s.firma == firma() else {
             try scriviTutto(dati)
@@ -717,7 +889,13 @@ final class ScrittorePezzi {
     private func scriviTutto(_ dati: DatiPrisma) throws {
         let fm = FileManager.default
         try fm.createDirectory(at: cartellaClienti, withIntermediateDirectories: true)
-        let generazione = (scritto?.indice.generazione ?? (try? ArchivioPezzi.leggiIndice(cartellaPezzi))?.generazione ?? 0) &+ 1
+        // Una transazione confermata e non finita va completata prima di leggere l'indice di adesso
+        daTogliereInSospeso.formUnion(try ArchivioPezzi.completaTransazione(cartellaPezzi))
+        // Mai sotto la copia d'avvio: dopo una ricostruzione (indice rovinato e messo da parte) i file nuovi devono
+        // risultare scritti dopo di lei, altrimenti una seconda ricostruzione li scambierebbe per clienti tolti
+        let copiaAvvio = cartella.appendingPathComponent(Archivio.nomeCopiaAvvio, isDirectory: true)
+        let generazione = max(scritto?.indice.generazione ?? (try? ArchivioPezzi.leggiIndice(cartellaPezzi))?.generazione ?? 0,
+                              (try? ArchivioPezzi.leggiIndice(copiaAvvio))?.generazione ?? 0) &+ 1
         var pezzi: [String: DatiPrisma] = [:]
         var ordini: [String: [Corsa]] = [:]
         let gruppo = gruppoDi(dati)
@@ -727,26 +905,22 @@ final class ScrittorePezzi {
         }
         pezzi = pezzi.filter { $0.key != ArchivioPezzi.gruppoAltri || !ArchivioPezzi.vuoto($0.value) }
         let file = assegnaFile(Set(pezzi.keys), dati: dati, precedenti: scritto?.file ?? [:])
-        var lavori: [(nome: String, url: URL, pezzo: PezzoDaScrivere)] = []
+        var lavori: [Lavoro] = []
         for (g, p) in pezzi {
             let f = file[g] ?? ArchivioPezzi.nomeFile(cliente: g)
-            lavori.append((ArchivioPezzi.nomeClienti + "/" + f, cartellaClienti.appendingPathComponent(f),
-                           PezzoDaScrivere(dati: p, chiavi: ArchivioPezzi.chiaviCliente, generazione: generazione)))
+            lavori.append((ArchivioPezzi.nomeClienti + "/" + f, PezzoDaScrivere(dati: p, chiavi: ArchivioPezzi.chiaviCliente, generazione: generazione)))
         }
         for s in ArchivioPezzi.sezioni {
-            let f = ArchivioPezzi.nomeFileSezione(s.nome)
-            lavori.append((f, cartellaPezzi.appendingPathComponent(f), PezzoDaScrivere(dati: dati, chiavi: s.chiavi, generazione: generazione)))
+            lavori.append((ArchivioPezzi.nomeFileSezione(s.nome), PezzoDaScrivere(dati: dati, chiavi: s.chiavi, generazione: generazione)))
         }
-        try scriviInParallelo(lavori)
         let indice = nuovoIndice(dati, file: file, ordini: ordini, generazione: generazione)
-        if interrompiPrimaDellIndice { return }
-        try Archivio.scriviAtomico(Archivio.nuovoCodificatore().encode(indice), in: fileIndice)
-        ultimiScritti.append(ArchivioPezzi.nomeIndice)
-        // Via tutto ciò che il nuovo indice non cita (file di prima, pezzi di una conversione interrotta, temporanei)
+        // Via (nella stessa transazione, dopo l'indice) tutto ciò che il nuovo indice non cita: file di prima, pezzi di
+        // una conversione interrotta
         let validi = Set(file.values)
-        for nome in (try? fm.contentsOfDirectory(atPath: cartellaClienti.path)) ?? [] where !validi.contains(nome) {
-            try? fm.removeItem(at: cartellaClienti.appendingPathComponent(nome))
-        }
+        let togli = ((try? fm.contentsOfDirectory(atPath: cartellaClienti.path)) ?? [])
+            .filter { !validi.contains($0) && !$0.contains(".tmp-") }
+            .map { ArchivioPezzi.nomeClienti + "/" + $0 }
+        guard try applica(lavori, indice: Archivio.nuovoCodificatore().encode(indice), togli: togli) else { return }
         Archivio.pulisciTemporanei(in: cartellaPezzi)
         scritto = Scritto(dati: dati, pezzi: pezzi, file: file, indice: indice, firma: firma())
         try convertiSeServe(dati)
@@ -773,30 +947,92 @@ final class ScrittorePezzi {
         }
         let file = assegnaFile(Set(pezzi.keys), dati: dati, precedenti: s.file)
         let generazione = s.indice.generazione &+ 1
-        var lavori: [(nome: String, url: URL, pezzo: PezzoDaScrivere)] = []
+        var lavori: [Lavoro] = []
         for g in cambiati.sorted() {
             guard let p = pezzi[g], let f = file[g] else { continue }
-            lavori.append((ArchivioPezzi.nomeClienti + "/" + f, cartellaClienti.appendingPathComponent(f),
-                           PezzoDaScrivere(dati: p, chiavi: ArchivioPezzi.chiaviCliente, generazione: generazione)))
+            lavori.append((ArchivioPezzi.nomeClienti + "/" + f, PezzoDaScrivere(dati: p, chiavi: ArchivioPezzi.chiaviCliente, generazione: generazione)))
         }
         for sez in ArchivioPezzi.sezioni where sez.chiavi.contains(where: { !ArchivioPezzi.uguale($0, dati, s.dati) }) {
-            let f = ArchivioPezzi.nomeFileSezione(sez.nome)
-            lavori.append((f, cartellaPezzi.appendingPathComponent(f), PezzoDaScrivere(dati: dati, chiavi: sez.chiavi, generazione: generazione)))
+            lavori.append((ArchivioPezzi.nomeFileSezione(sez.nome), PezzoDaScrivere(dati: dati, chiavi: sez.chiavi, generazione: generazione)))
         }
-        try scriviInParallelo(lavori)
         var indice = nuovoIndice(dati, file: file, ordini: ordini, generazione: generazione)
-        if interrompiPrimaDellIndice { return }
+        var datiIndice: Data?
         if indice.stessoContenuto(di: s.indice) {
             indice = s.indice
         } else {
-            try Archivio.scriviAtomico(Archivio.nuovoCodificatore().encode(indice), in: fileIndice)
-            ultimiScritti.append(ArchivioPezzi.nomeIndice)
+            datiIndice = try Archivio.nuovoCodificatore().encode(indice)
         }
-        // Solo dopo l'indice nuovo, che non li cita più
-        for f in daTogliere where !file.values.contains(f) {
-            try? FileManager.default.removeItem(at: cartellaClienti.appendingPathComponent(f))
-        }
+        // Solo dopo l'indice nuovo, che non li cita più (con quelli rimasti dai giri prima)
+        let validi = Set(file.values)
+        let togli = Set(daTogliere.map { ArchivioPezzi.nomeClienti + "/" + $0 }).union(daTogliereInSospeso)
+            .filter { !validi.contains(String($0.dropFirst(ArchivioPezzi.nomeClienti.count + 1))) }
+        guard try applica(lavori, indice: datiIndice, togli: togli.sorted()) else { return }
         scritto = Scritto(dati: dati, pezzi: pezzi, file: file, indice: indice, firma: firma())
+    }
+
+    /// Scrive i file di un giro. Uno solo e niente da togliere: temporaneo e rinomina. Altrimenti una transazione: i
+    /// file nuovi (indice compreso) in «in-corso», poi la conferma, poi tutti al loro posto, l'indice per ultimo.
+    /// false solo se la prova ha interrotto il giro.
+    private func applica(_ lavori: [Lavoro], indice: Data?, togli: [String]) throws -> Bool {
+        let fm = FileManager.default
+        let nomi = lavori.map(\.nome) + (indice == nil ? [] : [ArchivioPezzi.nomeIndice])
+        if nomi.count <= 1, togli.isEmpty {
+            if let l = lavori.first {
+                try Archivio.scriviAtomico(Archivio.nuovoCodificatore().encode(l.pezzo), in: cartellaPezzi.appendingPathComponent(l.nome))
+            } else if let indice {
+                try Archivio.scriviAtomico(indice, in: fileIndice)
+            }
+            ultimiScritti = nomi
+            return true
+        }
+        // Una transazione di prima confermata e non finita si completa; una non confermata si scarta
+        daTogliereInSospeso.formUnion(try ArchivioPezzi.completaTransazione(cartellaPezzi))
+        let tx = cartellaPezzi.appendingPathComponent(ArchivioPezzi.nomeTransazione, isDirectory: true)
+        try fm.createDirectory(at: tx, withIntermediateDirectories: true)
+        var confermata = false
+        var interrotta = false
+        // Un errore prima della conferma: via i file nuovi, l'archivio resta com'era
+        defer { if !confermata, !interrotta { try? fm.removeItem(at: tx) } }
+        var errori = [Error?](repeating: nil, count: lavori.count)
+        let blocco = NSLock()
+        DispatchQueue.concurrentPerform(iterations: lavori.count) { i in
+            do {
+                let u = tx.appendingPathComponent("\(i).json")
+                try Archivio.nuovoCodificatore().encode(lavori[i].pezzo).write(to: u, options: Archivio.opzioniScritturaDiretta)
+                Archivio.sincronizza(u)
+            } catch {
+                blocco.lock()
+                errori[i] = error
+                blocco.unlock()
+            }
+        }
+        if let e = errori.compactMap({ $0 }).first { throw e }
+        var sposta = lavori.indices.map { ["\($0).json", lavori[$0].nome] }
+        if let indice {
+            let u = tx.appendingPathComponent(ArchivioPezzi.nomeIndice)
+            try indice.write(to: u, options: Archivio.opzioniScritturaDiretta)
+            Archivio.sincronizza(u)
+            sposta.append([ArchivioPezzi.nomeIndice, ArchivioPezzi.nomeIndice])
+        }
+        if case .primaDellaConferma = interrompi {
+            interrompi = nil
+            interrotta = true
+            return false
+        }
+        // La conferma: con la sincronizzazione completa (tutti i file scritti prima sono sul disco), poi la rinomina
+        let conferma = try JSONEncoder().encode(ConfermaTransazione(sposta: sposta, togli: togli))
+        try Archivio.scriviAtomico(conferma, in: tx.appendingPathComponent(ArchivioPezzi.nomeConferma), completo: true)
+        Archivio.sincronizza(tx)
+        confermata = true
+        if case .dopoLaConferma(let k) = interrompi {
+            interrompi = nil
+            _ = try ArchivioPezzi.completaTransazione(cartellaPezzi, limite: k)
+            return false
+        }
+        let falliti = try ArchivioPezzi.completaTransazione(cartellaPezzi)
+        daTogliereInSospeso = Set(falliti)
+        ultimiScritti = nomi
+        return true
     }
 
     /// Il file di ogni gruppo: quello di prima se c'era, altrimenti uno nuovo che non si sovrappone a nessun altro.
@@ -838,37 +1074,24 @@ final class ScrittorePezzi {
         return i
     }
 
-    /// Codifica in parallelo (un codificatore per lavoro) e scrive ogni file in modo atomico.
-    private func scriviInParallelo(_ lavori: [(nome: String, url: URL, pezzo: PezzoDaScrivere)]) throws {
-        guard !lavori.isEmpty else { return }
-        var errori = [Error?](repeating: nil, count: lavori.count)
-        let blocco = NSLock()
-        DispatchQueue.concurrentPerform(iterations: lavori.count) { i in
-            do {
-                let data = try Archivio.nuovoCodificatore().encode(lavori[i].pezzo)
-                try Archivio.scriviAtomico(data, in: lavori[i].url)
-            } catch {
-                blocco.lock()
-                errori[i] = error
-                blocco.unlock()
-            }
-        }
-        if let e = errori.compactMap({ $0 }).first { throw e }
-        ultimiScritti.append(contentsOf: lavori.map(\.nome))
-    }
-
     /// Dopo una scrittura completa: se nella cartella c'è ancora archivio.json, la conversione si verifica rileggendo
     /// la cartella; uguale ai dati (passati per il JSON come archivio.json) → archivio.json.vecchio. Diversa (non deve
     /// succedere) → via la cartella a pezzi, archivio.json resta e si continua a scrivere lui.
+    /// Il confronto è sul JSON (con le chiavi in ordine), non con `==`: un NaN salvato come "nan" non è uguale a se
+    /// stesso, e con `==` la conversione fallirebbe a ogni avvio.
     private func convertiSeServe(_ dati: DatiPrisma) throws {
         let fm = FileManager.default
         let vecchio = cartella.appendingPathComponent(Archivio.nomeFileVecchio)
-        guard fm.fileExists(atPath: vecchio.path) else { return }
-        let atteso = try Archivio.decodifica(Archivio.codificatore.encode(dati))
+        guard fm.fileExists(atPath: vecchio.path), !Archivio.segnaposto(vecchio) else { return }
+        let codificatore = Archivio.nuovoCodificatore()
+        let atteso = try codificatore.encode(Archivio.decodifica(codificatore.encode(dati)))
         let riletto = try? ArchivioPezzi.leggi(cartellaPezzi)
-        if let riletto, riletto.problemi.isEmpty, riletto.lettura.dati == atteso {
+        let rilettoJSON = riletto.flatMap { r in r.problemi.isEmpty ? try? codificatore.encode(r.lettura.dati) : nil }
+        if rilettoJSON == atteso, !verificaFallitaPerProva {
             let copia = cartella.appendingPathComponent(Archivio.nomeFileConvertito)
             try? fm.removeItem(at: copia)
+            // Se la rinomina non riesce archivio.json resta, più vecchio della cartella: all'avvio vale la cartella
+            // (Archivio.caricaPezzi confronta le date) e archivio.json si mette da parte
             try fm.moveItem(at: vecchio, to: copia)
         } else {
             try? fm.removeItem(at: cartellaPezzi)

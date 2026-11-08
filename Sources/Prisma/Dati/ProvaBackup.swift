@@ -179,7 +179,8 @@ enum ProvaBackup {
                 print("ERRORE: i dati di prova non hanno scenari del simulatore")
                 return 1
             }
-            try Archivio.codificatore.encode(originale).write(to: dati.appendingPathComponent("archivio.json"))
+            // L'archivio nel formato a pezzi (Archivio/): backup, rotazione, protetti e ripristino lo provano come l'app
+            try Archivio.salva(originale, in: dati)
             try Data("documento di prova".utf8).write(to: dati.appendingPathComponent("Documenti/prova.txt"))
 
             // Rotazione: dopo 10 backup ne restano 8
@@ -428,7 +429,7 @@ enum ProvaBackup {
             try GestoreBackup.sostituisci(cartellaDati: destinazione, con: estratto.cartella)
             let documento = try String(contentsOf: destinazione.appendingPathComponent("Documenti/prova.txt"), encoding: .utf8)
             guard documento == "documento di prova",
-                  fm.fileExists(atPath: destinazione.appendingPathComponent("archivio.json").path) else {
+                  ArchivioPezzi.presente(in: destinazione), !fm.fileExists(atPath: destinazione.appendingPathComponent("archivio.json").path) else {
                 print("ERRORE: dopo il ripristino mancano dei file")
                 return 1
             }
@@ -636,7 +637,8 @@ enum ProvaBackup {
         let nomi = (try? fm.contentsOfDirectory(atPath: protetti.path)) ?? []
         guard cifrato.lastPathComponent.hasSuffix(".zip." + GestoreBackup.estensioneCifrata), CifraturaBackup.cifrato(cifrato),
               CifraturaBackup.iterazioni(in: cifrato) == CifraturaBackup.iterazioniPredefinite,
-              contenuto.range(of: Data("archivio.json".utf8)) == nil, contenuto.range(of: Data("prova.txt".utf8)) == nil,
+              contenuto.range(of: Data("archivio.json".utf8)) == nil, contenuto.range(of: Data("indice.json".utf8)) == nil,
+              contenuto.range(of: Data("prova.txt".utf8)) == nil,
               nomi == [cifrato.lastPathComponent], temporaneiInChiaro() == primaTemporanei else {
             return "il backup protetto non è cifrato o ha lasciato file in chiaro (\(nomi))"
         }
