@@ -272,13 +272,7 @@ extension StatoShell {
     /// Il consenso commerciale del cliente vale oggi (In regola, MotoreConformita). Se il consulente non lo segue
     /// (impostazioni) non si segnala niente.
     func consensoCommercialeValido(_ c: Cliente, oggi: Date = Date()) -> Bool {
-        let esito = MotoreConformita.calcola(cliente: c, posizioni: [], regole: dati.impostazioni.conformita, oggi: oggi)
-        guard let v = esito.voci.first(where: { $0.tipo == .commerciale }) else { return true }
-        switch v.stato {
-        case .inRegola, .entro30, .entro60: return true
-        case .nonRichiesta: return v.motivo != .consensoNonDato
-        case .scaduta, .mancante: return false
-        }
+        MotoreConformita.commercialeValido(c, regole: dati.impostazioni.conformita, oggi: oggi)
     }
 
     /// Apre il dossier del cliente sull'anagrafica (per aggiungere email o telefono).

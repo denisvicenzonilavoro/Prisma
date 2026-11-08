@@ -162,6 +162,19 @@ enum MotoreConformita {
         return EsitoConformita(cliente: cliente, oggi: oggi, voci: voci)
     }
 
+    /// Il consenso commerciale del cliente vale oggi: in regola o in scadenza; non richiesto solo se non è un consenso
+    /// negato. Un solo posto per la regola (Messaggi, campagne e passaparola, «Luce» giro 12).
+    static func commercialeValido(_ c: Cliente, regole: RegoleConformita, oggi: Date,
+                                  calendario: Calendar = .current) -> Bool {
+        let esito = calcola(cliente: c, posizioni: [], regole: regole, oggi: oggi, calendario: calendario)
+        guard let v = esito.voci.first(where: { $0.tipo == .commerciale }) else { return true }
+        switch v.stato {
+        case .inRegola, .entro30, .entro60: return true
+        case .nonRichiesta: return v.motivo != .consensoNonDato
+        case .scaduta, .mancante: return false
+        }
+    }
+
     /// Tutti i clienti: le posizioni si raggruppano una volta sola (come MotoreAttenzioni).
     static func calcola(clienti: [Cliente], posizioni: [Posizione], regole: RegoleConformita,
                         oggi: Date = Date(), calendario: Calendar = .current) -> [EsitoConformita] {

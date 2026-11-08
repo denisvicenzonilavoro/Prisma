@@ -227,6 +227,31 @@ enum ModelliMessaggi {
                    "Un caro saluto."]
                 : ["oggi è un giorno da ricordare\(cosa) e volevo farti i miei complimenti. Grazie per la fiducia di questi anni.",
                    "Un abbraccio."]
+        case .campagna:
+            // Una campagna («Luce» giro 12): un messaggio per una persona sola, con il suo bisogno e gli orari liberi veri
+            // dell'Agenda; mai nomi d'altri, mai «abbiamo scritto a tutti»
+            let bisogno = v(.bisogno).map { ": \(minuscolaIniziale(frase($0)))" } ?? "."
+            var parti = [lei
+                ? "riguardando la sua situazione ho notato una cosa che varrebbe la pena di esaminare insieme\(bisogno) Le andrebbe di incontrarci per una mezz'ora?"
+                : "guardando il tuo piano ho notato una cosa che vale la pena sistemare insieme\(bisogno) Ti va di vederci per una mezz'ora?"]
+            if let orari = v(.appuntamentiProposti) {
+                parti.append(lei ? "Per esempio: \(frase(orari)) Se nessuno di questi orari le è comodo, me ne indichi pure un altro."
+                                 : "Per esempio: \(frase(orari)) Se non ti va bene nessuno, dimmi tu quando.")
+            } else {
+                parti.append(lei ? "Mi faccia sapere quando le è più comodo." : "Dimmi tu quando ti è comodo.")
+            }
+            return parti
+        case .richiestaPresentazione:
+            // La richiesta di presentazione (decisione 17): grazie per un fatto, poi una richiesta leggera. Mai cifre, mai
+            // nomi d'altri clienti, mai incentivi né pressione
+            let fatto = v(.traguardo).map { " («\(minuscolaIniziale($0))»)" } ?? ""
+            return lei
+                ? ["volevo ringraziarla per la fiducia: il passo di questi giorni\(fatto) è un bel risultato, e averlo raggiunto insieme mi fa piacere.",
+                   "Le faccio una richiesta semplice, senza nessun impegno: se conosce qualcuno a cui potrebbe servire un aiuto come quello che ho dato a lei, sarei felice di conoscerlo.",
+                   "Un cordiale saluto e grazie ancora."]
+                : ["volevo dirti grazie per la fiducia: il passo di questi giorni\(fatto) è un bel risultato, e averlo raggiunto insieme mi fa piacere.",
+                   "Ti faccio una richiesta semplice, senza nessun impegno: se conosci qualcuno a cui potrebbe servire una mano come quella che ho dato a te, sarei felice di conoscerlo.",
+                   "Grazie ancora."]
         }
     }
 
@@ -294,6 +319,15 @@ enum ModelliMessaggi {
         case .traguardo:
             let cosa = v(.traguardo).map { " («\(minuscolaIniziale($0))»)" } ?? ""
             return (["oggi è un giorno da ricordare\(cosa): complimenti!"], ["Grazie per la fiducia."])
+        case .campagna:
+            let bisogno = v(.bisogno).map { ": \(minuscolaIniziale(frase($0)))" } ?? "."
+            var facoltative: [String] = []
+            if let orari = v(.appuntamentiProposti) { facoltative.append("Per esempio: \(frase(orari))") }
+            return (["guardando il tuo piano ho notato una cosa da sistemare insieme\(bisogno) Ci vediamo per una mezz'ora?"],
+                    facoltative)
+        case .richiestaPresentazione:
+            return (["grazie per la fiducia di questi giorni!"],
+                    ["Se conosci qualcuno a cui potrebbe servire una mano come quella che ho dato a te, sarei felice di conoscerlo."])
         }
     }
 

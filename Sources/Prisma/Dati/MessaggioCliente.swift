@@ -22,6 +22,13 @@ enum TipoOccasioneMessaggio: String, Codable, CaseIterable, Identifiable {
     /// I dati che mancano per compilare un modulo (Pratiche › Moduli, «Luce» giro 10): solo il nome del dato, mai il dato
     /// stesso né un dato già in archivio (D2.6). Non commerciale.
     case datiMancanti
+    /// Un messaggio di una campagna (Messaggi › Campagne, «Luce» giro 12): lo stesso bisogno per più clienti, un
+    /// messaggio per persona con le sole cifre di quella persona. Commerciale: serve il consenso (decisione 16).
+    case campagna
+    /// La richiesta di presentazione dopo un fatto bello (Clienti › Passaparola, «Luce» giro 12, decisione 17): mai
+    /// nomi d'altri, mai cifre, mai incentivi. Commerciale. Un Prisma di prima salta i messaggi con questi due tipi
+    /// (ElencoTollerante) senza perdere gli altri.
+    case richiestaPresentazione
 
     var id: String { rawValue }
 
@@ -40,13 +47,15 @@ enum TipoOccasioneMessaggio: String, Codable, CaseIterable, Identifiable {
         case .pratica: return "Pratica"
         case .traguardo: return "Traguardo"
         case .datiMancanti: return "Dati da completare"
+        case .campagna: return "Campagna"
+        case .richiestaPresentazione: return "Richiesta di presentazione"
         }
     }
 
     /// Il messaggio propone un incontro di vendita o un prodotto: serve il consenso commerciale.
     var commerciale: Bool {
         switch self {
-        case .riesame, .occasioneAgenda, .avvisoMercato, .provaFuoco: return true
+        case .riesame, .occasioneAgenda, .avvisoMercato, .provaFuoco, .campagna, .richiestaPresentazione: return true
         case .riepilogoIncontro, .scadenzaPosizione, .compleanno, .consenso, .parcella, .richiestaVera, .pratica, .traguardo, .datiMancanti: return false
         }
     }
@@ -153,6 +162,12 @@ enum VoceCifraMessaggio: String, CaseIterable {
     /// I nomi dei dati che mancano per un modulo («IBAN per l'addebito, CAP»): mai i valori.
     case datiModulo = "Dati che mancano"
     case modulo = "Modulo"
+    /// Il bisogno di una campagna, scritto per quel cliente («Luce» giro 12).
+    case bisogno = "Bisogno"
+    /// Gli orari proposti da una campagna («mar 10 alle 10:00, mer 11 alle 15:30»): spazi liberi veri dell'Agenda.
+    case appuntamentiProposti = "Appuntamenti proposti"
+    case ultimoVersamento = "Ultimo versamento"
+    case etaProssima = "Età il prossimo anno"
 }
 
 /// A che punto è un messaggio. Prisma non spedisce: «aperto» vuol dire aperto già compilato nell'app del Mac
