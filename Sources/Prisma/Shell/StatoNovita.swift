@@ -235,6 +235,8 @@ extension StatoShell {
             return
         }
         if let e = voce.esperienza {
+            // Le esperienze della Sala sul loro palco (giro 4: luce, disegno, rischio, giornata; giro 8: la lettera dal
+            // futuro, Lancia l'anno, Quanto vale avermi accanto)
             apriEsperienza(e)
         } else if let scheda = voce.schedaPratiche {
             apriPratiche(scheda)

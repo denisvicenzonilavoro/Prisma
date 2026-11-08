@@ -1,0 +1,14 @@
+{
+  "versione": "prova-2026-11",
+  "testiDiProva": true,
+  "nota": "TESTI DI PROVA: titoli ed effetti degli eventi di «Lancia l'anno» presi dal fac-simile del template (Design/template-luce.html, righe 1369-1371). Nessuna probabilità: le probabilità annue con la fonte (ISTAT, INAIL, INPS o altre) e gli importi li scrive l'utente in Impostazioni › Sala (decisione 69 di Design/template-luce-specifica.md); fino ad allora un evento non esce mai a caso e si gioca solo a mano. «importoDiProva» sono le cifre dimostrative del template: valgono SOLO con i clienti di prova e la carta lo dice.",
+  "eventi": [
+    { "id": "promozione", "titolo": "Una promozione", "effetto": "entrata", "tono": "verde", "importoDiProva": 4000 },
+    { "id": "caldaia", "titolo": "La caldaia e il tetto", "effetto": "spesa", "tono": "arancio", "importoDiProva": 9000 },
+    { "id": "malattia", "titolo": "Sei mesi di malattia", "effetto": "mancatoReddito", "mesi": 6, "rischio": "salute", "tono": "rosso" },
+    { "id": "bambino", "titolo": "Nasce un bambino", "effetto": "spesa", "tono": "verde", "importoDiProva": 5000 },
+    { "id": "lavoro", "titolo": "Otto mesi senza lavoro", "effetto": "mancatoReddito", "mesi": 8, "tono": "rosso" },
+    { "id": "eredita", "titolo": "Un’eredità", "effetto": "entrata", "tono": "verde", "importoDiProva": 30000 },
+    { "id": "infortunio", "titolo": "Un infortunio", "effetto": "spesa", "rischio": "infortuni", "tono": "rosso", "importoDiProva": 12000 }
+  ]
+}

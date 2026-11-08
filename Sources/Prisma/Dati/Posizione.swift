@@ -305,6 +305,10 @@ struct Posizione: Identifiable, Codable, Hashable {
     /// Per una bozza preparata da «Riequilibra» o da «Prepara la proposta» del radar: il modello e la distanza da cui è
     /// nata. Il radar mostra «proposta pronta» finché la posizione resta una bozza.
     var riequilibrio: OrigineRiequilibrio?
+    // Versione 27, «Luce» giro 8 (Lancia l'anno, decisione 79)
+    /// Per una copertura: quanto la polizza pagherebbe per un evento (malattia, infortunio…), scritto dal consulente
+    /// dalle condizioni. nil = non scritto: la carta di Lancia l'anno dice «dipende dalle condizioni», senza cifra.
+    var indennizzoStimato: Double?
 
     /// Premi o versamenti dell'anno.
     var premioAnnuo: Double { premio * Double(frequenza.volteAllAnno) }

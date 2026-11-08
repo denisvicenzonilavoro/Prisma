@@ -123,6 +123,23 @@ enum VistaTerritorio: String, CaseIterable, Identifiable, Hashable {
     @ObservationIgnored var giornataConPiano = false
     /// Istantanee: il punto del gioco del rischio da disegnare (scenario e risposte già date). Non pubblicato.
     @ObservationIgnored var rischioIstantanea: PuntoGiocoRischio?
+    /// La lettera dal futuro: la versione scelta resta finché si torna all'esperienza (§3.1.1). Non pubblicato.
+    @ObservationIgnored var versioneLettera: VersioneLettera = .conPiano
+    /// Solo istantanee: mostra l'avviso «Vera non è pronta» sotto il segmentato (642).
+    @ObservationIgnored var letteraNonProntaIstantanea = false
+    /// Solo istantanee: gli anni da lanciare a seme fisso, con le carte giocate a mano per anno (671, 672).
+    @ObservationIgnored var lanciaIstantanea: ProvaLanciaAnno?
+    /// Solo istantanee: il dettaglio aperto di «Quanto vale avermi accanto» (678).
+    @ObservationIgnored var valoreDettaglioIstantanea: TipoVoceValore?
+    /// «Quanto vale avermi accanto» ricordato per cliente, versione dei dati e giorno (`StatoShell.valoreConsulente`).
+    @ObservationIgnored var memoValore: (chiave: String, valore: ValoreConsulente)?
+}
+
+/// Solo istantanee: una partita di Lancia l'anno già giocata (seme fisso, anni, carte a mano per anno).
+struct ProvaLanciaAnno {
+    var seme: UInt64
+    var anni: Int
+    var carte: [Int: String] = [:]
 }
 
 extension StatoShell {

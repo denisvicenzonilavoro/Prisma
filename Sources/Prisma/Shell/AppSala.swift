@@ -387,9 +387,37 @@ struct ContenutoPalco: View {
         case .disegna:
             // Giro 4: disegna il tuo futuro (Shell/SalaDisegna.swift)
             DisegnaIlFuturo(cliente: cliente)
+        case .lettera:
+            // Giro 8: la lettera dal futuro (Shell/SalaLettera.swift)
+            LetteraDalFuturo(cliente: cliente, versione: stato.sala.versioneLettera, modificabile: !inSala)
+                .id(cliente.id)
+        case .lanciaAnno:
+            // Giro 8: Lancia l'anno (Shell/SalaLanciaAnno.swift); nelle istantanee una partita a seme fisso già giocata
+            LanciaAnnoVista(cliente: cliente, esito: partitaLancia(), modificabile: !inSala)
+                .id(cliente.id)
+        case .valoreConsulente:
+            // Giro 8: Quanto vale avermi accanto (Shell/SalaValoreConsulente.swift)
+            ValoreConsulenteVista(cliente: cliente, modificabile: !inSala)
+                .id(cliente.id)
         default:
             InArrivoEsperienza(esperienza: esperienza, inSala: inSala)
         }
+    }
+}
+
+extension ContenutoPalco {
+    /// La partita di Lancia l'anno con cui si apre il palco (nelle istantanee giocata a seme fisso, con le carte a mano).
+    func partitaLancia() -> Result<PartitaLanciaAnno, DatoLanciaMancante> {
+        guard istantanea, let prova = stato.sala.lanciaIstantanea else { return stato.partitaLanciaAnno(cliente, numero: 0) }
+        var esito = stato.partitaLanciaAnno(cliente, numero: 0, seme: prova.seme)
+        if case .success(var p) = esito {
+            for k in 1...max(1, prova.anni) {
+                let carta = prova.carte[k].flatMap { id in p.tabella.first { $0.id == id } }
+                MotoreLanciaAnno.lancia(&p, cartaAMano: carta)
+            }
+            esito = .success(p)
+        }
+        return esito
     }
 }
 

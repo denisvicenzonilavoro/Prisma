@@ -271,3 +271,174 @@ extension Tema.Apple.Colore.Glifi {
     static let cena = Tema.Apple.Colore.anello3
     static let viaggio = Tema.Apple.Colore.anello2
 }
+
+// MARK: - Lancia l'anno (§4.3.2) e Quanto vale avermi accanto (§4.4.2), «Luce» giro 8
+
+extension Tema.Apple.SalaEsperienze {
+    enum Lancia {
+        typealias C = Tema.Apple.Carattere
+        typealias K = Tema.Apple.Colore
+
+        /// Il contenuto: padding 22 / 28.
+        static let padding = EdgeInsets(top: 22, leading: 28, bottom: 22, trailing: 28)
+        /// «L'anno» `.k` e l'anno grande (46 bold tabellare), l'età 15 grigia accanto in basso.
+        static let etichettaAnno = C.secondario
+        static let anno = C.valoreCursore
+        static let eta = C(dimensione: 15, peso: .regular)
+        static let coloreEta = K.inchiostro2
+        static let spazioAnnoEta: CGFloat = 12
+        static let spazioPulsanti: CGFloat = 8
+        /// Il glifo del dado nel pulsante (bianco, 15).
+        static let latoDado: CGFloat = 15
+        /// I due riquadri: `.tile` padding 16 / 20, 16 fra l'uno e l'altro, 14 sotto la testa.
+        static let superficieRiquadro = Tema.Apple.Superficie.tile
+        static let raggioRiquadro = Tema.Apple.Raggio.tile
+        static let paddingRiquadro = EdgeInsets(top: 16, leading: 20, bottom: 16, trailing: 20)
+        static let spazioRiquadri: CGFloat = 16
+        static let sottoTesta: CGFloat = 14
+        static let titoloRiquadro = C.titoloRiga
+        static let coloreConPiano = K.verde
+        static let coloreSenzaPiano = K.inchiostro2
+        /// La cifra del riquadro: 28 bold tabellare, verde con il piano.
+        static let cifra = C(dimensione: 28, peso: .bold, tracking: -0.5, tabellare: true)
+        static let coloreCifraCon = K.verde
+        static let coloreCifraSenza = K.inchiostro
+        /// Il grafico ad area: alto 190, 6 sopra, linea 3, area al 14%; asse di 12 anni; scala comune × 1,08.
+        static let altezzaGrafico: CGFloat = 190
+        static let sopraGrafico: CGFloat = 6
+        static let spessoreLinea: CGFloat = 3
+        static let opacitaArea: Double = 0.14
+        static let margineScala: Double = 1.08
+        static let lineaCon = K.anello1
+        static let lineaSenza = K.Composizione.liquidita
+        /// Le carte: area alta 150, 14 sopra; carta `cardPiena` con il filo sinistro di 5 nel tono.
+        static let altezzaCarte: CGFloat = 150
+        static let sopraCarte: CGFloat = 14
+        static let fondoCarta = K.cardPiena
+        static let raggioCarta = Tema.Apple.Raggio.tile
+        static let filoCarta: CGFloat = 5
+        static let paddingCarta = EdgeInsets(top: 16, leading: 22, bottom: 16, trailing: 20)
+        static let titoloCarta = C.titoloFinestra
+        static let effetti = C.corpo
+        static let effettoCon = C(dimensione: 14, peso: .semibold)
+        static let spazioEffetti: CGFloat = 30
+        static let sopraEffetti: CGFloat = 6
+        static let coloreEffettoCon = K.verde
+        static let coloreEffettoSenza = K.inchiostro2
+        static func tono(_ t: EventoAnno.Tono) -> Color {
+            switch t {
+            case .rosso: return K.rosso
+            case .arancio: return K.arancio
+            case .verde: return K.verde
+            }
+        }
+        /// La frase iniziale: 15 grigia, centrata.
+        static let frase = C(dimensione: 15, peso: .regular)
+        static let coloreFrase = K.inchiostro2
+        /// Le etichette accanto al titolo («dati di prova», «a mano») e l'avvertenza in fondo.
+        static let prova = Tema.Apple.Studio.Card.prova
+        static let coloreProva = Tema.Apple.Studio.Card.coloreProva
+        static let avvertenza = C.secondario
+        static let coloreAvvertenza = K.inchiostro2
+        static let spazioPiede: CGFloat = 10
+        /// Il riquadro di fine partita: largo al più 560.
+        static let larghezzaFine: CGFloat = 560
+        static let titoloFine = C(dimensione: 20, peso: .bold, interlinea: 1.3)
+        /// Lo stato senza dati: largo al più 480.
+        static let larghezzaStato: CGFloat = 480
+        static let testoStato = C.corpoGrande
+    }
+
+    enum Valore {
+        typealias C = Tema.Apple.Carattere
+        typealias K = Tema.Apple.Colore
+
+        /// Il contenuto: padding 28 / 34.
+        static let padding = EdgeInsets(top: 28, leading: 34, bottom: 28, trailing: 34)
+        static let etichetta = C.etichetta
+        static let coloreEtichetta = K.inchiostro2
+        /// Il titolo: 36 bold −1, 6 sotto l'etichetta; la cifra in `accento`.
+        static let titolo = C(dimensione: 36, peso: .bold, tracking: -1)
+        static let coloreTitolo = K.inchiostro
+        static let coloreCifra = K.accento
+        static let sopraTitolo: CGFloat = 6
+        static let larghezzaTitolo: CGFloat = 1000
+        /// I quattro riquadri: 4 colonne, spazio 14, 22 sopra; cifra 30 bold tabellare; spiegazione interlinea 1,4.
+        static let colonne = 4
+        static let spazioRiquadri: CGFloat = 14
+        static let sopraRiquadri: CGFloat = 22
+        static let superficieRiquadro = Tema.Apple.Superficie.tile
+        static let raggioRiquadro = Tema.Apple.Raggio.tile
+        static let paddingRiquadro = Tema.Apple.Misura.Padding.tile
+        static let etichettaRiquadro = C.secondario
+        static let cifra = C(dimensione: 30, peso: .bold, tracking: -0.5, tabellare: true)
+        static let spiegazione = C(dimensione: 12.5, peso: .regular, interlinea: 1.4)
+        static let sopraSpiegazione: CGFloat = 4
+        static let assente = C(dimensione: 13, peso: .regular, interlinea: 1.4)
+        static let coloreAssente = K.inchiostro2
+        static let canali = C(dimensione: 11.5, peso: .medium)
+        static let sopraCanali: CGFloat = 8
+        /// Il confronto in basso: 26 sopra, spazio 30; barre alte 26 raggio 9; etichetta larga 150, cifra 110.
+        static let sopraConfronto: CGFloat = 26
+        static let spazioConfronto: CGFloat = 30
+        static let altezzaBarra: CGFloat = 26
+        static let raggioBarra = Tema.Apple.Raggio.barra
+        static let spazioBarre: CGFloat = 10
+        static let larghezzaEtichetta: CGFloat = 150
+        static let larghezzaCifra: CGFloat = 110
+        static let etichettaBarra = C.corpo
+        static let cifraBarra = C(dimensione: 14, peso: .bold, tabellare: true)
+        static let coloreValore = K.accento
+        static let coloreCompenso = K.Composizione.liquidita
+        static let coloreAlleanza = K.canaleAlleanza
+        static let coloreIndipendente = K.canaleIndipendente
+        /// Il riquadro del rapporto: largo 330, fondo e filo azzurri fissi, 24 bold interlinea 1,25.
+        static let larghezzaRapporto: CGFloat = 330
+        static let fondoRapporto = Color(r: 0, g: 122, b: 255, a: 0.08)
+        static let filoRapporto = Color(r: 0, g: 122, b: 255, a: 0.20)
+        static let raggioRapporto = Tema.Apple.Raggio.tile
+        static let paddingRapporto = EdgeInsets(top: 18, leading: 22, bottom: 18, trailing: 22)
+        static let rapporto = C(dimensione: 24, peso: .bold, interlinea: 1.25)
+        /// La nota in fondo, 18 sopra.
+        static let nota = C.secondario
+        static let coloreNota = K.inchiostro2
+        static let sopraNota: CGFloat = 18
+        static let prova = Tema.Apple.Studio.Card.prova
+        static let coloreProva = Tema.Apple.Studio.Card.coloreProva
+        /// Lo stato «presto per misurare»: largo al più 620.
+        static let larghezzaPresto: CGFloat = 620
+        static let testoPresto = C(dimensione: 20, peso: .semibold, interlinea: 1.35)
+        /// Il dettaglio aperto da un riquadro: largo 560, righe con titolo, sottotitolo e cifra.
+        static let larghezzaDettaglio: CGFloat = 560
+        static let paddingDettaglio: CGFloat = 24
+        static let raggioDettaglio = Tema.Apple.Raggio.card
+        static let superficieDettaglio = Tema.Apple.Superficie.card
+        static let titoloDettaglio = C.titoloFinestra
+        static let rigaDettaglio = C.corpo
+        static let sottoRigaDettaglio = C.secondario
+        static let fraRighe: CGFloat = 10
+        static let veloDettaglio = Color(r: 0, g: 0, b: 0, a: 0.18)
+    }
+}
+
+extension Tema.Apple.Moto.SalaEsperienze {
+    /// Lancia l'anno (§4.3.3): cifre contate dal valore di prima in 0,7 s; la carta nuova scende da −40 con la molla in
+    /// 0,56 s; la carta di prima scende di 80 a opacità 0,4 in 0,5 s; «Lancia 10 anni» un anno ogni 0,7 s (`Task.sleep`,
+    /// niente Timer); il dado del pulsante gira in 0,45 s.
+    enum Lancia {
+        static let numero = 0.7
+        static let durataCarta = 0.56
+        static let spostamentoCarta: CGFloat = -40
+        static let rotazioneCarta: Double = -2
+        static let scalaCarta: CGFloat = 1.05
+        static let passoStorico: CGFloat = 80
+        static let scalaStorico: CGFloat = 0.97
+        static let opacitaStorico: Double = 0.4
+        static let durataStorico = 0.5
+        static let intervalloDieci = 0.7
+        static let giroDado = 0.45
+        static var carta: Animation { Tema.Apple.Moto.Curva.molla.animazione(durataCarta) }
+        static var storico: Animation { Tema.Apple.Moto.Curva.uscita.animazione(durataStorico) }
+        static var dado: Animation { Tema.Apple.Moto.Curva.molla.animazione(giroDado) }
+    }
+}

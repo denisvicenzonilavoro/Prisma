@@ -83,18 +83,22 @@ struct NumeroCheConta: View {
     var da: Double? = 0
     /// Durata del primo conteggio; nil = quella della specifica per l'indice.
     var durata: Double? = nil
+    /// Durata dei conteggi ai cambi (nil = `Moto.NumeroCambio`, 0,9 s; Lancia l'anno: 0,7 s).
+    var durataCambio: Double? = nil
 
     @Environment(\.prismaStatoFinale) private var fermo
     /// Istantanee: lo stato finale è per sempre, niente corsa da preparare alla comparsa (`prismaScatto`).
     @Environment(\.prismaScatto) private var scatto
     @State private var corsa: CorsaCifraApple?
 
-    init(_ valore: Double, formato: FormatoCifra = .euro, indice: Int = 0, da: Double? = 0, durata: Double? = nil) {
+    init(_ valore: Double, formato: FormatoCifra = .euro, indice: Int = 0, da: Double? = 0, durata: Double? = nil,
+         durataCambio: Double? = nil) {
         self.valore = valore
         self.formato = formato
         self.indice = indice
         self.da = da
         self.durata = durata
+        self.durataCambio = durataCambio
     }
 
     var body: some View {
@@ -130,7 +134,7 @@ struct NumeroCheConta: View {
         let ora = Date()
         let mostrato = fermo ? nuovo : (corsa?.valore(al: ora) ?? nuovo)
         corsa = CorsaCifraApple(da: mostrato, a: nuovo,
-                                durata: fermo ? 0 : Tema.Apple.Moto.NumeroCambio.durata,
+                                durata: fermo ? 0 : (durataCambio ?? Tema.Apple.Moto.NumeroCambio.durata),
                                 inizio: ora, giro: (corsa?.giro ?? 0) + 1)
     }
 }

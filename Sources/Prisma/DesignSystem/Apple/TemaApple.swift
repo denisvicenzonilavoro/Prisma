@@ -237,6 +237,8 @@ extension Tema.Apple {
         case card, vetro, finestra, inclinata, dettaglio, carta, pillola, manopolaInterruttore, manopolaCursore, sfera
         /// Il tassello delle scene della giornata della pensione (Sala, «Luce» giro 4): 0 10 20 −10 nero al 40%.
         case tasselloScena
+        /// Il foglio della lettera dal futuro (Sala, «Luce» giro 8): 0 22 50 −18 rgba(40,30,20,.35), uguale in chiaro e scuro.
+        case foglioLettera
 
         private static func blu(_ a: Double) -> Color { Color(r: 8, g: 40, b: 60, a: a) }
         private static func nero(_ a: Double) -> Color { Color(r: 0, g: 0, b: 0, a: a) }
@@ -275,6 +277,8 @@ extension Tema.Apple {
                 return [S(colore: Color(r: 40, g: 90, b: 170, a: 0.6), y: 4, sfocatura: 12, espansione: -4)]
             case .tasselloScena:
                 return [S(colore: Self.nero(0.40), y: 10, sfocatura: 20, espansione: -10)]
+            case .foglioLettera:
+                return [S(colore: Color(r: 40, g: 30, b: 20, a: 0.35), y: 22, sfocatura: 50, espansione: -18)]
             }
         }
 
@@ -619,12 +623,13 @@ extension Tema.Apple {
         var interlinea: CGFloat? = nil
         var maiuscolo = false
         var tabellare = false
+        /// Il disegno del carattere: di sistema (SF) o, per la lettera dal futuro, serif (New York, decisione 80).
+        var disegno: Font.Design = .default
 
         /// Interlinea propria di SF a cui si aggiunge lo spazio fra le righe.
         static let interlineaSistema: CGFloat = 1.2
 
         var font: Font {
-            let disegno: Font.Design = .default
             let f = Font.system(size: dimensione, weight: peso, design: disegno)
             return tabellare ? f.monospacedDigit() : f
         }

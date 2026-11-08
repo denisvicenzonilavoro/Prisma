@@ -148,6 +148,11 @@ struct DatiPrisma: Codable, Equatable {
     ///     Vera, fase 3: le promesse ai
     ///     clienti (`promesse`), i confronti tra documenti (`confrontiDocumenti`), le coperture delle polizze
     ///     (`coperture`) e il resoconto dell'incontro (`Incontro.resoconto`), tutti letti con tolleranza.
+    ///     Giro 8 («Sala: racconti senza uscita»): l'inizio del rapporto con il cliente (`Cliente.clienteDal`),
+    ///     l'indennizzo stimato per evento delle polizze (`Posizione.indennizzoStimato`) e le impostazioni della Sala
+    ///     (`Impostazioni.sala`: eventi di Lancia l'anno con probabilità e fonte, anni della partita, avvertenze e titolo
+    ///     del valore approvati), tutti letti con tolleranza. Le lettere dal futuro e le partite di Lancia l'anno non si
+    ///     salvano.
     static let versioneAttuale = 27
 
     init(clienti: [Cliente], appuntamenti: [Appuntamento], attivita: [Attivita], posizioni: [Posizione],
@@ -413,6 +418,10 @@ struct Impostazioni: Codable, Equatable {
     /// La palestra della trattativa (Studio › Palestra): solo data, cliente, difficoltà e punteggio degli allenamenti,
     /// al massimo 50; mai le conversazioni. Versione 27 («Luce» giro 5), letta con tolleranza: senza, nessun allenamento.
     var palestra = ImpostazioniPalestra()
+    /// Impostazioni › Sala (versione 27, «Luce» giro 8): gli eventi di Lancia l'anno con probabilità e fonte scritte
+    /// dall'utente, gli anni della partita, le avvertenze e il titolo del valore approvati. Letta con tolleranza: senza,
+    /// nessun evento a caso e i segnaposto dichiarati.
+    var sala = ImpostazioniSala()
 
     init() {}
 
@@ -430,6 +439,7 @@ struct Impostazioni: Codable, Equatable {
         case pratiche
         case storie, traguardi
         case palestra
+        case sala
     }
 
     init(from decoder: Decoder) throws {
@@ -486,6 +496,8 @@ struct Impostazioni: Codable, Equatable {
         traguardi = ((try? c.decodeIfPresent(ImpostazioniTraguardi.self, forKey: .traguardi)) ?? nil) ?? ImpostazioniTraguardi()
         // Palestra della trattativa (versione 27, giro 5): senza o illeggibile, nessun allenamento registrato
         palestra = ((try? c.decodeIfPresent(ImpostazioniPalestra.self, forKey: .palestra)) ?? nil) ?? ImpostazioniPalestra()
+        // Sala, racconti senza uscita (versione 27, giro 8): senza o illeggibile, nessun evento e i segnaposto
+        sala = ((try? c.decodeIfPresent(ImpostazioniSala.self, forKey: .sala)) ?? nil) ?? ImpostazioniSala()
     }
 }
 

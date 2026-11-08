@@ -48,3 +48,5 @@ L'assistente si chiama Vera (prima si chiamava Ruby, e prima ancora Eve). Le ist
 
 Modificare qui il testo cambia il comportamento di Vera alla build successiva, senza toccare il codice.
 Tenere il testo ragionevolmente corto: la finestra di Qwen sul Mac è di 8.192 token per istruzioni, scheda, storia e risposta.
+
+- `lettera.md`: «La lettera dal futuro» della Sala («Luce», giro 8): il cliente, all'età della pensione, scrive a sé stesso di oggi. Qwen riscrive in streaming la lettera fissa di Prisma con le sole cifre della scheda (`MotoreLettera.fatti`: anno ed età al traguardo, obiettivo con la data di arrivo, versamento, pensione con o senza il piano). A fine flusso `LetteraVera.controlla`: una cifra fuori scheda, una promessa, un prodotto o una compagnia nominati, un segnaposto o, nella versione «senza il piano», uno scenario negativo oltre le cifre (decisione 80) fanno restare la lettera di Prisma. Saluto, firma («nome, età anni») e piede li mette Prisma; la lettera resta sul Mac.

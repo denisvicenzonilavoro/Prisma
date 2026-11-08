@@ -1,7 +1,8 @@
 import SwiftUI
 
-// Gettoni delle esperienze «racconto» della Sala (Design/template-luce-specifica.md §3): per ora «Disegna il tuo
-// futuro» (§3.3.2, giro 4). Misure in pt del palco 1440×900 (card del palco circa 1384×600).
+// Gettoni delle esperienze «racconto» della Sala (Design/template-luce-specifica.md §3): «Disegna il tuo futuro»
+// (§3.3.2, giro 4) e la lettera dal futuro (§3.1.2, giro 8). Misure in pt del palco 1440×900 (card del palco circa
+// 1384×600).
 
 extension Tema.Apple {
     enum SalaRacconti {
@@ -82,6 +83,64 @@ extension Tema.Apple {
             /// Il segno sotto la tela vuota per lo stato senza data di nascita: largo al più 460.
             static let larghezzaManca: CGFloat = 460
         }
+
+        /// La lettera dal futuro (§3.1.2): la colonna di sinistra larga 300 a 30/30, il foglio da 380 a sinistra fino a
+        /// 40 da destra, 22 sopra e sotto. Il foglio è carta calda, uguale in chiaro e in scuro.
+        enum Lettera {
+            static let larghezzaColonna: CGFloat = 300
+            static let margineColonna: CGFloat = 30
+            static let foglioSinistra: CGFloat = 380
+            static let foglioDestra: CGFloat = 40
+            static let foglioSopraSotto: CGFloat = 22
+            /// Colori fissi del foglio (non cambiano con lo scuro).
+            static let carta = Color(hex: "#FFFDF8")
+            static let inchiostro = Color(hex: "#2A2622")
+            static let sopratitolo = Color(hex: "#A08C78")
+            static let piede = Color(hex: "#9A8F84")
+            static let filetto = Color(hex: "#EDE6DC")
+            static let raggio = Tema.Apple.Raggio.bollaPiccola
+            static let ombra = Tema.Apple.Ombra.foglioLettera
+            /// Margini interni: 40 sopra e sotto, 56 ai lati.
+            static let margini = EdgeInsets(top: 40, leading: 56, bottom: 40, trailing: 56)
+            static let carattereSopratitolo = C(dimensione: 11, peso: .bold, tracking: 1.6, maiuscolo: true)
+            /// Il testo: serif (New York, decisione 80) 17, interlinea 1,72.
+            static let testo = C(dimensione: 17, peso: .regular, interlinea: 1.72, disegno: .serif)
+            static let spazioSopraTesto: CGFloat = 16
+            static let caratterePiede = C(dimensione: 10.5, peso: .regular)
+            /// Il piede: 56 ai lati, 18 dal fondo, 8 fra il filetto e il testo; spazio lasciato al testo sopra il piede.
+            static let piedeLati: CGFloat = 56
+            static let piedeFondo: CGFloat = 18
+            static let piedeSopraFiletto: CGFloat = 8
+            static let spessoreFiletto: CGFloat = 1
+            static let spazioPiede: CGFloat = 64
+            /// La colonna: la spiegazione `.k` 13,5 interlinea 1,5 (14 sotto il segmentato), le tile (16 sopra, 10 fra),
+            /// «↻ Riscrivi» 16 sotto.
+            static let spiegazione = C(dimensione: 13.5, peso: .regular, interlinea: 1.5)
+            static let coloreSpiegazione = Tema.Apple.Colore.inchiostro2
+            static let sottoSegmentato: CGFloat = 14
+            static let sopraTile: CGFloat = 16
+            static let fraTile: CGFloat = 10
+            static let sopraPulsante: CGFloat = 16
+            static let superficieTile = Tema.Apple.Superficie.tile
+            static let raggioTile = Tema.Apple.Raggio.tile
+            static let paddingTile = Tema.Apple.Misura.Padding.tile
+            static let etichettaTile = Tema.Apple.Carattere.secondario
+            static let cifraTile = Tema.Apple.Carattere.valore
+            static let coloreConPiano = Tema.Apple.Colore.verde
+            static let coloreSenzaPiano = Tema.Apple.Colore.inchiostro
+            /// Le note sotto il segmentato (età ipotizzata, obiettivo mancante) e l'avviso arancio di Vera.
+            static let nota = Tema.Apple.Carattere.secondario
+            static let coloreNota = Tema.Apple.Colore.inchiostro2
+            static let coloreAvviso = Tema.Apple.Colore.arancio
+            static let sopraNota: CGFloat = 8
+            /// «dati di prova» accanto al titolo (capsula arancio delle altre etichette di prova).
+            static let prova = Tema.Apple.Studio.Card.prova
+            static let coloreProva = Tema.Apple.Studio.Card.coloreProva
+            /// Lo stato senza data di nascita, al posto del foglio: largo al più 460.
+            static let larghezzaManca: CGFloat = 460
+            static let spazioManca: CGFloat = 14
+            static let testoManca = Tema.Apple.Carattere.corpoGrande
+        }
     }
 }
 
@@ -91,5 +150,15 @@ extension Tema.Apple.Moto {
     enum Disegno {
         static let trasformazione = 1.30
         static var animazione: Animation { .linear(duration: trasformazione) }
+    }
+}
+
+extension Tema.Apple.Moto {
+    /// La lettera dal futuro (§3.1.3): la prima scrittura parte 0,35 s dopo il montaggio; la lettera fissa compare una
+    /// parola ogni 26 ms (`TestoProgressivo`, niente Timer); cambio di versione e «Riscrivi» sfumano il testo in 0,2 s.
+    enum Lettera {
+        static let ritardoAvvio = 0.35
+        static let passoParola = 0.026
+        static let dissolvenzaCambio = 0.20
     }
 }

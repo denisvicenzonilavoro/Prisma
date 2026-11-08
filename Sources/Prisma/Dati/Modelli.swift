@@ -71,6 +71,10 @@ struct Cliente: Identifiable, Codable, Hashable {
     /// quota, ruolo, dipendenti, fatturato e lo stato delle quattro aree, tutto scritto dall'utente. nil o vuoto =
     /// nessuna azienda: la scheda «L'azienda» del dossier non compare.
     var aziende: [AziendaCliente]?
+    /// Da quando è cominciata la consulenza con il cliente (versione 27, «Luce» giro 8): conta per «Quanto vale
+    /// avermi accanto» (decisione 58: solo ciò che è nato dalle raccomandazioni accettate da allora). nil = non scritta:
+    /// vale la prima raccomandazione accettata, poi la data della scheda (`creatoIl`, segnata «dalla scheda»).
+    var clienteDal: Date?
 
     init(id: String, nome: String, iniziali: String, tinta: TintaAvatar, tema: String, email: String,
          telefono: String, preferito: Bool, nota: String, creatoIl: Date) {
@@ -112,6 +116,7 @@ struct Cliente: Identifiable, Codable, Hashable {
         case consensoCopilota
         case modelloId
         case aziende
+        case clienteDal
     }
 
     /// Lettura tollerante: i campi aggiunti nelle versioni successive possono mancare.
@@ -150,6 +155,8 @@ struct Cliente: Identifiable, Codable, Hashable {
         // Aziende (versione 27, giro 7): un'azienda illeggibile si scarta, le altre restano; nessuna = nil
         aziende = ((try? c.decodeIfPresent(ElencoTollerante<AziendaCliente>.self, forKey: .aziende)) ?? nil)
             .flatMap { $0.elementi.isEmpty ? nil : $0.elementi }
+        // Inizio del rapporto (versione 27, giro 8): illeggibile = non scritto
+        clienteDal = (try? c.decodeIfPresent(Date.self, forKey: .clienteDal)) ?? nil
     }
 
     /// Le aziende registrate (vuoto se nessuna).
