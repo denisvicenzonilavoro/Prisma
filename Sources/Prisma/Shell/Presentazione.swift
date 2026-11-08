@@ -181,7 +181,7 @@ extension StatoShell {
 /// spazio e Invio, un clic sulla pagina). Sotto la sala opaca l'acqua si ferma (`StatoShell.scrivaniaCoperta`).
 /// «Riduci movimento»: dissolvenze di 0,15 s; istantanee: tutto subito nello stato finale.
 struct VistaPresentazione: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let p: Presentazione
     @Environment(\.prismaCalmo) private var calmo
     @Environment(\.prismaStatoFinale) private var fermo
@@ -193,6 +193,7 @@ struct VistaPresentazione: View {
     @State private var aperta = false
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let s = Tema.Apple.Prospetti.Sala.self
         GeometryReader { geo in
             let cresciuta = aperta || fermo

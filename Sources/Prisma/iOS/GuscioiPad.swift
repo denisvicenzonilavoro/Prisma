@@ -13,7 +13,7 @@ import UniformTypeIdentifiers
 /// Sotto tutto l'acqua animata di RadiceMobile.
 struct GuscioiPad: View {
     @EnvironmentObject var mobile: StatoMobile
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     /// Tutte le app del Mac, Vera compresa (Qwen del Mac in Wi‑Fi, PonteVera).
     static let appPronte: Set<AppPrisma> = Set(AppPrisma.allCases)
@@ -21,6 +21,7 @@ struct GuscioiPad: View {
     private typealias D = Tema.Misura.Mobile.Dock
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         // La safe area si legge da fuori: dentro una vista che la ignora i margini valgono zero
         GeometryReader { esterno in
         let sicuro = esterno.safeAreaInsets
@@ -82,7 +83,7 @@ private struct ContenutoiPad: View {
 /// I pannelli di apertura del Mac (`importaClientiDaFile`, `importaPosizioniDaFile`, `scegliFileValori`) su
 /// iPhone e iPad: `StatoShell.sceltaFileMobile` apre il selettore dei file, StatoMobile legge la copia del file scelto.
 struct SceltaFileiPad: ViewModifier {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @EnvironmentObject var mobile: StatoMobile
     /// L'ultima scelta: il selettore toglie la richiesta prima di dare il file.
     @State private var ultima: SceltaFileMobile = .clienti
@@ -154,9 +155,10 @@ struct InArrivoMobile: View {
 
 /// Il cliente attivo (lo stesso del Mac: Clienti, Posizioni e Agenda lo seguono), scelto da un menu.
 struct SceltaClienteMobile: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         Menu {
             Picker("Cliente", selection: Binding(get: { stato.clienteAttivoId }, set: { stato.clienteAttivoId = $0 })) {
                 ForEach(stato.clienti) { cliente in

@@ -226,7 +226,7 @@ extension AppImpostazioni {
             Text("Il tuo nome")
                 .carattereApple(Tema.Apple.Impostazioni.Riga.titolo)
                 .foregroundColor(Tema.Apple.Impostazioni.Riga.coloreTitolo)
-            TestoRinviato(testo: $stato.dati.impostazioni.nomeUtente, salvaOra: { stato.salvaOra() }) { bozza in
+            TestoRinviato(testo: Bindable(stato.dati).impostazioni.nomeUtente, salvaOra: { stato.salvaOra() }) { bozza in
                 TextField("Nome", text: bozza)
                     .campoTesto()
                     .frame(width: f.larghezzaCampo)

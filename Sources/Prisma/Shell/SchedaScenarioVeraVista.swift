@@ -4,7 +4,7 @@ import SwiftUI
 /// iPad): la tabella con le cifre di Prisma, «Salva nel dossier» e «Apri in Simulazioni» (in protezione «Apri in
 /// Analisi 360»), poi le note sulle ipotesi.
 struct SchedaScenarioVeraVista: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let scheda: SchedaScenarioVera
     /// Il messaggio di Vera che la contiene (per ricordare il salvataggio).
     let messaggio: String
@@ -12,6 +12,7 @@ struct SchedaScenarioVeraVista: View {
     var entra = true
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let t = Tema.Apple.ScenarioVera.self
         VStack(alignment: .leading, spacing: 0) {
             TabellaScenarioApple(colonnaOggi: scheda.colonnaOggi, colonnaScenario: scheda.colonnaScenario, righe: scheda.righe)

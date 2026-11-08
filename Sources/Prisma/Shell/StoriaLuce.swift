@@ -66,10 +66,10 @@ extension StatoShell {
         let pagine: [PaginaStoria]
         switch tipo {
         case .settimana:
-            pagine = MotoreStorie.settimana(dati: dati, oggi: oggi, cal: cal)
+            pagine = MotoreStorie.settimana(dati: dati.istantanea, oggi: oggi, cal: cal)
             storia.periodo = MotoreStorie.settimanaDi(oggi, cal: cal)
         case .anno:
-            pagine = MotoreStorie.anno(dati: dati, anno: cal.component(.year, from: oggi), oggi: oggi, cal: cal)
+            pagine = MotoreStorie.anno(dati: dati.istantanea, anno: cal.component(.year, from: oggi), oggi: oggi, cal: cal)
         }
         storia.tipo = tipo
         storia.pagine = pagine
@@ -153,7 +153,7 @@ extension StatoShell {
 
 /// La storia a tutto palco: fondo, pagina, barre, «✕», zone di tocco e tasti.
 struct StoriaLuce: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @ObservedObject var storia: StatoStoria
 
     @Environment(\.modoIstantanea) private var istantanea
@@ -166,6 +166,7 @@ struct StoriaLuce: View {
     private typealias M = Tema.Apple.Moto.Storia
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         GeometryReader { geo in
             ZStack(alignment: .topLeading) {
                 if let p = storia.corrente {

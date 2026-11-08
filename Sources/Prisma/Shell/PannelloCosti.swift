@@ -3,10 +3,11 @@ import SwiftUI
 /// Il peso dei costi nel dossier Posizioni: quanto costano quest'anno le posizioni del cliente,
 /// quanto tolgono in 10 e 20 anni e dove un'alternativa a parità di rischio lascerebbe di più.
 struct PannelloCosti: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let analisi: AnalisiCosti
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         PannelloAnalisi(titolo: "Peso dei costi", nota: "Gestione, caricamenti e trattenute delle posizioni finanziarie in essere; imposte e bollo a parte") {
             HStack(spacing: 8) {
                 if analisi.risparmioPossibile > 0 {

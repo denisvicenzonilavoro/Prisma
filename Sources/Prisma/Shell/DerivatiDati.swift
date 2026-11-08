@@ -7,6 +7,8 @@ import Foundation
 /// aggiorna dai getter senza pubblicare StatoShell. Ogni voce si calcola alla prima richiesta dopo un
 /// cambiamento, non tutte insieme. Si usa solo dal thread principale.
 final class DerivatiDati {
+    /// Il radar del portafoglio (Posizioni › Radar): con Observation la vista lo chiede a ogni rivalutazione.
+    var radar: RadarPortafoglio?
     /// Ciò da cui dipende tutto il resto: con una chiave nuova si riparte da zero.
     struct Chiave: Equatable {
         let versione: Int
@@ -190,6 +192,7 @@ final class DerivatiDati {
         cruscottoStudio = nil
         trackRecord = nil
         occasioniMessaggi = nil
+        radar = nil
     }
 }
 
@@ -210,6 +213,16 @@ extension StatoShell {
         derivati.inizioGiorno = giorno
         derivati.fineGiorno = calendario.date(byAdding: .day, value: 1, to: giorno) ?? adesso
         return derivati
+    }
+
+    /// Il radar del portafoglio, in cache per `versioneCalcoli` e giorno: legge solo clienti, posizioni, prodotti, portafogli
+    /// modello e la tolleranza del radar, tutti campi «dei calcoli». Così la vista del radar non legge l'archivio intero.
+    func radarPortafoglio() -> RadarPortafoglio {
+        let d = derivatiValidi()
+        if let r = d.radar { return r }
+        let r = MotoreRadar.calcola(dati.istantanea)
+        d.radar = r
+        return r
     }
 
     /// Cambio di giorno, d'orario o di fuso: la prossima richiesta rifà il giorno delle chiavi.

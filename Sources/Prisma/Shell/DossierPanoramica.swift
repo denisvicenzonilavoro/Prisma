@@ -16,10 +16,11 @@ import SwiftUI
 /// - «Da ricordare» è la nota del cliente; il prossimo incontro viene dall'agenda e la card apre l'Agenda sul giorno.
 /// - I blocchi entrano con `.entrataDossier(i)`, la percentuale si conta, l'anello parte a 0,15 s.
 struct PanoramicaDossierApple: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let cliente: Cliente
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let p = Tema.Apple.Clienti.Panoramica.self
         let completezza = stato.inModoCliente ? nil : stato.completezzaCliente(cliente.id)
         let prossimo = stato.prossimiAppuntamenti.first { $0.clienteId == cliente.id }
@@ -121,12 +122,13 @@ struct ColonneProporzionaliDossier: Layout {
 /// voci da completare come righe `.prep`, ognuna con «Completa» e la croce «non pertinente»; sotto, «Mostra tutte»
 /// e le voci segnate non pertinenti con «Ripristina».
 struct DatiAnalisiApple: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let cliente: Cliente
     let completezza: CompletezzaCliente
     @State private var tutte = false
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let p = Tema.Apple.Clienti.Panoramica.self
         let k = completezza
         let completo = k.percentuale >= p.sogliaVerde
@@ -278,10 +280,11 @@ struct VoceDaCompletareApple: View {
 
 /// «Da ricordare»: la nota del cliente 15 con interlinea 1,5. Senza nota, una riga che porta alla scheda Note.
 struct DaRicordareApple: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let cliente: Cliente
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let p = Tema.Apple.Clienti.Panoramica.self
         let nota = cliente.nota.trimmingCharacters(in: .whitespacesAndNewlines)
         return VStack(alignment: .leading, spacing: p.sottoTitolo) {
@@ -314,11 +317,12 @@ struct DaRicordareApple: View {
 /// «Prossimo incontro»: data 21 bold, titolo 14 e «Apri in Agenda ›»; tutta la card apre l'Agenda sul giorno
 /// dell'incontro e si inclina di 5° sotto il puntatore. Senza incontri in programma apre l'Agenda del cliente.
 struct ProssimoIncontroApple: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let cliente: Cliente
     let appuntamento: Appuntamento?
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let p = Tema.Apple.Clienti.Panoramica.self
         return Button(action: apri) {
             VStack(alignment: .leading, spacing: 0) {

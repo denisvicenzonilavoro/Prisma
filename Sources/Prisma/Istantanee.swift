@@ -332,12 +332,12 @@ enum Istantanee {
         }),
         ("87-clienti-fittizi", { s in
             // I 35 clienti di prova completi: rubrica piena e un cliente inventato aperto
-            s.dati = ClientiFittizi.completi()
+            s.dati.carica(ClientiFittizi.completi())
             s.clienteAttivoId = ClientiFittizi.prefisso + "ferraro"
             s.apri(.clienti)
         }),
         ("88-portafoglio-fittizi", { s in
-            s.dati = ClientiFittizi.completi()
+            s.dati.carica(ClientiFittizi.completi())
             s.portafoglio = true
             s.apri(.posizioni)
         }),
@@ -1494,7 +1494,7 @@ enum Istantanee {
         let cal = Calendar.current
         let oggi = cal.startOfDay(for: Date())
         func g(_ n: Int) -> Date { ValoriDaDocumento.mezzogiorno(cal.date(byAdding: .day, value: n, to: oggi) ?? oggi) }
-        var d = s.dati
+        var d = s.dati.istantanea
         // Nessun appuntamento futuro di Giulia, Sofia e Andrea: le loro proposte sono ferme
         let clienti: Set<String> = ["giulia", "sofia", "andrea"]
         d.appuntamenti.removeAll { clienti.contains($0.clienteId) && $0.inizio >= oggi }
@@ -1523,7 +1523,7 @@ enum Istantanee {
             sg.presentataIl = g(-60)
             sg.esitoIl = g(-40)
         }
-        s.dati = d
+        s.dati.carica(d)
     }
 
     /// Una data di questa settimana spostata indietro di `anni` (lunedì + `giorno`), per mettere le occasioni
@@ -1721,7 +1721,7 @@ enum Istantanee {
                         }
                     }
                 }
-                    .environmentObject(stato)
+                    .environment(stato)
                     .environmentObject(stato.miniVera)
                     .environment(\.modoIstantanea, true)
                     .environment(\.colorScheme, scuro ? .dark : .light)

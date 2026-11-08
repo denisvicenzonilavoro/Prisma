@@ -59,10 +59,11 @@ enum SimulatoriAnalisiApple {
 
 /// Il contenuto del dettaglio aperto: il simulatore dell'area, per il cliente attivo e la sua analisi salvata.
 struct DettaglioSimulatoreAnalisiApple: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let id: String
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let cid = stato.clienteAttivoId
         if let c = stato.cliente(cid), let area = SimulatoriAnalisiApple.area(id: id) {
             let analisi = Binding<Analisi360>(get: { stato.analisi360(cid) }, set: { stato.salvaAnalisi(cid, $0) })

@@ -8,7 +8,7 @@ private typealias K = Tema.Colore.Adeguatezza
 /// documenti da consegnare con le spunte, i pulsanti del PDF e la firma. Calcolata a richiesta a ogni corpo:
 /// una proposta sola, niente cache.
 struct PannelloAdeguatezza: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @Environment(\.modoIstantanea) var modoIstantanea
     let posizione: Posizione
     @State private var mostraMetodo = false
@@ -17,6 +17,7 @@ struct PannelloAdeguatezza: View {
     @State private var confermaFirma = false
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         if let ingresso = stato.ingressoAdeguatezza(posizione) {
             contenuto(ingresso, MotoreAdeguatezza.calcola(ingresso))
         }
@@ -55,7 +56,7 @@ struct PannelloAdeguatezza: View {
         }
         .sheet(item: $daSalvare) { pdf in
             ModuloSalvaPDF(pdf: pdf, impostazioni: stato.dati.impostazioni.pdf)
-                .environmentObject(stato)
+                .environment(stato)
         }
         .alert("La scheda non è completa", isPresented: $confermaFirma) {
             Button("Annulla", role: .cancel) {}

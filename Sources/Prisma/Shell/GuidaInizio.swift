@@ -195,10 +195,11 @@ extension StatoShell {
 /// La striscia della guida sulla scrivania: a che punto sei e il prossimo passo,
 /// in una capsula di vetro leggero come i pulsanti della scrivania.
 struct StrisciaGuida: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @State private var elenco = false
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let passi = stato.passiGuida
         let fatti = passi.filter(\.fatto).count
         let prossimo = passi.first { !$0.fatto }
@@ -229,17 +230,18 @@ struct StrisciaGuida: View {
         .frame(maxWidth: .infinity)
         .frame(height: Misure.Widget.striscia)
         .vetro(.leggero, forma: .capsula)
-        .popover(isPresented: $elenco, arrowEdge: .bottom) { ElencoGuida().environmentObject(stato) }
+        .popover(isPresented: $elenco, arrowEdge: .bottom) { ElencoGuida().environment(stato) }
     }
 }
 
 /// La guida sulla scrivania del Mac, compatta: sotto il saluto, un pulsante di vetro con l'anello
 /// di avanzamento («0 di 6») e il prossimo passo; un clic apre tutti i passi. La ✕ accanto la nasconde.
 struct GuidaCompatta: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @State private var elenco = false
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let passi = stato.passiGuida
         let fatti = passi.filter(\.fatto).count
         let prossimo = passi.first { !$0.fatto }
@@ -254,7 +256,7 @@ struct GuidaCompatta: View {
             .buttonStyle(StilePulsanteVetro())
             .help("Comincia con i tuoi dati: tutti i passi")
             .accessibilityLabel("Comincia con i tuoi dati, \(fatti) di \(passi.count) passi fatti")
-            .popover(isPresented: $elenco, arrowEdge: .bottom) { ElencoGuida().environmentObject(stato) }
+            .popover(isPresented: $elenco, arrowEdge: .bottom) { ElencoGuida().environment(stato) }
 
             ChiudiGuida()
         }
@@ -305,10 +307,11 @@ private struct AnelloGuida: View {
 
 /// La ✕ della guida compatta: un piccolo cerchio di vetro a sé.
 private struct ChiudiGuida: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @State private var sopra = false
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let lato = Tema.Misura.Shell.chiudiGuida
         Button { stato.dati.impostazioni.guidaNascosta = true } label: {
             Image(systemName: "xmark")
@@ -327,9 +330,10 @@ private struct ChiudiGuida: View {
 
 /// Tutti i passi della guida, con il pulsante per ciascuno.
 struct ElencoGuida: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         VStack(alignment: .leading, spacing: 0) {
             Text("Comincia con i tuoi dati")
                 .font(Tema.Testo.titolo)

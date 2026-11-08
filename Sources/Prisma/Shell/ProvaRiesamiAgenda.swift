@@ -17,7 +17,7 @@ enum ProvaRiesamiAgenda {
             let g = cal.date(byAdding: .day, value: -giorni, to: m) ?? m
             return cal.date(bySettingHour: 10, minute: 0, second: 0, of: g) ?? g
         }
-        var d = s.dati
+        var d = s.dati.istantanea
         d.appuntamenti.removeAll { tre.contains($0.clienteId) }
         d.incontri.removeAll { tre.contains($0.clienteId) }
         d.appuntamenti.append(Appuntamento(id: "riesame-prova-marco", clienteId: "marco", titolo: "Revisione delle posizioni",
@@ -26,7 +26,7 @@ enum ProvaRiesamiAgenda {
         d.appuntamenti.append(Appuntamento(id: "riesame-prova-laura", clienteId: "laura", titolo: "Revisione delle posizioni",
                                            inizio: passato(mesi: 13, giorni: 0), durataMinuti: 60, luogo: "In studio",
                                            note: "", stato: .concluso, tipo: .revisione, canale: .indipendente))
-        s.dati = d
+        s.dati.carica(d)
         s.giornoAgenda = inizio
         s.vistaAgenda = .settimana
         s.filtroClienteAgenda = nil

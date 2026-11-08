@@ -34,10 +34,11 @@ extension EnvironmentValues {
 
 struct FamigliaDossier: View {
     let cliente: Cliente
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @Environment(\.azioneFamiliareDossier) private var azione
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let f = Tema.Apple.Clienti.Famiglia.self
         let persone = personeCliente
         let colonne = min(max(f.colonneMinime, persone.count), f.colonneMassime)

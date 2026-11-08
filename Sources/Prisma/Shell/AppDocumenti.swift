@@ -8,7 +8,7 @@ import UniformTypeIdentifiers
 /// e i canali; al centro l'elenco a gruppi con lo stato di ogni documento; a destra il foglio accanto a una scheda
 /// leggibile, con le azioni in alto e il confronto «Nel documento / In Prisma». Tutto si legge sul Mac (PDFKit, Vision).
 struct AppDocumenti: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     /// La ricerca è della vista: scrivere non ridisegna le altre finestre.
     @State private var ricerca = ""
     @State private var daEliminare: Documento?
@@ -39,6 +39,7 @@ struct AppDocumenti: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let voci = stato.vociDocumenti(cliente)
         let gruppi = raggruppa(voci)
         let mostrate = gruppi.flatMap { $0.voci.map(\.voce) }
@@ -140,7 +141,7 @@ struct AppDocumenti: View {
 /// L'elenco dei documenti del cliente: ricerca e «+» in testata, gruppi per tipo, righe con stato e collegamento,
 /// frecce ↑ ↓ e ⌫ da tastiera, piede con il conteggio.
 struct ElencoDocumenti: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let gruppi: [MotoreDocumenti.Gruppo]
     let scelta: String?
     let totale: Int
@@ -153,6 +154,7 @@ struct ElencoDocumenti: View {
     var comprimi: (() -> Void)? = nil
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let m = Tema.Misura.Documenti.self
         let mostrate = gruppi.flatMap(\.voci)
         VStack(spacing: 0) {

@@ -7,12 +7,13 @@ import SwiftUI
 /// quello scelto: cifre, probabilità a pallini con la traiettoria, posizioni che lavorano per lui. Le spiegazioni
 /// lunghe restano a richiesta. Sta dentro lo scorrimento del dossier.
 struct ObiettiviCliente: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let cliente: Cliente
     @State private var modulo: Obiettivo?
     @State private var daEliminare: Obiettivo?
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let elenco = stato.obiettiviCliente(cliente.id)
         let posizioni = stato.posizioniCliente(cliente.id)
         let scelto = elenco.first { $0.id == stato.obiettivoSelezionato } ?? elenco.first
@@ -510,12 +511,13 @@ struct TestataObiettivo: View {
 
 /// Le azioni dell'obiettivo: Simula (consigliata) e Modifica in vista, le altre nel menu «⋯».
 struct AzioniObiettivo: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let obiettivo: Obiettivo
     let modifica: () -> Void
     let elimina: () -> Void
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let o = obiettivo
         HStack(spacing: Tema.Misura.DossierCliente.spazioAzioni) {
             Button { stato.simula(o) } label: { Label("Simula", systemImage: "slider.horizontal.3") }
@@ -728,12 +730,13 @@ struct ProbabilitaObiettivo: View {
 
 /// Le posizioni adatte del cliente come capsule da accendere o spegnere: accese lavorano per l'obiettivo.
 struct PosizioniObiettivo: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let obiettivo: Obiettivo
     /// Tutte le posizioni del cliente: qui restano quelle adatte (`AiutiObiettivi.posizioniAdatte`).
     let posizioni: [Posizione]
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let o = obiettivo
         let adatte = AiutiObiettivi.posizioniAdatte(posizioni)
         let m = Tema.Misura.DossierCliente.self

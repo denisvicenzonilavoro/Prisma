@@ -8,7 +8,7 @@ extension StatoShell {
     /// Le pratiche con il loro stato, nell'ordine della scheda (in modalità cliente solo quelle del suo cliente:
     /// ma Pratiche in modalità cliente non si apre).
     func statiPratiche(oggi: Date = Date()) -> [StatoPratica] {
-        let tutti = MotorePratiche.stati(dati, oggi: oggi)
+        let tutti = MotorePratiche.stati(dati.istantanea, oggi: oggi)
         guard let solo = modoCliente else { return tutti }
         return tutti.filter { $0.clienteId == solo }
     }
@@ -29,7 +29,7 @@ extension StatoShell {
         }
         guard let i = dati.pratiche.firstIndex(where: { $0.id == praticaId }) else { return }
         var p = dati.pratiche[i]
-        MotorePratiche.segna(passo, fatto: fatto, il: data, pratica: &p, dati: dati)
+        MotorePratiche.segna(passo, fatto: fatto, il: data, pratica: &p, dati: dati.istantanea)
         dati.pratiche[i] = p
     }
 
@@ -37,7 +37,7 @@ extension StatoShell {
     func togliSegnoPasso(_ praticaId: String, _ passo: PassoPratica) {
         guard !solaLettura, let i = dati.pratiche.firstIndex(where: { $0.id == praticaId }) else { return }
         var p = dati.pratiche[i]
-        MotorePratiche.togliSegno(passo, pratica: &p, dati: dati)
+        MotorePratiche.togliSegno(passo, pratica: &p, dati: dati.istantanea)
         dati.pratiche[i] = p
     }
 
@@ -52,7 +52,7 @@ extension StatoShell {
     /// l'occasione nella pratica, così la card dice «✓ Sollecito pronto». `apri`: false lascia Pratiche davanti
     /// (istantanee e prove).
     func sollecitaPratica(_ praticaId: String, apri: Bool = true, oggi: Date = Date()) {
-        guard let s = MotorePratiche.stati(dati, oggi: oggi).first(where: { $0.id == praticaId }),
+        guard let s = MotorePratiche.stati(dati.istantanea, oggi: oggi).first(where: { $0.id == praticaId }),
               let o = MotorePratiche.occasioneSollecito(s, oggi: oggi),
               let i = dati.pratiche.firstIndex(where: { $0.id == praticaId }) else { return }
         if !solaLettura { dati.pratiche[i].sollecitoOccasioneId = o.id }

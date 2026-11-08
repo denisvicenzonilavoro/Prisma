@@ -251,9 +251,10 @@ struct BarraLateraleAgendaApple: View {
     let indice: GiorniAgenda
     let strato: Bool
     let seleziona: (Date) -> Void
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let l = Tema.Apple.Agenda.Laterale.self
         let settimana = CalendarioAgenda.giorni(settimanaDi: giorno)
         let avviso = stato.daNonDimenticareAgenda()
@@ -353,9 +354,10 @@ struct MiniMeseAgendaApple: View {
     let indice: GiorniAgenda
     let strato: Bool
     let seleziona: (Date) -> Void
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let c = Tema.Apple.Agenda.Calendario.self
         return VStack(spacing: c.spazio) {
             HStack(spacing: c.spazio) {
@@ -705,10 +707,11 @@ struct ImpegnoGiornataApple: View {
     let evento: Appuntamento
     let larghezza: CGFloat
     let altezza: CGFloat
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @Environment(\.statoDettaglioApple) private var dettaglio
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let g = Tema.Apple.Agenda.Giornata.self
         let cliente = stato.cliente(evento.clienteId)
         let colore = Tema.Apple.Agenda.colore(cliente)

@@ -9,13 +9,14 @@ private typealias F = Tema.Testo.Riferimenti
 /// Lo stesso periodo dell'andamento misurato con un metro esterno: inflazione, rivalutazione del TFR, gestioni
 /// separate o un indice del consulente. Calcola nel `body` (pochi anni, nessuna cache).
 struct PannelloRiferimento: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let posizione: Posizione
     let andamento: AndamentoPosizione
     let voce: VoceResoconto?
     @State private var mostraMetodo = false
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let tabella = stato.tabellaRiferimenti
         let impostazioni = stato.dati.impostazioni.riferimenti
         let scelta = MotoreRiferimenti.serieDi(posizione, impostazioni: impostazioni, tabella: tabella)

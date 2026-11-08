@@ -12,11 +12,12 @@ struct BarraMobile: View {
     let alto: CGFloat
 
     @EnvironmentObject var mobile: StatoMobile
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     private typealias B = Tema.Misura.Mobile.Barra
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         HStack(spacing: B.spazio) {
             marchio
             if !compatta { appCorrente }

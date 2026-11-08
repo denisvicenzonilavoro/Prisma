@@ -13,9 +13,15 @@ import SwiftUI
 // Su iPhone e iPad la pagina si legge soltanto: le scelte e i dati arrivano dal Mac.
 
 struct PaginaImpostazioniMercato: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        // SessioneMercato è un ObservableObject dentro StatoShell: la pagina ne legge configurazione e aggiornamento
+        OsservaOggetto(stato.sessioneMercato) { corpo }
+    }
+
+    @ViewBuilder private var corpo: some View {
+        let _ = ContaCorpi.segna()
         let m = stato.dati.impostazioni.mercato
         let archivio = stato.dati.mercato
         let configurazione = stato.sessioneMercato.configurazione

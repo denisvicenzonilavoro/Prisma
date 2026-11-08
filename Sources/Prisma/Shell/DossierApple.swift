@@ -127,7 +127,7 @@ extension View {
 
 /// La rubrica del tema Apple: `.lbl` con il numero dei clienti, ricerca a capsula, filtro dei preferiti, voci e piede.
 struct RubricaApple: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @Binding var ricerca: String
     @Binding var soloPreferiti: Bool
 
@@ -141,6 +141,7 @@ struct RubricaApple: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let r = Tema.Apple.Clienti.Rubrica.self
         // Filtrato e ordinato una volta per disegno, non a ogni uso
         let elenco = self.elenco
@@ -332,7 +333,7 @@ struct CampoRicercaApple: View {
 /// Il dossier del cliente attivo: testata, tessere, schede e contenuto della scheda, con il cambio di cliente e di
 /// scheda del template. `contenuto` disegna la scheda (lo fornisce AppClienti, che tiene i fogli dei moduli).
 struct DossierApple<Contenuto: View>: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     /// La superficie del dossier: sul Mac la card senza ombra; su iPad nil (sta già sul vetro della finestra).
     let superficie: Tema.Apple.Superficie?
     let modifica: (Cliente) -> Void
@@ -358,6 +359,7 @@ struct DossierApple<Contenuto: View>: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let id = clienteMostrato ?? stato.clienteAttivoId
         let scheda = schedaMostrata ?? stato.schedaCliente
         return Group {
@@ -386,7 +388,7 @@ struct DossierApple<Contenuto: View>: View {
                 .entrataCascata(0, base: baseDossier)
             TessereDossierApple(clienteId: c.id, base: baseDossier)
                 .padding(.top, k.Tessere.sopra)
-            SchedeDossierApple(selezione: $stato.schedaCliente, cliente: c)
+            SchedeDossierApple(selezione: Bindable(stato).schedaCliente, cliente: c)
                 .entrataCascata(k.Moto.indiceSchede, base: baseDossier)
                 .padding(.top, k.Schede.sopra)
                 .padding(.bottom, k.Schede.sotto)
@@ -508,11 +510,12 @@ struct DossierApple<Contenuto: View>: View {
 /// preferito, «Modifica», «Analisi 360» e «Prospetti» (primario). Se non sta su una riga, prima le etichette
 /// dei canali diventano compatte e «Modifica» un'icona, poi i comandi scendono sotto il nome.
 struct TestataDossierApple: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let cliente: Cliente
     let modifica: () -> Void
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let t = Tema.Apple.Clienti.Testata.self
         return ViewThatFits(in: .horizontal) {
             HStack(alignment: .center, spacing: t.spazioAvatar) {
@@ -629,11 +632,12 @@ struct TestataDossierApple: View {
 /// (numero e «· importo»). Le cifre vengono dal quadro delle posizioni (`RiepilogoPosizioni`, in cache in
 /// DerivatiDati) e si contano fino al valore. Strette, vanno su due colonne.
 struct TessereDossierApple: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let clienteId: String
     var base: Double = Tema.Apple.Clienti.Moto.baseCambio
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let r = stato.riepilogoPosizioniCliente(clienteId)
         let t = Tema.Apple.Clienti.Tessere.self
         return ViewThatFits(in: .horizontal) {

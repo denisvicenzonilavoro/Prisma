@@ -123,12 +123,12 @@ extension StatoShell {
     func confermaSchedeCopilota(_ ids: Set<String>?, sessione id: String, oggi: Date = Date()) -> EsitoCopilota {
         guard !solaLettura, let i = dati.sessioniCopilota.firstIndex(where: { $0.id == id }) else { return EsitoCopilota() }
         var s = dati.sessioniCopilota[i]
-        var d = dati
+        var d = dati.istantanea
         let esito = ApplicaCopilota.applica(ids, sessione: &s, a: &d, oggi: oggi)
         guard !esito.vuoto else { return esito }
         if let k = d.sessioniCopilota.firstIndex(where: { $0.id == id }) { d.sessioniCopilota[k] = s }
         // Un solo cambio di `dati`: un solo salvataggio
-        dati = d
+        dati.carica(d)
         mostraAvviso("Nel dossier: " + ApplicaCopilota.avviso(esito))
         return esito
     }

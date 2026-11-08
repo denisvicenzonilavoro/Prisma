@@ -31,7 +31,7 @@ struct SchermataBenvenuto: View {
                 .animation(s.animazione))
     }
 
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @Environment(\.prismaCalmo) private var calmo
     @Environment(\.modoIstantanea) private var istantanea
     /// La schermata è arrivata (l'entrata del blocco).
@@ -45,6 +45,7 @@ struct SchermataBenvenuto: View {
     private typealias L = Tema.Apple.Lucchetto
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let fermo = istantanea || calmo
         let dentro = arrivata || istantanea
         ZStack(alignment: .top) {
@@ -229,11 +230,12 @@ private struct LuceDelPulsante: View {
 /// «Le tue app aperte»: le finestre aperte, in primo piano o ridotte, ognuna con il suo cliente
 /// (o il suo contesto), con un clic per tornarci. Pannello di vetro del tema (switcher).
 struct PannelloAppAperte: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     /// Le finestre aperte e quella in primo piano.
     @EnvironmentObject var sistema: StatoFinestre
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         GeometryReader { geo in
             let m = Tema.Misura.Shell.self
             ZStack {
@@ -332,12 +334,13 @@ struct PannelloAppAperte: View {
 
 /// Una scheda di «Le tue app aperte»: icona, nome, cliente o contesto della finestra, stato.
 private struct SchedaAppAperta: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let finestra: StatoShell.Finestra
     let inPrimoPiano: Bool
     @State var sopra = false
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let m = Tema.Misura.Shell.self
         let forma = RoundedRectangle(cornerRadius: Tema.Raggio.schedaApp, style: .continuous)
         Button {

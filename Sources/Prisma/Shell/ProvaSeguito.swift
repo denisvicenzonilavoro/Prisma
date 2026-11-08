@@ -230,7 +230,7 @@ enum ProvaSeguito {
         do {
             let s = StatoShell(persistente: false)
             if let molti = try? ProvaCarico.moltiplica(DatiPrisma.demo(), copie: ProvaCarico.copie) {
-                s.dati = molti
+                s.dati.carica(molti)
                 let inizio = Date()
                 let prima = s.proposteInSospeso.count
                 let calcolo = Date().timeIntervalSince(inizio)

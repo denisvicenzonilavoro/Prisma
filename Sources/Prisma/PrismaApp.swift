@@ -82,7 +82,7 @@ struct PrismaApp: App {
         Window("Prisma", id: "prisma") {
             // Aspetto scelto in Impostazioni: lo applicano StatoShell.init (prima del primo disegno) e ShellView (ai cambi)
             ShellView()
-                .environmentObject(stato)
+                .environment(stato)
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 1440, height: 900)

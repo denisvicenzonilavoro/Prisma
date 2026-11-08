@@ -28,7 +28,7 @@ import SwiftUI
 
 struct AziendaDossier: View {
     let cliente: Cliente
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @Environment(\.statoDettaglioApple) private var dettaglio
     @State private var scelta: String?
     @State private var modulo: ModificaAzienda?
@@ -36,6 +36,7 @@ struct AziendaDossier: View {
     private typealias A = Tema.Apple.Azienda
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let aziende = cliente.elencoAziende
         return Group {
             if let a = aziende.first(where: { $0.id == scelta }) ?? aziende.first {
@@ -376,12 +377,13 @@ struct DettaglioAziendaId: Equatable {
 /// Il dettaglio che nasce dalla scheda: anello grande, la frase, il calcolo riga per riga (la cifra, da dove viene, cosa
 /// manca), la nota sul commercialista e «Non pertinente» per l'azienda.
 struct DettaglioAreaAzienda: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let id: DettaglioAziendaId
 
     private typealias A = Tema.Apple.Azienda
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         if let c = stato.cliente(id.cliente), let a = c.elencoAziende.first(where: { $0.id == id.azienda }),
            let v = MotoreAzienda.valuta(a, cliente: c, posizioni: stato.posizioniCliente(c.id)).first(where: { $0.area == id.area }) {
             corpo(c, a, v)

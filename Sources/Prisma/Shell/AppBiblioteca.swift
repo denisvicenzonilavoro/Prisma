@@ -20,9 +20,10 @@ import UniformTypeIdentifiers
 
 /// Il contenuto della Biblioteca.
 struct AppBiblioteca: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         #if os(macOS)
         VistaBiblioteca(biblioteca: stato.biblioteca, trova: stato.trovaPagina)
         #else
@@ -36,7 +37,7 @@ struct AppBiblioteca: View {
 
 #if os(macOS)
 struct VistaBiblioteca: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @ObservedObject var biblioteca: StatoBiblioteca
     @ObservedObject var trova: StatoTrovaPagina
     @State private var sopra = false
@@ -49,6 +50,7 @@ struct VistaBiblioteca: View {
     private typealias C = Tema.Apple.Colore
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         HStack(alignment: .top, spacing: B.spazioLaterale) {
             laterale
                 .frame(width: B.larghezzaLaterale)

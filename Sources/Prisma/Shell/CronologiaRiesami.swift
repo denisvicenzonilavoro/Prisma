@@ -6,12 +6,13 @@ import SwiftUI
 /// La scheda «Riesami» del dossier del cliente: che cosa è cambiato dal riesame precedente, le azioni,
 /// la linea del tempo delle fotografie salvate e le fonti.
 struct CronologiaRiesami: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let cliente: Cliente
     /// La fotografia da eliminare, dopo la conferma.
     @State private var daEliminare: FotografiaRiesame?
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let m = stato.haFotografie(cliente.id) ? stato.memoriaRiesame(cliente.id) : nil
         let salvate = stato.fotografieCliente(cliente.id)
         VStack(alignment: .leading, spacing: Tema.Misura.Memoria.spazioSezioni) {
@@ -105,10 +106,11 @@ struct CronologiaRiesami: View {
 
 /// Prospetti › Riesame: che cosa è cambiato dal riesame precedente, in breve, sopra i punti da trattare.
 struct RiepilogoMemoria: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let clienteId: String
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         // Senza fotografie del cliente è il primo riesame: la memoria non serve
         let m = stato.haFotografie(clienteId) ? stato.memoriaRiesame(clienteId) : nil
         let breve = MotoreMemoria.massimoBreve
@@ -148,10 +150,11 @@ struct RiepilogoMemoria: View {
 /// Incontri › preparazione, colonna «Dal dossier»: le prime variazioni dal riesame precedente.
 /// Solo con un riesame precedente e almeno una variazione; gli stessi gettoni degli altri occhielli della colonna.
 struct CambiatoDalRiesame: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let clienteId: String
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         // Senza fotografie del cliente non c'è un riesame precedente: la memoria non si calcola
         if stato.haFotografie(clienteId), let m = stato.memoriaRiesame(clienteId), let p = m.precedente, !m.variazioni.isEmpty {
             let mm = Tema.Misura.Memoria.self
@@ -178,10 +181,11 @@ struct CambiatoDalRiesame: View {
 /// Panoramica › riquadro «Riesame annuale»: in una riga che cosa è cambiato e il collegamento alla scheda «Riesami».
 /// Solo con un riesame precedente e almeno una variazione.
 struct RigaMemoriaPanoramica: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let clienteId: String
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         if stato.haFotografie(clienteId), let m = stato.memoriaRiesame(clienteId), let testo = TestiMemoria.rigaPanoramica(m: m) {
             HStack(alignment: .firstTextBaseline, spacing: Tema.Misura.Memoria.spazioRiga) {
                 Text(testo)

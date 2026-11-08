@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Modulo per creare o modificare un appuntamento.
 struct ModuloAppuntamento: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @Environment(\.dismiss) var chiudi
     @State var bozza: Appuntamento
     let nuovo: Bool
@@ -18,6 +18,7 @@ struct ModuloAppuntamento: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         CorniceModulo(titolo: nuovo ? "Nuovo appuntamento" : "Modifica appuntamento") {
             VStack(alignment: .leading, spacing: 20) {
                 sezione("L'incontro") {
@@ -179,7 +180,7 @@ struct ModuloAppuntamento: View {
 
 /// Modulo per creare o modificare un'attività.
 struct ModuloAttivita: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @Environment(\.dismiss) var chiudi
     @State var bozza: Attivita
     let nuova: Bool
@@ -192,6 +193,7 @@ struct ModuloAttivita: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         CorniceModulo(titolo: nuova ? "Nuova attività" : "Modifica attività") {
             VStack(alignment: .leading, spacing: 14) {
                 CampoModulo(etichetta: "Cosa c'è da fare?") {

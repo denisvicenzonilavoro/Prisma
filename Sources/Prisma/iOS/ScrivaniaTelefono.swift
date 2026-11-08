@@ -14,7 +14,7 @@ struct ScrivaniaTelefono: View {
     /// Solo istantanee: la scrivania parte già scorsa fino al piede.
     var inFondo = false
 
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @EnvironmentObject var mobile: StatoMobile
 
     private typealias S = Tema.Apple.Telefono.Scrivania
@@ -24,6 +24,7 @@ struct ScrivaniaTelefono: View {
     static let attesaInFondo: Double = 0.3
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         ScrollViewReader { lettore in
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
@@ -114,13 +115,14 @@ struct ScrivaniaTelefono: View {
 
 /// Il saluto della scrivania (.hero h1 e p): «Buongiorno, Denis.» sull'acqua, aggiornato ogni minuto (solo lui).
 struct SalutoScrivaniaMobile: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let carattere: Font
     let spaziatura: CGFloat
     /// «Tutto il tuo lavoro, a portata di mano.» sotto il saluto (sull'iPhone c'è la data sopra, al suo posto).
     var sottotitolo = true
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         VStack(alignment: .leading, spacing: Tema.Misura.Shell.salutoSpazio) {
             TimelineView(.everyMinute) { contesto in
                 Text(Self.saluto(contesto.date, nome: stato.nomeUtente))

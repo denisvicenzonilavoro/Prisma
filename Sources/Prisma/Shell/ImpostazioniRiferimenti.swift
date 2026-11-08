@@ -10,13 +10,14 @@ private typealias R = Tema.Raggio.Riferimenti
 /// anno per anno (quelli di Prisma, quelli del consulente, il TFR calcolato), gli indici del consulente e le fonti.
 /// I valori stanno nell'archivio e nel backup (`Impostazioni.riferimenti`).
 struct ImpostazioniRiferimenti: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     /// L'indice aperto nel popover di modifica (anche quello appena aggiunto).
     @State private var indiceInModifica: String?
     /// L'indice da eliminare, dopo la conferma.
     @State private var daEliminare: String?
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let tabella = stato.tabellaRiferimenti
         let r = stato.dati.impostazioni.riferimenti
         VStack(alignment: .leading, spacing: Misure.Impostazioni.spazioGruppi) {
@@ -181,7 +182,7 @@ struct ImpostazioniRiferimenti: View {
                                      indiceInModifica = nil
                                      daEliminare = id
                                  })
-                        .environmentObject(stato)
+                        .environment(stato)
                 }
         }
     }
@@ -214,12 +215,13 @@ private let formatoCella = FloatingPointFormatStyle<Double>.number.locale(Format
 /// Una cella modificabile: il valore del consulente (blu, con il pallino) o quello di Prisma (inchiostro).
 /// Vuota = nil: si toglie il valore del consulente e torna quello di Prisma, se c'è.
 private struct CellaRiferimento: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let serie: String
     let anno: Int
     let valore: ValoreAnnuo?
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let inserito = valore?.origine == .consulente
         let prisma = TabellaRiferimenti.valorePrisma(serie, anno: anno)
         let forma = FormaVetro.arrotondata(R.cella)
@@ -277,12 +279,13 @@ private struct CellaCalcolata: View {
 
 /// Nome e fonte di un indice, cercato per id (l'elenco può cambiare mentre il popover è aperto), ed eliminazione.
 private struct ModuloIndice: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let indiceId: String
     let chiudi: () -> Void
     let elimina: () -> Void
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         VStack(alignment: .leading, spacing: M.spazioPopover) {
             campo(T.campoNome) {
                 TestoRinviato(testo: legame(\.nome), salvaOra: { stato.salvaOra() }) { bozza in

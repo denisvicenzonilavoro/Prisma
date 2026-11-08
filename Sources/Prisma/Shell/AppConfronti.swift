@@ -51,11 +51,12 @@ struct ElementoConfronto: Identifiable {
 /// e la proposta, Alleanza e indipendente, con lo stesso orizzonte. Sul Mac è accorpata negli strumenti di
 /// Analisi 360 (`StrumentiAnalisi360`); qui resta l'involucro di iPhone e iPad attorno a `ConfrontoIpotesi`.
 struct AppConfronti: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
-    private var voci: Int { ElementoConfronto.elenco(stato.dati, cliente: stato.clienteAttivoId).count }
+    private var voci: Int { ElementoConfronto.elenco(stato.dati.istantanea, cliente: stato.clienteAttivoId).count }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         CorniceStrumento(
             notaStato: "Calcoli eseguiti in locale · stesso motore delle Posizioni · le ipotesi non sono previsioni",
             notaDestra: "\(voci) voci confrontabili"

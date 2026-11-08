@@ -20,7 +20,7 @@ import SwiftUI
 
 @MainActor
 struct PannelloTraguardo: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let occasione: OccasioneMessaggio
     let cliente: Cliente
     var base: Double = Tema.Apple.Messaggi.Moto.baseApertura
@@ -33,6 +33,7 @@ struct PannelloTraguardo: View {
     private typealias T = Tema.Apple.Messaggi.Traguardo
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let traguardo = stato.traguardo(occasione.origine.riferimento)
         return GeometryReader { geo in
             ScrollView(.vertical, showsIndicators: false) {

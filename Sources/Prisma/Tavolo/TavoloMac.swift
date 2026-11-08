@@ -273,7 +273,7 @@ final class TavoloMac: ObservableObject {
         avviso = nil
         collegamento = .inAttesa
         // Un altro cliente aperto sul Mac: l'iPad torna subito alla schermata neutra
-        abbonamento = s.$dati.map(\.clienteAttivoId).removeDuplicates().dropFirst()
+        abbonamento = s.clienteAttivoCambiato
             .sink { [weak self] id in
                 DispatchQueue.main.async { [weak self] in self?.clienteCambiato(id) }
             }

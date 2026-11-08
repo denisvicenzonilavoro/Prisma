@@ -7,7 +7,7 @@ import SwiftUI
 
 /// La scheda di conferma: niente si esegue prima di «Conferma».
 struct SchedaConfermaVeraVista: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let scheda: SchedaConfermaVera
     /// Il messaggio di Vera che la contiene.
     let messaggio: String
@@ -17,6 +17,7 @@ struct SchedaConfermaVeraVista: View {
     private typealias T = Tema.Apple.ConfermaVera
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let visibili = scheda.azioni.filter { !$0.tolta }
         let mostrate = tutte || istantanea ? visibili : Array(visibili.prefix(T.righeVisibili))
         VStack(alignment: .leading, spacing: 0) {
@@ -154,7 +155,7 @@ struct SchedaConfermaVeraVista: View {
 
 /// «Chiedi alla tua clientela»: i filtri capiti, la frase di Prisma e la tabella dei clienti.
 struct TabellaClientelaVista: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let risultato: RisultatoClientela
     @State private var tutte = false
     @Environment(\.modoIstantanea) private var istantanea
@@ -162,6 +163,7 @@ struct TabellaClientelaVista: View {
     private typealias T = Tema.Apple.ClientelaVera
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         VStack(alignment: .leading, spacing: 0) {
             filtri
             if !risultato.righe.isEmpty {

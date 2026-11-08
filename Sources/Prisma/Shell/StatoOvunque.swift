@@ -178,7 +178,7 @@ extension StatoShell {
         } else if let c = JSONOvunque.oggetto(op.prima)?["clienteId"] as? String {
             id = c
         } else {
-            id = CampiOvunque.oggetto(op.entita, id: op.entitaId, in: dati)?["clienteId"] as? String
+            id = CampiOvunque.oggetto(op.entita, id: op.entitaId, in: dati.istantanea)?["clienteId"] as? String
         }
         guard let id else { return nil }
         return dati.clienti.first { $0.id == id }
@@ -193,8 +193,12 @@ extension StatoShell {
         ovunque.avviato = true
         #if os(macOS)
         // Il ritmo dell'istantanea: 5 s dopo l'ultima modifica, al massimo ogni 10 minuti
-        $dati.debounce(for: .seconds(5), scheduler: DispatchQueue.main)
-            .sink { [weak self] d in self?.archivioCambiatoOvunque(d) }
+        // (`prepend`: come faceva `$dati`, la prima consegna arriva anche senza modifiche e fa da linea di base)
+        modificheDati.prepend(()).debounce(for: .seconds(5), scheduler: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                self.archivioCambiatoOvunque(self.dati.istantanea)
+            }
             .store(in: &abbonamenti)
         NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)
             .receive(on: DispatchQueue.main)
@@ -214,7 +218,7 @@ extension StatoShell {
             .store(in: &abbonamenti)
         #elseif os(iOS)
         // Il giornale: 2 s dopo l'ultima modifica si confronta l'archivio
-        $dati.debounce(for: .seconds(2), scheduler: DispatchQueue.main)
+        modificheDati.prepend(()).debounce(for: .seconds(2), scheduler: DispatchQueue.main)
             .sink { [weak self] _ in self?.registraOvunqueOra() }
             .store(in: &abbonamenti)
         NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)
@@ -231,7 +235,7 @@ extension StatoShell {
             .store(in: &abbonamenti)
         #endif
         guard dati.impostazioni.ovunque.acceso else { return }
-        ovunque.base = dati
+        ovunque.base = dati.istantanea
         apriSpazioOvunque(sincronizza: true)
     }
 
@@ -387,13 +391,13 @@ extension StatoShell {
             return
         }
         guard let base = ovunque.base else {
-            ovunque.base = dati
+            ovunque.base = dati.istantanea
             return
         }
-        var d = dati
+        var d = dati.istantanea
         let n = RegistroOvunque.registra(prima: base, dopo: &d)
-        if n > 0 { dati = d }
-        ovunque.base = dati
+        if n > 0 { dati.carica(d) }
+        ovunque.base = dati.istantanea
         if n > 0 { programmaGiornaleOvunque() }
     }
 
@@ -432,7 +436,7 @@ extension StatoShell {
             ovunque.problema = .cartella
             return
         }
-        let partenza = dati
+        let partenza = dati.istantanea
         let versione = versioneDati
         let inizio = Date()
         ovunque.inCorso = true
@@ -473,7 +477,7 @@ extension StatoShell {
         guard dati.impostazioni.ovunque.acceso else { return }
         switch risultato {
         case .success(.mac(let e)):
-            dati = versioneDati == versione ? e.dati : StatoShell.riportaOvunque(e, su: dati)
+            dati.carica(versioneDati == versione ? e.dati : StatoShell.riportaOvunque(e, su: dati.istantanea))
             ovunque.problema = nil
             ovunque.attesaICloud = !e.inAttesa.isEmpty
             ovunque.inArrivo = []
@@ -483,8 +487,8 @@ extension StatoShell {
                 mostraAvviso(TestiOvunque.avviso(unite: e.unite.count, conflitti: e.conflitti.count))
             }
         case .success(.dispositivo(let e)):
-            dati = accogliGiroOvunque(e, partenza: partenza, versione: versione)
-            ovunque.base = dati
+            dati.carica(accogliGiroOvunque(e, partenza: partenza, versione: versione))
+            ovunque.base = dati.istantanea
             ovunque.problema = nil
             ovunque.attesaICloud = e.inAttesaDiICloud
             ovunque.giri += 1
@@ -538,7 +542,7 @@ extension StatoShell {
     /// Dispositivo: l'esito del giro sull'archivio di adesso. Le modifiche fatte mentre il giro lavorava entrano nel
     /// giornale e, se è arrivata un'istantanea nuova, si riapplicano sopra.
     private func accogliGiroOvunque(_ e: EsitoSincroniaDispositivo, partenza: DatiPrisma, versione: Int) -> DatiPrisma {
-        var corrente = dati
+        var corrente = dati.istantanea
         if versioneDati != versione, let b = ovunque.base {
             RegistroOvunque.registra(prima: b, dopo: &corrente)
         }
@@ -577,7 +581,7 @@ extension StatoShell {
         guard !o.acceso else { return }
         if o.idDispositivo != nil, o.segnalibro != nil || o.percorso != nil, ovunque.chiave != nil {
             dati.impostazioni.ovunque.acceso = true
-            ovunque.base = dati
+            ovunque.base = dati.istantanea
             avviaOsservatoreOvunque()
             sincronizzaOvunque(forza: true)
             return
@@ -656,7 +660,7 @@ extension StatoShell {
                     self.ovunque.cartella = c
                     self.ovunque.problema = nil
                     self.ovunque.cartellaScelta = nil
-                    self.ovunque.base = self.dati
+                    self.ovunque.base = self.dati.istantanea
                     self.ovunque.modulo = nil
                     self.avviaOsservatoreOvunque()
                     self.sincronizzaOvunque(forza: true)
@@ -712,7 +716,7 @@ extension StatoShell {
         let o = dati.impostazioni.ovunque
         guard persistente, o.acceso, o.ruolo == .mac, !ovunque.inCorso, let attuale = ovunque.chiave,
               let c = cartellaOvunque() else { return }
-        let partenza = dati
+        let partenza = dati.istantanea
         let versione = versioneDati
         ovunque.erroreModulo = nil
         ovunque.inCorso = true
@@ -727,7 +731,7 @@ extension StatoShell {
                 DispatchQueue.main.async {
                     guard let self else { return }
                     self.ovunque.inCorso = false
-                    self.dati = self.versioneDati == versione ? esito.dati : StatoShell.riportaOvunque(esito, su: self.dati)
+                    self.dati.carica(self.versioneDati == versione ? esito.dati : StatoShell.riportaOvunque(esito, su: self.dati.istantanea))
                     self.dati.impostazioni.ovunque.generazioneChiave = k.descrittore.generazioneChiave
                     if !PortachiaviOvunque.salva(k.byte) {
                         self.mostraAvviso("La chiave nuova non è entrata nel Portachiavi: al prossimo avvio Prisma ti chiederà la passphrase.")
@@ -779,12 +783,12 @@ extension StatoShell {
 
     /// La scelta su un conflitto di «Da decidere». L'istantanea dopo la porta a iPhone e iPad.
     func decidiOvunque(_ id: String, scelta: SceltaConflitto) {
-        var d = dati
+        var d = dati.istantanea
         guard MotoreUnioneOvunque.decidi(id, scelta: scelta, in: &d) else {
             mostraAvviso("Questa modifica non si può tenere: il cliente non c’è più sul Mac.")
             return
         }
-        dati = d
+        dati.carica(d)
         programmaIstantaneaOvunque()
     }
 

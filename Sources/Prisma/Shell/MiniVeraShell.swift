@@ -187,7 +187,7 @@ extension StatoShell {
             }
             .store(in: &mini.abbonamenti)
         // Al giro dopo: conQwen spegne e riaccende `veraInCorso` nello stesso momento
-        $veraInCorso
+        veraInCorsoSoggetto
             .removeDuplicates()
             .filter { !$0 }
             .receive(on: DispatchQueue.main)

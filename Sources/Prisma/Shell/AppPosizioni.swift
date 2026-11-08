@@ -5,7 +5,7 @@ import SwiftUI
 struct AppPosizioni: View {
     enum FiltroStato: Hashable { case inEssere, proposte, tutte }
 
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @Environment(\.modoIstantanea) private var modoIstantanea
     @State var filtroStato: FiltroStato = .inEssere
     @State var filtroCanale: Canale?
@@ -53,6 +53,7 @@ struct AppPosizioni: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let forma = FormaVetro.arrotondata(Tema.Raggio.scheda)
         VStack(spacing: 0) {
             #if os(iOS)
@@ -85,18 +86,18 @@ struct AppPosizioni: View {
         // insieme non lo presenta una seconda volta
         .sheet(item: richiestaEsitoPosizioni) { r in
             ModuloEsitoProposta(richiesta: r)
-                .environmentObject(stato)
+                .environment(stato)
         }
-        .sheet(item: $stato.importazionePosizioni) { i in
+        .sheet(item: Bindable(stato).importazionePosizioni) { i in
             ModuloImportaPosizioni(importazione: i)
-                .environmentObject(stato)
+                .environment(stato)
         }
         .sheet(item: $moduloAppuntamento) { a in
             ModuloAppuntamento(bozza: a, nuovo: true, salva: { nuovo in
                 stato.salvaAppuntamento(nuovo)
                 stato.mostraAvviso("Appuntamento fissato con \(stato.cliente(nuovo.clienteId)?.nome ?? "il cliente"): \(Formati.dataOra.string(from: nuovo.inizio)).")
             }, elimina: {})
-            .environmentObject(stato)
+            .environment(stato)
         }
         .onAppear {
             controllaRichiesta(stato.richiestaNuovaPosizione)
@@ -178,7 +179,7 @@ struct AppPosizioni: View {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 6) {
                     if !stato.inModoCliente {
-                        SegmentiAnalisi(opzioni: [(false, "Cliente"), (true, "Portafoglio")], selezione: $stato.portafoglio)
+                        SegmentiAnalisi(opzioni: [(false, "Cliente"), (true, "Portafoglio")], selezione: Bindable(stato).portafoglio)
                             .padding(.top, 2)
                     }
                     // Le stesse testate delle altre app di analisi (ComponentiStrumenti)

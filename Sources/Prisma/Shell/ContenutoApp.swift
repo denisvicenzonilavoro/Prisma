@@ -90,9 +90,10 @@ extension ContenutoApp {
 }
 
 struct AzioneNuovoCliente: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         HStack(spacing: Misure.IntestazioneApp.spazioAzioni) {
             Button { stato.importaClientiDaFile() } label: {
                 Label("Importa…", systemImage: "square.and.arrow.down")
@@ -202,9 +203,10 @@ struct AppSegnaposto: View {
 }
 
 struct AzioniPosizioni: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         HStack(spacing: Misure.IntestazioneApp.spazioAzioni) {
             // Un lavoro del consulente su più clienti: in modo cliente non c'è
             if !stato.inModoCliente {

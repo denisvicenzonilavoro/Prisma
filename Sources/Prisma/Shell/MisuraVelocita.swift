@@ -193,7 +193,7 @@ final class MisuraVelocita: ObservableObject {
             ("200 clienti", "Luce · apri il radar", 150, 210),
         ]
         var tabella = ["### Fluidità (dati di prova)", "",
-                       "| Scenario | Azione | Mediana | Massimo | Aggiornamento | Disegno | Prima volta | Avvisi StatoShell | Avvisi StatoFinestre |",
+                       "| Scenario | Azione | Mediana | Massimo | Aggiornamento | Disegno | Prima volta | Corpi rivalutati | Avvisi StatoFinestre |",
                        "|---|---|---:|---:|---:|---:|---:|---:|---:|"]
         for (scenario, azione, tempo, prima) in righe {
             tabella.append("| \(scenario) | \(azione) | \(tempo) ms | \(tempo) ms | \(tempo) ms | — | \(prima) ms | — | — |")
@@ -219,18 +219,20 @@ final class MisuraVelocita: ObservableObject {
 /// Il gruppo Velocità di Impostazioni › Strumenti: le due misure e, quando ci sono, le loro tabelle (nelle
 /// istantanee quelle di prova di `StatoShell.misureIstantanea`).
 struct GruppoVelocita: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         CorpoGruppoVelocita(misura: stato.misureIstantanea ?? MisuraVelocita.condivisa)
     }
 }
 
 private struct CorpoGruppoVelocita: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @ObservedObject var misura: MisuraVelocita
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let c = Tema.Colore.Impostazioni.self
         VStack(alignment: .leading, spacing: Tema.Misura.Impostazioni.spazioGruppi) {
             GruppoImpostazioni(titolo: "Velocità") {

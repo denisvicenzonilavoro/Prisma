@@ -11,7 +11,7 @@ import UniformTypeIdentifiers
 /// ImpostazioniTelefono. Le pagine stanno anche in ImpostazioniPagine.swift (lavoro, promemoria,
 /// conformità, PDF, Vera, voce) e ImpostazioniArchivio.swift (archivio e backup).
 struct AppImpostazioni: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @State var daRipristinare: VoceBackup?
     @State var fileDaRipristinare: URL?
     @State var confermaDatiProva = false
@@ -33,6 +33,7 @@ struct AppImpostazioni: View {
     typealias M = Tema.Misura.Impostazioni
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         corpo
         .alert("Ripristinare questo backup?", isPresented: Binding(get: { daRipristinare != nil || fileDaRipristinare != nil },
                                                                    set: { if !$0 { daRipristinare = nil; fileDaRipristinare = nil } })) {
@@ -377,7 +378,7 @@ struct AppImpostazioni: View {
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("Il tuo nome").font(Tipo.rigaTitolo)
                                 // Il nome entra nei documenti: passa all'archivio poco dopo l'ultimo tasto
-                                TestoRinviato(testo: $stato.dati.impostazioni.nomeUtente, salvaOra: { stato.salvaOra() }) { bozza in
+                                TestoRinviato(testo: Bindable(stato.dati).impostazioni.nomeUtente, salvaOra: { stato.salvaOra() }) { bozza in
                                     TextField("Nome", text: bozza)
                                         .campoTesto()
                                         .frame(width: M.campoNome)
@@ -428,16 +429,16 @@ struct AppImpostazioni: View {
         return VStack(alignment: .leading, spacing: M.spazioGruppi) {
             GruppoImpostazioni {
                 RigaImpostazione(titolo: "Aspetto", sottotitolo: "Chiaro, scuro o automatico come il Mac.") {
-                    segmenti(aspetti.map { ($0, $0.nome) }, $stato.dati.impostazioni.aspetto)
+                    segmenti(aspetti.map { ($0, $0.nome) }, Bindable(stato.dati).impostazioni.aspetto)
                 }
                 .cascataImpostazioni(1)
                 RigaImpostazione(titolo: "Sfondo", sottotitolo: "Acqua con le gocce al rallentatore.",
                                  aiuto: "L'acqua della scrivania con le gocce al rallentatore; si ferma da sola quando non si vede") {
-                    segmenti([(true, "Animato"), (false, "Fermo")], $stato.dati.impostazioni.sfondoAnimato)
+                    segmenti([(true, "Animato"), (false, "Fermo")], Bindable(stato.dati).impostazioni.sfondoAnimato)
                 }
                 .cascataImpostazioni(2)
                 RigaImpostazione(titolo: "Pioggia", sottotitolo: animato ? "Quante gocce cadono." : "Con lo sfondo fermo non piove.") {
-                    segmenti(IntensitaPioggia.allCases.map { ($0, $0.nome) }, $stato.dati.impostazioni.pioggia)
+                    segmenti(IntensitaPioggia.allCases.map { ($0, $0.nome) }, Bindable(stato.dati).impostazioni.pioggia)
                         .disabled(!animato)
                         .opacity(animato ? 1 : Tema.Misura.Shell.opacitaDisabilitato)
                 }
@@ -445,7 +446,7 @@ struct AppImpostazioni: View {
                 // «L'acqua risponde» (SfondoAcquaRisposta.swift): gocce al clic, alle notifiche e allo sblocco
                 RigaImpostazione(titolo: "L'acqua della scrivania", sottotitolo: testoAcqua,
                                  aiuto: "Una goccia al clic sul fondo libero, alle notifiche nuove e allo sblocco; l'acqua vibra piano mentre Vera risponde") {
-                    Toggle(isOn: $stato.dati.impostazioni.acquaDellaScrivania) { EmptyView() }
+                    Toggle(isOn: Bindable(stato.dati).impostazioni.acquaDellaScrivania) { EmptyView() }
                         .toggleStyle(.appleSenzaEtichetta)
                         .accessibilityLabel("L'acqua della scrivania")
                         .disabled(!animato)
@@ -502,7 +503,7 @@ struct AppImpostazioni: View {
                         .buttonStyle(StilePulsanteRigaImpostazioni())
                         .fixedSize()
                 }
-                segmenti(DimensioneTesto.allCases.map { ($0, $0.nome) }, $stato.dati.impostazioni.dimensioneTesto)
+                segmenti(DimensioneTesto.allCases.map { ($0, $0.nome) }, Bindable(stato.dati).impostazioni.dimensioneTesto)
             }
         }
     }

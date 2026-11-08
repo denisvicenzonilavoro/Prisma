@@ -10,7 +10,7 @@ private typealias SSP = StileScelteProspetto
 /// - Prospetti di dettaglio: una posizione o una proposta, un confronto.
 /// Le pagine a schermo sono le stesse del PDF.
 struct AppProspetti: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @Environment(\.modoIstantanea) var modoIstantanea
     @State var archiviato: String?
     /// L'incontro di riesame da fissare.
@@ -28,25 +28,26 @@ struct AppProspetti: View {
     var scelta: SceltaProspetto { stato.sceltaProspetto }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         contenuto
             .onChange(of: stato.clienteAttivoId) { _ in archiviato = nil }
-            .sheet(item: $stato.valutazioneInModifica) { v in
+            .sheet(item: Bindable(stato).valutazioneInModifica) { v in
                 ModuloValutazione(bozza: v, nuova: stato.valutazione(v.id) == nil)
-                    .environmentObject(stato)
+                    .environment(stato)
             }
             .sheet(item: $letturaProspetto) { l in
                 FoglioSecondaLettura(esito: l.esito, avanti: "Continua lo stesso", continua: l.continua)
             }
             .sheet(item: $daSalvare) { p in
                 ModuloSalvaPDF(pdf: p, impostazioni: stato.dati.impostazioni.pdf)
-                    .environmentObject(stato)
+                    .environment(stato)
             }
             .sheet(item: $moduloAppuntamento) { a in
                 ModuloAppuntamento(bozza: a, nuovo: true, salva: { nuovo in
                     stato.salvaAppuntamento(nuovo)
                     stato.mostraAvviso("Riesame fissato con \(stato.cliente(nuovo.clienteId)?.nome ?? "il cliente"): \(Formati.dataOra.string(from: nuovo.inizio)).")
                 }, elimina: {})
-                .environmentObject(stato)
+                .environment(stato)
             }
     }
 
@@ -714,7 +715,7 @@ struct AppProspetti: View {
     }
 
     private func sceltaConfronto(_ a: VoceConfronto, _ b: VoceConfronto) -> some View {
-        let voci = ElementoConfronto.elenco(stato.dati, cliente: cliente)
+        let voci = ElementoConfronto.elenco(stato.dati.istantanea, cliente: cliente)
         return VStack(alignment: .leading, spacing: 10) {
             sceltaVoce("A", voci: voci, selezione: Binding(get: { a }, set: { stato.prospetto = .confronto($0, b) }))
             sceltaVoce("B", voci: voci, selezione: Binding(get: { b }, set: { stato.prospetto = .confronto(a, $0) }))
@@ -881,7 +882,7 @@ private struct TavoloDocumento: View, Equatable {
 /// Il commento del consulente nel report: Vera scrive la bozza dalle cifre del documento, il consulente
 /// la rilegge, la modifica e la salva. Compare nella pagina «Due parole per te», dopo la copertina.
 private struct PannelloCommento: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let scelta: SceltaProspetto
     @State private var testo = ""
     @State private var caricato = false
@@ -894,6 +895,7 @@ private struct PannelloCommento: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let salvato = stato.commento(scelta)
         VStack(alignment: .leading, spacing: 8) {
             Text("IL COMMENTO DEL CONSULENTE").font(SSP.etichetta).foregroundColor(SSP.coloreEtichetta)

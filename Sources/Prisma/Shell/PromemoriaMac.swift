@@ -283,7 +283,7 @@ extension StatoShell {
             }
             return
         }
-        PromemoriaMac.condiviso.calcolaEPianifica(dati, impostazioni: scelte)
+        PromemoriaMac.condiviso.calcolaEPianifica(dati.istantanea, impostazioni: scelte)
     }
 
     /// Legge il permesso di macOS (senza chiederlo): può cambiare in Impostazioni di Sistema.

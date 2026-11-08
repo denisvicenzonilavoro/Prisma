@@ -140,7 +140,7 @@ private struct ModuloParcellaAperto: Identifiable {
 }
 
 struct ParcelleStudioVista: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     /// La base della cascata (0,14 all'apertura, 0 dopo un cambio di scheda).
     let base: Double
 
@@ -168,6 +168,7 @@ struct ParcelleStudioVista: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let elenco = Self.ordinate(stato.parcelle)
         let richiesta = RichiestaIstantaneaParcelle.per(stato)
         let idScelto = scelta ?? richiesta?.parcellaId
@@ -201,7 +202,7 @@ struct ParcelleStudioVista: View {
             ModuloParcella(parcella: m.parcella, nuova: m.nuova, salva: { bozza, emetti in
                 salva(bozza, emetti: emetti)
             }, chiudi: { modulo = nil })
-            .environmentObject(stato)
+            .environment(stato)
         }
         .alert("Annullare la fattura?", isPresented: presente($daAnnullare)) {
             Button("Annulla la fattura", role: .destructive) {

@@ -583,7 +583,7 @@ private struct SegnoLegendaTrack: Shape {
 // MARK: - Il dettaglio
 
 struct DettaglioRaccomandazione: View {
-    @ObservedObject var stato: StatoShell
+    let stato: StatoShell
     let id: String
 
     @Environment(\.statoDettaglioApple) private var dettaglio

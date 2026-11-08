@@ -22,12 +22,13 @@ import SwiftUI
 /// - Con meno di tre obiettivi compare il posto libero tratteggiato, che apre il nuovo obiettivo.
 /// - Riduci movimento e istantanee: tutto nello stato finale (lo fanno i componenti del tema).
 struct ObiettiviDossierApple: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @Environment(\.statoDettaglioApple) private var dettaglio
     let cliente: Cliente
     @State private var modulo: Obiettivo?
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let s = Tema.Apple.Clienti.Obiettivi.self
         let elenco = stato.obiettiviCliente(cliente.id)
         let posizioni = stato.posizioniCliente(cliente.id)
@@ -271,7 +272,7 @@ struct ChiaveAltezzaPiedeObiettivo: PreferenceKey {
 /// cursore; «Arriva a <mese anno>» e lo scarto, ricalcolati a ogni passo; sotto, il dettaglio completo di Prisma.
 /// Piede: «Salva nel dossier», «Annulla» e la nota sul rendimento.
 struct DettaglioObiettivoApple: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @Environment(\.statoDettaglioApple) private var dettaglio
     let obiettivo: Obiettivo
     let posizioni: [Posizione]
@@ -295,6 +296,7 @@ struct DettaglioObiettivoApple: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let d = Tema.Apple.Clienti.DettaglioObiettivo.self
         let o = obiettivo
         let colore = Tema.Apple.Clienti.Obiettivi.colore(o.area)
@@ -547,12 +549,12 @@ struct DettaglioCompletoObiettivoApple: View, Equatable {
 /// Il dettaglio si centra in tutta l'app e la sfoca dietro con una sola sfocatura; si chiude da solo cambiando
 /// cliente o scheda. Le istantanee possono chiederlo già aperto (`RichiestaIstantaneaDossier`).
 struct PresentatoreDettaglioDossier<Contenuto: View>: View {
-    @ObservedObject var stato: StatoShell
+    let stato: StatoShell
     @StateObject private var dettaglio: StatoDettaglio
     let contenuto: Contenuto
 
     init(stato: StatoShell, @ViewBuilder contenuto: () -> Contenuto) {
-        _stato = ObservedObject(wrappedValue: stato)
+        self.stato = stato
         self.contenuto = contenuto()
         // L'oggetto nasce una volta sola (`StateObject` valuta l'espressione solo alla prima comparsa)
         _dettaglio = StateObject(wrappedValue: Self.dettaglioIniziale(stato))
@@ -577,10 +579,11 @@ struct PresentatoreDettaglioDossier<Contenuto: View>: View {
 
 /// Il contenuto del dettaglio aperto, secondo l'id dell'elemento da cui è nato.
 struct DettaglioDossierApple: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let id: String
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         if let o = stato.dati.obiettivi.first(where: { $0.id == id }) {
             DettaglioObiettivoApple(obiettivo: o, posizioni: stato.posizioniCliente(o.clienteId))
                 // Un altro obiettivo: il cursore riparte dal suo versamento

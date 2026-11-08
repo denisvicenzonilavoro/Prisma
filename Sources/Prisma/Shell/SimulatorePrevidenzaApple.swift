@@ -26,11 +26,12 @@ private typealias SP = Tema.Apple.SimulatoriAnalisi.Previdenza
 
 /// Il simulatore della previdenza per `cliente`, sulle ipotesi della sua Analisi 360 (`analisi`).
 struct SimulatorePrevidenzaApple: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let cliente: Cliente
     let analisi: Binding<Analisi360>
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let i = analisi.wrappedValue.previdenza
         // Una volta per disegno della cornice (il cursore non la rifà): serve il versamento teorico per il massimo
         let e = MotoreAnalisi.previdenza(i)
@@ -78,7 +79,7 @@ struct QuadroSimulatorePrevidenza {
 }
 
 private struct CorpoSimulatorePrevidenzaApple: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @Environment(\.statoDettaglioApple) private var dettaglio
     let quadro: QuadroSimulatorePrevidenza
     private let massimo: Double
@@ -97,6 +98,7 @@ private struct CorpoSimulatorePrevidenzaApple: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let s = Tema.Apple.SimulatoriAnalisi.self
         let colore = SP.colore
         // Il solo calcolo di ogni passo: una proiezione del montante e l'IRPEF

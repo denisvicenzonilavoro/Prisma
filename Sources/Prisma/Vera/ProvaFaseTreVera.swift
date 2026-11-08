@@ -318,7 +318,7 @@ enum ProvaFaseTreVera {
     private static func archivio(_ controlla: (Bool, String) -> Void) {
         let s = stato()
         let (a, b) = FacSimiliVera.documenti(cliente: "laura")
-        var d = s.dati
+        var d = s.dati.istantanea
         d.promesse = [PromessaCliente(clienteId: "laura", testo: "Richiamare Laura", frase: "La richiamo dopo il 15.", fonte: .messaggio,
                                       fonteId: "m", fonteEtichetta: "dal messaggio di ieri", scadenza: Date(timeIntervalSince1970: 1_800_000_000), quando: "dopo il 15")]
         d.confrontiDocumenti = [s.confrontaDocumenti(a, b)]

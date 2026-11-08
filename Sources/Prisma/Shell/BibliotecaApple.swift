@@ -8,13 +8,14 @@ import UniformTypeIdentifiers
 /// sigla ed edizione, in mezzo gli articoli (con la ricerca), a destra il testo dell'articolo. Si aggiungono PDF con il
 /// pulsante o trascinandoli. Vera risponde alle domande sulle norme citando l'articolo («Apri l'articolo» porta qui).
 struct BibliotecaApple: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @ObservedObject var biblioteca: StatoBiblioteca
     @State private var sopra = false
 
     private typealias F = Tema.Apple.FaseDueVera
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         HStack(alignment: .top, spacing: F.spazioBiblioteca) {
             testi.frame(width: F.colonnaTesti)
             articoli.frame(width: F.colonnaArticoli)

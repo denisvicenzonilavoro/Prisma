@@ -93,7 +93,7 @@ final class TastiSpotlight: @unchecked Sendable {
 // MARK: - Pannello
 
 struct RicercaSpotlight: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @EnvironmentObject var sistema: StatoFinestre
     @Environment(\.modoIstantanea) private var modoIstantanea
     @StateObject private var motore = StatoSpotlight()
@@ -109,6 +109,7 @@ struct RicercaSpotlight: View {
     private typealias M = Misure.Spotlight
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         GeometryReader { geo in
             let larghezza = max(0, min(M.larghezza, geo.size.width - 2 * M.margineLato))
             let alto = max(M.distanzaAltoMinima, geo.size.height * M.distanzaAltoQuota)
@@ -169,7 +170,7 @@ struct RicercaSpotlight: View {
                 stato.mostraAvviso("Appuntamento fissato con \(stato.cliente(nuovo.clienteId)?.nome ?? "il cliente"): \(Formati.dataOra.string(from: nuovo.inizio)).")
                 chiudiDopoModulo = true
             }, elimina: {})
-            .environmentObject(stato)
+            .environment(stato)
         }
         .sheet(item: $moduloAttivita, onDismiss: chiudiSeSalvato) { t in
             ModuloAttivita(bozza: t, nuova: true, salva: { nuova in
@@ -177,7 +178,7 @@ struct RicercaSpotlight: View {
                 stato.mostraAvviso("Attività segnata: «\(nuova.titolo)».")
                 chiudiDopoModulo = true
             }, elimina: {})
-            .environmentObject(stato)
+            .environment(stato)
         }
         #if os(iOS)
         // La tastiera dell'iPad: ↑ ↓ scelgono, Tab completa un filtro, Esc chiude (Invio lo dà già il campo)

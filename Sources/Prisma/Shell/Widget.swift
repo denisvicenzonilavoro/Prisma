@@ -116,7 +116,7 @@ extension View {
 
 /// Collegamento a un'app nella testata di un widget: capsula chiara con il testo del colore dei link.
 struct CollegamentoApp: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let testo: String
     let app: AppPrisma
     /// Da fare prima di aprire l'app (per esempio scegliere il portafoglio).
@@ -125,6 +125,7 @@ struct CollegamentoApp: View {
     @State private var origine = OrigineApertura()
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         Button {
             prima?()
             stato.apriApp(app, da: origine.punto)
@@ -181,9 +182,10 @@ private struct ElencoVuoto: View {
 // MARK: - Agenda: il giorno e i prossimi incontri
 
 struct WidgetAgenda: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         // Il contenuto si rifà solo con dati dei calcoli nuovi, un altro giorno o un'altra ora: non a ogni
         // nota, messaggio di Vera o cliente scelto
         CorpoWidgetAgenda(stato: stato, chiave: stato.chiaveVista)
@@ -391,9 +393,10 @@ private struct RigaIncontro: View {
 // MARK: - Cliente in primo piano
 
 struct WidgetCliente: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         // Il contenuto si rifà solo con dati dei calcoli nuovi (anche la nota del cliente), un altro cliente
         // in primo piano, un altro giorno o un'altra ora
         CorpoWidgetCliente(stato: stato, chiave: stato.chiaveVista, attivo: stato.clienteAttivoId)
@@ -593,11 +596,12 @@ private struct CorpoWidgetCliente: View, Equatable {
 // MARK: - Vera: la barra per ritrovare il filo
 
 struct WidgetVera: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     /// Vera si apre dalla barra.
     @State private var origine = OrigineApertura()
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         Button { stato.apri(.vera, da: origine.punto) } label: {
             HStack(spacing: Tema.Misura.Shell.rigaSpazio) {
                 IconaApp(app: .vera, lato: Tema.Misura.Shell.iconaVera)
@@ -630,9 +634,10 @@ struct WidgetVera: View {
 // MARK: - Da fare: le attività aperte
 
 struct WidgetAttivita: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         // Il contenuto si rifà solo con dati dei calcoli nuovi, un altro giorno o un'altra ora
         CorpoWidgetAttivita(stato: stato, chiave: stato.chiaveVista)
             .equatable()
@@ -683,9 +688,10 @@ private struct CorpoWidgetAttivita: View, Equatable {
 // MARK: - Scadenze: le posizioni in scadenza, con la tessera della data
 
 struct WidgetScadenze: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         // Il contenuto si rifà solo con dati dei calcoli nuovi, un altro giorno o un'altra ora
         CorpoWidgetScadenze(stato: stato, chiave: stato.chiaveVista)
             .equatable()
@@ -780,9 +786,10 @@ private struct CorpoWidgetScadenze: View, Equatable {
 // MARK: - Portafoglio clienti: i numeri di tutti i clienti, per canale
 
 struct WidgetPortafoglio: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         // Il contenuto si rifà solo con dati dei calcoli nuovi, un altro giorno o un'altra ora
         CorpoWidgetPortafoglio(stato: stato, chiave: stato.chiaveVista)
             .equatable()

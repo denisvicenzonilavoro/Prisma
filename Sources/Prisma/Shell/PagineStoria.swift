@@ -79,7 +79,7 @@ private struct UnevenRoundedRectangleStoria: Shape {
 
 /// Una pagina della storia.
 struct PaginaStoriaVista: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let pagina: PaginaStoria
     @ObservedObject var storia: StatoStoria
 
@@ -87,6 +87,7 @@ struct PaginaStoriaVista: View {
     private typealias M = Tema.Apple.Moto.Storia
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         VStack(spacing: 0) {
             contenuto
         }

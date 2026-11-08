@@ -50,9 +50,10 @@ extension StatoShell {
 /// Il contrassegno nella barra superiore: chi stai mostrando e come uscire. Una capsula piena
 /// dell'accento (come il pulsante principale del tema), alta quanto i pulsanti della barra.
 struct ContrassegnoModoCliente: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let m = Tema.Misura.PannelliShell.self
         Button { stato.esciModoCliente() } label: {
             HStack(spacing: m.modoClienteSpazio) {

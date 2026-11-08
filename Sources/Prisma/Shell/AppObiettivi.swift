@@ -4,7 +4,7 @@ import SwiftUI
 /// L'accantonato conta anche il valore delle posizioni collegate; l'app calcola quanto
 /// manca e il versamento mensile per arrivare in tempo. Gli eventi di vita suggeriscono gli obiettivi.
 struct AppObiettivi: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @State var modulo: Obiettivo?
     @State var confermaEliminazione = false
 
@@ -23,6 +23,7 @@ struct AppObiettivi: View {
     #endif
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         CorniceStrumento(
             notaStato: "Calcoli eseguiti in locale · piano a rendimento costante, probabilità da scenari simulati · nessuna garanzia di risultato",
             notaDestra: "\(elenco.count) \(elenco.count == 1 ? "obiettivo" : "obiettivi")"

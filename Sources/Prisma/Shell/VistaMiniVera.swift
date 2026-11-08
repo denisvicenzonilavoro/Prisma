@@ -6,7 +6,7 @@ import SwiftUI
 /// Capsula 440 × 72 mentre ascolta, pensa o si sveglia; scheda 460, alta quanto serve, quando risponde e per scrivere.
 /// Il passaggio è una molla di 0,55 s (con «Riduci movimento» una dissolvenza breve).
 struct VistaMiniVera: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @EnvironmentObject var mini: StatoMiniVera
     @Environment(\.accessibilityReduceMotion) private var movimentoRidotto
     @Environment(\.modoIstantanea) private var modoIstantanea
@@ -14,6 +14,7 @@ struct VistaMiniVera: View {
     @State private var mostrata = false
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let m = Tema.Misura.MiniVera.self
         superficie
             .padding(EdgeInsets(top: m.margineOmbraSopra, leading: m.margineOmbraLati, bottom: m.margineOmbraSotto, trailing: m.margineOmbraLati))
@@ -71,10 +72,11 @@ struct VistaMiniVera: View {
 
 /// Ti ascolto…: la sfera e l'onda seguono il livello della voce, la frase si scrive mentre parli.
 private struct CapsulaAscolto: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @EnvironmentObject var mini: StatoMiniVera
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         if stato.persistente {
             OsservaAscoltoMini(ascolto: stato.ascoltoVera) { capsula($0) }
         } else {
@@ -128,10 +130,11 @@ private struct OsservaAscoltoMini<C: View>: View {
 
 /// Vera pensa: i passi scorrono con un luccichio, la domanda sotto.
 private struct CapsulaPensa: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @EnvironmentObject var mini: StatoMiniVera
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let m = Tema.Misura.MiniVera.self
         HStack(spacing: m.spazioCapsula) {
             SferaAcquaVera(lato: m.sferaCapsula, velocita: Tema.Moto.MiniVera.velocitaPensiero)
@@ -152,10 +155,11 @@ private struct CapsulaPensa: View {
 
 /// Qwen non è pronto: «Mi sto svegliando…», la barra di avanzamento e Riprova. Nessuna risposta inventata.
 private struct CapsulaNonPronta: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @EnvironmentObject var mini: StatoMiniVera
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let m = Tema.Misura.MiniVera.self
         let c = Tema.Colore.MiniVera.self
         HStack(spacing: m.spazioCapsula) {
@@ -184,10 +188,11 @@ private struct CapsulaNonPronta: View {
 
 /// La risposta: la domanda in alto, il testo, le cifre di Prisma con il canale, la fonte, i pulsanti e gli spunti.
 private struct SchedaRisposta: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @EnvironmentObject var mini: StatoMiniVera
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let m = Tema.Misura.MiniVera.self
         let c = Tema.Colore.MiniVera.self
         VStack(alignment: .leading, spacing: 0) {
@@ -285,10 +290,11 @@ private struct SchedaRisposta: View {
 
 /// Pronta per scrivere: il gettone del contesto, il campo, gli spunti del cliente, la giornata e i recenti.
 private struct SchedaScrivi: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @EnvironmentObject var mini: StatoMiniVera
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let m = Tema.Misura.MiniVera.self
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: m.spazioTesta) {
@@ -475,13 +481,14 @@ private struct RigheMiniVera: View {
 
 /// Il campo (.composer): «Chiedi altro a Vera…», il tasto ⏎ e il microfono.
 private struct CampoMiniVera: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @EnvironmentObject var mini: StatoMiniVera
     let segnaposto: String
     var fuoco = false
     @FocusState private var attivo: Bool
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let m = Tema.Misura.MiniVera.self
         let c = Tema.Colore.MiniVera.self
         HStack(spacing: m.spazioCampo) {
@@ -581,11 +588,12 @@ private struct GettoneContestoMiniVera: View {
 
 /// Una domanda recente (.recent).
 private struct RecenteMiniVera: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let messaggio: MessaggioVera
     @State private var sopra = false
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let m = Tema.Misura.MiniVera.self
         let c = Tema.Colore.MiniVera.self
         Button { stato.inviaMiniVera(DomandaMiniVera(testo: messaggio.testo)) } label: {
@@ -606,11 +614,12 @@ private struct RecenteMiniVera: View {
 
 /// Uno spunto (.sugg button): pozzetto a capsula con il simbolo blu.
 private struct SpuntoMiniVeraVista: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let spunto: SpuntoMiniVera
     @State private var sopra = false
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let m = Tema.Misura.MiniVera.self
         let c = Tema.Colore.MiniVera.self
         Button {
@@ -923,11 +932,12 @@ private struct AvanzamentoMiniVera: View {
 /// La sfera di Vera nella capsula degli strumenti: apre e chiude la mini finestra (⌥ Spazio).
 /// Ferma a riposo (niente consumi), viva mentre la mini finestra è aperta.
 struct PulsanteSferaVera: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @ObservedObject var mini: StatoMiniVera
     @State private var sopra = false
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let m = Tema.Misura.MiniVera.self
         Button { stato.alternaMiniVera() } label: {
             // La sfera del template nella barra (24): respira mentre la mini finestra è aperta, ferma a riposo

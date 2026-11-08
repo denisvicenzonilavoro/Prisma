@@ -4,11 +4,12 @@ import SwiftUI
 /// cosa scade entro 30 o 60 giorni e cosa manca, con un clic per rinnovare o correggere. È un promemoria del
 /// consulente: fanno fede i moduli firmati. Resta visibile anche in modalità cliente (sono dati suoi).
 struct InRegolaCliente: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let cliente: Cliente
     @State private var modifica: Cliente?
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let m = Tema.Misura.Conformita.self
         VStack(alignment: .leading, spacing: m.spazioGruppi) {
             if let e = stato.conformitaCliente(cliente.id) {
@@ -125,10 +126,11 @@ struct InRegolaCliente: View {
 
 /// Il riquadro «In regola» della Panoramica del cliente: compare solo se c'è qualcosa da sistemare.
 struct RiquadroInRegola: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let clienteId: String
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         if let e = stato.conformitaCliente(clienteId), let peggiore = e.daSistemare.first {
             let voci = e.daSistemare
             let n = voci.count

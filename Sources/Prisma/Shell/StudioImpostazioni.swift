@@ -14,11 +14,12 @@ import SwiftUI
 // - In fondo i dati per le fatture (`SezioneDatiFatture`, ImpostazioniFatture.swift), con la loro ancora.
 
 struct PaginaImpostazioniStudio: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     /// L'anno degli obiettivi che si stanno scrivendo (l'anno in corso, o il prossimo).
     @State private var anno = Calendar.current.component(.year, from: Date())
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let annoCorrente = Calendar.current.component(.year, from: Date())
         let aree = ImpostazioniStudio.areeProvvigionali
         let senzaDecorrenza = stato.cruscottoStudio().posizioniSenzaDecorrenza

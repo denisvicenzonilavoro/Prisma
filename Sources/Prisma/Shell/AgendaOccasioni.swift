@@ -229,7 +229,7 @@ struct RigaOccasioneAgenda: View {
 /// Il dettaglio di un'occasione nella colonna destra dell'Agenda: cosa cambia, quando, il canale, la cifra,
 /// la posizione o la persona di cui si parla, la fonte e le azioni (appuntamento, attività, analisi).
 struct DettaglioOccasione: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let occasione: Occasione
     /// AppAgenda: modulo = $0
     let nuovoAppuntamento: (Appuntamento) -> Void
@@ -237,6 +237,7 @@ struct DettaglioOccasione: View {
     let nuovaAttivita: (Attivita) -> Void
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let m = Misure.Occasioni.self
         let o = occasione
         let cliente = stato.cliente(o.clienteId)
@@ -481,7 +482,7 @@ struct DettaglioOccasione: View {
 /// Le occasioni di 12 mesi, mese per mese, a tutta altezza nella colonna sinistra dell'Agenda.
 /// Rispetta i tipi spenti, il filtro cliente dell'agenda e il gruppo scelto (non lo strato del calendario).
 struct ElencoOccasioniAgenda: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     /// `stato.elencoOccasioniAgenda`, calcolato una volta da AppAgenda.
     let elenco: [Occasione]
 
@@ -548,7 +549,7 @@ struct ElencoOccasioniAgenda: View {
                     .foregroundColor(Colori.Agenda.paginaOcchiello)
                     .lineLimit(1)
                 Spacer(minLength: 0)
-                MenuTendina(selezione: $stato.gruppoOccasioniAgenda, opzioni: opzioniGruppo, larghezza: m.menuGruppo)
+                MenuTendina(selezione: Bindable(stato).gruppoOccasioniAgenda, opzioni: opzioniGruppo, larghezza: m.menuGruppo)
             }
             riepilogo
         }

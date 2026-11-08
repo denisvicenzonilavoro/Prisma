@@ -76,7 +76,7 @@ final class StatoSmontaggio: ObservableObject {
 }
 
 struct SmontaggioApple: View {
-    @ObservedObject var stato: StatoShell
+    let stato: StatoShell
     @ObservedObject var smontaggio: StatoSmontaggio
     @State private var fumetto: Int?
     @State private var sopraVassoio = false
@@ -84,7 +84,7 @@ struct SmontaggioApple: View {
     private typealias S = Tema.Apple.Posizioni.Smontaggio
 
     init(stato: StatoShell) {
-        _stato = ObservedObject(wrappedValue: stato)
+        self.stato = stato
         _smontaggio = ObservedObject(wrappedValue: stato.smontaggio)
         _fumetto = State(initialValue: stato.smontaggio.fumettoIstantanea)
     }

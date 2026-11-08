@@ -18,7 +18,7 @@ import SwiftUI
 
 struct LineaVitaDossier: View {
     let cliente: Cliente
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     /// Il gettone preso: `idPensione` o l'id dell'evento; nil = nessuno.
     @State private var presa: String?
     @State private var etaInizio = 0
@@ -31,6 +31,7 @@ struct LineaVitaDossier: View {
     private static let spazio = "linea-della-vita"
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let k = Tema.Apple.Clienti.LineaVita.self
         let prep = preparazione
         return VStack(alignment: .leading, spacing: 0) {

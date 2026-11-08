@@ -3,7 +3,7 @@ import SwiftUI
 /// App Prodotti (.os-app-products): l'archivio delle schede prodotto, Alleanza e indipendenti,
 /// con condizioni, costi e fonte verificabile. Da una scheda nasce la proposta per il cliente.
 struct AppProdotti: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @State var modulo: Prodotto?
     @State var moduloCondizioni: Prodotto?
     @State var confermaEliminazione = false
@@ -22,6 +22,7 @@ struct AppProdotti: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         CorniceStrumento(
             notaStato: "Schede compilate dal consulente · verifica sempre condizioni e costi sul KID in vigore",
             notaDestra: "\(stato.prodotti.count) schede · \(stato.prodotti.filter(\.daVerificare).count) da verificare"

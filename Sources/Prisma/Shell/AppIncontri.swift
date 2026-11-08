@@ -9,7 +9,7 @@ import SwiftUI
 /// 3 Prossimi passi: dagli appunti nascono bisogni, eventi di vita e attività da confermare;
 ///   la chiusura aggiorna il profilo dei bisogni, le attività e l'agenda.
 struct AppIncontri: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @State var confermaEliminazione = false
     /// «L'ultima volta»: le decisioni intere invece delle prime righe.
     @State private var ultimaVoltaIntera = false
@@ -24,6 +24,7 @@ struct AppIncontri: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         // Nel passo «Ascolto» il copilota dell'incontro (giro 5, CopilotaIncontro.swift) prende tutta la finestra;
         // le tre domande scritte e gli appunti restano a un tocco («Domande e appunti»)
         SceltaAscoltoIncontri(copilota: stato.copilota, ascolto: stato.schedaIncontro == .ascolto,
@@ -48,7 +49,7 @@ struct AppIncontri: View {
         // insieme non lo presenta una seconda volta
         .sheet(item: richiestaEsitoIncontri) { r in
             ModuloEsitoProposta(richiesta: r)
-                .environmentObject(stato)
+                .environment(stato)
         }
     }
 
@@ -123,7 +124,7 @@ struct AppIncontri: View {
     private var barra: some View {
         let m = Tema.Misura.Incontri.self
         return HStack(spacing: Misure.IncontriImpaginazione.spazio) {
-            MenuTendina(selezione: $stato.clienteAttivoId,
+            MenuTendina(selezione: Bindable(stato).clienteAttivoId,
                         opzioni: stato.clienti.map { ($0.id, $0.nome) },
                         larghezza: m.menuCliente)
             if !elenco.isEmpty {
@@ -253,7 +254,7 @@ struct AppIncontri: View {
             PassoPercorso(scheda: .ascolto, titolo: "Ascolto", fatto: ascoltato),
             PassoPercorso(scheda: .passi, titolo: "Prossimi passi", fatto: finito),
         ]
-        return IndicatorePercorso(passi: passi, selezione: $stato.schedaIncontro)
+        return IndicatorePercorso(passi: passi, selezione: Bindable(stato).schedaIncontro)
     }
 
     /// L'azione che porta avanti il passo aperto (la chiusura resta accanto alle sue scelte, nei prossimi passi).

@@ -4,7 +4,7 @@ import SwiftUI
 /// e Prisma li aggiunge alla rubrica dopo un backup.
 struct ModuloImportaClienti: View {
     @Environment(\.dismiss) var chiudi
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let importazione: ImportazioneClienti
     @State private var esclusi: Set<UUID>
 
@@ -16,6 +16,7 @@ struct ModuloImportaClienti: View {
     private var scelti: [ClienteImportato] { importazione.clienti.filter { !esclusi.contains($0.id) } }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         CorniceModulo(titolo: "Importa clienti") {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Da «\(importazione.file)»: \(importazione.clienti.count) contatti"

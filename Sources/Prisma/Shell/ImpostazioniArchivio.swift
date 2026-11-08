@@ -22,7 +22,7 @@ extension AppImpostazioni {
                     RigaImpostazione(titolo: "Backup automatico settimanale", sottotitolo: testoAutomatico,
                                      stato: b.automatico ? nil : Pillola(testo: "Spento", tono: .neutro),
                                      aiuto: testoProssimo, avvertenza: avvertenzaBackup) {
-                        interruttore($stato.dati.impostazioni.backup.automatico)
+                        interruttore(Bindable(stato.dati).impostazioni.backup.automatico)
                     }
                     .cascataImpostazioni(2)
                     RigaImpostazione(
@@ -54,7 +54,7 @@ extension AppImpostazioni {
                                                      if acceso { stato.chiediPasswordBackup = true } else { confermaTogliPassword = true }
                                                  }))
                         }
-                        .popover(isPresented: $stato.chiediPasswordBackup, arrowEdge: .leading) { moduloPassword }
+                        .popover(isPresented: Bindable(stato).chiediPasswordBackup, arrowEdge: .leading) { moduloPassword }
                     }
                     .cascataImpostazioni(5)
                 }

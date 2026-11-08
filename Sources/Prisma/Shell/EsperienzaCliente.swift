@@ -3,13 +3,14 @@ import SwiftUI
 /// Esperienza per tipo di prodotto e capacità di sostenere perdite, nel profilo del cliente: si compila
 /// con il cliente, un clic per casella, e si salva subito.
 struct EsperienzaCliente: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let cliente: Cliente
     @State private var mostraMetodo = false
 
     private typealias M = Tema.Misura.Esperienza
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         // Il cliente com'è adesso nell'archivio: le caselle scrivono subito
         let c = stato.cliente(cliente.id) ?? cliente
         let e = c.profilo.esperienzaProdotti

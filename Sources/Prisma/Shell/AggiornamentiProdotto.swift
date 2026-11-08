@@ -5,10 +5,11 @@ import SwiftUI
 /// In cima alla scheda prodotto aggiornata da un nuovo KID che alza rischio o costi (per `giorniAvvisoKID` giorni):
 /// gli aumenti, i primi clienti toccati, il confronto e le attività. Niente se l'ultimo aggiornamento non alza nulla.
 struct AvvisoNuovoKID: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let prodotto: Prodotto
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         if let x = stato.impattoProdotto(prodotto) {
             let m = Misure.ConfrontoDossier.self
             let documento = stato.documento(x.documentoId)
@@ -69,10 +70,11 @@ struct AvvisoNuovoKID: View {
 /// I dati della scheda cambiati dai documenti, con «Ripristina». Senza variazioni non si mostra: le schede senza
 /// storico non hanno un pannello vuoto.
 struct StoricoAggiornamentiProdotto: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let prodotto: Prodotto
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let bersaglio = BersaglioConfronto.prodotto(prodotto.id)
         let variazioni = stato.variazioni(bersaglio)
         if !variazioni.isEmpty {
