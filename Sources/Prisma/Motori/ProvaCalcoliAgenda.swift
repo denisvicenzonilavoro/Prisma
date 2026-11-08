@@ -15,6 +15,37 @@ enum ProvaCalcoliAgenda {
         mese(verifica)
         note(verifica)
         archivio(verifica)
+        spaziCampagne(verifica)
+    }
+
+    /// Gli orari da proporre in una campagna («Luce» giro 12, §9.4.5 punto 7): al più quattro, uno per giorno, nei giorni
+    /// lavorativi, dentro gli orari di lavoro; con l'agenda piena nessuno; nessun appuntamento creato.
+    private static func spaziCampagne(_ verifica: VerificaCalcoli) {
+        let venerdi = g(2026, 11, 6)
+        let orari = OrariLavoro()
+        let vuota = MotorePianificazione.spazi(durata: 30, da: h(venerdi, 8), giorni: 14, quanti: 4, appuntamenti: [], orari: orari, cal: cal)
+        let giorni = Set(vuota.map { cal.startOfDay(for: $0.inizio) })
+        verifica.vero("A-C1 Agenda: con l'agenda vuota quattro spazi in quattro giorni diversi",
+                      vuota.count == 4 && giorni.count == 4)
+        verifica.vero("A-C2 Agenda: il fine settimana si salta",
+                      !vuota.contains { [1, 7].contains(cal.component(.weekday, from: $0.inizio)) })
+        verifica.vero("A-C3 Agenda: sempre dentro gli orari di lavoro e di mezz'ora",
+                      vuota.allSatisfy { s in
+                          let m = cal.component(.hour, from: s.inizio) * 60 + cal.component(.minute, from: s.inizio)
+                          return m >= orari.mattina.inizio && s.fine.timeIntervalSince(s.inizio) == 1_800
+                      })
+        // Due settimane piene (14 giorni lavorativi da venerdì)
+        var piena: [Appuntamento] = []
+        for n in 0..<24 {
+            guard let giorno = cal.date(byAdding: .day, value: n, to: venerdi) else { continue }
+            piena += pieno(cal.startOfDay(for: giorno), "pieno-\(n)")
+        }
+        let nessuno = MotorePianificazione.spazi(durata: 30, da: h(venerdi, 8), giorni: 14, quanti: 4, appuntamenti: piena, orari: orari, cal: cal)
+        verifica.vero("A-C4 Agenda: con due settimane piene nessuno spazio da proporre", nessuno.isEmpty)
+        let piuDiUno = MotorePianificazione.spazi(durata: 30, da: h(venerdi, 8), giorni: 1, quanti: 3, unoPerGiorno: false,
+                                                  appuntamenti: [], orari: orari, cal: cal)
+        verifica.vero("A-C5 Agenda: senza «uno per giorno» più spazi nello stesso giorno, senza sovrapporsi",
+                      piuDiUno.count == 3 && zip(piuDiUno, piuDiUno.dropFirst()).allSatisfy { $0.0.fine <= $0.1.inizio })
     }
 
     // MARK: - Aiuti
