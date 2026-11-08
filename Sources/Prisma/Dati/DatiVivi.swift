@@ -330,6 +330,8 @@ extension Impostazioni {
         b.pratiche = pratiche
         // Chilometri, spese e scadenze (giro 9 di «Luce») non entrano nei calcoli in cache
         b.studio.spese = studio.spese
+        // Il Territorio non entra nei calcoli in cache: le sue cache hanno le impostazioni nella chiave («Luce» giro 11)
+        b.territorio = territorio
         return self == b
     }
 }

@@ -181,6 +181,9 @@ enum VoceConfronto: Hashable {
     /// Studio › Spese («Luce» giro 9, StatoSpese.swift): il mese scelto, la spesa appena inquadrata, il foglio aperto e
     /// il pacchetto per il commercialista. Non si salva.
     let studioSpese = StatoSpese()
+    /// Territorio («Luce» giro 11, StatoTerritorio.swift): la tabella dei comuni in memoria mentre Territorio è aperto, la
+    /// luce puntata, i filtri, l'anno della crescita, il giorno del giro e la modalità «Sposta». Non si salva.
+    let territorio = StatoTerritorio()
     /// Prisma ovunque (giro 8, StatoOvunque.swift): lo stato della pagina Impostazioni › iPhone e iPad, la chiave dello
     /// spazio in memoria e i lavori della sincronizzazione. Un oggetto a parte: i pallini e i controlli non pubblicano
     /// StatoShell. Non si salva (le impostazioni dello spazio stanno in `dati.impostazioni.ovunque`).

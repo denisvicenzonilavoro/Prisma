@@ -134,6 +134,14 @@ final class DerivatiDati {
     var trackRecord: TrackRecord?
     /// Le occasioni dei messaggi di oggi (StatoMessaggi.swift): dipendono dai dati dei calcoli (messaggi compresi) e dal giorno.
     var occasioniMessaggi: OccasioniMessaggi?
+    /// Territorio («Luce» giro 11, StatoTerritorio.swift): le impostazioni del Territorio stanno nella chiave perché non
+    /// cambiano `versioneCalcoli` (`Impostazioni.stessiCalcoli`). Tutte le voci di MotoreDaFare con le attenzioni, i
+    /// luoghi dei clienti, la vista Oggi, la crescita e i giri per giorno (al più 7).
+    var vociDaFare: (ora: Int, valore: [VoceDaFare], attenzioni: [Attenzione])?
+    var luoghiTerritorio: (imp: ImpostazioniTerritorio, valore: (luoghi: [String: LuogoCliente], senzaLuogo: [ClienteSenzaLuogo]))?
+    var territorioOggi: (ora: Int, imp: ImpostazioniTerritorio, valore: TerritorioOggi)?
+    var crescitaTerritorio: CrescitaTerritorio?
+    var giriTerritorio: [Date: (ora: Int, imp: ImpostazioniTerritorio, partenza: Coordinata?, valore: GiroGiorno)] = [:]
     /// Il numero dell'ultima impaginazione del documento di Prospetti: cambia solo quando il documento si
     /// impagina di nuovo, quindi dice alle pagine sul tavolo se sono ancora le stesse. Non si azzera con la
     /// chiave e viene da un contatore comune a tutti gli stati, così due documenti non hanno mai lo stesso numero.
@@ -179,6 +187,11 @@ final class DerivatiDati {
         radar = nil
         datiCalcoli = nil
         contiAree = [:]
+        vociDaFare = nil
+        luoghiTerritorio = nil
+        territorioOggi = nil
+        crescitaTerritorio = nil
+        giriTerritorio = [:]
     }
 }
 
