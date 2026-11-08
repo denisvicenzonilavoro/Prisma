@@ -162,6 +162,40 @@ extension Tema.Apple {
             static let coloreBordoChiaro = K.inchiostro3
         }
 
+        /// La schermata vera dell'iPhone (nel tema dell'iPhone, chiaro e scuro): fondo coprente, testi del tema.
+        enum Mobile {
+            static let fondo = K.vetroSopra
+            static let margine: CGFloat = 20
+            static let spazio: CGFloat = 14
+            static let testa = C(dimensione: 13, peso: .semibold, tabellare: true)
+            static let coloreTesta = K.inchiostro2
+            static let titolo = C(dimensione: 28, peso: .bold, tracking: -0.5)
+            static let coloreTitolo = K.inchiostro
+            static let sottotitolo = C(dimensione: 15, peso: .regular)
+            static let coloreSottotitolo = K.inchiostro2
+            static let testo = C(dimensione: 18, peso: .regular, interlinea: 1.45)
+            static let coloreTesto = K.inchiostro
+            static let coloreTestoInCorso = K.inchiostro2
+            static let altezzaTesto: CGFloat = 140
+            static let superficieTesto = Tema.Apple.Superficie.tile
+            static let paddingTesto = Tema.Apple.Misura.Padding.tile
+            static let stato = C(dimensione: 13, peso: .regular, interlinea: 1.35)
+            static let coloreStato = K.inchiostro2
+            static let avviso = C(dimensione: 13, peso: .regular, interlinea: 1.35)
+            static let coloreAvviso = K.arancio
+            static let titoloCoda = C(dimensione: 15, peso: .semibold)
+            static let voceCoda = C(dimensione: 14, peso: .regular)
+            static let coloreVoceCoda = K.inchiostro
+            static let dettaglioCoda = C(dimensione: 12.5, peso: .regular)
+            static let coloreDettaglioCoda = K.inchiostro2
+            static let superficieCoda = Tema.Apple.Superficie.tile
+            static let paddingCoda = Tema.Apple.Misura.Padding.tile
+            /// Il pulsante grande «Nota veloce» in cima a Incontri sull'iPhone.
+            static let pulsante = C(dimensione: 17, peso: .semibold)
+            static let altezzaPulsante: CGFloat = 52
+            static let glifo: CGFloat = 18
+        }
+
         /// L'onda del telefono: 39 barre a passo 6, larghe 3,6, raggio 1,8, altezza max(3, a·44), #FF453A al 90%; ferma,
         /// barre alte 3 nello stesso rosso (come il template).
         static let onda = ParametriOnda(larghezza: 234, altezza: 50, barre: 39, passo: 6, larghezzaBarra: 3.6, raggioBarra: 1.8,

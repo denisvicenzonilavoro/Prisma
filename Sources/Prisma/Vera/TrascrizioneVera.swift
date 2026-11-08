@@ -46,6 +46,14 @@ enum SceltaRiconoscimento: String, Codable, CaseIterable, Identifiable {
 }
 
 enum Trascrizioni {
+    /// L'avviso del primo scaricamento del riconoscimento dell'italiano (`AssetInventory`, da Apple): sull'iPhone e
+    /// sull'iPad lo si dice così (decisione 32, «Luce» giro 13), sul Mac come prima.
+    #if os(iOS)
+    static let avvisoScaricamento = "Scarico il riconoscimento dell’italiano da Apple (solo la prima volta)…"
+    #else
+    static let avvisoScaricamento = "Preparo l'italiano sul Mac (solo la prima volta, qualche minuto)…"
+    #endif
+
     /// Prepara il riconoscimento scelto (sul Mac). `avviso` racconta i passaggi lunghi (il primo scaricamento dell'italiano).
     /// Restituisce il riconoscimento oppure il motivo per cui non c'è.
     static func prepara(_ scelta: SceltaRiconoscimento, avviso: @escaping (String) -> Void) async -> Result<TrascrizioneVera, ErroreVera> {
@@ -181,7 +189,7 @@ final class TrascrizioneNuova: TrascrizioneVera {
             : .trascrittore(SpeechTranscriber(locale: lingua, transcriptionOptions: [], reportingOptions: [.volatileResults, .fastResults], attributeOptions: []))
         var t = Date()
         if let scarica = try await AssetInventory.assetInstallationRequest(supporting: [modulo.qualsiasi]) {
-            avviso("Preparo l'italiano sul Mac (solo la prima volta, qualche minuto)…")
+            avviso(Trascrizioni.avvisoScaricamento)
             DiagnosticaVoce.annota("\(nome): scarico l'italiano")
             try await scarica.downloadAndInstall()
             DiagnosticaVoce.annota("\(nome): italiano scaricato in \(secondi(t))")

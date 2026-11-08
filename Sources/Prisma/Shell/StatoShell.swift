@@ -176,6 +176,9 @@ enum VoceConfronto: Hashable {
     /// La nota vocale («Luce» giro 13, NotaVocaleArrivo.swift): la scheda «Arriva sul Mac» mostrata e la voce in modifica.
     /// Non si salva (le note stanno in `dati.noteInArrivo`).
     let notaVocale = StatoNotaVocaleMac()
+    /// La schermata «Una nota veloce» di iPhone e iPad («Luce» giro 13, StatoNotaVocaleTelefono.swift): il testo dettato,
+    /// l'onda e le note in partenza. Sul Mac non si usa. Non si salva (la coda cifrata sta sul telefono).
+    let notaTelefono = StatoNotaVocaleTelefono()
     /// Le carte d'identità arrivate dall'iPhone e non ancora usate («Luce» giro 13): **solo in memoria** (decisione 25),
     /// mai nell'archivio né nei backup; si scartano al blocco di Prisma e al riposo del Mac.
     var carteInArrivo: [CartaIdentitaPonte] = []

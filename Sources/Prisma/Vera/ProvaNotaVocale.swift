@@ -166,7 +166,6 @@ enum ProvaNotaVocale {
     // MARK: - 7. La coda cifrata dell'iPhone
 
     private static func coda(_ controlla: (Bool, String) -> Void) {
-        controlla(true, "Nota: la coda cifrata si prova in ProvaCodaNoteVocali")
         ProvaCodaNoteVocali.esegui(controlla)
     }
 
