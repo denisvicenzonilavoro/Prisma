@@ -172,3 +172,40 @@ macOS 14, StatoShell con Observation, dati osservati a pezzi. «Aggiornamento»,
 | Avvio | 265 → 280 ms | 469 → 479 ms |
 
 Memoria con 200 clienti: 337 MB di impronta. Aprire Posizioni e l'avvio aspettano le tappe successive (motori in cache per cliente, archivio a pezzi).
+
+## Tappe 2 e 4 della proposta A (8 novembre 2026, branch giro-0-tappa24)
+
+Fatto. **Tappa 2:** StatoFinestre e gli stati dentro StatoShell sono `@Observable` (gli ObservableObject rimasti sono
+oggetti locali delle viste, tenuti con `@StateObject`/`@ObservedObject`); le viste dei dati ricavati leggono l'archivio
+dei calcoli con `datiDeiCalcoli()` (in cache su `versioneCalcoli`, senza iscriversi a tutti i campi): radar, occasioni
+dei messaggi, pratiche, traguardi, esame OCF, Prospetti e la proposta. Nessun body legge più `dati.istantanea`.
+**Tappa 4:** `CacheClienti`, una voce per cliente con un contatore per cliente (da `DatiVivi`, campo per campo) e uno
+comune (catalogo, modelli, mercato, impostazioni dei calcoli, archivio sostituito): riepilogo di Posizioni, dossier,
+coerenza, fisco, conformità, completezza, bisogni, Analisi 360 (aree e bozza), andamento, attenzioni, obiettivi e loro
+avanzamento, voce del radar; la mossa del giorno e il portafoglio si rimettono insieme da queste voci. Il radar, quando
+molti clienti sono da rifare insieme, si calcola fuori dal thread principale e intanto mostra l'ultimo radar valido.
+Posizioni: conteggi della colonna in cache, pannelli sotto la piega pigri (LazyVStack, nastro in LazyHStack).
+Prove in `--prova-calcoli` (ProvaCalcoliCacheClienti): un cambio a un cliente (posizione, scheda, obiettivo, Analisi
+360, cliente nuovo) rifà solo lui e dà cifre uguali al calcolo da zero; impostazioni dei calcoli, catalogo e ripristino
+rifanno tutti; aspetto e note nessuno; radar in sottofondo uguale al calcolo da zero.
+
+Prova della fluidità, build di sviluppo, stesso Mac, solo le azioni misurate (`PRISMA_FLUIDITA_AZIONI=Posizioni,radar,
+scuro,nota`), tre giri alternati prima (e689e42) e dopo; «aggiornamento», mediana dei tre giri. Il Mac era molto
+carico da altre sessioni (carico medio 17-40 per tutta la misura): i valori assoluti sono gonfiati e oscillano molto da
+un giro all'altro, conta il confronto alternato.
+
+| Azione | 5 clienti prima → dopo | 200 clienti prima → dopo | Corpi (dopo, 5 · 200) |
+|---|---:|---:|---:|
+| Aprire Posizioni | 778 → **370 ms** | 1.493 → **459 ms** | 13 · 10 |
+| Aspetto scuro | 2.405 → **987 ms** | 2.309 → **1.106 ms** | 7 · 9 |
+| Aprire il radar | 427 → **173 ms** | 660 → **163 ms** | 3 · 1 |
+| Tornare dal radar | 568 → **196 ms** | 1.798 → **227 ms** | 8 · 1 |
+| Tasto in una nota | 4 → 3 ms | 131 → **46 ms** | 0 · 2 |
+| Avvio | 1.086 → 1.405 ms | 1.979 → 1.676 ms | — |
+
+(Giri singoli, 200 clienti, aprire Posizioni: prima 3.022 · 466 · 1.493 ms, dopo 485 · 354 · 459 ms; nella prova
+completa dello stesso pomeriggio, dopo: 253 ms.) L'obiettivo «aprire Posizioni con 200 clienti sotto 150 ms in debug»
+**non è dimostrato** con il Mac così carico: un campionamento durante la misura mostra che il codice di Prisma (i body
+di Posizioni e del portafoglio) pesa ormai pochi campioni, il resto è il grafo e l'impaginazione di SwiftUI. Va
+rimisurato a Mac fermo; se resta sopra, il passo successivo è dividere `CorpoPortafoglio` in sottoviste `Equatable`
+con la `chiaveVista`, come la testa del portafoglio.
