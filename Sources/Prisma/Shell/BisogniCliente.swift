@@ -151,6 +151,14 @@ struct BisogniCliente: View {
                     .font(Tipo.bisognoTesto)
                     .foregroundColor(Colori.Rubrica.secondario)
                     .fixedSize(horizontal: false, vertical: true)
+                // «Luce» giro 12: lo stesso bisogno in un gruppo delle campagne (non in modalità cliente: mostra tutti)
+                if !stato.inModoCliente, let tipo = TipoGruppoCampagna.allCases.first(where: { $0.bisognoId == b.id }),
+                   stato.gruppiCampagne().contains(where: { $0.tipo == tipo }) {
+                    Button("Scrivi a tutti quelli con lo stesso bisogno ›") { stato.apriCampagne(tipo) }
+                        .buttonStyle(StileSemplice())
+                        .font(Tipo.bisognoNota)
+                        .foregroundColor(Colori.Rubrica.secondario)
+                }
             }
             Spacer(minLength: 8)
             if confermato {
