@@ -7,7 +7,8 @@ import SwiftUI
 /// - 731: «Un anno insieme» di Giulia, chiaro e scuro;
 /// - 732: telefonata «✓ In agenda» e regalo «✓ Annotata»;
 /// - 733: nessuna idea dalle note (la frase è quella di Prisma);
-/// - 734: modalità cliente: solo il biglietto;
+/// - 734: modalità cliente: dal giro 12 Messaggi è fra le app riservate (decisione 50), quindi la scena mostra l'avviso
+///   «In modalità cliente Messaggi non si apre…» invece del biglietto (domanda aperta per l'utente);
 /// - 735: il biglietto da solo, come sarà il file da mandare (la condivisione arriva con il giro 15).
 /// La capsula del tempo (730 nel template) arriva con il giro 15: la tile non c'è. L'iPhone (736) non è in questo giro.
 /// DATI DI PROVA DICHIARATI: i due traguardi di `TraguardiDiProva` (e quelli di `MessaggiDiProva` per le altre voci).
@@ -29,6 +30,7 @@ extension Istantanee {
                 if let i = s.dati.obiettivi.firstIndex(where: { $0.id == TraguardiDiProva.obiettivoSofia }) { s.dati.obiettivi[i].note = "" }
                 MessaggiDiProva.apri(s, tipo: .traguardo, cliente: "sofia")
             }),
+            // «Luce» giro 12: Messaggi riservata in modalità cliente, la scena è la prova visiva dell'avviso
             ("734-messaggi-traguardo-modo-cliente", { s in
                 s.clienteAttivoId = "sofia"
                 s.entraModoCliente(avviso: false)
