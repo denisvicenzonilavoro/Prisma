@@ -118,7 +118,7 @@ private struct CorpoPotenziali: View {
     // MARK: Intestazione, tile, piede
 
     private func intestazione(prova: Bool) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 6) {
+        HStack(alignment: .firstTextBaseline, spacing: P.spazioPiccolo + 2) {
             Text("POTENZIALI")
                 .carattereApple(Tema.Apple.Carattere.etichetta)
                 .foregroundColor(Tema.Apple.Colore.inchiostro2)
@@ -143,13 +143,13 @@ private struct CorpoPotenziali: View {
     }
 
     @ViewBuilder private func piede(nonInteressati: [PotenzialeCliente]) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: P.spazioPiccolo + 2) {
             Text(modificabile ? TestiPassaparola.notaPercorso : TestiPassaparola.notaPercorsoSolaLettura)
                 .carattereApple(P.nota)
                 .foregroundColor(P.coloreNota)
                 .fixedSize(horizontal: false, vertical: true)
             if !nonInteressati.isEmpty {
-                HStack(spacing: 8) {
+                HStack(spacing: P.spazioMedio) {
                     Text(TestiPassaparola.nonInteressati + ":")
                         .carattereApple(P.nota)
                         .foregroundColor(P.coloreNota)
@@ -267,7 +267,7 @@ private struct TilePotenziali: View {
     private typealias P = Tema.Apple.Potenziali
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: P.spazioPiccolo) {
             Text(titolo)
                 .carattereApple(P.tileEtichetta)
                 .foregroundColor(Tema.Apple.Colore.inchiostro2)
@@ -352,7 +352,7 @@ private struct ColonnaPotenziali: View {
         .overlay {
             if sopra {
                 RoundedRectangle(cornerRadius: P.superficieColonna.raggio, style: .continuous)
-                    .strokeBorder(Tema.Apple.Colore.accento, lineWidth: 1.5)
+                    .strokeBorder(Tema.Apple.Colore.accento, lineWidth: P.spessoreScelta)
                     .allowsHitTesting(false)
             }
         }
@@ -408,8 +408,8 @@ private struct SchedaPotenziale: View {
 
     var body: some View {
         let p = potenziale
-        VStack(alignment: .leading, spacing: 5) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
+        VStack(alignment: .leading, spacing: P.spazioPiccolo + 1) {
+            HStack(alignment: .firstTextBaseline, spacing: P.spazioPiccolo + 2) {
                 Text(p.nome)
                     .carattereApple(P.nomeScheda)
                     .foregroundColor(Tema.Apple.Colore.inchiostro)
@@ -424,7 +424,7 @@ private struct SchedaPotenziale: View {
                     .foregroundColor(P.coloreFonte)
                     .lineLimit(1)
             }
-            HStack(spacing: 4) {
+            HStack(spacing: P.spazioPiccolo) {
                 Text(TestiPassaparola.stima(p.patrimonioStimato))
                 Text("·")
                 Text(TestiPassaparola.probabilita(p.probabilita))
@@ -450,7 +450,7 @@ private struct SchedaPotenziale: View {
         }
         .overlay {
             RoundedRectangle(cornerRadius: P.raggioScheda, style: .continuous)
-                .strokeBorder(scelta ? Tema.Apple.Colore.accento : P.bordoScheda, lineWidth: scelta ? 1.5 : 1)
+                .strokeBorder(scelta ? Tema.Apple.Colore.accento : P.bordoScheda, lineWidth: scelta ? P.spessoreScelta : 1)
         }
         .contentShape(RoundedRectangle(cornerRadius: P.raggioScheda, style: .continuous))
         .onTapGesture {
@@ -497,7 +497,7 @@ struct DettaglioPotenziale: View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: P.spazioDettaglio) {
                 HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: P.spazioPiccolo) {
                         Text("POTENZIALE CLIENTE · " + p.fase.titolo.uppercased())
                             .carattereApple(P.etichettaDettaglio)
                             .foregroundColor(Tema.Apple.Colore.inchiostro2)
@@ -520,7 +520,7 @@ struct DettaglioPotenziale: View {
                 riga("Consenso al contatto", p.consensoContatto.map { $0 ? "Sì" : "No" } ?? "Non chiesto")
                 if !p.nota.isEmpty { riga("Nota", p.nota) }
                 if !p.storia.isEmpty {
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: P.spazioPiccolo) {
                         Text("STORIA").carattereApple(P.etichettaDettaglio).foregroundColor(Tema.Apple.Colore.inchiostro2)
                         ForEach(Array(p.storia.enumerated()), id: \.offset) { _, c in
                             Text(c.fase.titolo + " · " + Formati.dataEstesa.string(from: c.il))
@@ -542,11 +542,11 @@ struct DettaglioPotenziale: View {
     }
 
     private func riga(_ etichetta: String, _ valore: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
+        HStack(alignment: .firstTextBaseline, spacing: P.spazioRiga) {
             Text(etichetta)
                 .carattereApple(Tema.Apple.Carattere.secondario)
                 .foregroundColor(Tema.Apple.Colore.inchiostro2)
-                .frame(width: 160, alignment: .leading)
+                .frame(width: P.larghezzaEtichetta, alignment: .leading)
             Text(valore)
                 .carattereApple(P.rigaDettaglio)
                 .foregroundColor(Tema.Apple.Colore.inchiostro)
@@ -555,8 +555,8 @@ struct DettaglioPotenziale: View {
     }
 
     @ViewBuilder private func pulsanti(_ p: PotenzialeCliente) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: P.spazioMedio) {
+            HStack(spacing: P.spazioMedio) {
                 if p.fase == .daContattare || p.fase == .primoIncontro {
                     Button("Fissa il primo incontro") { stato.fissaPrimoIncontro(p.id) }
                         .buttonStyle(.apple)
@@ -576,7 +576,7 @@ struct DettaglioPotenziale: View {
                     .buttonStyle(.applePrimario)
                 }
             }
-            HStack(spacing: 8) {
+            HStack(spacing: P.spazioMedio) {
                 Button("Modifica…", action: modifica).buttonStyle(.appleSobrio)
                 if p.fase == .nonInteressato {
                     Button("Ripristina") { stato.spostaPotenziale(p.id, a: .daContattare) }.buttonStyle(.appleSobrio)
@@ -602,6 +602,8 @@ struct ModuloPotenziale: View {
     @State private var testoStima = ""
     @State private var testoProbabilita = ""
 
+    private typealias P = Tema.Apple.Potenziali
+
     init(bozza: PotenzialeCliente, nuovo: Bool, rubrica: [Cliente], salva: @escaping (PotenzialeCliente) -> Void) {
         _bozza = State(initialValue: bozza)
         self.nuovo = nuovo
@@ -615,7 +617,7 @@ struct ModuloPotenziale: View {
 
     var body: some View {
         CorniceModulo(titolo: nuovo ? "Aggiungi un potenziale cliente" : "Modifica il potenziale cliente") {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: P.spazioRiga) {
                 CampoModulo(etichetta: "Nome e cognome") {
                     TextField("Per esempio Paolo Ferretti", text: $bozza.nome).textFieldStyle(.roundedBorder)
                 }
@@ -683,7 +685,7 @@ struct ModuloPotenziale: View {
             .keyboardShortcut(.defaultAction)
             .disabled(!valido)
         }
-        .frame(minWidth: 520, minHeight: 560)
+        .frame(minWidth: Tema.Apple.Potenziali.larghezzaModulo, minHeight: Tema.Apple.Potenziali.altezzaModulo)
     }
 
     /// «180.000», «180000», «12,5» → numero; vuoto o illeggibile → nil.

@@ -61,6 +61,13 @@ extension Tema.Apple {
         static let spazioDettaglio: CGFloat = 14
         static let larghezzaDettaglio: CGFloat = 560
         static let altezzaDettaglio: CGFloat = 620
+        static let larghezzaModulo: CGFloat = 520
+        static let altezzaModulo: CGFloat = 560
+        static let larghezzaEtichetta: CGFloat = 160
+        static let spazioPiccolo: CGFloat = 4
+        static let spazioMedio: CGFloat = 8
+        static let spazioRiga: CGFloat = 12
+        static let spessoreScelta: CGFloat = 1.5
     }
 
     // MARK: - Passaparola (§9.2.2)
@@ -124,6 +131,17 @@ extension Tema.Apple {
         static let coloreCiclo = Tema.Apple.Colore.arancio
         /// Oltre tanti nodi visibili, il resto va nei «+ N» (M1 8 GB).
         static let nodiMassimi = 80
+        static let spazioMinimo: CGFloat = 1
+        static let spazioPiccolo: CGFloat = 4
+        static let spazioNodo: CGFloat = 6
+        static let spazioMedio: CGFloat = 8
+        static let spazioRighe: CGFloat = 10
+        static let sopraColonne: CGFloat = 40
+        /// Lo spazio lasciato a destra del terzo livello per nome e cifra.
+        static let margineDestro: CGFloat = 60
+        /// Larghezza media di una lettera dei nomi (per mettere il cerchio sul suo centro).
+        static let larghezzaLetteraPrimo: CGFloat = 7
+        static let larghezzaLettera: CGFloat = 6
     }
 
     // MARK: - Campagne (§9.4.2)
@@ -222,6 +240,7 @@ extension Tema.Apple.Moto {
         static var animazioneLegame: Animation { Curva.uscita.animazione(legame) }
         static var animazioneNodo: Animation { Curva.molla.animazione(nodo) }
         static var animazioneColonna: Animation { Curva.uscita.animazione(colonna) }
+        static var animazioneTratteggio: Animation { Curva.easeOut.animazione(tratteggio) }
     }
 
     enum Campagne {
