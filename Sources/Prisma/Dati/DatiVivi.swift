@@ -37,7 +37,7 @@ import Observation
     @ObservationIgnored private var inCarica = false
 
     /// Numero dei campi di `DatiPrisma` copiati qui (la prova lo confronta con Mirror).
-    static let numeroCampi = 41
+    static let numeroCampi = 43
 
     var versione: Int { didSet { segnala(.calcoli) } }
     var clienti: [Cliente] { didSet(prima) { segnalaClienti(prima, clienti, \.id) } }
@@ -80,6 +80,11 @@ import Observation
     var speseStudio: ArchivioSpese { didSet { segnala(.neutro) } }
     /// I km per cliente di Studio › Spese: nessun calcolo in cache.
     var kmClienti: [String: Double] { didSet { segnala(.neutro) } }
+    /// I potenziali clienti («Luce» giro 12) si calcolano nella vista, senza cache: spostare una scheda non rifà le cache
+    /// dei clienti.
+    var potenziali: [PotenzialeCliente] { didSet { segnala(.neutro) } }
+    /// Le campagne avviate («Luce» giro 12) entrano nelle occasioni dei messaggi e nei gruppi (regola dei 30 giorni).
+    var campagne: [Campagna] { didSet { segnala(.calcoli) } }
     var clienteAttivoId: String { didSet(prima) { segnala(.clienteAttivo(prima: prima)) } }
     var impostazioni: Impostazioni { didSet(prima) { segnala(.impostazioni(prima: prima)) } }
 
@@ -123,6 +128,8 @@ import Observation
         coperture = d.coperture
         speseStudio = d.speseStudio
         kmClienti = d.kmClienti
+        potenziali = d.potenziali
+        campagne = d.campagne
         clienteAttivoId = d.clienteAttivoId
         impostazioni = d.impostazioni
     }
@@ -213,6 +220,8 @@ import Observation
         d.coperture = coperture
         d.speseStudio = speseStudio
         d.kmClienti = kmClienti
+        d.potenziali = potenziali
+        d.campagne = campagne
         return d
     }
 
@@ -257,6 +266,8 @@ import Observation
         d.coperture = _coperture
         d.speseStudio = _speseStudio
         d.kmClienti = _kmClienti
+        d.potenziali = _potenziali
+        d.campagne = _campagne
         return d
     }
 
@@ -304,6 +315,8 @@ import Observation
         if coperture != d.coperture { coperture = d.coperture }
         if speseStudio != d.speseStudio { speseStudio = d.speseStudio }
         if kmClienti != d.kmClienti { kmClienti = d.kmClienti }
+        if potenziali != d.potenziali { potenziali = d.potenziali }
+        if campagne != d.campagne { campagne = d.campagne }
         if clienteAttivoId != d.clienteAttivoId { clienteAttivoId = d.clienteAttivoId }
         if impostazioni != d.impostazioni { impostazioni = d.impostazioni }
         inCarica = false

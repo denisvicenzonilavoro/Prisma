@@ -516,6 +516,8 @@ extension DatiPrisma {
         // Chilometri, spese e scadenze («Luce» giro 9) si calcolano nella vista, senza cache
         b.speseStudio = a.speseStudio
         b.kmClienti = a.kmClienti
+        // I potenziali («Luce» giro 12) si calcolano nella vista, senza cache
+        b.potenziali = a.potenziali
         b.impostazioni.studio.spese = a.impostazioni.studio.spese
         return a == b
     }

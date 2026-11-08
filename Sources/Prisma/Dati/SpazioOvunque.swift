@@ -159,6 +159,10 @@ enum SpazioOvunque {
         }
         x.documenti = x.documenti.filter { $0.tipo != .modulo && $0.modulo == nil }
         x.giornaleOvunque = []
+        // I potenziali clienti (persone che non sono clienti) vanno nello spazio solo con «Porta anche i potenziali
+        // clienti» acceso (decisione 44, «Luce» giro 12): va letto prima che le impostazioni dello spazio si azzerino.
+        // Le campagne e chi ha presentato ogni cliente restano.
+        if !d.impostazioni.ovunque.potenzialiNelloSpazio { x.potenziali = [] }
         x.impostazioni.ovunque = ImpostazioniOvunque()
         x.impostazioni.vera = ImpostazioniVera()
         x.sessioniCopilota = x.sessioniCopilota.map(CampiOvunque.senzaTrascrizione)
