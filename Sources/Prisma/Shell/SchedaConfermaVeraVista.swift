@@ -122,7 +122,7 @@ struct SchedaConfermaVeraVista: View {
             case .daConfermare:
                 if !scheda.attive.isEmpty {
                     Button(titoloConferma) {
-                        withAnimation(T.spunta) { stato.confermaSchedaVera(messaggio: messaggio) }
+                        withAnimation(T.spunta) { _ = stato.confermaSchedaVera(messaggio: messaggio) }
                     }
                     .buttonStyle(.applePrimario)
                     // Il sussurro del dossier non ha una richiesta da correggere a parole: si lascia stare (torna il
