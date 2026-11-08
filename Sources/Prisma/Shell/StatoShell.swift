@@ -414,77 +414,153 @@ enum VoceConfronto: Hashable {
     init(persistente: Bool = true) {
         self.persistente = persistente
         if persistente {
-            // La lettura parte già in PrismaApp.init (AvvioArchivio): qui di solito è pronta
-            let avvio = AvvioArchivio.attendi()
-            let caricati = avvio.esito
-            dati = DatiVivi(caricati.dati)
+            // La lettura parte già in PrismaApp.init (AvvioArchivio). Sul Mac basta l'indice dell'archivio a pezzi:
+            // se il resto non è ancora letto si parte dalla schermata di benvenuto con lo scheletro (impostazioni,
+            // nessun dato dei clienti) e il resto arriva da solo (`completaAvvio`), senza bloccare.
+            #if os(macOS)
+            let primo = AvvioArchivio.attendiPrimo()
+            #elseif os(iOS)
+            // Su iPhone e iPad non c'è la schermata di benvenuto: si entra subito, quindi si aspetta tutto
+            let tutto = AvvioArchivio.attendi()
+            let primo = AvvioArchivio.Primo.completo(tutto.esito, copieNonLeggibili: tutto.copieNonLeggibili)
+            #endif
+            let impostazioni: Impostazioni
+            switch primo {
+            case .completo(let esito, _):
+                dati = DatiVivi(esito.dati)
+                impostazioni = esito.dati.impostazioni
+            case .inArrivo(let scheletro):
+                dati = DatiVivi(scheletro)
+                impostazioni = scheletro.impostazioni
+                scheletroAvvio = scheletro
+                archivioPronto = false
+                salvataggioSospeso = true
+            }
             // Prisma si apre sempre sulla schermata di benvenuto (mai nelle istantanee e nelle prove):
             // prima del primo disegno e prima di collegaMenu, così il menu Vai nasce già spento
             sistema.bloccato = true
             sistema.bloccatoStabile = true
             // Prima di disegnare qualcosa: i caratteri dell'interfaccia nascono con questa misura
-            Tipo.fattore = caricati.dati.impostazioni.dimensioneTesto.fattore
-            salvataggioSospeso = caricati.solaLettura
-            solaLettura = caricati.solaLettura
-            ripristinoBloccato = caricati.bloccaRipristino
-            copieNonLeggibili = avvio.copieNonLeggibili
-            if let a = caricati.avviso {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in self?.mostraAvviso(a) }
-            }
-            // Una pagina nuova rimasta vuota alla chiusura non torna come «Bozza»
-            if dati.note.contains(where: \.vuota) { dati.note.removeAll(where: \.vuota) }
-            collegaDati()
-            avviaSalvataggio()
-            #if os(macOS)
-            avviaBackupAutomatico()
-            #elseif os(iOS)
-            // Su iPhone e iPad niente backup automatico: i dati arrivano dal backup del Mac
-            #endif
-            preparaVera()
-            applicaImpostazioniVera()
-            DiagnosticaVoce.osservatore = { [weak self] riga in self?.passaggioVoce = riga }
-            aggiornaElencoBackup()
-            // Promemoria del Mac: solo qui, con l'archivio sul disco (mai nelle istantanee e nelle prove)
-            avviaPromemoria()
+            Tipo.fattore = impostazioni.dimensioneTesto.fattore
             #if os(macOS)
             // L'aspetto scelto vale prima del primo disegno: niente lampo chiaro con l'aspetto scuro
-            NSApplication.shared.appearance = StatoShell.aspettoMac(dati.impostazioni.aspetto)
-            // Stop del Mac e risveglio (RipresaSistema.swift)
-            avviaRipresa()
-            // La mini finestra di Vera: ⌥ Spazio da qualsiasi app (PannelloMiniVera.swift)
-            ControlloMiniVera.condiviso.avvia(stato: self)
-            // Il ponte di Vera per iPhone e iPad (ServerPonteVera.swift): acceso solo se scelto in Impostazioni › Vera
-            // (all'avvio qui, poi da `datiCambiati` quando cambiano le impostazioni di Vera)
-            ServerPonteVera.condiviso.aggiorna(dati.impostazioni.vera)
-            // I messaggi nuovi del ponte (giro 5): schede del copilota dall'iPad, testi inquadrati dall'iPhone
-            ServerPonteVera.condiviso.consegnaArrivi { [weak self] arrivo in
-                guard let stato = self else { return .rifiutata("Prisma sul Mac si sta chiudendo.") }
-                return await MainActor.run { stato.riceviDalPonte(arrivo) }
-            }
-            // Inquadra e capisci: con la scena in attesa, il testo dell'iPhone entra da solo (StatoInquadra.swift)
-            osservaInquadrature()
-            #elseif os(iOS)
-            // Su iPhone e iPad l'aspetto lo dà `.preferredColorScheme` della radice (StatoMobile);
-            // background e ritorno in primo piano (RipresaSistema.swift)
-            avviaRipresa()
+            NSApplication.shared.appearance = StatoShell.aspettoMac(impostazioni.aspetto)
             #endif
-            // Prisma ovunque (StatoOvunque.swift): spento finché l'utente non lo accende; acceso, apre lo spazio con la
-            // chiave del Portachiavi e fa un primo giro, fuori dal thread principale
-            avviaOvunque()
-            // I file rimasti da un'importazione interrotta vanno nel Cestino (il disco lavora in background);
-            // solo con l'archivio letto senza intoppi (con un archivio recuperato o di prova i file servono ancora)
-            if caricati.avviso == nil, !caricati.solaLettura, copieNonLeggibili == 0 {
-                DispatchQueue.main.asyncAfter(deadline: .now() + StatoShell.attesaPulizia) { [weak self] in
-                    guard let self, !self.lavoriInPausa else { return }
-                    self.pulisciDocumentiOrfaniInBackground()
+            switch primo {
+            case .completo(let esito, let copie):
+                completaAvvio(esito, copieNonLeggibili: copie)
+            case .inArrivo:
+                // Le modifiche fatte intanto (le impostazioni) muovono i contatori delle cache come sempre
+                collegaDati()
+                AvvioArchivio.quandoPronto { [weak self] esito, copie in
+                    self?.completaAvvio(esito, copieNonLeggibili: copie)
                 }
             }
         } else {
             dati = DatiVivi(DatiPrisma.demo())
             collegaDati()
+            avviaNotifiche()
+        }
+        collegaMenu()
+    }
+
+    /// Lo scheletro con cui è partito StatoShell mentre l'archivio a pezzi finiva di arrivare (nil = partito completo).
+    @ObservationIgnored private var scheletroAvvio: DatiPrisma?
+    /// false finché l'archivio non è tutto in memoria (avvio a due tempi): niente salvataggi, sblocco in attesa.
+    @ObservationIgnored private(set) var archivioPronto = true
+    /// Lo sblocco chiesto prima che l'archivio fosse pronto (con la sua velocità): parte appena arriva.
+    @ObservationIgnored var sbloccoInAttesa: Double?
+
+    /// Il resto dell'avvio, con l'archivio intero: subito in `init` se era già letto, altrimenti appena arriva. Tutto
+    /// ciò che legge i dati dei clienti (notifiche, promemoria, Vera, Prisma ovunque, pulizia dei documenti, backup
+    /// automatici, salvataggio) parte solo da qui: mai su un archivio a metà.
+    private func completaAvvio(_ caricati: AvvioArchivio.Esito, copieNonLeggibili copie: Int) {
+        salvataggio.prepara(caricati.sulDisco)
+        solaLettura = caricati.solaLettura
+        ripristinoBloccato = caricati.bloccaRipristino
+        copieNonLeggibili = copie
+        if let a = caricati.avviso {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in self?.mostraAvviso(a) }
+        }
+        if let scheletro = scheletroAvvio {
+            // Avvio a due tempi: l'archivio intero entra con un solo `carica` (contatori delle cache rifatti); le
+            // impostazioni cambiate intanto (dallo scheletro) restano
+            var d = caricati.dati
+            if dati.impostazioni != scheletro.impostazioni { d.impostazioni = dati.impostazioni }
+            d.note.removeAll(where: \.vuota)
+            scheletroAvvio = nil
+            dati.carica(d)
+            if d.impostazioni.dimensioneTesto != scheletro.impostazioni.dimensioneTesto {
+                Tipo.fattore = d.impostazioni.dimensioneTesto.fattore
+            }
+            #if os(macOS)
+            if d.impostazioni.aspetto != scheletro.impostazioni.aspetto {
+                NSApplication.shared.appearance = StatoShell.aspettoMac(d.impostazioni.aspetto)
+            }
+            #endif
+            archivioPronto = true
+            salvataggioSospeso = caricati.solaLettura
+        } else {
+            salvataggioSospeso = caricati.solaLettura
+            // Una pagina nuova rimasta vuota alla chiusura non torna come «Bozza»
+            if dati.note.contains(where: \.vuota) { dati.note.removeAll(where: \.vuota) }
+            collegaDati()
+        }
+        // Archivio di prima (archivio.json) o con pezzi messi da parte: subito tutto nel formato a pezzi
+        if caricati.daRiscrivere, !caricati.solaLettura {
+            salvataggio.riscriviTutto(dati.istantanea) { [weak self] errore in
+                self?.mostraAvviso("Salvataggio non riuscito: \(errore.localizedDescription)")
+            }
+        }
+        avviaSalvataggio()
+        #if os(macOS)
+        avviaBackupAutomatico()
+        #elseif os(iOS)
+        // Su iPhone e iPad niente backup automatico: i dati arrivano dal backup del Mac
+        #endif
+        preparaVera()
+        applicaImpostazioniVera()
+        DiagnosticaVoce.osservatore = { [weak self] riga in self?.passaggioVoce = riga }
+        aggiornaElencoBackup()
+        // Promemoria del Mac: solo qui, con l'archivio sul disco (mai nelle istantanee e nelle prove)
+        avviaPromemoria()
+        #if os(macOS)
+        // Stop del Mac e risveglio (RipresaSistema.swift)
+        avviaRipresa()
+        // La mini finestra di Vera: ⌥ Spazio da qualsiasi app (PannelloMiniVera.swift)
+        ControlloMiniVera.condiviso.avvia(stato: self)
+        // Il ponte di Vera per iPhone e iPad (ServerPonteVera.swift): acceso solo se scelto in Impostazioni › Vera
+        // (all'avvio qui, poi da `datiCambiati` quando cambiano le impostazioni di Vera)
+        ServerPonteVera.condiviso.aggiorna(dati.impostazioni.vera)
+        // I messaggi nuovi del ponte (giro 5): schede del copilota dall'iPad, testi inquadrati dall'iPhone
+        ServerPonteVera.condiviso.consegnaArrivi { [weak self] arrivo in
+            guard let stato = self else { return .rifiutata("Prisma sul Mac si sta chiudendo.") }
+            return await MainActor.run { stato.riceviDalPonte(arrivo) }
+        }
+        // Inquadra e capisci: con la scena in attesa, il testo dell'iPhone entra da solo (StatoInquadra.swift)
+        osservaInquadrature()
+        #elseif os(iOS)
+        // Su iPhone e iPad l'aspetto lo dà `.preferredColorScheme` della radice (StatoMobile);
+        // background e ritorno in primo piano (RipresaSistema.swift)
+        avviaRipresa()
+        #endif
+        // Prisma ovunque (StatoOvunque.swift): spento finché l'utente non lo accende; acceso, apre lo spazio con la
+        // chiave del Portachiavi e fa un primo giro, fuori dal thread principale
+        avviaOvunque()
+        // I file rimasti da un'importazione interrotta vanno nel Cestino (il disco lavora in background);
+        // solo con l'archivio letto senza intoppi (con un archivio recuperato o di prova i file servono ancora)
+        if caricati.avviso == nil, !caricati.solaLettura, copieNonLeggibili == 0 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + StatoShell.attesaPulizia) { [weak self] in
+                guard let self, !self.lavoriInPausa else { return }
+                self.pulisciDocumentiOrfaniInBackground()
+            }
         }
         avviaNotifiche()
-        collegaMenu()
+        // Lo sblocco chiesto mentre l'archivio arrivava
+        if let velocita = sbloccoInAttesa {
+            sbloccoInAttesa = nil
+            sblocca(velocita: velocita)
+        }
     }
 
     deinit {
@@ -2682,14 +2758,15 @@ enum VoceConfronto: Hashable {
     /// Salva adesso e aspetta: quando torna, l'archivio sul disco è aggiornato. Lo usano backup,
     /// ripristino, riapertura e chiusura.
     func salvaOra() {
-        guard persistente, !salvataggioSospeso else { return }
+        guard persistente, !salvataggioSospeso, archivioPronto else { return }
         scrivi()
         salvataggio.attendi()
     }
 
     /// Accoda il salvataggio dei dati di adesso (niente, se questa generazione è già sul disco o in coda).
     private func scrivi() {
-        guard persistente, !salvataggioSospeso else { return }
+        // Mai un archivio a metà sopra quello vero (avvio a due tempi)
+        guard persistente, !salvataggioSospeso, archivioPronto else { return }
         // L'istantanea è un valore: la copia va alla coda senza rischi, e la coda non legge mai `self.dati`
         salvataggio.accoda(dati.istantanea, generazione: versioneDati) { [weak self] errore in
             self?.mostraAvviso("Salvataggio non riuscito: \(errore.localizedDescription)")
@@ -2948,6 +3025,9 @@ enum VoceConfronto: Hashable {
                         d.impostazioni.ovunque.generazione = 0
                         d.impostazioni.ovunque.improntaIstantanea = nil
                     }
+                    // La cartella ora è quella del backup (magari con archivio.json di prima): il salvataggio qui sotto
+                    // la riscrive tutta nel formato a pezzi
+                    self.salvataggio.ricomincia()
                     self.dati.carica(d)
                     // Prisma ovunque su iPhone e iPad: l'archivio ripristinato è la base nuova del giornale (le differenze
                     // con quello di prima non sono modifiche da mandare al Mac)

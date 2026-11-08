@@ -583,6 +583,11 @@ enum ProvaBackup {
                 print("ERRORE: \(errore)")
                 return 1
             }
+            // L'archivio a pezzi su disco: conversione, backup, file rovinati, soli file cambiati, interruzioni (ProvaBackupArchivioPezzi.swift)
+            if let errore = try provaArchivioPezzi(radice: radice, originale: originale) {
+                print("ERRORE: \(errore)")
+                return 1
+            }
             // I dati a pezzi: istantanea completa, modifiche annidate salvate, contatori delle cache, carica (ProvaBackupDatiVivi.swift)
             if let errore = provaDatiVivi() {
                 print("ERRORE: \(errore)")
@@ -752,9 +757,9 @@ enum ProvaBackup {
     /// Restituisce il motivo dell'errore (nil = tutto bene).
     private static func provaSalvataggio(radice: URL, originale: DatiPrisma) throws -> String? {
         let cartella = radice.appendingPathComponent("Salvataggio/Prisma", isDirectory: true)
-        let file = cartella.appendingPathComponent("archivio.json")
-        let salvataggio = SalvataggioArchivio(file: file, coda: DispatchQueue(label: "prisma.prova-salvataggio", qos: .utility))
-        func letto() -> DatiPrisma? { (try? Data(contentsOf: file)).flatMap { try? Archivio.decodifica($0) } }
+        let salvataggio = SalvataggioArchivio(cartella: cartella, coda: DispatchQueue(label: "prisma.prova-salvataggio", qos: .utility))
+        // L'archivio a pezzi sul disco (giro 0, tappa 3), riletto per intero
+        func letto() -> DatiPrisma? { try? Archivio.leggiPerRipristino(cartella) }
 
         // Generazione 1: i dati di partenza, scritti in background
         guard salvataggio.accoda(originale, generazione: 1, fallito: { _ in }) else { return "salvataggio: la prima scrittura non è partita" }

@@ -121,7 +121,7 @@ extension AppImpostazioni {
                                  stato: Pillola(testo: "Versione \(DatiPrisma.versioneAttuale)", tono: .neutro), ultima: true) {
                     ValoreRiga(testo: "Mostra nel Finder") {
                         #if os(macOS)
-                        NSWorkspace.shared.activateFileViewerSelecting([Archivio.file])
+                        NSWorkspace.shared.activateFileViewerSelecting([Archivio.cartellaPezzi])
                         #elseif os(iOS)
                         // Su iPhone e iPad il Finder non c'è
                         stato.mostraAvviso(StatoShell.soloSulMacPerOra)

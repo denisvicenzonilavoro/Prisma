@@ -96,13 +96,22 @@ enum GestoreBackup {
         var sorgente = sorgente
         var copia: URL?
         defer { if let copia { try? fm.removeItem(at: copia) } }
-        if !escludi.isEmpty, escludi.contains(where: { fm.fileExists(atPath: sorgente.appendingPathComponent($0).path) }) {
+        // L'archivio a pezzi si copia a coda dei salvataggi ferma: nel backup mai un salvataggio a metà (un indice nuovo
+        // con i file dei clienti di prima). La copia d'avvio non serve in un backup
+        let conPezzi = fm.fileExists(atPath: sorgente.appendingPathComponent(ArchivioPezzi.nomeCartella).path)
+        let lasciaFuori = Set(escludi + [Archivio.nomeCopiaAvvio])
+        if conPezzi || (!escludi.isEmpty && escludi.contains(where: { fm.fileExists(atPath: sorgente.appendingPathComponent($0).path) })) {
             let radice = fm.temporaryDirectory.appendingPathComponent("Prisma-copia-\(UUID().uuidString)", isDirectory: true)
             let dentro = radice.appendingPathComponent(sorgente.lastPathComponent, isDirectory: true)
             copia = radice
             try fm.createDirectory(at: dentro, withIntermediateDirectories: true)
-            for voce in try fm.contentsOfDirectory(at: sorgente, includingPropertiesForKeys: nil) where !escludi.contains(voce.lastPathComponent) {
-                try fm.copyItem(at: voce, to: dentro.appendingPathComponent(voce.lastPathComponent))
+            for voce in try fm.contentsOfDirectory(at: sorgente, includingPropertiesForKeys: nil) where !lasciaFuori.contains(voce.lastPathComponent) {
+                let destinazione = dentro.appendingPathComponent(voce.lastPathComponent)
+                if voce.lastPathComponent == ArchivioPezzi.nomeCartella {
+                    try Archivio.coda.sync { try fm.copyItem(at: voce, to: destinazione) }
+                } else {
+                    try fm.copyItem(at: voce, to: destinazione)
+                }
             }
             sorgente = dentro
         }
@@ -201,15 +210,11 @@ enum GestoreBackup {
         do {
             try decomprimi(zip, in: tmp)
             let candidati = [tmp.appendingPathComponent("Prisma", isDirectory: true), tmp]
-            guard let radice = candidati.first(where: { fm.fileExists(atPath: $0.appendingPathComponent("archivio.json").path) }) else {
+            // Un backup nuovo ha la cartella a pezzi, uno di prima archivio.json: si leggono tutti e due
+            guard let radice = candidati.first(where: { Archivio.presente(in: $0) }) else {
                 throw ErroreBackup.archivioMancante
             }
-            let dati: DatiPrisma
-            do {
-                dati = try Archivio.decodifica(Data(contentsOf: radice.appendingPathComponent("archivio.json")))
-            } catch {
-                throw ErroreBackup.archivioNonValido(error.localizedDescription)
-            }
+            let dati = try Archivio.leggiPerRipristino(radice)
             // Un backup di una versione più recente perderebbe i dati che questa non conosce
             guard !Archivio.diVersionePiuRecente(dati) else { throw ErroreBackup.versionePiuRecente }
             return (dati, radice)
@@ -276,11 +281,11 @@ enum GestoreBackup {
     static func recuperaRipristino(_ cartellaDati: URL) -> Bool {
         let fm = FileManager.default
         let (nuova, precedente) = cartelleRipristino(cartellaDati)
-        guard !fm.fileExists(atPath: cartellaDati.appendingPathComponent("archivio.json").path) else {
+        guard !Archivio.presente(in: cartellaDati) else {
             try? fm.removeItem(at: nuova)
             return false
         }
-        for candidata in [precedente, nuova] where fm.fileExists(atPath: candidata.appendingPathComponent("archivio.json").path) {
+        for candidata in [precedente, nuova] where Archivio.presente(in: candidata) {
             if fm.fileExists(atPath: cartellaDati.path) {
                 let messa = cartellaDati.deletingLastPathComponent().appendingPathComponent(cartellaDati.lastPathComponent + ".incompleta \(UUID().uuidString.prefix(6))")
                 try? fm.moveItem(at: cartellaDati, to: messa)

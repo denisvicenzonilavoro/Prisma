@@ -172,3 +172,33 @@ macOS 14, StatoShell con Observation, dati osservati a pezzi. «Aggiornamento»,
 | Avvio | 265 → 280 ms | 469 → 479 ms |
 
 Memoria con 200 clienti: 337 MB di impronta. Aprire Posizioni e l'avvio aspettano le tappe successive (motori in cache per cliente, archivio a pezzi).
+
+## Tappa 3: l'archivio a pezzi (8 novembre 2026, branch giro-0-archivio)
+
+Fatto: l'archivio è la cartella `Archivio/` (ArchivioPezzi.swift) con `indice.json` (formato su disco 1, generazione,
+versione dei dati, cliente attivo, impostazioni, elenco dei clienti con il nome, ordine degli elenchi), un file per
+cliente in `Archivio/Clienti/` (tutto ciò che ha il suo `clienteId`) e nove sezioni comuni (agenda, attività,
+conversazioni, prodotti, spazi, pratiche, mercato, ovunque, studio). Agenda e attività stanno a sé, come proposto:
+si spostano spesso fra clienti diversi e servono all'avvio tutte insieme. I pezzi sono oggetti JSON con le chiavi di
+`DatiPrisma` e la sua stessa lettura tollerante; l'ordine degli elenchi divisi è nell'indice, quindi l'archivio
+rimesso insieme è identico (`==`). Quali clienti sono cambiati lo dice il confronto sulla coda dell'archivio (un
+elenco non toccato si confronta in un colpo): nessuna strada di modifica può dimenticare di segnarlo. Scrittura
+atomica (temporaneo e rinomina), indice per ultimo, generazione nei pezzi per riprendere un salvataggio interrotto.
+Avvio a due tempi sul Mac: l'indice basta per la schermata di benvenuto; se il resto non è ancora letto, StatoShell
+parte con lo scheletro (niente salvataggi, niente notifiche, Vera, ovunque, pulizia) e lo sblocco aspetta l'archivio.
+Il vecchio `archivio.json` e i vecchi backup si convertono da soli (copia `archivio.json.vecchio` fino alla
+riapertura verificata). I backup copiano la cartella a pezzi a salvataggi fermi.
+
+Prova di carico (200 clienti, build di sviluppo, Mac carico), sul disco:
+
+| | Prima (archivio.json) | Dopo (a pezzi) |
+|---|---:|---:|
+| Scrittura intera | 57 ms (2,6 MB) | 67 ms (210 file, 2,7 MB) |
+| Fino alla schermata di benvenuto | 71 ms (tutto) | 1 ms (indice, 67 KB) |
+| Lettura intera | 71 ms | 46 ms (in parallelo) |
+| Salvataggio di una nota | 60 ms (2,6 MB) | 9 ms (1 file, 22 KB) |
+
+La prova della fluidità non legge il disco (stato non persistente): avvio e tasto nella nota restano quelli della
+tappa 1 (tasto 4 → 3 ms con 5 clienti; avvio 341 → 721 ms con 5 e 1.467 → 747 ms con 200, oscillazioni del Mac con
+carico medio 12-40, non del codice). Con il Mac così carico la riga del tasto con 200 clienti non è arrivata nel
+tempo limite in nessuna delle due misure.

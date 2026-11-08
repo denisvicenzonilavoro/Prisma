@@ -198,7 +198,9 @@ struct DatiPrisma: Codable, Equatable {
         return d
     }
 
-    private enum CodingKeys: String, CodingKey {
+    /// Le chiavi dell'archivio. Interne (non private) per il formato a pezzi (ArchivioPezzi.swift): ogni chiave ha il suo
+    /// posto su disco (`ArchivioPezzi.pezzo`), con uno `switch` completo, così una chiave nuova senza posto non compila.
+    enum CodingKeys: String, CodingKey, CaseIterable {
         case versione, clienti, appuntamenti, attivita, posizioni, simulazioni, analisi, incontri, prodotti, obiettivi, documenti, valutazioni, conversazioni, commenti, note, spazi, clienteAttivoId, impostazioni
         case schedeAdeguatezza
         case confrontiTFR, fotografie
@@ -218,7 +220,13 @@ struct DatiPrisma: Codable, Equatable {
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         versione = try c.decodeIfPresent(Int.self, forKey: .versione) ?? 1
-        clienti = try c.decode([Cliente].self, forKey: .clienti)
+        // Un pezzo del formato a cartella (ArchivioPezzi) ha solo alcune chiavi: i clienti possono mancare. Un archivio
+        // intero (archivio.json, l'istantanea di Prisma ovunque) senza clienti resta invece non leggibile, come sempre.
+        if decoder.userInfo[ArchivioPezzi.chiavePezzo] as? Bool == true {
+            clienti = try c.decodeIfPresent([Cliente].self, forKey: .clienti) ?? []
+        } else {
+            clienti = try c.decode([Cliente].self, forKey: .clienti)
+        }
         appuntamenti = try c.decodeIfPresent([Appuntamento].self, forKey: .appuntamenti) ?? []
         attivita = try c.decodeIfPresent([Attivita].self, forKey: .attivita) ?? []
         posizioni = try c.decodeIfPresent([Posizione].self, forKey: .posizioni) ?? []
@@ -271,6 +279,59 @@ struct DatiPrisma: Codable, Equatable {
         coperture = ((try? c.decodeIfPresent(ElencoTollerante<CoperturaPolizza>.self, forKey: .coperture)) ?? nil)?.elementi ?? []
         clienteAttivoId = try c.decodeIfPresent(String.self, forKey: .clienteAttivoId) ?? (clienti.first?.id ?? "")
         impostazioni = try c.decodeIfPresent(Impostazioni.self, forKey: .impostazioni) ?? Impostazioni()
+    }
+
+    func encode(to encoder: Encoder) throws {
+        try codifica(in: encoder, solo: nil)
+    }
+
+    /// La scrittura dell'archivio: tutte le chiavi (`solo` nil, come la scrittura sintetizzata di prima: archivio.json,
+    /// backup di prima, istantanea di Prisma ovunque) o solo quelle di un pezzo del formato a cartella (ArchivioPezzi).
+    func codifica(in encoder: Encoder, solo: Set<CodingKeys>?) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        func metti<T: Encodable>(_ valore: T, _ chiave: CodingKeys) throws {
+            if solo?.contains(chiave) ?? true { try c.encode(valore, forKey: chiave) }
+        }
+        try metti(versione, .versione)
+        try metti(clienti, .clienti)
+        try metti(appuntamenti, .appuntamenti)
+        try metti(attivita, .attivita)
+        try metti(posizioni, .posizioni)
+        try metti(simulazioni, .simulazioni)
+        try metti(analisi, .analisi)
+        try metti(incontri, .incontri)
+        try metti(prodotti, .prodotti)
+        try metti(obiettivi, .obiettivi)
+        try metti(documenti, .documenti)
+        try metti(valutazioni, .valutazioni)
+        try metti(conversazioni, .conversazioni)
+        try metti(commenti, .commenti)
+        try metti(note, .note)
+        try metti(spazi, .spazi)
+        try metti(fotografie, .fotografie)
+        try metti(schedeAdeguatezza, .schedeAdeguatezza)
+        try metti(confrontiTFR, .confrontiTFR)
+        try metti(parcelle, .parcelle)
+        try metti(raccomandazioni, .raccomandazioni)
+        try metti(messaggi, .messaggi)
+        try metti(eventiVita, .eventiVita)
+        try metti(sessioniCopilota, .sessioniCopilota)
+        try metti(giornaleOvunque, .giornaleOvunque)
+        try metti(conflittiOvunque, .conflittiOvunque)
+        try metti(arriviOvunque, .arriviOvunque)
+        try metti(inquadratureDaConfermare, .inquadratureDaConfermare)
+        try metti(mercato, .mercato)
+        // Come la scrittura sintetizzata: senza tabelle caricate la chiave non c'è
+        if let famiglie, solo?.contains(.famiglie) ?? true { try c.encode(famiglie, forKey: .famiglie) }
+        try metti(ocf, .ocf)
+        try metti(portafogliModello, .portafogliModello)
+        try metti(pratiche, .pratiche)
+        try metti(partiteRischio, .partiteRischio)
+        try metti(promesse, .promesse)
+        try metti(confrontiDocumenti, .confrontiDocumenti)
+        try metti(coperture, .coperture)
+        try metti(clienteAttivoId, .clienteAttivoId)
+        try metti(impostazioni, .impostazioni)
     }
 }
 
