@@ -123,6 +123,9 @@ struct QuadroVera: Equatable {
         // Le risposte con una scheda propria (norme, 30 secondi, clientela, conferma) non portano il quadro del patrimonio
         guard m.norme == nil, m.trenta == nil, m.clientela == nil, m.conferma == nil, m.promesse == nil, m.lettura == nil,
               m.confronto == nil, m.copertura == nil, m.resoconto == nil else { return false }
+        // Fase 4: routine, agenda che si organizza, tagliando, mercato per i clienti, stile, tre livelli e piano a passi
+        guard m.esitoRoutine == nil, m.agendaOrari == nil, m.agendaSpostamento == nil, m.tagliando == nil, m.mercatoClienti == nil,
+              m.stileVera == nil, m.treLivelli == nil, m.pianoPassi == nil else { return false }
         if let t = m.titolo, t == "Qwen non è pronto" || t == "Vera non ha potuto rispondere" { return false }
         return m.motore != StatoShell.motoreAzioni
     }

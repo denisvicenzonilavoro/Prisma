@@ -53,6 +53,15 @@ struct PannelloMessaggio: View {
         ChiaveTestoMessaggio(occasione: occasione.id, tono: tono, canale: canale)
     }
 
+    /// «Scrive come te» (fase 4 di Vera, funzione 15): le regole dello stile che il testo pronto non rispetta.
+    @ViewBuilder
+    private var avvisiStile: some View {
+        if let s = pronto {
+            AvvisiStileMessaggioVista(testo: s.testo, clienteId: cliente.id)
+                .padding(.top, Tema.Apple.Messaggi.Barra.sopra)
+        }
+    }
+
     private var pronto: TestoScrittoMessaggio? {
         scrittoIstantanea ?? sessione.scritto(chiave)
     }
@@ -81,11 +90,13 @@ struct PannelloMessaggio: View {
                 }
                 .frame(maxHeight: .infinity, alignment: .top)
                 .entrataCascata(primoIndice + 3, base: base)
+                avvisiStile
                 barra
                     .padding(.top, Tema.Apple.Messaggi.Barra.sopra)
             } else {
                 corpo
                     .entrataCascata(primoIndice + 3, base: base)
+                avvisiStile
                 barra
                     .padding(.top, Tema.Apple.Messaggi.Barra.sopra)
             }

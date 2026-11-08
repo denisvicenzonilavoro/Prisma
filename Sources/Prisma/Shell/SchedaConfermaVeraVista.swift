@@ -111,7 +111,7 @@ struct SchedaConfermaVeraVista: View {
         case .clientela: return "Crea \(scheda.attive.count == 1 ? "1 attività" : "\(scheda.attive.count) attività")"
         case .memoria: return scheda.attive.count == 1 ? "Ricorda" : "Ricorda tutto"
         case .documento: return "Conferma e archivia"
-        case .regole, .qwen: return "Conferma"
+        case .regole, .qwen, .sussurro, .mercato: return "Conferma"
         }
     }
 
@@ -125,7 +125,7 @@ struct SchedaConfermaVeraVista: View {
                         withAnimation(T.spunta) { stato.confermaSchedaVera(messaggio: messaggio) }
                     }
                     .buttonStyle(.applePrimario)
-                    if scheda.origine == .memoria || scheda.origine == .documento {
+                    if scheda.origine == .memoria || scheda.origine == .documento || scheda.origine == .mercato {
                         Button(scheda.origine == .memoria ? "No, grazie" : "Lascia stare") { stato.lasciaStareSchedaVera(messaggio: messaggio) }
                             .buttonStyle(.apple)
                     } else if scheda.origine != .clientela {

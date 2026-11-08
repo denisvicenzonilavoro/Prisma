@@ -40,6 +40,30 @@ struct MessaggioVera: Identifiable, Codable, Equatable {
     var confronto: String?
     var copertura: String?
     var resoconto: String?
+    /// Fase 4 (Vera/BRIEF.md), le risposte con la loro scheda; tutto viaggia con le conversazioni (archivio e backup sì,
+    /// istantanea di Prisma ovunque no) e si legge con tolleranza (un campo rovinato si perde da solo, il messaggio resta).
+    /// «Le routine» (3): il lancio con i passi spuntati e il risultato (le azioni sono nella scheda `conferma`).
+    var esitoRoutine: EsitoRoutine?
+    /// «L'agenda che si organizza» (4): gli orari proposti (la ricerca di Prisma), quello scelto dal cliente e lo
+    /// spostamento in blocco (AgendaOrganizzaVera.swift; viste in VisteAgendaOrganizzaVera.swift).
+    var agendaOrari: RicercaOrari?
+    var agendaOrariScelto: String?
+    var agendaSpostamento: SpostamentoBlocco?
+    /// «Il tagliando dei dati» (5) sotto la risposta: "" = tutto l'archivio, altrimenti l'id del cliente (il controllo
+    /// si legge sempre aggiornato da StatoShell.esitoTagliando).
+    var tagliando: String?
+    /// «Il mercato per i tuoi clienti» (14): l'evento con i clienti toccati (motivo, azione e cifre di Prisma) e l'id
+    /// del messaggio con la scheda «Conferma» delle bozze, quando sono state preparate («Bozze pronte ✓»).
+    var mercatoClienti: EsitoMercatoVera?
+    var mercatoBozze: String?
+    /// «Scrive come te» (15): il profilo di stile o la bozza riscritta nello stile (CollegaStileShell.swift).
+    var stileVera: SchedaStileVera?
+    /// «Tre livelli» (17): l'id della spiegazione salvata (DatiPrisma.spiegazioniTreLivelli) e il livello che la scheda
+    /// apre per primo.
+    var treLivelli: String?
+    var treLivelliLivello: LivelloTreLivelli?
+    /// «Ragiona a passi» (20): il piano eseguito con le tre divisioni e la scelta (PassiVera.swift, VistePassiVera.swift).
+    var pianoPassi: PianoPassi?
 
     init(autore: Autore, testo: String, titolo: String? = nil, motore: String? = nil, proposte: [PropostaVera]? = nil) {
         self.autore = autore
@@ -52,6 +76,8 @@ struct MessaggioVera: Identifiable, Codable, Equatable {
 
     private enum CodingKeys: String, CodingKey { case id, autore, testo, titolo, motore, data, proposte, azione, modalita, scenario, conferma, clientela, fonti, voto, trenta, norme
         case promesse, lettura, confronto, copertura, resoconto
+        case esitoRoutine, agendaOrari, agendaOrariScelto, agendaSpostamento, tagliando, mercatoClienti, mercatoBozze, stileVera
+        case treLivelli, treLivelliLivello, pianoPassi
     }
 
     init(from decoder: Decoder) throws {
@@ -77,6 +103,18 @@ struct MessaggioVera: Identifiable, Codable, Equatable {
         confronto = try? c.decodeIfPresent(String.self, forKey: .confronto)
         copertura = try? c.decodeIfPresent(String.self, forKey: .copertura)
         resoconto = try? c.decodeIfPresent(String.self, forKey: .resoconto)
+        // Fase 4: ogni campo con try?, così uno rovinato non fa perdere il messaggio
+        esitoRoutine = try? c.decodeIfPresent(EsitoRoutine.self, forKey: .esitoRoutine)
+        agendaOrari = try? c.decodeIfPresent(RicercaOrari.self, forKey: .agendaOrari)
+        agendaOrariScelto = try? c.decodeIfPresent(String.self, forKey: .agendaOrariScelto)
+        agendaSpostamento = try? c.decodeIfPresent(SpostamentoBlocco.self, forKey: .agendaSpostamento)
+        tagliando = try? c.decodeIfPresent(String.self, forKey: .tagliando)
+        mercatoClienti = try? c.decodeIfPresent(EsitoMercatoVera.self, forKey: .mercatoClienti)
+        mercatoBozze = try? c.decodeIfPresent(String.self, forKey: .mercatoBozze)
+        stileVera = try? c.decodeIfPresent(SchedaStileVera.self, forKey: .stileVera)
+        treLivelli = try? c.decodeIfPresent(String.self, forKey: .treLivelli)
+        treLivelliLivello = try? c.decodeIfPresent(LivelloTreLivelli.self, forKey: .treLivelliLivello)
+        pianoPassi = try? c.decodeIfPresent(PianoPassi.self, forKey: .pianoPassi)
     }
 }
 

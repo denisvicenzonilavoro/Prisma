@@ -67,6 +67,13 @@ extension ProvaBackup {
             ("un'attività", { $0.attivita.removeLast() }),
             ("il mercato", { $0.mercato = ArchivioMercato() }),
             ("i portafogli modello", { $0.portafogliModello = [] }),
+            // Vera, fase 4: routine, tagliando, spiegazioni in tre livelli e profilo di stile neutri; voci chiuse del cliente
+            ("le routine", { $0.routine = ArchivioRoutine(routine: [RoutineVera.pronte()[0]]) }),
+            ("il tagliando", { $0.tagliando.ignorate.append("prova") }),
+            ("le impostazioni del tagliando", { $0.impostazioni.tagliando.ora = 4 }),
+            ("le spiegazioni in tre livelli", { $0.spiegazioniTreLivelli = [] }),
+            ("il profilo di stile", { $0.impostazioni.stileVera.firma = .scritta("Prova") }),
+            ("le voci chiuse del sussurro", { $0.sussurriChiusi.append(SussurroChiuso(clienteId: altroCliente, chiave: "prova", chiusoIl: Date())) }),
         ]
         for (nome, modifica) in modifiche {
             let prima = stato.dati.istantanea

@@ -35,6 +35,9 @@ struct PanoramicaDossierApple: View {
     @ViewBuilder private func griglia(completezza: CompletezzaCliente?, prossimo: Appuntamento?) -> some View {
         let p = Tema.Apple.Clienti.Panoramica.self
         let laterali = VStack(alignment: .leading, spacing: p.spazio) {
+            // Vera, fase 4: «Il sussurro» (VisteSussurroVera.swift); senza voci, in modalità cliente o spento non c'è
+            SussurroDossierVista(cliente: cliente)
+                .entrataDossier(1)
             DaRicordareApple(cliente: cliente)
                 .entrataDossier(1)
             ProssimoIncontroApple(cliente: cliente, appuntamento: prossimo)

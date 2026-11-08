@@ -24,12 +24,41 @@ extension StatoShell {
         if ricordaVera(testo, chiave: chiave) { return true }
         // «Rileggi: …» prima dei comandi: il testo da rileggere può contenere giorni, clienti e appuntamenti
         if chiediSecondaLettura(testo, chiave: chiaveConversazione) { return true }
+        // Fase 4, prima dei comandi a regole (che leggerebbero giorni, clienti, «firma» e «settimana» come agenda), dalle
+        // frasi più strette alle più larghe:
+        // «Scrive come te» (funzione 15): «mostra il mio stile», «riscrivi nel mio stile: …», «da ora firma Denis V.»,
+        // «dai del tu a Giulia», «niente emoji» (CollegaStileShell.swift)
+        if chiediStileVera(testo, chiave: chiaveConversazione) { return true }
+        // Il tagliando dei dati (funzione 5): «fai il tagliando», «controlla l'archivio», «ci sono doppioni?», «sistema
+        // tutto» dopo una risposta del tagliando (CollegaTagliandoShell.swift)
+        if chiediTagliando(testo, chiave: chiaveConversazione) { return true }
+        // «L'agenda che si organizza» (funzione 4): «trovami un'ora per il riesame di Federico entro giovedì», «libera
+        // giovedì, sposta tutto a venerdì», poi «Federico ha scelto martedì» (CollegaAgendaOrganizzaShell.swift)
+        if chiediAgendaOrganizza(testo, chiave: chiaveConversazione) { return true }
+        if sceltaDettaAgenda(testo, chiave: chiaveConversazione) { return true }
+        // «Le routine» (funzione 3): «chiudiamo il mese», «com'è la settimana?», «ho firmato con Giulia», «prepara
+        // l'incontro con Marco»; i comandi d'azione («fissa… a fine mese») e i documenti li lascia passare
+        // (CollegaRoutineShell.swift). Ultima del gruppo: le sue frasi sono le più larghe
+        if chiediRoutine(testo, chiave: chiaveConversazione) { return true }
         if eseguiComandoVera(testo) { return true }
         // Fase 3: promesse, differenze, coperture e resoconto
         if chiediResoconto(testo, chiave: chiaveConversazione) { return true }
         if chiediDifferenze(testo, chiave: chiaveConversazione) { return true }
         if chiediCopertura(testo, chiave: chiaveConversazione) { return true }
         if chiediPromesse(testo, chiave: chiaveConversazione) { return true }
+        // Fase 4, dopo i comandi e la fase 3, prima di «Raccontami Marco», della clientela, delle norme e di «Fallo tu»:
+        // «Il mercato per i tuoi clienti» (funzione 14): «prepara i messaggi» solo subito dopo un elenco senza bozze
+        if chiediBozzeMercatoClienti(testo, chiave: chiaveConversazione) { return true }
+        // «Ragiona a passi» (funzione 20): un budget mensile da dividere tra protezione e obiettivi (CollegaPassiShell.swift)
+        if chiediPassi(testo, chiave: chiaveConversazione) { return true }
+        // «Il sussurro» (funzione 7): «cosa devo sapere su Marco?» (CollegaSussurroShell.swift)
+        if chiediSussurro(testo, chiave: chiaveConversazione) { return true }
+        // «Il mercato per i tuoi clienti» (funzione 14): l'evento detto a parole («le borse hanno perso l'8% in una
+        // settimana», «la BCE taglia i tassi di 25 punti base»), prima di «Tre livelli» che leggerebbe «perché…»
+        if chiediMercatoClienti(testo, chiave: chiaveConversazione) { return true }
+        // «Tre livelli» (funzione 17): «Perché il fondo pensione conviene a Marco?», «la liquidità di Sofia in una pagina»
+        // (CollegaTreLivelliShell.swift). Ultima del gruppo: le sue frasi sono le più larghe
+        if chiediTreLivelli(testo, chiave: chiaveConversazione) { return true }
         // «Raccontami Marco» (funzione 6) e le domande sulle norme della biblioteca (funzione 13)
         if chiediTrentaSecondi(testo, chiave: chiaveConversazione) { return true }
         if chiediClientela(testo, nelDossier: chiave != VeraPortafoglio.chiave) { return true }
@@ -259,6 +288,8 @@ extension StatoShell {
             if RegistroStrumenti.strumento(a.strumento)?.nelDossier == false { return no("In modalità cliente non tocco l'agenda di tutti.") }
         }
         let oggi = Date()
+        // Il tagliando dei dati (fase 4, funzione 5): unire due schede, completare un dato, registrare il documento d'identità
+        if let esito = eseguiAzioneTagliando(a, oggi: oggi) { return esito }
         switch a.strumento {
         case RegistroStrumenti.agendaNuovo:
             guard let id = arg["cliente"], let c = cliente(id), let inizio = RegistroStrumenti.daIso(arg["inizio"]) else { return no("Non ho trovato il cliente o l'orario.") }
@@ -327,10 +358,26 @@ extension StatoShell {
         case RegistroStrumenti.messaggiPrepara:
             guard let id = arg["cliente"], let c = cliente(id), let testo = arg["testo"], !testo.isEmpty else { return no("Non ho il testo del messaggio.") }
             let canale = CanaleMessaggio(rawValue: arg["canale"] ?? "") ?? .messaggi
-            let origine = OrigineMessaggio(tipo: .richiestaVera, riferimento: a.id)
-            var m = MessaggioCliente(clienteId: id, occasioneId: "\(TipoOccasioneMessaggio.richiestaVera.rawValue)-\(id)-\(a.id)", origine: origine,
-                                     canaleLavoro: nil, tono: .formale, canale: canale,
-                                     oggetto: canale == .mail ? (arg["scopo"] == "spostamento" ? "Il nostro incontro" : "Un messaggio da \(nomeUtente)") : nil,
+            // «Il mercato per i tuoi clienti» (fase 4, funzione 14): la bozza ricorda l'evento da cui nasce e porta il tono
+            // (tu o Lei) scelto da Prisma per quel cliente
+            let mercato = arg["origine"] == "mercato"
+            let riferimento = mercato ? (arg["evento"] ?? a.id) : a.id
+            let tipo: TipoOccasioneMessaggio = mercato ? .avvisoMercato : .richiestaVera
+            let tono = TonoMessaggio(rawValue: arg["tono"] ?? "") ?? .formale
+            let origine = OrigineMessaggio(tipo: tipo, riferimento: riferimento)
+            let oggetto: String?
+            if canale != .mail {
+                oggetto = nil
+            } else if mercato {
+                oggetto = tono.lei ? "I mercati e i suoi investimenti" : "I mercati e i tuoi investimenti"
+            } else {
+                // «L'agenda che si organizza» (fase 4, funzione 4): gli orari proposti e la conferma dell'orario
+                oggetto = Self.oggettoAgendaOrganizza(scopo: arg["scopo"], orari: arg["orari"])
+                    ?? (arg["scopo"] == "spostamento" ? "Il nostro incontro" : "Un messaggio da \(nomeUtente)")
+            }
+            var m = MessaggioCliente(clienteId: id, occasioneId: "\(tipo.rawValue)-\(id)-\(riferimento)", origine: origine,
+                                     canaleLavoro: nil, tono: tono, canale: canale,
+                                     oggetto: oggetto,
                                      testo: testo, cifre: [], autore: .vera, modello: nil)
             m.stato = .bozza
             dati.messaggi.append(m)
@@ -367,6 +414,18 @@ extension StatoShell {
         case RegistroStrumenti.documentiArchivia:
             return archiviaDocumentoCaduto(a)
 
+        // Fase 4: «Le routine» (CollegaRoutineShell.swift)
+        case RoutineVera.strumentoPosizioneFirmata:
+            return eseguiPosizioneFirmataRoutine(a)
+        case RoutineVera.strumentoSalva:
+            return eseguiSalvaRoutine(a)
+        // Fase 4: «Scrive come te» (CollegaStileShell.swift)
+        case RegistroStrumenti.stileCambia:
+            return eseguiStileVera(a)
+        // Fase 4: «Tre livelli», la pagina salvata nei Documenti (CollegaTreLivelliShell.swift)
+        case StatoShell.trelivelliStrumentoPagina:
+            return trelivelliEseguiPagina(a)
+
         default:
             return no("Questa azione non è ancora disponibile in Prisma.")
         }
@@ -375,6 +434,8 @@ extension StatoShell {
     /// Rimette le cose com'erano prima di un'azione; true se ci è riuscito.
     func disfaAzioneVera(_ a: AzioneConferma) -> Bool {
         guard let e = a.esito, e.fatta else { return false }
+        // Il tagliando dei dati (fase 4, funzione 5)
+        if let fatto = disfaAzioneTagliando(a) { return fatto }
         switch a.strumento {
         case RegistroStrumenti.agendaNuovo, RegistroStrumenti.agendaBlocca:
             guard let id = e.oggetto, dati.appuntamenti.contains(where: { $0.id == id }) else { return false }
@@ -423,6 +484,15 @@ extension StatoShell {
             if let u = urlDocumento(d) { try? FileManager.default.removeItem(at: u) }
             if let u = urlTesto(d) { try? FileManager.default.removeItem(at: u) }
             dati.documenti.removeAll { $0.id == id }
+        // Fase 4: «Le routine», «Scrive come te» e «Tre livelli»
+        case RoutineVera.strumentoPosizioneFirmata:
+            return disfaPosizioneFirmataRoutine(a)
+        case RoutineVera.strumentoSalva:
+            return disfaSalvaRoutine(a)
+        case RegistroStrumenti.stileCambia:
+            guard disfaStileVera(a) else { return false }
+        case StatoShell.trelivelliStrumentoPagina:
+            guard trelivelliDisfaPagina(a) else { return false }
         default:
             return false
         }

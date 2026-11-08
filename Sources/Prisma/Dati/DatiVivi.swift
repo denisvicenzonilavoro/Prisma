@@ -37,7 +37,7 @@ import Observation
     @ObservationIgnored private var inCarica = false
 
     /// Numero dei campi di `DatiPrisma` copiati qui (la prova lo confronta con Mirror).
-    static let numeroCampi = 39
+    static let numeroCampi = 43
 
     var versione: Int { didSet { segnala(.calcoli) } }
     var clienti: [Cliente] { didSet(prima) { segnalaClienti(prima, clienti, \.id) } }
@@ -76,6 +76,12 @@ import Observation
     var promesse: [PromessaCliente] { didSet(prima) { segnalaClienti(prima, promesse, \.clienteId) } }
     var confrontiDocumenti: [ConfrontoDocumenti] { didSet(prima) { segnalaClienti(prima, confrontiDocumenti, \.clienteId) } }
     var coperture: [CoperturaPolizza] { didSet(prima) { segnalaClienti(prima, coperture, \.clienteId) } }
+    // Vera, fase 4: routine, tagliando e spiegazioni in tre livelli non entrano in nessun calcolo (neutri, esclusi da
+    // `DatiPrisma.stessiCalcoli`); le voci chiuse del sussurro sono del cliente
+    var routine: ArchivioRoutine { didSet { segnala(.neutro) } }
+    var tagliando: StatoTagliando { didSet { segnala(.neutro) } }
+    var sussurriChiusi: [SussurroChiuso] { didSet(prima) { segnalaClienti(prima, sussurriChiusi, \.clienteId) } }
+    var spiegazioniTreLivelli: [SpiegazioneTreLivelli] { didSet { segnala(.neutro) } }
     var clienteAttivoId: String { didSet(prima) { segnala(.clienteAttivo(prima: prima)) } }
     var impostazioni: Impostazioni { didSet(prima) { segnala(.impostazioni(prima: prima)) } }
 
@@ -117,6 +123,10 @@ import Observation
         promesse = d.promesse
         confrontiDocumenti = d.confrontiDocumenti
         coperture = d.coperture
+        routine = d.routine
+        tagliando = d.tagliando
+        sussurriChiusi = d.sussurriChiusi
+        spiegazioniTreLivelli = d.spiegazioniTreLivelli
         clienteAttivoId = d.clienteAttivoId
         impostazioni = d.impostazioni
     }
@@ -205,6 +215,10 @@ import Observation
         d.promesse = promesse
         d.confrontiDocumenti = confrontiDocumenti
         d.coperture = coperture
+        d.routine = routine
+        d.tagliando = tagliando
+        d.sussurriChiusi = sussurriChiusi
+        d.spiegazioniTreLivelli = spiegazioniTreLivelli
         return d
     }
 
@@ -247,6 +261,10 @@ import Observation
         d.promesse = _promesse
         d.confrontiDocumenti = _confrontiDocumenti
         d.coperture = _coperture
+        d.routine = _routine
+        d.tagliando = _tagliando
+        d.sussurriChiusi = _sussurriChiusi
+        d.spiegazioniTreLivelli = _spiegazioniTreLivelli
         return d
     }
 
@@ -292,6 +310,10 @@ import Observation
         if promesse != d.promesse { promesse = d.promesse }
         if confrontiDocumenti != d.confrontiDocumenti { confrontiDocumenti = d.confrontiDocumenti }
         if coperture != d.coperture { coperture = d.coperture }
+        if routine != d.routine { routine = d.routine }
+        if tagliando != d.tagliando { tagliando = d.tagliando }
+        if sussurriChiusi != d.sussurriChiusi { sussurriChiusi = d.sussurriChiusi }
+        if spiegazioniTreLivelli != d.spiegazioniTreLivelli { spiegazioniTreLivelli = d.spiegazioniTreLivelli }
         if clienteAttivoId != d.clienteAttivoId { clienteAttivoId = d.clienteAttivoId }
         if impostazioni != d.impostazioni { impostazioni = d.impostazioni }
         inCarica = false
@@ -316,6 +338,9 @@ extension Impostazioni {
         b.novitaViste = novitaViste
         b.consegna = consegna
         b.pratiche = pratiche
+        // Vera, fase 4: il tagliando dei dati e il profilo di stile non entrano nei calcoli
+        b.tagliando = tagliando
+        b.stileVera = stileVera
         return self == b
     }
 }

@@ -85,6 +85,8 @@ extension StatoShell {
         }
         richiestaEsito = nil
         mostraAvviso(TestiSeguito.avviso(esito, posizione: p, giorni: dati.impostazioni.giorniSeguitoProposte))
+        // «Le routine» (fase 4): le routine «dopo ogni firma» preparano le cose da fare, con «Conferma» (CollegaRoutineShell.swift)
+        if case .accettata = esito { routineDopoFirma(posizione: p) }
     }
 
     /// Le proposte ferme, in cache per ora (DerivatiDati): widget, Portafoglio, Prospetto.

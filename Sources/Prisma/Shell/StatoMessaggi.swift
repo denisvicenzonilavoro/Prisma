@@ -37,11 +37,9 @@ extension StatoShell {
     @MainActor
     func scriviMessaggio(_ o: OccasioneMessaggio, tono: TonoMessaggio, canale: CanaleMessaggio,
                          aggiorna: ((String) -> Void)? = nil) async -> TestoScrittoMessaggio? {
-        guard let c = dati.clienti.first(where: { $0.id == o.clienteId }) else { return nil }
-        let vera = dati.impostazioni.vera
-        let firma = firmaMessaggio(o.canale, tono: tono)
-        return await MessaggiVera.scrivi(o, cliente: c, tono: tono, canale: canale, firma: firma,
-                                        motore: MotoriVera.qwen(vera, locale: disponibilitaLocale), vera: vera, aggiorna: aggiorna)
+        // «Scrive come te» (fase 4 di Vera, funzione 15): senza regole di stile è identico a prima (MessaggiVera.scrivi con
+        // la firma di sempre, CollegaStileShell.swift)
+        return await scriviMessaggioInStile(o, tono: tono, canale: canale, aggiorna: aggiorna)
     }
 
     /// Salva nel dossier il messaggio di un'occasione (o aggiorna quello con lo stesso id). Restituisce il messaggio
@@ -81,6 +79,8 @@ extension StatoShell {
                            stato: canale == .mail ? .apertoInMail : .apertoInMessaggi, id: id)
             // «Le promesse» (fase 3 di Vera): gli impegni scritti nel messaggio aperto entrano nell'elenco
             raccogliPromesse(cliente: o.clienteId)
+            // «Scrive come te» (funzione 15 di Vera): il messaggio uscito entra nell'apprendimento dello stile
+            aggiornaStileVera()
         }
         return esito
     }

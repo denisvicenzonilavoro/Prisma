@@ -163,6 +163,12 @@ enum SpazioOvunque {
             if q.fonteEtichetta.hasPrefix("dalla nota vocale") { q.frase = "" }
             return q
         }
+        // Vera, fase 4: i lanci delle routine restano sul Mac (la frase del consulente e le bozze dei messaggi; le
+        // routine sì); il tagliando dei dati anche (gli id delle voci contengono codici fiscali, email e telefoni); le
+        // spiegazioni in tre livelli vivono nelle conversazioni di Vera, che restano sul Mac
+        x.routine.esiti = []
+        x.tagliando = StatoTagliando()
+        x.spiegazioniTreLivelli = []
         return x
     }
 
@@ -456,6 +462,10 @@ enum SincroniaOvunque {
 
         nuovo.conversazioni = locale.conversazioni
         nuovo.partiteRischio = locale.partiteRischio
+        // Vera, fase 4: ciò che l'istantanea non porta resta quello del dispositivo
+        nuovo.routine.esiti = locale.routine.esiti
+        nuovo.tagliando = locale.tagliando
+        nuovo.spiegazioniTreLivelli = locale.spiegazioniTreLivelli
         let mie = locale.impostazioni
         var imp = nuovo.impostazioni
         imp.vera = mie.vera

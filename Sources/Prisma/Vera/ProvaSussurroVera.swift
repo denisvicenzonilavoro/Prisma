@@ -313,7 +313,7 @@ enum ProvaSussurroVera {
 
     private static func template(_ controlla: (Bool, String) -> Void) {
         let s = StatoShell(persistente: false)
-        let dati = s.dati
+        let dati = s.dati.istantanea
         var ok = !dati.clienti.isEmpty
         var dettaglio: [String] = []
         for c in dati.clienti {

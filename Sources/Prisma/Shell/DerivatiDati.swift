@@ -513,6 +513,13 @@ extension DatiPrisma {
         // passo non rifà le cache dei clienti
         a.pratiche = []; b.pratiche = []
         b.impostazioni.pratiche = a.impostazioni.pratiche
+        // Vera, fase 4: le routine, il tagliando dei dati («Va bene così» non rifà le cache), le spiegazioni in tre livelli
+        // e il profilo di stile non entrano in nessun calcolo in cache
+        b.routine = a.routine
+        b.tagliando = a.tagliando
+        b.impostazioni.tagliando = a.impostazioni.tagliando
+        a.spiegazioniTreLivelli = []; b.spiegazioniTreLivelli = []
+        b.impostazioni.stileVera = a.impostazioni.stileVera
         return a == b
     }
 }

@@ -23,6 +23,8 @@ extension StatoShell {
         guard !documenti.isEmpty else { return }
         guard !solaLettura else { return mostraAvviso("Archivio in sola lettura: aggiorna Prisma per archiviare documenti.") }
         guard !veraInCorso else { return mostraAvviso("Vera sta ancora rispondendo: trascina il documento tra poco.") }
+        // «Dopo la firma» aspettava il PDF firmato: il documento diventa il contratto del cliente (CollegaRoutineShell.swift)
+        if lasciaCadereRoutine(documenti) { return }
         if !aperta(.vera) { apri(.vera) }
         let chiave = chiaveConversazione
         let fm = FileManager.default

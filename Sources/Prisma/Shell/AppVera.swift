@@ -49,6 +49,10 @@ struct AppVera: View {
         // «Lascia cadere qui» e la pagina della memoria di Vera (fase 2, RilascioVera.swift)
         .rilascioDocumentiVera()
         .paginaMemoriaVera(stato.memoriaVera)
+        // Fase 4: la pagina delle routine e la pagina del tagliando dei dati sopra la finestra di Vera
+        // (VisteRoutineVera.swift, VisteTagliandoVera.swift)
+        .paginaRoutineVera()
+        .paginaTagliandoVera()
         // Parte sia alla nascita della vista (Vera era chiusa o ridotta) sia a ogni nuova richiesta
         .task(id: stato.richiestaDettatura) { await accendiDettatura() }
         // Il FocusState resta in pari con makeFirstResponder(nil), altrimenti il prossimo «true» non cambia niente
@@ -115,6 +119,8 @@ struct AppVera: View {
                     schedaMotore
                     schedaOggi
                     schedaAmbito(larghezza: interna - col.paddingScheda.leading - col.paddingScheda.trailing)
+                    // Il tagliando dei dati (fase 4): salute dell'archivio e cose da sistemare, apre la pagina (fuori dalla modalità cliente)
+                    SchedaTagliandoColonnaVera()
                     if let t = urgente { schedaAvviso(t) }
                     if let c = cliente, !stato.veraPortafoglio { quadro(c) }
                 }
@@ -600,6 +606,8 @@ struct AzioniVera: View {
                 .opacity(fermo ? Tema.Apple.Vera.Campo.opacitaSpento : 1)
                 .help(stato.veraPortafoglio ? "Sul portafoglio Vera lavora sempre con le cifre di Prisma"
                                            : "Lavoro: i numeri solo da Prisma · Conversazione: domande di ogni tipo")
+            // «Le routine» (fase 4): apre la pagina delle routine
+            PulsanteRoutineVera()
             Button { stato.nuovaConversazione() } label: {
                 Label("Nuova conversazione", systemImage: "square.and.pencil")
             }
@@ -803,6 +811,20 @@ struct NuvolaVera: View {
                     if let r = messaggio.clientela {
                         TabellaClientelaVista(risultato: r)
                     }
+                    // Fase 4, sopra la scheda «Conferma» che ne raccoglie le azioni: i passi spuntati e il risultato della
+                    // routine, la settimana con gli orari proposti e lo spostamento in blocco, il piano a passi
+                    if let e = messaggio.esitoRoutine {
+                        RoutineEsitoVista(esito: e, messaggio: messaggio.id, anima: nuova)
+                    }
+                    if let o = messaggio.agendaOrari, !o.proposte.isEmpty {
+                        AgendaOrganizzaOrariVista(messaggio: messaggio.id, ricerca: o, scelto: messaggio.agendaOrariScelto)
+                    }
+                    if let s = messaggio.agendaSpostamento, !s.mosse.isEmpty {
+                        AgendaOrganizzaSpostamentoVista(spostamento: s, eseguito: messaggio.conferma?.stato == .eseguita)
+                    }
+                    if let p = messaggio.pianoPassi {
+                        PianoPassiVeraVista(piano: p, messaggio: messaggio.id)
+                    }
                     // «Fallo tu»: la scheda di conferma, niente si esegue prima di «Conferma»
                     if let c = messaggio.conferma {
                         SchedaConfermaVeraVista(scheda: c, messaggio: messaggio.id)
@@ -834,6 +856,20 @@ struct NuvolaVera: View {
                     }
                     if let r = messaggio.resoconto {
                         ResocontoVeraVista(incontroId: r)
+                    }
+                    // Fase 4: il tagliando dei dati ("" = tutto l'archivio, altrimenti l'id del cliente), il mercato per i
+                    // tuoi clienti, il tuo stile e i tre livelli
+                    if let t = messaggio.tagliando {
+                        TagliandoChatVista(clienteId: t)
+                    }
+                    if let e = messaggio.mercatoClienti, !e.toccati.isEmpty {
+                        SchedaMercatoClientiVeraVista(esito: e, messaggio: messaggio.id)
+                    }
+                    if let s = messaggio.stileVera {
+                        SchedaStileVeraChat(scheda: s)
+                    }
+                    if let t = messaggio.treLivelli {
+                        TreLivelliVeraVista(id: t, livello: messaggio.treLivelliLivello ?? .tecnico)
                     }
                     if let proposte = messaggio.proposte, !proposte.isEmpty {
                         elencoProposte(proposte)

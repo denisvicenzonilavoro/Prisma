@@ -390,7 +390,7 @@ enum ProvaTagliandoVera {
     // MARK: - I 5 clienti di prova
 
     private static func demo(_ controlla: (Bool, String) -> Void) {
-        let dati = StatoShell(persistente: false).dati
+        let dati = StatoShell(persistente: false).dati.istantanea
         let e = TagliandoVera.controlla(dati, oggi: Date())
         let ids = Set(dati.clienti.map(\.id))
         controlla(e.schede == dati.clienti.count && (0...100).contains(e.salute), "Tagliando, dati di prova: \(e.schede) schede, salute \(e.salute)")

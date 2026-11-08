@@ -284,6 +284,12 @@ enum VoceConfronto: Hashable {
 
     /// Vera parla del portafoglio (tutti i clienti) invece che del cliente attivo.
     var veraPortafoglio = false { didSet { if veraPortafoglio && modoCliente != nil { veraPortafoglio = false } } }
+    /// «Le routine» di Vera (fase 4, CollegaRoutineShell.swift): la pagina delle routine aperta sopra Vera e la routine scelta.
+    var paginaRoutineVera = false
+    var routineSelezionataVera: String?
+    /// «Il mercato per i tuoi clienti» (fase 4, CollegaMercatoClientiShell.swift): la scena aperta sopra Mercato, con
+    /// l'id dell'evento da mostrare ("" = il primo); nil = chiusa. Non si salva.
+    var scenaMercatoClientiVera: String? = nil
 
     // Ricerca (⌘K)
     var testoRicerca = ""
@@ -406,6 +412,12 @@ enum VoceConfronto: Hashable {
     private let salvataggio = SalvataggioArchivio()
     /// La memoria di Vera (fase 2 del brief): ricordi, lezioni e riassunti cifrati (StatoMemoriaVera.swift).
     @ObservationIgnored lazy var memoriaVera = StatoMemoriaVera(persistente: persistente)
+    /// Il tagliando dei dati (fase 4, CollegaTagliandoShell.swift): le voci del controllo di adesso (in memoria, si
+    /// rifanno quando servono; nell'archivio resta solo il registro) e la pagina sopra la chat di Vera.
+    var esitoTagliando: EsitoTagliando?
+    var paginaTagliandoAperta = false
+    /// Il prossimo turno notturno del tagliando: un lavoro all'ora dell'orologio, niente Timer.
+    @ObservationIgnored var lavoroTagliando: DispatchWorkItem?
     /// I vettori della ricerca per significato, in una cache cifrata (RicercaVera.swift).
     @ObservationIgnored lazy var indiceVera = IndiceVera(persistente: persistente) { [weak self] in self?.memoriaVera.chiaveMemoria() }
     /// La biblioteca delle norme (funzione 13, BibliotecaVera.swift).
@@ -534,6 +546,8 @@ enum VoceConfronto: Hashable {
         aggiornaElencoBackup()
         // Promemoria del Mac: solo qui, con l'archivio sul disco (mai nelle istantanee e nelle prove)
         avviaPromemoria()
+        // «Le routine» programmate di Vera: un controllo ogni dieci minuti, solo con Prisma aperto (CollegaRoutineShell.swift)
+        avviaControlloRoutine()
         #if os(macOS)
         // Stop del Mac e risveglio (RipresaSistema.swift)
         avviaRipresa()
@@ -566,6 +580,8 @@ enum VoceConfronto: Hashable {
             }
         }
         avviaNotifiche()
+        // Il tagliando dei dati: il controllo dovuto (poco dopo l'avvio) e il prossimo turno notturno (CollegaTagliandoShell.swift)
+        avviaTagliando()
         // Lo sblocco chiesto mentre l'archivio arrivava
         if let velocita = sbloccoInAttesa {
             sbloccoInAttesa = nil
@@ -576,6 +592,7 @@ enum VoceConfronto: Hashable {
     deinit {
         // Il run loop trattiene il timer: senza questo resterebbe acceso dopo uno stato delle prove o delle istantanee
         timerNotifiche?.invalidate()
+        lavoroTagliando?.cancel()
     }
 
     /// Il menu Vai segue blocco, modalità cliente, presentazione e conversazione a voce, senza osservare StatoShell:
@@ -782,6 +799,10 @@ enum VoceConfronto: Hashable {
         dati.promesse.removeAll { $0.clienteId == id }
         dati.confrontiDocumenti.removeAll { $0.clienteId == id }
         dati.coperture.removeAll { $0.clienteId == id }
+        // Vera, fase 4: i lanci delle routine, le voci chiuse del sussurro e le spiegazioni in tre livelli del cliente
+        dati.routine.esiti.removeAll { $0.clienteId == id }
+        dati.sussurriChiusi.removeAll { $0.clienteId == id }
+        dati.spiegazioniTreLivelli.removeAll { $0.clienteId == id }
         dati.conversazioni[id] = nil
         dati.commenti.removeAll { $0.clienteId == id }
         dati.note.removeAll { $0.clienteId == id }
@@ -2849,6 +2870,8 @@ enum VoceConfronto: Hashable {
         lavoriInPausa = true
         timerNotifiche?.invalidate()
         timerNotifiche = nil
+        // Il turno notturno del tagliando si toglie: lo rimette la ripresa dei lavori
+        annullaTagliandoProgrammato()
     }
 
     /// Dopo il risveglio: tra `attesa` secondi ripartono notifiche, promemoria e controllo del backup.
@@ -2863,6 +2886,8 @@ enum VoceConfronto: Hashable {
             self.ricalcolaNotifiche()
             self.aggiornaPromemoria()
             self.controllaBackupAutomatico()
+            // Il tagliando dei dati: il controllo saltato nella notte e il prossimo turno
+            self.avviaTagliando()
         }
         ripresaLavori = lavoro
         DispatchQueue.main.asyncAfter(deadline: .now() + attesa, execute: lavoro)

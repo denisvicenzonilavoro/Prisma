@@ -382,6 +382,15 @@ extension AppImpostazioni {
                     MenuTendina(selezione: Bindable(stato.dati).impostazioni.vera.ragionamento,
                                 opzioni: SceltaRagionamento.allCases.map { ($0, $0.nome) }, larghezza: M.menuMedio)
                 }
+                // Fase 4 di Vera, funzione 20: «Ragiona a passi» (VistePassiVera.swift)
+                RigaImpostazione(titolo: "Ragiona a passi", sottotitolo: "Divide un budget tra protezione e obiettivi.",
+                                 aiuto: "Un piano di al massimo cinque passi, eseguito con i motori di Prisma; la scelta segue una regola scritta") {
+                    interruttore(Bindable(stato.dati).impostazioni.vera.passi.attivo)
+                }
+                RigaImpostazione(titolo: "Mostra il ragionamento", sottotitolo: "Il piano e la regola accanto alla risposta.") {
+                    interruttore(Bindable(stato.dati).impostazioni.vera.passi.mostraRagionamento)
+                        .disabled(!stato.dati.impostazioni.vera.passi.attivo)
+                }
                 RigaImpostazione(titolo: "Pronta all'avvio", sottotitolo: "La prima risposta non aspetta.",
                                  aiuto: "All'apertura di Prisma Vera avvia Ollama e carica il modello: la prima risposta non aspetta") {
                     interruttore(Bindable(stato.dati).impostazioni.vera.prontaAllAvvio)
@@ -401,6 +410,11 @@ extension AppImpostazioni {
                                  aiuto: "Una correzione scritta diventa una lezione che Vera rilegge prima di ogni risposta") {
                     interruttore(Bindable(stato.dati).impostazioni.vera.imparaDalleCorrezioni)
                 }
+                // Fase 4 di Vera, funzione 7: «Il sussurro» nella Panoramica del dossier (VisteSussurroVera.swift)
+                RigaImpostazione(titolo: "Il sussurro", sottotitolo: "Due o tre cose da sapere quando apri un cliente.",
+                                 aiuto: "Nella Panoramica del dossier: consensi, scadenze, promesse, riesame e ricorrenze, ognuna con un'azione da confermare. Mai in modalità cliente") {
+                    interruttore(Bindable(stato.dati).impostazioni.vera.sussurroNelDossier)
+                }
                 RigaImpostazione(titolo: "Il filo lungo", sottotitolo: "La memoria della conversazione.",
                                  aiuto: "Misurato su questo Mac: Qwen 3.5 4B occupa 3,8 GB anche a 32.000 token. Le battute che escono dalla finestra restano in un riassunto") {
                     MenuTendina(selezione: Bindable(stato.dati).impostazioni.vera.finestra,
@@ -414,6 +428,14 @@ extension AppImpostazioni {
                 RigaMemoriaVera(memoria: stato.memoriaVera)
             }
             .cascataImpostazioni(6)
+            // Fase 4 di Vera, funzione 15: «Il tuo stile» (regole, provenienza, interruttori, esempio; VisteStileVera.swift)
+            GruppoImpostazioni(titolo: "Il tuo stile") {
+                GruppoStileVeraImpostazioni()
+            }
+            .cascataImpostazioni(6)
+            // Fase 4 di Vera, funzione 5: il tagliando dei dati (VisteTagliandoVera.swift)
+            GruppoTagliandoImpostazioni()
+                .cascataImpostazioni(6)
             GruppoImpostazioni(titolo: "Avanzate") {
                 rigaApri("Fornitore e indirizzo", "\(vera.fornitore.nome) · solo indirizzi del Mac",
                          aperta: $mostraAvanzateVera, ultima: !mostraAvanzateVera)

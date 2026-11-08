@@ -173,6 +173,9 @@ enum ProvaBackup {
             ProvaBackup.aggiungiAziendeDiProva(&originale)
             // Vera, fase 3: promesse, confronti, coperture e un resoconto (ProvaBackupFaseTreVera.swift)
             ProvaBackup.aggiungiFaseTreVeraDiProva(&originale)
+            // Vera, fase 4: routine, orari dell'agenda, tagliando e scheda unita, voci chiuse del sussurro, mercato per i
+            // clienti, profilo di stile, spiegazioni in tre livelli e ragionamento a passi (ProvaBackupFaseQuattroVera.swift)
+            ProvaBackup.aggiungiFaseQuattroVeraDiProva(&originale)
             // Il versamento mensile previsto dell'obiettivo (cursore del dettaglio nel tema Apple)
             if !originale.obiettivi.isEmpty { originale.obiettivi[0].versamentoMensile = 350 }
             guard !originale.simulazioni.isEmpty, !originale.incontri.isEmpty, !originale.prodotti.isEmpty, !originale.obiettivi.isEmpty, !originale.documenti.isEmpty, !originale.valutazioni.isEmpty, originale.clienti.contains(where: { !$0.bisogni.eventi.isEmpty }) else {
@@ -296,6 +299,12 @@ enum ProvaBackup {
             }
             // Vera, fase 3: promesse, confronti, coperture e resoconti (ProvaBackupFaseTreVera.swift)
             if let e = try verificaFaseTreVera(originale: originale, estratto: estratto.dati) {
+                print("ERRORE: \(e)")
+                return 1
+            }
+            // Vera, fase 4: le otto funzioni, un archivio senza, dati rovinati, Prisma ovunque, sezioni nuove dell'archivio
+            // a pezzi (ProvaBackupFaseQuattroVera.swift)
+            if let e = try verificaFaseQuattroVera(originale: originale, estratto: estratto.dati) {
                 print("ERRORE: \(e)")
                 return 1
             }

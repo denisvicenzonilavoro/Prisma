@@ -33,7 +33,7 @@ enum ProvaPassiVera {
     /// scade il 17 dicembre, l'obiettivo «Università di Anna» (25.000 € per settembre 2036, 5.400 € da parte) e una
     /// protezione che chiede 725.000 € (3.000 € al mese per 20 anni + 15.000 € − 10.000 €).
     private static func caso() -> (DatiPassi, RichiestaPassi) {
-        let demo = StatoShell(persistente: false).dati
+        let demo = StatoShell(persistente: false).dati.istantanea
         let marco = demo.clienti.first { $0.id == "marco" } ?? demo.clienti[0]
         var tcm = Posizione(clienteId: marco.id, canale: .alleanza, stato: .inEssere, area: .protezione, nome: "Temporanea caso morte")
         tcm.id = "pos-prova-tcm"
@@ -364,7 +364,7 @@ enum ProvaPassiVera {
 
     /// I dati di prova vivono intorno al giorno di oggi (l'Infortuni scade tra 45 giorni): qui `oggi` è adesso.
     private static func datiDelTemplate(_ controlla: (Bool, String) -> Void) {
-        let demo = StatoShell(persistente: false).dati
+        let demo = StatoShell(persistente: false).dati.istantanea
         guard let dati = PassiVera.datiDa(demo) else {
             controlla(false, "Template: i dati di Marco si leggono dall'archivio")
             return

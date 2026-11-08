@@ -355,6 +355,8 @@ extension StatoShell {
             proponiNovitaDopoSblocco()
             // «Luce» giro 5: il lunedì la storia della settimana si apre da sola, una volta (StoriaLuce.swift)
             proponiStoriaDopoSblocco()
+            // «Le routine» programmate rimaste indietro mentre Prisma era bloccata o chiusa (CollegaRoutineShell.swift)
+            controllaRoutineDovute()
         }
     }
 }

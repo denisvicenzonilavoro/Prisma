@@ -7,7 +7,7 @@ import Foundation
 /// e l'archivio. Niente rete, niente Qwen vero, niente dipendenza dall'ora: `oggi` è fisso.
 enum ProvaTreLivelliVera {
     static func esegui(_ controlla: (Bool, String) -> Void) {
-        let dati = StatoShell(persistente: false).dati
+        let dati = StatoShell(persistente: false).dati.istantanea
         pacchetto(controlla)
         riconoscimento(controlla)
         previdenzaMarco(dati, controlla)

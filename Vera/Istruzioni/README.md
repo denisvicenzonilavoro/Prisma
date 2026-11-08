@@ -46,5 +46,7 @@ L'assistente si chiama Vera (prima si chiamava Ruby, e prima ancora Eve). Le ist
 
 - `resoconto.md`: «Il resoconto dell'incontro» (funzione 16): le sezioni del formato del consulente (presenti, di cosa abbiamo parlato, cosa abbiamo deciso, prossimi passi, da raccogliere) e la versione breve, in JSON. Le sezioni con una cifra nuova restano quelle di Prisma; il resoconto va nei Documenti del cliente come PDF solo con «Firma».
 
+- `stile-riscrivi.md`: «Scrive come te» (funzione 15): riscrivere un testo del consulente nel suo stile (solo la forma: saluto, tu o Lei, frasi, formule); fatti, numeri, date e nomi restano quelli del testo.
+
 Modificare qui il testo cambia il comportamento di Vera alla build successiva, senza toccare il codice.
 Tenere il testo ragionevolmente corto: la finestra di Qwen sul Mac è di 8.192 token per istruzioni, scheda, storia e risposta.

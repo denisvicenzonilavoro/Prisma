@@ -71,6 +71,9 @@ struct Cliente: Identifiable, Codable, Hashable {
     /// quota, ruolo, dipendenti, fatturato e lo stato delle quattro aree, tutto scritto dall'utente. nil o vuoto =
     /// nessuna azienda: la scheda «L'azienda» del dossier non compare.
     var aziende: [AziendaCliente]?
+    /// La scheda in cui questa è stata unita da «Unisci le schede» del tagliando dei dati (versione 27, Vera fase 4): l'id
+    /// della scheda principale. nil = scheda normale. La scheda unita non si cancella: resta in archivio, segnata così.
+    var unitaIn: String?
 
     init(id: String, nome: String, iniziali: String, tinta: TintaAvatar, tema: String, email: String,
          telefono: String, preferito: Bool, nota: String, creatoIl: Date) {
@@ -112,6 +115,7 @@ struct Cliente: Identifiable, Codable, Hashable {
         case consensoCopilota
         case modelloId
         case aziende
+        case unitaIn
     }
 
     /// Lettura tollerante: i campi aggiunti nelle versioni successive possono mancare.
@@ -150,6 +154,8 @@ struct Cliente: Identifiable, Codable, Hashable {
         // Aziende (versione 27, giro 7): un'azienda illeggibile si scarta, le altre restano; nessuna = nil
         aziende = ((try? c.decodeIfPresent(ElencoTollerante<AziendaCliente>.self, forKey: .aziende)) ?? nil)
             .flatMap { $0.elementi.isEmpty ? nil : $0.elementi }
+        // Scheda unita dal tagliando (versione 27, Vera fase 4): illeggibile o vuoto = scheda normale
+        unitaIn = ((try? c.decodeIfPresent(String.self, forKey: .unitaIn)) ?? nil).flatMap { $0.isEmpty ? nil : $0 }
     }
 
     /// Le aziende registrate (vuoto se nessuna).

@@ -192,6 +192,37 @@ enum RegistroStrumenti {
                       descrizione: "Archivia un documento trascinato su Prisma nel cliente giusto, con i dati letti.",
                       parametri: oggetto([:], richiesti: []),
                       disponibile: true, annullabile: true, nelDossier: true, soloPrisma: true),
+        // Vera, fase 4: «Le routine» (funzione 3, CollegaRoutineShell.swift): solo Prisma le prepara
+        StrumentoVera(nome: RoutineVera.strumentoPosizioneFirmata, app: .posizioni,
+                      descrizione: "Segna in essere la proposta firmata da un cliente (accettata, con la decorrenza) e apre la sua pratica dopo la firma.",
+                      parametri: oggetto([:], richiesti: []),
+                      disponibile: true, annullabile: true, nelDossier: true, soloPrisma: true),
+        StrumentoVera(nome: RoutineVera.strumentoSalva, app: .vera,
+                      descrizione: "Salva una routine nuova di Vera, capita a parole.",
+                      parametri: oggetto([:], richiesti: []),
+                      disponibile: true, annullabile: true, nelDossier: false, soloPrisma: true),
+        // Il tagliando dei dati (funzione 5, CollegaTagliandoShell.swift): solo Prisma le prepara dalle voci del controllo
+        StrumentoVera(nome: TagliandoVera.strumentoUnisci, app: .clienti,
+                      descrizione: "Unisce due schede della stessa persona: tutto passa sulla principale, la doppia resta in archivio segnata come unita.",
+                      parametri: oggetto(["principale": testo("L'id della scheda che resta."), "doppione": testo("L'id della scheda doppia.")],
+                                         richiesti: ["principale", "doppione"]),
+                      disponibile: true, annullabile: true, nelDossier: false, soloPrisma: true),
+        StrumentoVera(nome: TagliandoVera.strumentoCompleta, app: .clienti,
+                      descrizione: "Completa un dato vuoto dell'anagrafica con quello letto in un documento del cliente (mai sovrascrive).",
+                      parametri: oggetto(["cliente": testo("L'id del cliente."),
+                                          "campo": scelta(["codiceFiscale", "email", "telefono", "indirizzo"], "Il dato da completare."),
+                                          "valore": testo("Il valore letto nel documento."), "documento": testo("L'id del documento.")],
+                                         richiesti: ["cliente", "campo", "valore"]),
+                      disponibile: true, annullabile: true, nelDossier: true, soloPrisma: true),
+        StrumentoVera(nome: TagliandoVera.strumentoDocumento, app: .clienti,
+                      descrizione: "Registra in «In regola» il documento d'identità letto in Documenti: numero, rilascio e scadenza.",
+                      parametri: oggetto(["cliente": testo("L'id del cliente."), "documento": testo("L'id del documento."),
+                                          "numero": testo("Il numero del documento."), "rilascio": testo("Data di rilascio AAAA-MM-GG."),
+                                          "scadenza": testo("Data di scadenza AAAA-MM-GG.")],
+                                         richiesti: ["cliente", "scadenza"]),
+                      disponibile: true, annullabile: true, nelDossier: true, soloPrisma: true),
+        // «Scrive come te» (funzione 15, CollegaStileShell.swift)
+        strumentoStile,
     ]
 
     static func strumento(_ nome: String) -> StrumentoVera? { tutti.first { $0.nome == nome } }
@@ -241,6 +272,8 @@ enum RegistroStrumenti {
             return .impossibile("I documenti si archiviano trascinandoli su Vera.")
         case studioChilometri:
             return .impossibile("Studio non registra ancora i chilometri: quando sarà pronto lo farò io. Per ora segnali tu in Studio.")
+        case TagliandoVera.strumentoUnisci, TagliandoVera.strumentoCompleta, TagliandoVera.strumentoDocumento:
+            return .impossibile("Le correzioni del tagliando si preparano dalla pagina del tagliando dei dati.")
         default: return .impossibile("Non conosco l'azione «\(c.nome)».")
         }
     }
@@ -611,6 +644,14 @@ enum RegistroStrumenti {
             if !senza.isEmpty {
                 a.avviso = "Controlla nel testo \(senza.joined(separator: ", ")): non viene da Prisma né dalla tua richiesta."
             }
+            // «Scrive come te» (fase 4, funzione 15): saluto, chiusura e firma del profilo; una regola grave ancora
+            // violata diventa l'avviso
+            let stile = messaggioInStile(testo, cliente: c, contesto: x)
+            if stile.testo != testo {
+                a.argomenti["testo"] = stile.testo
+                a.dettaglio = dettaglioMessaggio(stile.testo, canale: canale)
+            }
+            if a.avviso == nil, let avviso = stile.avviso { a.avviso = avviso }
             return .azione(a)
         }
     }
