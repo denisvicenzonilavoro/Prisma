@@ -328,6 +328,13 @@ enum ProvaCalcoliMessaggi {
                                             oggetto: "Ha raggiunto «Rendita integrativa»",
                                             cifre: [CifraMessaggio(.traguardo, "Ha raggiunto «Rendita integrativa»")],
                                             priorita: .alta, data: oggi))
+        // I dati che mancano per un modulo («Luce» giro 10): solo i nomi dei dati, mai i valori
+        let modello = ModelloModulo(id: "modulo-prova", titolo: "Proposta di polizza", tipo: .propostaPolizza,
+                                    file: "modulo-prova.pdf", pagine: 1, campi: [])
+        if let giulia = x.clienti.first(where: { $0.id == "giulia" }),
+           let o = CompilatoreModuli.occasioneDatiMancanti(cliente: giulia, modello: modello, dati: [.iban, .cap], oggi: oggi) {
+            occasioni.append(o)
+        }
         return (x, occasioni)
     }
 

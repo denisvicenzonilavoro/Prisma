@@ -26,7 +26,7 @@ extension AppImpostazioni {
     /// Le sezioni della barra laterale, dall'alto in basso (tutte le pagine di sempre).
     /// L'ordine del template di Orizzonte (§13.1.2): Aspetto · iPhone e iPad · Archivio e backup · Vera · Profilo.
     static let sezioniPrincipali: [SchedaImpostazioni] = [.panoramica, .aspetto, .ovunque, .archivio, .vera, .profilo]
-    static let sezioniLavoro: [SchedaImpostazioni] = [.studio, .mercato, .portafogliModello, .pratiche, .lavoro, .promemoria, .conformita, .proposte, .rendimenti, .scorciatoie]
+    static let sezioniLavoro: [SchedaImpostazioni] = [.studio, .mercato, .portafogliModello, .pratiche, .moduli, .lavoro, .promemoria, .conformita, .proposte, .rendimenti, .scorciatoie]
     static let sezioniProve: [SchedaImpostazioni] = [.strumenti]
 
     var corpoApple: some View {

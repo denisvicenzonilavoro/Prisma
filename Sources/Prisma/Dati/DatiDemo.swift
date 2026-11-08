@@ -59,6 +59,8 @@ enum DatiDemo {
                 c.profilo.redditoLordoAnnuo = 32_000
                 c.dataNascita = nascita(1989, 3, 14)
                 c.professione = "Architetta"
+                // Dati di prova: il luogo di nascita per i moduli fac-simile («Luce» giro 10)
+                c.luogoNascita = "Bologna (BO)"
                 c.statoCivile = .convivente
                 c.indirizzo = "Via dei Mille 12, Bologna"
                 c.telefono = "+39 333 000 1001"

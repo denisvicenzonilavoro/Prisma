@@ -246,9 +246,27 @@ extension Tema.Apple {
             /// Le righe dei dati che mancano: nome 13 semigrassetto e «Lo scrivo io».
             static let rigaManca = K(dimensione: 13, peso: .semibold)
             static let spazioRighe: CGFloat = 6
-            /// Chip dei clienti: avatar 22.
+            /// Chip dei clienti: avatar 22, nome 13 semigrassetto; acceso blu pieno (`accento`) con il testo bianco.
             static let avatarChip: CGFloat = 22
+            static let chipCarattere = K.barra
+            static let chipFondo = C.cardPiena
+            static let chipBordo = C.separatore
+            static let chipTesto = C.inchiostro
+            static let chipAcceso = C.accento
+            static let chipTestoAcceso = Color.white
+            static let chipPadding = EdgeInsets(top: 4, leading: 4, bottom: 4, trailing: 14)
             static let spazioChip: CGFloat = 6
+            /// Il margine del testo dentro una casella (punti della pagina, scalati con la pagina).
+            static let paddingCasella: CGFloat = 6
+            /// Lo spazio per le frecce delle pagine sotto la pagina, quando le pagine sono più di una.
+            static let altezzaFrecce: CGFloat = 30
+            /// I popover (correzione a mano, ricerca del cliente): larghi 260, padding 14.
+            static let larghezzaPopover: CGFloat = 260
+            static let paddingPopover: CGFloat = 14
+            /// Spazi piccoli dentro le tile e le righe: 2, 4, 8.
+            static let spazioMinimo: CGFloat = 2
+            static let spazioStretto: CGFloat = 4
+            static let spazioMedio: CGFloat = 8
             /// La zona di rilascio quando non c'è nessun modulo: tratteggio 1,5 (6 5), raggio 20.
             static let trattoRilascio: CGFloat = 1.5
             static let tratteggioRilascio: [CGFloat] = [6, 5]

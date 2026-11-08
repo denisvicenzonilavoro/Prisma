@@ -410,6 +410,8 @@ enum VoceConfronto: Hashable {
     @ObservationIgnored lazy var indiceVera = IndiceVera(persistente: persistente) { [weak self] in self?.memoriaVera.chiaveMemoria() }
     /// La biblioteca delle norme (funzione 13, BibliotecaVera.swift).
     @ObservationIgnored lazy var biblioteca = StatoBiblioteca(persistente: persistente)
+    /// I modelli di modulo di Pratiche › Moduli e la compilazione in corso («Luce» giro 10, Shell/StatoModuli.swift).
+    @ObservationIgnored lazy var moduli = StatoModuli(persistente: persistente)
     /// Biblioteca · «Trova la pagina» («Luce» giro 6, StatoTrovaPagina.swift): domanda, risultato, indice in memoria.
     @ObservationIgnored lazy var trovaPagina = StatoTrovaPagina(biblioteca: biblioteca, persistente: persistente)
     @ObservationIgnored private var salvataggioSospeso = false
@@ -1485,11 +1487,20 @@ enum VoceConfronto: Hashable {
     func archiviaProspetto(_ pdf: Data, documento: DocumentoStampabile, cliente perCliente: String? = nil) -> String? {
         let cliente = perCliente ?? clienteAttivoId
         let titolo = "\(documento.genere) · \(documento.titolo)"
-        // Lo stesso documento archiviato di nuovo nello stesso giorno sostituisce la copia di prima
+        return archiviaPDF(pdf, titolo: titolo, tipo: documento.tipo, cliente: cliente)
+    }
+
+    /// Salva un PDF fatto da Prisma nei Documenti del cliente (prospetti, report, moduli compilati: «Luce» giro 10).
+    /// Lo stesso documento archiviato di nuovo nello stesso giorno sostituisce la copia di prima.
+    @discardableResult
+    func archiviaPDF(_ pdf: Data, titolo: String, tipo: Documento.Tipo, cliente: String, posizioneId: String? = nil,
+                     modulo: CompilazioneModulo? = nil) -> String? {
         if let vecchio = dati.documenti.first(where: { $0.clienteId == cliente && $0.titolo == titolo && Calendar.current.isDateInToday($0.importatoIl) }) {
             eliminaDocumento(vecchio.id)
         }
-        var d = Documento(clienteId: cliente, titolo: titolo, tipo: documento.tipo)
+        var d = Documento(clienteId: cliente, titolo: titolo, tipo: tipo)
+        d.posizioneId = posizioneId
+        d.modulo = modulo
         d.importatoIl = Appuntamento.alMinuto(Date())
         d.lettura = .letto
         let pagine = StampaCarta.testo(pdf)
@@ -1503,7 +1514,7 @@ enum VoceConfronto: Hashable {
                 try? pagine.joined(separator: LetturaDocumenti.separatorePagine)
                     .write(to: cartella.appendingPathComponent("\(d.id).txt"), atomically: true, encoding: .utf8)
             } catch {
-                mostraAvviso("Non riesco a salvare il prospetto: \(error.localizedDescription)")
+                mostraAvviso("Non riesco a salvare il PDF: \(error.localizedDescription)")
                 return nil
             }
             d.file = "\(cliente)/\(d.id).pdf"
@@ -3087,6 +3098,7 @@ enum VoceConfronto: Hashable {
                     // La memoria di Vera e la Biblioteca si rileggono dalla cartella ripristinata (fase 2)
                     self.memoriaVera.ricarica()
                     self.biblioteca.ricarica()
+                    self.moduli.ricarica()
                     self.trovaPagina.azzera()
                     self.solaLettura = false
                     self.salvataggioSospeso = false
@@ -3322,6 +3334,8 @@ enum VoceConfronto: Hashable {
         }
         // I fac-simile della Biblioteca se ne vanno con i clienti di prova («Luce» giro 6)
         togliEsempiBiblioteca()
+        // E i moduli fac-simile («Luce» giro 10)
+        togliEsempiModuli()
     }
 
     /// Torna ai dati di prova (con backup di sicurezza dello stato attuale): i 5 clienti del template,
@@ -3356,6 +3370,8 @@ enum VoceConfronto: Hashable {
                     self.azzeraNote()
                     // I sei fac-simile della Biblioteca arrivano con i clienti di prova («Luce» giro 6)
                     self.caricaEsempiBiblioteca()
+                    // I due moduli fac-simile di Pratiche › Moduli arrivano con i clienti di prova («Luce» giro 10)
+                    self.caricaEsempiModuli()
                     // I file dei clienti veri restano nel backup appena fatto, non nell'archivio
                     self.pulisciDocumentiOrfani()
                     self.aggiornaElencoBackup()
@@ -3472,6 +3488,8 @@ enum SchedaImpostazioni: String, CaseIterable, Hashable, Identifiable {
     case portafogliModello
     /// La soglia delle pratiche ferme di Pratiche › Dopo la firma («Luce» giro 3, ImpostazioniPraticheVista.swift).
     case pratiche
+    /// I modelli di modulo di Pratiche › Moduli e «Conserva l'IBAN nel dossier» («Luce» giro 10, ImpostazioniModuliVista.swift).
+    case moduli
     /// Dati di prova, confronto dei modelli, prove di promemoria e voce.
     case strumenti
 
@@ -3495,6 +3513,7 @@ enum SchedaImpostazioni: String, CaseIterable, Hashable, Identifiable {
         case .mercato: return "Mercato"
         case .portafogliModello: return "Portafogli modello"
         case .pratiche: return "Pratiche"
+        case .moduli: return "Moduli"
         case .strumenti: return "Strumenti"
         }
     }

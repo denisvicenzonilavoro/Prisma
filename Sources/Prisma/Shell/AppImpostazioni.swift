@@ -157,6 +157,7 @@ struct AppImpostazioni: View {
         case .mercato: PaginaImpostazioniMercato()
         case .portafogliModello: PaginaImpostazioniModelli()
         case .pratiche: PaginaImpostazioniPratiche()
+        case .moduli: PaginaImpostazioniModuli()
         case .strumenti: strumenti
         }
     }

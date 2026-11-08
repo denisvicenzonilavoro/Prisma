@@ -210,6 +210,15 @@ enum ModelliMessaggi {
                    "Resto a disposizione per qualsiasi chiarimento."]
                 : ["per completare la pratica di \(nome) \(mancaAncora(passo)). Quando ti è comodo ce ne occupiamo insieme.",
                    "Scrivimi pure per qualsiasi cosa."]
+        case .datiMancanti:
+            // I dati che mancano per un modulo: solo i loro nomi, mai un dato (D2.6)
+            let cosa = v(.datiModulo) ?? (lei ? "alcuni dati" : "alcuni dati")
+            let modulo = v(.modulo).map { " per «\($0)»" } ?? ""
+            return lei
+                ? ["per completare il modulo\(modulo) mi servono ancora questi dati: \(cosa). Può mandarmeli quando le è comodo, nel modo che preferisce.",
+                   "Grazie, resto a disposizione per qualsiasi chiarimento."]
+                : ["per completare il modulo\(modulo) mi servono ancora questi dati: \(cosa). Mandameli quando ti è comodo, nel modo che preferisci.",
+                   "Grazie, scrivimi pure per qualsiasi cosa."]
         case .traguardo:
             // Un traguardo da festeggiare: il fatto, mai una cifra in più né una proposta (decisione 87)
             let cosa = v(.traguardo).map { " («\(minuscolaIniziale($0))»)" } ?? ""
@@ -279,6 +288,9 @@ enum ModelliMessaggi {
                 return (["per \(nome) la compagnia deve ancora completare \(passo): ti scrivo appena è pronta."], [])
             }
             return (["per \(nome) \(mancaAncora(passo)): ce ne occupiamo insieme?"], ["Scrivimi quando ti è comodo."])
+        case .datiMancanti:
+            let cosa = v(.datiModulo) ?? "alcuni dati"
+            return (["per completare il modulo mi servono ancora: \(cosa)."], ["Mandameli quando ti è comodo."])
         case .traguardo:
             let cosa = v(.traguardo).map { " («\(minuscolaIniziale($0))»)" } ?? ""
             return (["oggi è un giorno da ricordare\(cosa): complimenti!"], ["Grazie per la fiducia."])

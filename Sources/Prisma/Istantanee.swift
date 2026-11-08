@@ -1684,6 +1684,8 @@ enum Istantanee {
         tutteLeScene += scenePraticheDopo
         // «Luce», giro 3: Pratiche › Proposta, la proposta si costruisce da sola (Shell/IstantaneePraticheProposta.swift)
         tutteLeScene += scenePraticheProposta
+        // «Luce», giro 10: Pratiche › Moduli, «Compila da solo» (Shell/IstantaneePraticheModuli.swift)
+        tutteLeScene += scenePraticheModuli
         // «Luce», giro 4: Sala › Il prisma di luce e Disegna il tuo futuro (Shell/IstantaneeSalaLuce.swift)
         tutteLeScene += sceneSalaGiro4
         // «Luce», giro 4: Sala › Il gioco del rischio e Una giornata della pensione (Shell/IstantaneeSalaGiochi.swift)

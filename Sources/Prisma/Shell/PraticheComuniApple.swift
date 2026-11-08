@@ -10,6 +10,8 @@ import SwiftUI
 struct BarraLateralePratiche<Contenuto: View>: View {
     let titolo: String
     var larghezza: CGFloat = Tema.Apple.Pratiche.laterale
+    /// Un piede facoltativo sotto le voci (la frase e «Aggiungi un modulo» di Moduli).
+    var piede: AnyView? = nil
     @ViewBuilder let contenuto: () -> Contenuto
 
     private typealias P = Tema.Apple.Pratiche
@@ -28,6 +30,7 @@ struct BarraLateralePratiche<Contenuto: View>: View {
                     contenuto()
                 }
             }
+            if let piede { piede }
         }
         .padding(P.paddingLaterale)
         .frame(width: larghezza, alignment: .topLeading)

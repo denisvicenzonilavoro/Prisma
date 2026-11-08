@@ -103,6 +103,13 @@ enum DatoModulo: String, Codable, CaseIterable, Identifiable {
         }
     }
 
+    /// Il nome dentro una frase: minuscola iniziale, tranne le sigle («IBAN per l'addebito», «CAP», «codice fiscale»).
+    var nomeInFrase: String {
+        let n = nome
+        guard n.count > 1, let secondo = n.dropFirst().first, !secondo.isUppercase else { return n }
+        return n.prefix(1).lowercased() + n.dropFirst()
+    }
+
     /// Dove Prisma lo prende (per la revisione della mappa e per i dati che mancano).
     var fonte: String {
         switch self {

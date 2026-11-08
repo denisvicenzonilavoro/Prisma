@@ -584,6 +584,11 @@ enum ProvaBackup {
                 print("ERRORE: \(errore)")
                 return 1
             }
+            // «Compila da solo» di «Luce» (giro 10): la cartella Moduli/, luogo di nascita e IBAN, il modulo compilato (ProvaBackupModuli.swift)
+            if let errore = try provaModuli(radice: radice) {
+                print("ERRORE: \(errore)")
+                return 1
+            }
             // L'archivio a pezzi su disco: conversione, backup, file rovinati, soli file cambiati, interruzioni (ProvaBackupArchivioPezzi.swift)
             if let errore = try provaArchivioPezzi(radice: radice, originale: originale) {
                 print("ERRORE: \(errore)")

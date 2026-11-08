@@ -167,10 +167,16 @@ enum RiconoscitoreModulo {
     /// Un PDF piatto: le etichette riconosciute dalle regole, con la casella subito sotto (da confermare).
     static func piatti(_ pagina: PDFPage, indice: Int) -> [ModelloModulo.Campo] {
         var campi: [ModelloModulo.Campo] = []
-        for (testo, b) in etichette(pagina) where formaDiEtichetta(testo) {
+        let pezzi = etichette(pagina)
+        // Il margine destro: dove finisce il testo più a destra della pagina
+        let margine = pezzi.map(\.1.maxX).max() ?? pagina.bounds(for: .mediaBox).maxX
+        for (testo, b) in pezzi where formaDiEtichetta(testo) {
             guard let associazione = associa(testo) else { continue }
             let alta: CGFloat = associazione == .firma ? 44 : 24
-            let r = CGRect(x: b.minX, y: b.minY - 3 - alta, width: max(b.width, 110), height: alta)
+            // La casella va dall'etichetta fino a quella accanto sulla stessa riga, o fino al margine
+            let accanto = pezzi.filter { abs($0.1.midY - b.midY) < sogliaRiga && $0.1.minX > b.maxX }.map(\.1.minX).min()
+            let destra = accanto.map { $0 - spazioCaselle } ?? margine
+            let r = CGRect(x: b.minX, y: b.minY - 3 - alta, width: max(destra - b.minX, b.width), height: alta)
             var c = ModelloModulo.Campo(pagina: indice, riquadro: r, etichetta: testo, origine: .regole, daConfermare: true)
             applica(associazione, a: &c)
             campi.append(c)
@@ -179,14 +185,16 @@ enum RiconoscitoreModulo {
     }
 
     /// I pezzi di testo della pagina con il loro riquadro: ogni riga divisa dove uno spazio è largo (più di 10 punti),
-    /// perché PDFKit mette sulla stessa riga le etichette affiancate.
+    /// perché PDFKit mette sulla stessa riga le etichette affiancate, e dove una lettera cambia riga o è ruotata (una
+    /// filigrana come «FAC-SIMILE» che PDFKit unisce all'etichetta vicina).
     static func etichette(_ pagina: PDFPage) -> [(String, CGRect)] {
         guard let testo = pagina.string, !testo.isEmpty else { return [] }
         let ns = testo as NSString
         var pezzi: [(String, CGRect)] = []
         var inizio = 0
-        func chiudi(_ fine: Int) {
-            defer { inizio = fine + 1 }
+        var precedente: CGRect?
+        func chiudi(_ fine: Int, salta: Bool) {
+            defer { inizio = salta ? fine + 1 : fine; precedente = nil }
             guard fine > inizio else { return }
             let r = NSRange(location: inizio, length: fine - inizio)
             let s = ns.substring(with: r).trimmingCharacters(in: .whitespacesAndNewlines)
@@ -196,15 +204,30 @@ enum RiconoscitoreModulo {
         for i in 0..<ns.length {
             let c = ns.character(at: i)
             if c == 10 || c == 13 || c == 9 {
-                chiudi(i)
-            } else if c == 32, let sel = pagina.selection(for: NSRange(location: i, length: 1)),
-                      sel.bounds(for: pagina).width > 10 {
-                chiudi(i)
+                chiudi(i, salta: true)
+                continue
             }
+            guard let b = pagina.selection(for: NSRange(location: i, length: 1))?.bounds(for: pagina) else { continue }
+            if c == 32 {
+                if b.width > sogliaSpazio { chiudi(i, salta: true) }
+                continue
+            }
+            // Una lettera fuori dalla riga della precedente (altra altezza o ruotata) apre un pezzo nuovo
+            if let p = precedente, abs(b.minY - p.minY) > sogliaRiga || b.height > p.height * 1.5 || p.height > b.height * 1.5 {
+                chiudi(i, salta: false)
+            }
+            precedente = b
         }
-        chiudi(ns.length)
+        chiudi(ns.length, salta: false)
         return pezzi
     }
+
+    /// Uno spazio più largo di così separa due etichette affiancate (punti PDF).
+    static let sogliaSpazio: CGFloat = 10
+    /// Due lettere della stessa etichetta non si scostano in altezza più di così (punti PDF).
+    static let sogliaRiga: CGFloat = 2
+    /// Lo spazio lasciato fra due caselle affiancate (punti PDF).
+    static let spazioCaselle: CGFloat = 9
 
     /// Le etichette che le regole non hanno riconosciuto (per Vera): campi senza dato, non firme né risposte.
     static func nonRiconosciute(_ campi: [ModelloModulo.Campo]) -> [String] {

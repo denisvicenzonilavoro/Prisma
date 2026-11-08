@@ -183,3 +183,20 @@ enum CompilatoreModuli {
         return r
     }
 }
+
+extension CompilatoreModuli {
+    /// La richiesta dei dati che mancano (Messaggi, «Sì, chiediglielo»): solo i nomi dei dati, mai i valori né un dato già
+    /// in archivio (D2.6). Una bozza: niente parte da solo.
+    static func occasioneDatiMancanti(cliente: Cliente, modello: ModelloModulo, dati: [DatoModulo], oggi: Date) -> OccasioneMessaggio? {
+        guard !dati.isEmpty else { return nil }
+        let nomi = dati.map(\.nomeInFrase)
+        let elenco = nomi.count > 1 ? nomi.dropLast().joined(separator: ", ") + " e " + (nomi.last ?? "") : nomi.joined()
+        let quale = (dati.count == 1 ? "Manca " : "Mancano ") + elenco
+        return OccasioneMessaggio(origine: OrigineMessaggio(tipo: .datiMancanti, riferimento: "\(modello.id)-\(dati.map(\.rawValue).joined(separator: "-"))"),
+                                  clienteId: cliente.id, canale: modello.canale, gruppo: .oggi,
+                                  titolo: "Dati per «\(modello.titolo)»", perche: quale,
+                                  oggetto: "I dati per «\(modello.titolo)»",
+                                  cifre: [CifraMessaggio(.datiModulo, elenco), CifraMessaggio(.modulo, modello.titolo)],
+                                  priorita: .media, data: oggi)
+    }
+}
