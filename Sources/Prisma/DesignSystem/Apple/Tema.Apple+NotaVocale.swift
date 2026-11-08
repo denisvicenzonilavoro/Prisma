@@ -122,6 +122,28 @@ extension Tema.Apple {
             static let massimoRigheVoceCoda = 2
         }
 
+        /// La voce «Nota dall’iPhone · 11:42» nella colonna «Oggi» di Incontri: il pallino delle note da guardare.
+        enum Oggi {
+            static let pallino: CGFloat = 8
+            static let colorePallino = K.accento
+            static let sopra: CGFloat = 8
+            static let glifo: CGFloat = 16
+            static let coloreGlifo = K.inchiostro2
+        }
+
+        /// «Come funziona» sul Mac: la scheda accanto al telefono disegnato (come Inquadra: 100 fra i due, 30 più in basso).
+        enum ComeFunziona {
+            static let spazio: CGFloat = 100
+            static let scartoScheda: CGFloat = 30
+            static let frase = C(dimensione: 13.5, peso: .regular, interlinea: 1.4)
+            static let coloreFrase = K.inchiostro2
+            static let fraseSopra: CGFloat = 6
+            static let titoloElenco = C.etichetta
+            static let coloreTitoloElenco = K.inchiostro2
+            static let elencoSopra: CGFloat = 16
+            static let massimoNote = 5
+        }
+
         enum Registra {
             /// Cerchio 68 con il bordo 4 bianco all'85%, a 62 dal fondo; dentro il quadrato rosso 28 con raggio 8.
             static let diametro: CGFloat = 68

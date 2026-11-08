@@ -181,6 +181,10 @@ enum VoceConfronto: Hashable {
     var carteInArrivo: [CartaIdentitaPonte] = []
     /// La nota arrivata con Prisma bloccato: allo sblocco si mostra la scheda «Arriva sul Mac».
     @ObservationIgnored var notaInAttesaSblocco: String?
+    /// L'abbonamento allo sblocco per la nota in attesa è già fatto.
+    @ObservationIgnored var sbloccoNoteOsservato = false
+    /// iPhone e iPad: la schermata «Una nota veloce» è aperta (Incontri, azione rapida dall'icona; «Luce» giro 13).
+    var notaVeloceAperta = false
     /// La Sala di «Luce» (StatoSala.swift): l'esperienza sul palco, osservata solo dalla Sala.
     let sala = StatoSala()
     /// La storia della settimana e dell'anno di «Luce» (giro 5, StoriaLuce.swift): le pagine e quella in corso,
@@ -553,6 +557,9 @@ enum VoceConfronto: Hashable {
         applicaImpostazioniVera()
         DiagnosticaVoce.osservatore = { [weak self] riga in self?.passaggioVoce = riga }
         aggiornaElencoBackup()
+        // La nota vocale («Luce» giro 13): via le note decise da più di 30 giorni; allo sblocco la scheda in attesa
+        if !caricati.solaLettura { potaNoteInArrivo() }
+        osservaSbloccoNote()
         // Promemoria del Mac: solo qui, con l'archivio sul disco (mai nelle istantanee e nelle prove)
         avviaPromemoria()
         #if os(macOS)
