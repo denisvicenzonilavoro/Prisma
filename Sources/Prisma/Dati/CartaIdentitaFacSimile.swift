@@ -15,6 +15,8 @@ enum CartaIdentitaFacSimile {
     static let luogo = "BOLOGNA (BO)"
     static let scadenza = "03.04.2031"
     static let codiceFiscale = "MRCLNE90D43A944S"
+    /// Il telefono che «manda» la carta nelle istantanee.
+    static let dispositivo = "iPhone di prova"
     /// La zona ottica come la disegna il template (decorativa, troppo corta per essere letta).
     static let zonaDisegnata = ["C<ITACA00000AA0<<<<<<", "MARCHI<<ELENA<<<<<<<<"]
 
