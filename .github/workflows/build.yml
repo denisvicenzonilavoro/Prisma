@@ -90,7 +90,7 @@ jobs:
             ditto Vera/Istruzioni "$APP/Contents/Resources/Vera/Istruzioni"
           fi
           # Schemi dei dati da estrarre (scenari «E se…?») ed esempi per le prove di Vera
-          for cartella in Schemi Esempi; do
+          for cartella in Schemi Esempi Addestramento; do
             if [ -d "Vera/$cartella" ]; then
               mkdir -p "$APP/Contents/Resources/Vera"
               ditto "Vera/$cartella" "$APP/Contents/Resources/Vera/$cartella"
@@ -143,6 +143,9 @@ jobs:
           test -f "$APP/Contents/Resources/Vera/Istruzioni/palestra.md"
           test -f "$APP/Contents/Resources/Vera/Schemi/palestra.json"
           test -f "$APP/Contents/Resources/Vera/Esempi/palestra.json"
+          test -f "$APP/Contents/Resources/Vera/Addestramento/vera-su-misura.ipynb"
+          test -f "$APP/Contents/Resources/Vera/Addestramento/addestra.py"
+          test -f "$APP/Contents/Resources/Vera/Esempi/esame-di-prova.json"
           "$APP/Contents/MacOS/Prisma" --prova-vera
           # Prova del tavolo con l'iPad: Mac e iPad nello stesso processo su 127.0.0.1 (abbinamento, pagine, cursore,
           # presa visione nel PDF, caduta della connessione con la schermata neutra)

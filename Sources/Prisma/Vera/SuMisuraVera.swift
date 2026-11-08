@@ -124,3 +124,176 @@ enum SuMisuraVera {
     /// I punti della curva dell'errore tenuti con la versione.
     static let puntiCurva = 60
 }
+
+// MARK: - Nomi dei modelli
+
+extension SuMisuraVera {
+    /// «vera-su-misura:2026-11-08».
+    static func nomeModello(_ data: Date) -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.calendar = Calendar(identifier: .gregorian)
+        f.dateFormat = "yyyy-MM-dd"
+        return prefissoModello + ":" + f.string(from: data)
+    }
+
+    static func eSuMisura(_ modello: String) -> Bool {
+        modello.trimmingCharacters(in: .whitespaces).lowercased().hasPrefix(prefissoModello)
+    }
+
+    /// «Vera su misura · novembre»: il nome della versione per la pagina.
+    static func nomeVersione(_ v: VersioneSuMisura) -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "it_IT")
+        f.dateFormat = "LLLL"
+        return "Vera su misura · " + f.string(from: v.creataIl)
+    }
+}
+
+// MARK: - Raccolta e divisione degli esempi
+
+extension SuMisuraVera {
+    /// Le cifre della risposta che non sono nella fonte (la domanda, o domanda e risposta attesa): con un'unità diversa o
+    /// un valore diverso (tolleranza di mezzo centesimo).
+    static func cifreSenzaFonte(_ risposta: String, fonte: String) -> [String] {
+        let note = FontiVera.numeri(fonte).map(\.valore)
+        return FontiVera.numeri(risposta).filter { n in !note.contains { abs($0 - n.valore) < 0.005 } }.map(\.testo)
+    }
+
+    /// Gli esempi che possono servire (al pacchetto o all'esame): non esclusi, non vietati (MemoriaVera.vietato), non vuoti,
+    /// senza doppioni.
+    static func candidati(_ esempi: [EsempioVera]) -> [EsempioVera] {
+        var visti = Set<String>()
+        return esempi.filter { e in
+            let d = e.domanda.trimmingCharacters(in: .whitespacesAndNewlines)
+            let r = e.risposta.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !e.escluso, !d.isEmpty, !r.isEmpty, MemoriaVera.vietato(d + " " + r) == nil else { return false }
+            return visti.insert(e.id).inserted && visti.insert(NucleoVera.semplice(d + "\u{1F}" + r)).inserted
+        }
+    }
+
+    /// Regola 3 del brief («i numeri li calcola Prisma»): un esempio in modalità lavoro (o senza modalità, cioè di prima
+    /// della fase 5) la cui risposta contiene cifre che non sono nella domanda non entra nell'addestramento: la scheda da cui
+    /// venivano quelle cifre non è salvata e il modello imparerebbe a scrivere numeri senza fonte. Resta buono per l'esame.
+    static func addestrabile(_ e: EsempioVera) -> Bool {
+        if e.modalita == .conversazione { return true }
+        return cifreSenzaFonte(e.risposta, fonte: e.domanda).isEmpty
+    }
+
+    /// Gli esempi che possono entrare nell'addestramento.
+    static func raccogli(_ esempi: [EsempioVera]) -> [EsempioVera] {
+        candidati(esempi).filter(addestrabile)
+    }
+
+    /// Quante domande tiene l'esame per tanti candidati: il 20%, tra 12 e 80 (mai più di metà).
+    static func quanteDomande(_ candidati: Int) -> Int {
+        guard candidati > 1 else { return 0 }
+        let quota = Int((Double(candidati) * quotaEsame).rounded())
+        return min(candidati / 2, min(massimoEsame, max(minimoEsame, quota)))
+    }
+
+    /// Divisione deterministica (ordinata per id): l'esame non entra mai nell'addestramento. Le domande d'esame già scelte
+    /// restano finché l'esempio esiste; quelle sparite (la memoria tiene gli ultimi 300 esempi) si sostituiscono con
+    /// esempi mai usati in un pacchetto (`usati`), così un esempio addestrato non finisce poi nell'esame. Prima gli esempi
+    /// che non possono entrare nell'addestramento (lavoro con cifre senza fonte): all'esame servono comunque.
+    static func dividi(_ esempi: [EsempioVera], esameGia: [String], usati: [String] = []) -> (addestramento: [EsempioVera], esame: [EsempioVera]) {
+        let tutti = candidati(esempi)
+        let quante = quanteDomande(tutti.count)
+        let usatiSet = Set(usati)
+        var esame = tutti.filter { esameGia.contains($0.id) }.sorted { $0.id < $1.id }
+        if esame.count > quante { esame = Array(esame.prefix(quante)) }
+        let scelti = Set(esame.map(\.id))
+        let liberi = tutti.filter { !scelti.contains($0.id) && !usatiSet.contains($0.id) }
+            .sorted { (addestrabile($0) ? 1 : 0, $0.id) < (addestrabile($1) ? 1 : 0, $1.id) }
+        esame += liberi.prefix(max(0, quante - esame.count))
+        let ids = Set(esame.map(\.id))
+        let addestramento = tutti.filter { !ids.contains($0.id) && addestrabile($0) }.sorted { $0.id < $1.id }
+        return (addestramento, esame.sorted { $0.id < $1.id })
+    }
+}
+
+// MARK: - Messaggi per l'addestramento e curva dell'errore
+
+extension SuMisuraVera {
+    /// Un esempio come conversazione per l'addestramento: le istruzioni della sua modalità (con le lezioni del consulente,
+    /// già rese anonime), la domanda e la risposta approvata.
+    static func messaggiAddestramento(_ e: EsempioAnonimo, lezioni: [String]) -> [[String: String]] {
+        var sistema = e.modalita == .lavoro ? IstruzioniVera.chat : IstruzioniVera.conversazione
+        if let b = LezioniVera.blocco(lezioni) { sistema += "\n\n" + b }
+        return [["role": "system", "content": sistema], ["role": "user", "content": e.domanda], ["role": "assistant", "content": e.risposta]]
+    }
+
+    /// La curva dell'errore da rapporto.json ({"passi":[{"passo":1,"errore":2.1},…]}), ridotta a `puntiCurva` punti
+    /// (media di ogni tratto). nil se il file non si legge o non ha passi.
+    static func curva(daRapporto dati: Data) -> [Double]? {
+        guard let j = try? JSONSerialization.jsonObject(with: dati) as? [String: Any],
+              let passi = j["passi"] as? [[String: Any]] else { return nil }
+        let errori = passi.compactMap { ($0["errore"] as? NSNumber)?.doubleValue }.filter { $0.isFinite }
+        guard !errori.isEmpty else { return nil }
+        guard errori.count > puntiCurva else { return errori }
+        return (0..<puntiCurva).map { i in
+            let da = i * errori.count / puntiCurva
+            let a = max(da + 1, (i + 1) * errori.count / puntiCurva)
+            let tratto = errori[da..<min(a, errori.count)]
+            return tratto.reduce(0, +) / Double(tratto.count)
+        }
+    }
+}
+
+// MARK: - Versioni: esame, sostituzione, ritorno, eliminazione (senza rete)
+
+extension SuMisuraVera {
+    /// Aggiunge (o rimette in attesa d'esame) una versione importata; al massimo `massimoVersioni`, si tolgono prima le
+    /// più vecchie già eliminate, poi le più vecchie non in uso.
+    static func aggiungi(_ v: VersioneSuMisura, in vera: inout ImpostazioniVera) {
+        vera.suMisura.versioni.removeAll { $0.id == v.id && $0.stato != .inUso }
+        guard !vera.suMisura.versioni.contains(where: { $0.id == v.id }) else { return }
+        vera.suMisura.versioni.append(v)
+        while vera.suMisura.versioni.count > massimoVersioni {
+            if let i = vera.suMisura.versioni.firstIndex(where: { $0.stato == .eliminata }) ?? vera.suMisura.versioni.firstIndex(where: { $0.stato != .inUso }) {
+                vera.suMisura.versioni.remove(at: i)
+            } else { break }
+        }
+    }
+
+    /// L'esito dell'esame sulla versione: superata o non superata (mai per una versione in uso o eliminata).
+    static func registraEsame(_ esito: EsitoEsameBreve, per id: String, in vera: inout ImpostazioniVera) {
+        guard let i = vera.suMisura.versioni.firstIndex(where: { $0.id == id }),
+              vera.suMisura.versioni[i].stato != .inUso, vera.suMisura.versioni[i].stato != .eliminata else { return }
+        vera.suMisura.versioni[i].esame = esito
+        vera.suMisura.versioni[i].stato = esito.superato ? .superata : .nonSuperata
+    }
+
+    /// Mette in uso una versione: solo con Ollama e solo se ha superato l'esame. La Vera di prima si ricorda per tornare
+    /// indietro. false = niente è cambiato.
+    @discardableResult
+    static func sostituisci(_ id: String, in vera: inout ImpostazioniVera) -> Bool {
+        guard vera.fornitore == .ollama, let i = vera.suMisura.versioni.firstIndex(where: { $0.id == id }) else { return false }
+        let v = vera.suMisura.versioni[i]
+        guard v.esame?.superato == true, v.stato == .superata || v.stato == .ritirata else { return false }
+        if !eSuMisura(vera.modelloLocale) { vera.suMisura.modelloPrecedente = vera.modelloLocale }
+        for j in vera.suMisura.versioni.indices where vera.suMisura.versioni[j].stato == .inUso { vera.suMisura.versioni[j].stato = .ritirata }
+        vera.suMisura.versioni[i].stato = .inUso
+        vera.modelloLocale = id
+        return true
+    }
+
+    /// «Torna alla Vera di prima»: il modello di prima (o quello predefinito) torna in uso, la versione su misura resta in
+    /// Ollama come «ritirata» (si può riprovare). false se non c'è una Vera su misura in uso.
+    @discardableResult
+    static func tornaIndietro(in vera: inout ImpostazioniVera) -> Bool {
+        guard vera.fornitore == .ollama, eSuMisura(vera.modelloLocale) || vera.suMisura.inUso != nil else { return false }
+        for j in vera.suMisura.versioni.indices where vera.suMisura.versioni[j].stato == .inUso { vera.suMisura.versioni[j].stato = .ritirata }
+        let prima = vera.suMisura.modelloPrecedente ?? MotoreLocale.modelloPredefinito
+        vera.modelloLocale = eSuMisura(prima) ? MotoreLocale.modelloPredefinito : prima
+        return true
+    }
+
+    /// Segna eliminata una versione (dopo la cancellazione in Ollama). Mai quella in uso.
+    @discardableResult
+    static func segnaEliminata(_ id: String, in vera: inout ImpostazioniVera) -> Bool {
+        guard let i = vera.suMisura.versioni.firstIndex(where: { $0.id == id }), vera.suMisura.versioni[i].stato != .inUso else { return false }
+        vera.suMisura.versioni[i].stato = .eliminata
+        return true
+    }
+}
