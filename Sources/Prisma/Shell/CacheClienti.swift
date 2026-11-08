@@ -72,6 +72,11 @@ import Observation
     @ObservationIgnored var ultimoRadar: RadarPortafoglio?
     /// Il calcolo del radar in sottofondo (nil = nessuno). Uno solo alla volta: quello nuovo annulla il vecchio.
     @ObservationIgnored var radarInCorso: Task<Void, Never>?
+    /// Le voci che il calcolo in corso sta riempiendo: se le voci da rifare sono già tutte lì, una nuova valutazione
+    /// del body (un clic sul radar, l'aspetto, un giornale di Ovunque) non lo annulla e non lo fa ripartire da zero.
+    @ObservationIgnored private(set) var vociInCalcolo: Set<ObjectIdentifier> = []
+    /// Per le prove: quante volte è partito un calcolo del radar in sottofondo.
+    @ObservationIgnored private(set) var partenzeRadar = 0
     /// Per le prove: il sottofondo anche con lo stato non persistente (di base solo nell'app vera).
     @ObservationIgnored var sottofondoPerProva = false
     /// Da quanti clienti da rifare insieme il radar va in sottofondo.
@@ -93,10 +98,44 @@ import Observation
         return v
     }
 
-    /// Toglie le voci dei clienti che non ci sono più (un cliente eliminato non resta in memoria).
+    /// Toglie le voci dei clienti che non ci sono più (un cliente eliminato non resta in memoria). Confronta le chiavi,
+    /// non i conteggi: un cliente eliminato e uno nuovo insieme lasciano lo stesso numero di voci.
     func tieniSolo(_ ids: Set<String>) {
-        guard voci.count > ids.count else { return }
+        guard voci.keys.contains(where: { !ids.contains($0) }) else { return }
         voci = voci.filter { ids.contains($0.key) }
+    }
+
+    /// Toglie la voce di un cliente eliminato (subito, senza aspettare un cambio del comune).
+    func togli(_ id: String) {
+        voci[id] = nil
+        rifatte[id] = nil
+    }
+
+    /// Un calcolo in sottofondo che parte (annulla quello di prima) e le voci che riempie.
+    func iniziaRadar(_ voci: [Voce], _ calcolo: Task<Void, Never>) {
+        radarInCorso?.cancel()
+        radarInCorso = calcolo
+        vociInCalcolo = Set(voci.map(ObjectIdentifier.init))
+        partenzeRadar += 1
+    }
+
+    /// Il calcolo in sottofondo non serve più: si annulla.
+    func fermaRadar() {
+        radarInCorso?.cancel()
+        radarFinito()
+    }
+
+    /// Il calcolo in sottofondo è finito (lo chiama il calcolo stesso, prima di scrivere le voci).
+    func radarFinito() {
+        radarInCorso = nil
+        vociInCalcolo = []
+    }
+
+    /// Un archivio sostituito (ripristino, dati di prova, Prisma ovunque): l'ultimo radar viene da un altro archivio e
+    /// non si mostra più, nemmeno per un momento sotto gli stessi id; anche il calcolo in corso non serve più.
+    func dimenticaRadar() {
+        fermaRadar()
+        ultimoRadar = nil
     }
 
     /// Per le prove: dimentica anche i conteggi.
@@ -180,15 +219,20 @@ extension StatoShell {
 
     /// Le voci mancanti del radar, fuori dal thread principale (annulla il calcolo di prima). Al ritorno si scrivono
     /// solo nelle voci ancora valide: se nel frattempo un cliente è cambiato, la sua voce nuova si rifà alla richiesta.
+    /// Se il calcolo in corso sta già riempiendo tutte le voci mancanti (stessi oggetti Voce, quindi stesse chiavi),
+    /// si lascia andare avanti: rivalutare il body non butta via il lavoro fatto.
     private func avviaRadarInSottofondo(_ mancanti: [(Cliente, CacheClienti.Voce)], modelli: [String: PortafoglioModello],
                                         tolleranza: Double?) {
         let cache = cacheClienti
-        cache.radarInCorso?.cancel()
+        if cache.radarInCorso != nil,
+           mancanti.allSatisfy({ cache.vociInCalcolo.contains(ObjectIdentifier($0.1)) }) {
+            return
+        }
         let lavori = mancanti.map { (cliente: $0.0, posizioni: posizioniCliente($0.0.id), voce: $0.1) }
         let ingressi = lavori.map { ($0.cliente, $0.posizioni) }
         let prodotti = Dictionary(dati.prodotti.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         let voci = lavori.map(\.voce)
-        cache.radarInCorso = Task { @MainActor [weak cache] in
+        let compito = Task { @MainActor [weak cache] in
             let calcolo = Task.detached(priority: .userInitiated) { () -> [CacheClienti.EsitoRadar]? in
                 var esiti: [CacheClienti.EsitoRadar] = []
                 for (c, p) in ingressi {
@@ -199,9 +243,10 @@ extension StatoShell {
             }
             let esiti = await withTaskCancellationHandler { await calcolo.value } onCancel: { calcolo.cancel() }
             guard let cache, !Task.isCancelled, let esiti else { return }
-            cache.radarInCorso = nil
+            cache.radarFinito()
             cache.arrivate(Array(zip(voci, esiti)).map { (voce: $0.0, esito: $0.1) })
         }
+        cache.iniziaRadar(voci, compito)
     }
 
     /// L'avanzamento degli obiettivi di un cliente, per id dell'obiettivo (dalla sua cache: si rifà solo quando

@@ -534,6 +534,12 @@ enum VoceConfronto: Hashable {
             versioneCalcoli &+= 1
             ultimaVersioneClienti &+= 1
             for id in ids { versioniCliente[id] = ultimaVersioneClienti }
+            // Un cliente eliminato: la sua voce e la sua versione non restano in memoria fino al prossimo cambio del
+            // comune (8 GB di RAM). Di solito gli id toccati sono uno o due, quindi il controllo costa poco.
+            for id in ids where !dati.clienti.contains(where: { $0.id == id }) {
+                versioniCliente[id] = nil
+                cacheClienti.togli(id)
+            }
         case .note:
             versioneNote &+= 1
         case .neutro:
@@ -552,6 +558,8 @@ enum VoceConfronto: Hashable {
             if ora.note != prima.note { versioneNote &+= 1 }
             if !ora.stessiCalcoli(di: prima) {
                 versioneCalcoli &+= 1
+                // Il radar di prima veniva da un altro archivio: non si mostra intanto (CacheClienti.dimenticaRadar)
+                cacheClienti.dimenticaRadar()
                 cambiaVersioneComuneClienti()
             }
             veraCambiata = ora.impostazioni.vera != prima.impostazioni.vera

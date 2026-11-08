@@ -105,6 +105,32 @@ enum ProvaCalcoliCacheClienti {
         verifica.vero("Cache per cliente: archivio sostituito, rifatti tutti", rifatti(s) == tutti)
         uguali(s, verifica, "dopo il ripristino")
 
+        // 9b. Un cliente eliminato: la sua voce se ne va subito, senza aspettare un cambio del comune
+        if let via = s.dati.clienti.last?.id {
+            tutteLeCifre(s)
+            s.dati.clienti.removeAll { $0.id == via }
+            verifica.vero("Cache per cliente: cliente eliminato, la sua voce non resta in memoria", s.cacheClienti.voci[via] == nil)
+            tutteLeCifre(s)
+            uguali(s, verifica, "dopo il cliente eliminato")
+        }
+        // 9c. Uno eliminato e uno nuovo insieme (stesso numero di clienti), poi le impostazioni dei calcoli: nessuna
+        // voce orfana
+        if let via = s.dati.clienti.last?.id {
+            var nuovo2 = Cliente.nuovo(tinta: .blu)
+            nuovo2.nome = "Altro cliente della prova della cache"
+            var elenco = s.dati.clienti
+            elenco.removeAll { $0.id == via }
+            elenco.append(nuovo2)
+            s.dati.clienti = elenco
+            tutteLeCifre(s)
+            s.dati.impostazioni.tolleranzaRadar = (s.dati.impostazioni.tolleranzaRadar ?? 5) + 1
+            tutteLeCifre(s)
+            let presenti = Set(s.dati.clienti.map(\.id))
+            verifica.vero("Cache per cliente: eliminato e aggiunto insieme, nessuna voce orfana",
+                          s.cacheClienti.voci.keys.allSatisfy { presenti.contains($0) } && s.cacheClienti.voci[via] == nil)
+            uguali(s, verifica, "dopo eliminato e aggiunto")
+        }
+
         // 11. Il radar in sottofondo: con molti clienti da rifare si mostra l'ultimo radar, poi arriva quello nuovo,
         // uguale al calcolo da zero
         radarInSottofondo(verifica)
@@ -147,6 +173,11 @@ enum ProvaCalcoliCacheClienti {
         let intanto = s.radarPortafoglio()
         verifica.vero("Radar in sottofondo: intanto si mostra l'ultimo radar valido", intanto.voci.count == primo.voci.count)
         verifica.vero("Radar in sottofondo: il calcolo è partito", s.cacheClienti.radarInCorso != nil)
+        // Il body che si rivaluta mentre il calcolo è in corso (un clic, l'aspetto…) non lo fa ripartire da zero
+        let partenze = s.cacheClienti.partenzeRadar
+        for _ in 0..<3 { _ = s.radarPortafoglio() }
+        verifica.vero("Radar in sottofondo: rivalutare il radar non riparte da zero (\(s.cacheClienti.partenzeRadar - partenze) partenze in più)",
+                      s.cacheClienti.partenzeRadar == partenze && s.cacheClienti.radarInCorso != nil)
         let limite = Date().addingTimeInterval(60)
         while s.cacheClienti.arrivi == arriviPrima, Date() < limite {
             _ = RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
@@ -155,6 +186,21 @@ enum ProvaCalcoliCacheClienti {
         let dopo = s.radarPortafoglio()
         verifica.vero("Radar in sottofondo: il radar arrivato è uguale al calcolo da zero", dopo == MotoreRadar.calcola(s.dati.istantanea))
         verifica.vero("Radar in sottofondo: e diverso da quello di prima (un modello cambiato)", dopo != primo)
+
+        // Un archivio sostituito (ripristino) con gli stessi id: il radar di prima non si mostra nemmeno per un momento
+        var d = s.dati.istantanea
+        if let i = d.prodotti.indices.first { d.prodotti[i].costoAnnuo = (d.prodotti[i].costoAnnuo ?? 1) + 0.5 }
+        if let i = d.clienti.firstIndex(where: { $0.modelloId != nil }) { d.clienti[i].modelloId = nil }
+        // Un calcolo in corso al momento del ripristino si annulla
+        if let i = s.dati.prodotti.indices.first { s.dati.prodotti[i].costoAnnuo = (s.dati.prodotti[i].costoAnnuo ?? 1) + 0.25 }
+        _ = s.radarPortafoglio()
+        let inCorsoPrima = s.cacheClienti.radarInCorso != nil
+        s.dati.carica(d)
+        verifica.vero("Radar in sottofondo: ripristino, l'ultimo radar e il calcolo in corso si dimenticano",
+                      inCorsoPrima && s.cacheClienti.ultimoRadar == nil && s.cacheClienti.radarInCorso == nil)
+        let ripristinato = s.radarPortafoglio()
+        verifica.vero("Radar in sottofondo: dopo il ripristino il radar è subito quello dell'archivio nuovo",
+                      ripristinato == MotoreRadar.calcola(s.dati.istantanea) && s.cacheClienti.radarInCorso == nil)
     }
 
     /// I clienti rifatti dall'ultimo azzeramento dei conteggi.

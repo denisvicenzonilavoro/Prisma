@@ -209,3 +209,11 @@ completa dello stesso pomeriggio, dopo: 253 ms.) L'obiettivo «aprire Posizioni 
 di Posizioni e del portafoglio) pesa ormai pochi campioni, il resto è il grafo e l'impaginazione di SwiftUI. Va
 rimisurato a Mac fermo; se resta sopra, il passo successivo è dividere `CorpoPortafoglio` in sottoviste `Equatable`
 con la `chiaveVista`, come la testa del portafoglio.
+
+Correzioni dopo la revisione della tappa 4: il radar in sottofondo non riparte da zero quando il body si rivaluta
+(se il calcolo in corso sta già riempiendo le stesse voci si lascia andare avanti); dopo un ripristino l'ultimo radar
+si dimentica (non si mostrano per un momento voci di un altro archivio); la voce di un cliente eliminato si toglie
+subito e le voci orfane si riconoscono dalle chiavi, non dai conteggi. Prove in `--prova-calcoli`. Prova della
+fluidità dopo le correzioni (stesse azioni, un giro, carico medio 14-22), «aggiornamento» con 200 clienti: aprire
+Posizioni 483 ms, aspetto scuro 1.053 ms, aprire il radar 283 ms, tornare dal radar 208 ms, tasto in una nota 39 ms;
+con 5 clienti: 289 · 466 · 64 · 86 · 2 ms. Nessun peggioramento oltre l'oscillazione del Mac carico.
