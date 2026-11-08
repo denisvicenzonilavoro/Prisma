@@ -435,6 +435,12 @@ enum ProvaVera {
         controlla(StatoShell.appRiservate.isSuperset(of: [.territorio, .pratiche])
                   && !StatoShell.appRiservate.contains(.sala) && !StatoShell.appRiservate.contains(.biblioteca),
                   "Modalità cliente: Territorio e Pratiche riservate, Sala e Biblioteca consentite (decisione 50)")
+        // «Luce», giro 11: la voce Novità del Territorio apre Territorio › Oggi (anche se era su un'altra vista)
+        let territorio = StatoShell(persistente: false)
+        territorio.vistaTerritorio = .crescita
+        territorio.apriVoceNovita(NovitaLuce.territorio)
+        controlla(NovitaLuce.territorio.disponibile && territorio.appAttiva == .territorio && territorio.vistaTerritorio == .oggi,
+                  "Novità: «Il tuo territorio» apre Territorio › Oggi")
         let gruppi = NovitaLuce.Gruppo.allCases.map { $0.voci.count }
         controlla(NovitaLuce.allCases.count == 29 && gruppi == [15, 14]
                   && Set(NovitaLuce.allCases.map(\.titolo)).count == 29

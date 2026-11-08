@@ -98,6 +98,16 @@ jobs:
           done
           codesign --force --deep --sign - "$APP"
 
+      - name: Privacy del Territorio
+        run: |
+          # «Luce» giro 11 (decisioni 20 e 21): niente rete, geocodifica, percorsi, MapKit o CoreLocation nel Territorio
+          if grep -nE 'URLSession|URLRequest|NWConnection|CLGeocoder|MKDirections|import MapKit|import CoreLocation' \
+              Sources/Prisma/Motori/MotoreTerritorio.swift Sources/Prisma/Motori/TabellaTerritorio.swift \
+              Sources/Prisma/Shell/*Territorio*.swift Sources/Prisma/Dati/Territorio.swift; then
+            echo "::error::Il Territorio non deve usare la rete, servizi di mappe o la posizione del dispositivo"
+            exit 1
+          fi
+
       - name: Verifica Prisma.app
         run: |
           APP=Prisma.app
