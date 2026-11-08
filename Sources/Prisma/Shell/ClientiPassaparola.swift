@@ -299,7 +299,7 @@ private struct NodoPassaparolaVista: View {
             }
             .fixedSize()
         }
-        .scaleEffect(mostra ? 1 : P.scalaNodo, anchor: .leading)
+        .scaleEffect(mostra ? 1 : M.scalaNodo, anchor: .leading)
         .opacity((mostra ? 1 : 0) * (spento ? P.opacitaSpenta : 1))
         .animation(calmo ? nil : M.animazioneNodo.delay(M.ritardoNodo(disposto.indice)), value: mostra)
         .position(x: disposto.centro.x - r + larghezzaStimata(n, r: r) / 2, y: disposto.centro.y)
