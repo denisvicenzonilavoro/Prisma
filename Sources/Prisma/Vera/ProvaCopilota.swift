@@ -439,6 +439,21 @@ enum ProvaCopilota {
         controlla(documento?.campi.contains { $0.chiave == .premio && !$0.confermato } == true && s.inquadratureInArrivo.isEmpty
                   && s.dati.posizioni == posizioni,
                   "Ponte, inquadra: il documento nasce con i dati da confermare, Posizioni non cambia")
+        // «Luce» giro 13: la carta d'identità arriva sul Mac solo in memoria, senza nome nelle notifiche
+        let clienti = s.dati.clienti
+        controlla(s.riceviDalPonte(.cartaIdentita(carta)).accettato && s.carteInArrivo.count == 1 && s.dati.clienti == clienti,
+                  "Ponte, carta: la carta dall'iPhone aspetta sul Mac, nessun cliente creato da solo")
+        let avviso = MotoreNotifiche.calcola(s).first { $0.id == "carta-iphone-\(carta.id)" }
+        controlla(avviso != nil && !(avviso?.titolo ?? "").contains("Marchi") && !(avviso?.dettaglio ?? "").contains("Elena")
+                  && !(avviso?.titolo ?? "").uppercased().contains("MARCHI"),
+                  "Ponte, carta: la notifica interna non dice il nome della persona (decisione 25)")
+        let archivio = String(decoding: (try? JSONEncoder().encode(s.dati.istantanea)) ?? Data(), as: UTF8.self)
+        controlla(!archivio.contains("MARCHI") && !archivio.contains("MRCLNE90D43A944S"),
+                  "Ponte, carta: il testo della carta non entra nell'archivio")
+        s.blocca(animato: false)
+        controlla(s.carteInArrivo.isEmpty, "Ponte, carta: al blocco di Prisma le carte in arrivo si scartano")
+        controlla(!s.riceviDalPonte(.cartaIdentita(carta)).accettato && s.carteInArrivo.isEmpty,
+                  "Ponte, carta: con Prisma bloccato la carta è rifiutata (si rimanda dall'iPhone)")
     }
 
     #if os(macOS)

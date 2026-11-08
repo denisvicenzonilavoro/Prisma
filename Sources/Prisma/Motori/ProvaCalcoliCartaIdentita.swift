@@ -11,6 +11,7 @@ enum ProvaCalcoliCartaIdentita {
         zonaOttica(verifica)
         fronte(verifica)
         doppioni(verifica)
+        creazione(verifica)
     }
 
     /// Una data di nascita come le scrive la carta: giorno a mezzanotte nel calendario gregoriano.
@@ -161,5 +162,36 @@ enum ProvaCalcoliCartaIdentita {
         altraData.dataNascita = giorno(1991, 4, 3)
         verifica.vero("Carta: stesso nome e data diversa non è un doppione",
                       MotoreCartaIdentita.clienteGiaPresente(f, clienti: [altraData]) == nil)
+    }
+
+    // MARK: - Punto 13: la creazione del cliente
+
+    private static func creazione(_ verifica: VerificaCalcoli) {
+        let s = StatoShell(persistente: false)
+        let prima = s.dati.clienti.count
+        s.nuovoCliente.apri(fase: .trascina)
+        s.nuovoCliente.mostra(righe: CartaIdentitaFacSimile.righe() + CartaIdentitaFacSimile.righeRetro(), origine: "prova", subito: true)
+        let c = s.creaClienteDaCarta()
+        let creato = s.dati.clienti.first { $0.id == c?.id }
+        verifica.vero("Carta: «Crea il dossier» crea un cliente con nome, codice fiscale, nascita, luogo e cittadinanza",
+                      s.dati.clienti.count == prima + 1 && creato?.nome == "Elena Marchi" && creato?.codiceFiscale == "MRCLNE90D43A944S"
+                        && creato?.dataNascita == giorno(1990, 4, 3) && creato?.luogoNascita == "Bologna (BO)" && creato?.cittadinanza == "Italiana")
+        verifica.vero("Carta: il documento entra nella conformità (carta d'identità, numero, scadenza)",
+                      creato?.conformita?.documento?.tipo == .cartaIdentita && creato?.conformita?.documento?.numero == "CA00000AA"
+                        && creato?.conformita?.documento?.scadenza == giorno(2031, 4, 3))
+        verifica.vero("Carta: niente canali, consensi, email, telefono o professione scritti da soli",
+                      creato?.canali.isEmpty == true && creato?.consensi == Consensi() && creato?.email == "" && creato?.telefono == ""
+                        && creato?.professione == "")
+        verifica.vero("Carta: dopo «Crea» la scena è svuotata (niente resta in memoria)", s.nuovoCliente.lettura.vuota && s.nuovoCliente.righe.isEmpty)
+        // «Aggiorna il documento» cambia solo il documento
+        guard let i = s.dati.clienti.firstIndex(where: { $0.id == "giulia" }) else { return verifica.vero("Carta: manca Giulia", false) }
+        var giulia = s.dati.clienti[i]
+        s.nuovoCliente.apri(fase: .trascina)
+        s.nuovoCliente.mostra(righe: CartaIdentitaFacSimile.righeRetro(), origine: "prova", subito: true)
+        s.aggiornaDocumentoDaCarta("giulia")
+        let dopo = s.dati.clienti.first { $0.id == "giulia" }
+        giulia.conformita = dopo?.conformita
+        verifica.vero("Carta: «Aggiorna il documento» cambia solo il documento del cliente",
+                      dopo == giulia && dopo?.conformita?.documento?.numero == "CA00000AA")
     }
 }

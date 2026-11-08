@@ -170,6 +170,17 @@ enum VoceConfronto: Hashable {
     /// Inquadra e capisci: la scena del Mac (velo, iPhone disegnato, scheda «Prisma sul Mac») e la schermata della
     /// fotocamera sull'iPhone (StatoInquadra.swift). Un oggetto a parte: la cascata dei campi non pubblica StatoShell.
     let inquadra = StatoInquadra()
+    /// «Nuovo cliente in 10 secondi» («Luce» giro 13, StatoNuovoCliente.swift): la scena della carta d'identità sul Mac e
+    /// la schermata della fotocamera sull'iPhone. Solo in memoria: chiudere, bloccare o il riposo del Mac scartano tutto.
+    let nuovoCliente = StatoNuovoCliente()
+    /// La nota vocale («Luce» giro 13, NotaVocaleArrivo.swift): la scheda «Arriva sul Mac» mostrata e la voce in modifica.
+    /// Non si salva (le note stanno in `dati.noteInArrivo`).
+    let notaVocale = StatoNotaVocaleMac()
+    /// Le carte d'identità arrivate dall'iPhone e non ancora usate («Luce» giro 13): **solo in memoria** (decisione 25),
+    /// mai nell'archivio né nei backup; si scartano al blocco di Prisma e al riposo del Mac.
+    var carteInArrivo: [CartaIdentitaPonte] = []
+    /// La nota arrivata con Prisma bloccato: allo sblocco si mostra la scheda «Arriva sul Mac».
+    @ObservationIgnored var notaInAttesaSblocco: String?
     /// La Sala di «Luce» (StatoSala.swift): l'esperienza sul palco, osservata solo dalla Sala.
     let sala = StatoSala()
     /// La storia della settimana e dell'anno di «Luce» (giro 5, StoriaLuce.swift): le pagine e quella in corso,
@@ -191,6 +202,9 @@ enum VoceConfronto: Hashable {
     var richiestaNuovaPosizione: StatoPosizione?
     /// Il pulsante "Nuovo cliente" dell'intestazione chiede alla rubrica di aprire il modulo.
     var richiestaNuovoCliente = false
+    /// «Scrivi a mano» dalla scena del nuovo cliente («Luce» giro 13): la bozza con i dati letti, che Clienti apre nel
+    /// modulo (si consuma appena letta).
+    var bozzaNuovoCliente: Cliente?
     /// Completezza dei dati: chiede a Clienti o Posizioni di aprire il modulo su un campo (si consuma appena letta).
     var richiestaCompletamento: RichiestaCompletamento?
     /// Completezza dei dati: il campo dell'Analisi 360 da evidenziare (si toglie lasciando quell'area).
@@ -817,6 +831,13 @@ enum VoceConfronto: Hashable {
         // Studio › Spese («Luce» giro 9): i km del cliente se ne vanno con lui; le spese restano del consulente, senza il
         // legame al cliente tolto
         dati.kmClienti[id] = nil
+        // La nota vocale («Luce» giro 13): le note del cliente se ne vanno con lui, e il suo id esce dai candidati
+        // (una sola assegnazione, solo se serve)
+        if dati.noteInArrivo.contains(where: { $0.clienteId == id || $0.candidati.contains(id) }) {
+            var note = dati.noteInArrivo.filter { $0.clienteId != id }
+            for i in note.indices where note[i].candidati.contains(id) { note[i].candidati.removeAll { $0 == id } }
+            dati.noteInArrivo = note
+        }
         if dati.speseStudio.spese.contains(where: { $0.clienteId == id }) {
             var spese = dati.speseStudio
             for i in spese.spese.indices where spese.spese[i].clienteId == id { spese.spese[i].clienteId = nil }
@@ -3371,6 +3392,10 @@ enum VoceConfronto: Hashable {
         }
         // E i moduli fac-simile («Luce» giro 10)
         togliEsempiModuli()
+        // E le note vocali di prova, se ce ne sono («Luce» giro 13)
+        if dati.noteInArrivo.contains(where: { $0.id.hasPrefix(NotaVocaleDiProva.prefisso) }) {
+            dati.noteInArrivo.removeAll { $0.id.hasPrefix(NotaVocaleDiProva.prefisso) }
+        }
     }
 
     /// Torna ai dati di prova (con backup di sicurezza dello stato attuale): i 5 clienti del template,

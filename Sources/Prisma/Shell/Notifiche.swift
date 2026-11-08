@@ -254,6 +254,21 @@ enum MotoreNotifiche {
                                                                : praticheFerme.map { nome($0.clienteId) }.joined(separator: ", "),
                                    data: inizio, canale: praticheFerme.count == 1 ? prima.canale : nil))
         }
+        // «Luce» giro 13: la carta d'identità arrivata dall'iPhone, **senza il nome** (decisione 25: solo dentro Prisma,
+        // mai nel Centro notifiche del Mac; la carta vive solo in memoria)
+        for c in stato.carteInArrivo {
+            elenco.append(Notifica(id: "carta-iphone-\(c.id)", gruppo: .oggi, app: .clienti,
+                                   titolo: "Una carta d’identità dall’iPhone",
+                                   dettaglio: "Crea il cliente: i dati letti aspettano qui", data: c.quando))
+        }
+        // Le note dettate sull'iPhone ancora da guardare (in modalità cliente no: portano il nome di altri clienti)
+        if !stato.inModoCliente {
+            for n in dati.noteInArrivo where n.stato == .daGuardare {
+                elenco.append(Notifica(id: "nota-iphone-\(n.id)", gruppo: .oggi, app: .incontri,
+                                       titolo: "Nota dall’iPhone · \(Formati.ora.string(from: n.quando))",
+                                       dettaglio: n.clienteId.map { nome($0) } ?? "Di chi si parla?", data: n.quando))
+            }
+        }
         // Fine anno: clienti che possono ancora dedurre versando alla previdenza (negli ultimi due mesi dell'anno)
         let deducibili = stato.deducibiliFineAnno(oggi: oggi)
         if let primo = deducibili.first {
@@ -470,6 +485,13 @@ extension StatoShell {
             portafoglio = true
             posizioneInDettaglio = nil
             apri(.posizioni)
+        } else if n.id.hasPrefix("carta-iphone-") {
+            // «Luce» giro 13: la carta dall'iPhone apre la scena del nuovo cliente
+            apriNuovoCliente()
+        } else if n.id.hasPrefix("nota-iphone-") {
+            // «Luce» giro 13: la nota dall'iPhone apre Incontri e la scheda «Arriva sul Mac»
+            apri(.incontri)
+            notaVocale.mostrata = String(n.id.dropFirst("nota-iphone-".count))
         } else if n.id.hasPrefix("pratiche-") {
             // Le pratiche ferme: Pratiche › Dopo la firma, con le ferme in testa
             apriPratiche(.dopoLaFirma)

@@ -474,6 +474,9 @@ extension StatoShell {
         // Il blocco (anche quando il Mac va a riposo) chiude le sovrapposizioni di «Luce»: storia, notte, scena del
         // telefono, presentazione di un'esperienza (decisione 53)
         chiudiSovrapposizione(animato: movimento)
+        // Le carte d'identità arrivate dall'iPhone si scartano sempre, anche senza la scena aperta («Luce» giro 13,
+        // decisione 25); il riposo del Mac passa da qui
+        scartaCarteInArrivo()
         guard movimento else {
             diColpo(implicite: false) {
                 fermaVoce()
