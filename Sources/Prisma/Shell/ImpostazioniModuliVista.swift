@@ -72,6 +72,7 @@ struct PaginaImpostazioniModuli: View {
             }
             .cascataImpostazioni(2)
         }
+        .onAppear { stato.moduli.carica() }
         .confirmationDialog("Togliere il modulo «\(daTogliere?.titolo ?? "")»?", isPresented: Binding(get: { daTogliere != nil }, set: { if !$0 { daTogliere = nil } }),
                             titleVisibility: .visible) {
             Button("Togli il modulo", role: .destructive) {

@@ -1495,7 +1495,9 @@ enum VoceConfronto: Hashable {
     @discardableResult
     func archiviaPDF(_ pdf: Data, titolo: String, tipo: Documento.Tipo, cliente: String, posizioneId: String? = nil,
                      modulo: CompilazioneModulo? = nil) -> String? {
-        if let vecchio = dati.documenti.first(where: { $0.clienteId == cliente && $0.titolo == titolo && Calendar.current.isDateInToday($0.importatoIl) }) {
+        // Solo lo stesso documento: stesso cliente, stesso titolo, stessa proposta (un modulo per un'altra proposta resta)
+        if let vecchio = dati.documenti.first(where: { $0.clienteId == cliente && $0.titolo == titolo && $0.posizioneId == posizioneId
+            && Calendar.current.isDateInToday($0.importatoIl) }) {
             eliminaDocumento(vecchio.id)
         }
         var d = Documento(clienteId: cliente, titolo: titolo, tipo: tipo)
@@ -3005,6 +3007,11 @@ enum VoceConfronto: Hashable {
         let creaCartella = cartellaBackupPredefinita
         dati.impostazioni.backup.ultimoTentativo = Date()
         DispatchQueue.global(qos: .utility).async {
+            // Le scritture in coda di Memoria di Vera, Biblioteca e Moduli finiscono prima della copia: mai un moduli.json
+            // che indica un PDF non ancora scritto
+            StatoMemoriaVera.attendiScritture()
+            StatoBiblioteca.attendiScritture()
+            StatoModuli.attendiScritture()
             do {
                 let url = try GestoreBackup.crea(sorgente: Archivio.cartella, escludi: escluse, destinazione: destinazione,
                                                  nota: automatico ? GestoreBackup.notaAutomatico : nil, creaCartella: creaCartella,
@@ -3054,6 +3061,7 @@ enum VoceConfronto: Hashable {
         salvataggio.attendi()
         StatoMemoriaVera.attendiScritture()
         StatoBiblioteca.attendiScritture()
+        StatoModuli.attendiScritture()
         backupInCorso = true
         let destinazione = cartellaBackup
         let escluse = cartelleEscluseBackup

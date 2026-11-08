@@ -39,6 +39,9 @@ struct AnteprimaCompilazione: Equatable {
     var risposte: [ModelloModulo.Campo]
     /// Le caselle che Prisma sa riempire (con un dato), nell'ordine del modulo: il «di 15».
     var totale: Int
+    /// Per chi e su quale modello è stata fatta: un'anteprima di un altro cliente non si mostra né si salva.
+    var clienteId = ""
+    var modelloId = ""
 
     var compilati: Int { valori.count }
     /// I dati che mancano, una volta sola ciascuno.
@@ -118,7 +121,8 @@ enum CompilatoreModuli {
     static func anteprima(_ m: ModelloModulo, fonte: FonteCompilazione, correzioni: [String: String] = [:]) -> AnteprimaCompilazione {
         var valori: [String: ValoreCampo] = [:]
         var mancanti: [ModelloModulo.Campo] = []
-        let daRiempire = m.campiConDato.filter { !(m.tipo.risposteDelCliente && !($0.dato?.anagrafico ?? false)) }
+        // Le caselle da spuntare non si riempiono mai da sole: sono scelte e consensi del cliente
+        let daRiempire = m.campiConDato.filter { $0.tipo != .casella && !(m.tipo.risposteDelCliente && !($0.dato?.anagrafico ?? false)) }
         for c in daRiempire {
             if let a = correzioni[c.id]?.trimmingCharacters(in: .whitespacesAndNewlines), !a.isEmpty {
                 valori[c.id] = ValoreCampo(testo: a, aMano: true)
@@ -128,7 +132,8 @@ enum CompilatoreModuli {
                 mancanti.append(c)
             }
         }
-        return AnteprimaCompilazione(valori: valori, mancanti: mancanti, firme: m.firme, risposte: m.risposte, totale: daRiempire.count)
+        return AnteprimaCompilazione(valori: valori, mancanti: mancanti, firme: m.firme, risposte: m.risposte, totale: daRiempire.count,
+                                     clienteId: fonte.cliente.id, modelloId: m.id)
     }
 
     // MARK: - Il PDF compilato
@@ -145,11 +150,8 @@ enum CompilatoreModuli {
                 for c in campi {
                     guard let v = a.valori[c.id]?.testo else { continue }
                     if let nome = c.nomeAcroForm, let w = widget.first(where: { $0.fieldName == nome }) {
-                        if w.isCasella {
-                            w.buttonWidgetState = .onState
-                        } else {
-                            w.widgetStringValue = v
-                        }
+                        // Una casella da spuntare resta come l'ha lasciata il modulo: la spunta il cliente
+                        if !w.isCasella { w.widgetStringValue = v }
                     } else {
                         pagina.addAnnotation(testoLibero(v, in: c.riquadro))
                     }

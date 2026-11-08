@@ -25,6 +25,8 @@ import CoreGraphics
     var giro = 0
     /// La casella che si sta correggendo a mano.
     var inModifica: String?
+    /// Cliente e modello a cui appartengono anteprima e correzioni («cliente|modello»).
+    @ObservationIgnored var compilazionePer: String?
     /// «Sì, chiediglielo» fatto per questa compilazione.
     var richiestaPronta = false
     /// La revisione della mappa dei campi in corso (una copia del modello, salvata con «Conferma la mappa»).
@@ -42,6 +44,8 @@ import CoreGraphics
     @ObservationIgnored private var caricata = false
     @ObservationIgnored private var pdfInMemoria: [String: Data] = [:]
     @ObservationIgnored private var immagini: [String: CGImage] = [:]
+    /// I riquadri delle pagine già letti (il body della pagina non riapre il PDF a ogni ridisegno).
+    @ObservationIgnored private var riquadri: [String: CGRect] = [:]
     private static let coda = DispatchQueue(label: "prisma.moduli", qos: .userInitiated)
 
     init(persistente: Bool) { self.persistente = persistente }
@@ -55,12 +59,15 @@ import CoreGraphics
         caricata = false
         modelli = []
         immagini = [:]
+        riquadri = [:]
         azzeraCompilazione()
         revisione = nil
         scelto = nil
         carica()
     }
 
+    /// Legge l'elenco dei modelli la prima volta. Si chiama all'apertura delle viste (onAppear) e dalle azioni, mai
+    /// dentro un body: cambia la proprietà osservata `modelli`.
     func carica() {
         guard !caricata else { return }
         caricata = true
@@ -74,7 +81,8 @@ import CoreGraphics
         Self.coda.async { try? ArchivioModuli.scrivi(elenco, in: Archivio.cartella) }
     }
 
-    var tutti: [ModelloModulo] { carica(); return modelli }
+    /// I modelli già letti (senza leggere il disco: lo fa `carica()`).
+    var tutti: [ModelloModulo] { modelli }
 
     var modelloScelto: ModelloModulo? {
         let t = tutti
@@ -107,8 +115,14 @@ import CoreGraphics
 
     /// Il riquadro della pagina in punti PDF.
     func riquadroPagina(_ m: ModelloModulo, pagina: Int) -> CGRect {
-        guard let d = pdf(m), let p = PDFDocument(data: d)?.page(at: pagina) else { return CGRect(origin: .zero, size: FacSimileModulo.formato) }
-        return p.bounds(for: .mediaBox)
+        let chiave = "\(m.id)-\(pagina)"
+        if let r = riquadri[chiave] { return r }
+        let r: CGRect = autoreleasepool {
+            guard let d = pdf(m), let p = PDFDocument(data: d)?.page(at: pagina) else { return CGRect(origin: .zero, size: FacSimileModulo.formato) }
+            return p.bounds(for: .mediaBox)
+        }
+        riquadri[chiave] = r
+        return r
     }
 
     static func disegna(_ pagina: PDFPage, larghezza: CGFloat) -> CGImage? {
@@ -156,6 +170,7 @@ import CoreGraphics
         modelli.removeAll { $0.id == id }
         pdfInMemoria[id] = nil
         immagini = immagini.filter { !$0.key.hasPrefix(id) }
+        riquadri = riquadri.filter { !$0.key.hasPrefix(id) }
         if scelto == id { scelto = nil; azzeraCompilazione() }
         if persistente {
             let url = ArchivioModuli.pdf(m, in: Archivio.cartella)
@@ -165,6 +180,7 @@ import CoreGraphics
     }
 
     func azzeraCompilazione() {
+        compilazionePer = nil
         anteprima = nil
         correzioni = [:]
         inModifica = nil
@@ -212,6 +228,22 @@ extension StatoShell {
                                  conservaIban: dati.impostazioni.pratiche.ibanConservato)
     }
 
+    /// L'anteprima di adesso, solo se è del cliente e del modello mostrati: cambiato il cliente attivo (o tolto quello
+    /// di «Compila per»), l'anteprima di prima non si mostra, non si salva nel dossier e non va al cliente.
+    var anteprimaModulo: AnteprimaCompilazione? {
+        guard let a = moduli.anteprima, let c = clienteModulo, let m = moduli.modelloScelto,
+              a.clienteId == c.id, a.modelloId == m.id else { return nil }
+        return a
+    }
+
+    /// Le correzioni a mano valgono per un cliente e un modello: con un altro si riparte da capo.
+    private func allineaCompilazione(_ c: Cliente, _ m: ModelloModulo) {
+        let chiave = "\(c.id)|\(m.id)"
+        guard moduli.compilazionePer != chiave else { return }
+        moduli.azzeraCompilazione()
+        moduli.compilazionePer = chiave
+    }
+
     /// Vera è pronta per il riquadro dei dati che mancano (sfera viva) e per la revisione della mappa.
     var veraPerModuli: Bool { moduli.veraProntaIstantanea ?? (generativo != nil) }
 
@@ -233,7 +265,7 @@ extension StatoShell {
 
     func scegliPropostaModulo(_ id: String?) {
         moduli.posizioneId = id
-        if moduli.anteprima != nil { compilaModulo() }
+        if anteprimaModulo != nil { compilaModulo() }
     }
 
     func paginaModulo(_ delta: Int) {
@@ -245,7 +277,15 @@ extension StatoShell {
 
     /// «✦ Compila con i dati di …»: l'anteprima con tutto ciò che Prisma sa riempire, i mancanti e le firme.
     func compilaModulo() {
+        moduli.carica()
         guard let m = moduli.modelloScelto, m.compilabile, let c = clienteModulo else { return }
+        // La mappa si controlla una volta prima di compilare (decisione 61)
+        guard m.mappaConfermata else {
+            mostraAvviso("Controlla prima la mappa dei campi di «\(m.titolo)»")
+            avviaRevisioneModulo(m.id)
+            return
+        }
+        allineaCompilazione(c, m)
         moduli.anteprima = CompilatoreModuli.anteprima(m, fonte: fonteModulo(c, m), correzioni: moduli.correzioni)
         moduli.giro += 1
         moduli.inModifica = nil
@@ -255,15 +295,18 @@ extension StatoShell {
     /// Una casella corretta a mano: vale solo per questo modulo compilato.
     func correggiCampoModulo(_ campoId: String, _ testo: String) {
         let t = testo.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let m = moduli.modelloScelto, m.mappaConfermata, let c = clienteModulo, anteprimaModulo != nil else {
+            moduli.inModifica = nil
+            return
+        }
         moduli.correzioni[campoId] = t.isEmpty ? nil : t
         moduli.inModifica = nil
-        guard let m = moduli.modelloScelto, let c = clienteModulo else { return }
         moduli.anteprima = CompilatoreModuli.anteprima(m, fonte: fonteModulo(c, m), correzioni: moduli.correzioni)
     }
 
     /// «Lo scrivo io»: apre la casella del primo dato che manca (o di quello dato).
     func scriviDatoModulo(_ dato: DatoModulo? = nil) {
-        guard let a = moduli.anteprima else { return }
+        guard let a = anteprimaModulo else { return }
         let campo = a.mancanti.first { dato == nil || $0.dato == dato }
         guard let campo else { return }
         if let m = moduli.modelloScelto, campo.pagina != moduli.pagina, campo.pagina < m.pagine { moduli.pagina = campo.pagina }
@@ -272,7 +315,7 @@ extension StatoShell {
 
     /// «Sì, chiediglielo»: la bozza in Messaggi con i nomi dei dati che mancano. `apri`: false lascia Pratiche davanti.
     func chiediDatiModulo(apri: Bool = true) {
-        guard let m = moduli.modelloScelto, let c = clienteModulo, let a = moduli.anteprima,
+        guard let m = moduli.modelloScelto, let c = clienteModulo, let a = anteprimaModulo,
               let o = CompilatoreModuli.occasioneDatiMancanti(cliente: c, modello: m, dati: a.datiMancanti, oggi: Date()) else { return }
         moduli.richiestaPronta = true
         if apri {
@@ -286,7 +329,7 @@ extension StatoShell {
 
     /// Il PDF compilato dell'anteprima (nil se manca il PDF o la compilazione).
     func pdfModuloCompilato() -> Data? {
-        guard let m = moduli.modelloScelto, let a = moduli.anteprima, let vuoto = moduli.pdf(m) else { return nil }
+        guard let m = moduli.modelloScelto, let a = anteprimaModulo, let vuoto = moduli.pdf(m) else { return nil }
         return CompilatoreModuli.scrivi(m, pdf: vuoto, anteprima: a)
     }
 
@@ -296,15 +339,17 @@ extension StatoShell {
             mostraAvviso(TestiSeguito.solaLettura)
             return
         }
-        guard let m = moduli.modelloScelto, let c = clienteModulo, let a = moduli.anteprima, let pdf = pdfModuloCompilato() else {
+        guard let m = moduli.modelloScelto, let c = clienteModulo, let a = anteprimaModulo, let pdf = pdfModuloCompilato() else {
             mostraAvviso("Non riesco a scrivere il modulo compilato.")
             return
         }
         let comp = CompilazioneModulo(modelloId: m.id, titoloModello: m.titolo, compilatoIl: Appuntamento.alMinuto(Date()),
                                       mancanti: a.datiMancanti, firme: a.firme.count,
                                       correzioni: a.valori.values.filter(\.aMano).count)
-        let posizione = fonteModulo(c, m).posizione?.id
-        guard archiviaPDF(pdf, titolo: "Modulo · \(m.titolo)", tipo: .modulo, cliente: c.id, posizioneId: posizione, modulo: comp) != nil else { return }
+        let posizione = fonteModulo(c, m).posizione
+        // Il titolo dice anche la proposta: lo stesso modulo per un'altra proposta è un altro documento
+        let titolo = "Modulo · \(m.titolo)" + (posizione.map { " · \($0.nome)" } ?? "")
+        guard archiviaPDF(pdf, titolo: titolo, tipo: .modulo, cliente: c.id, posizioneId: posizione?.id, modulo: comp) != nil else { return }
         mostraAvviso("Modulo salvato nei Documenti di \(Self.nomeDiBattesimo(c))")
     }
 
@@ -361,10 +406,11 @@ extension StatoShell {
             mostraAvviso("Non riesco a leggere questo PDF")
             return nil
         }
+        let campi = diProva ? e.campi.map { var c = $0; c.daConfermare = false; return c } : e.campi
         let titoloPDF = (doc.documentAttributes?[PDFDocumentAttribute.titleAttribute] as? String)?.trimmingCharacters(in: .whitespaces)
         let id = "modulo-\(UUID().uuidString.prefix(8).lowercased())"
         let m = ModelloModulo(id: id, titolo: (titoloPDF?.isEmpty == false ? titoloPDF : nil) ?? nome, tipo: tipo, file: "\(id).pdf",
-                              pagine: e.pagine, campi: e.campi, caricatoIl: Appuntamento.alMinuto(Date()), versione: e.versione,
+                              pagine: e.pagine, campi: campi, caricatoIl: Appuntamento.alMinuto(Date()), versione: e.versione,
                               mappaConfermata: diProva, diProva: diProva ? true : nil)
         moduli.aggiungi(m, pdf: pdf)
         moduli.scelto = m.id
@@ -377,7 +423,11 @@ extension StatoShell {
     /// Il tipo del modulo dalle parole del nome e della prima pagina (l'utente lo cambia nella revisione).
     static func tipoModulo(_ testo: String) -> TipoModulo {
         let t = RiconoscitoreModulo.normalizza(testo)
-        if t.contains("adeguata verifica") || t.contains("antiriciclaggio") { return .adeguataVerifica }
+        // Nel dubbio vince l'adeguata verifica: compila meno (solo anagrafica e documento, decisione 62)
+        let antiriciclaggio = ["adeguata verifica", "antiriciclaggio", "verifica della clientela", "identificazione della clientela",
+                               "titolare effettivo", "titolari effettivi", "politicamente esposta", "politicamente esposte",
+                               "origine dei fondi"]
+        if antiriciclaggio.contains(where: { t.contains($0) }) { return .adeguataVerifica }
         if t.contains("questionario") { return .questionarioAdeguatezza }
         if t.contains("mandato") { return .mandato }
         if t.contains("privacy") || t.contains("trattamento dei dati") { return .privacy }
@@ -388,6 +438,7 @@ extension StatoShell {
     // MARK: Revisione della mappa
 
     func avviaRevisioneModulo(_ id: String) {
+        moduli.carica()
         guard let m = moduli.modello(id) else { return }
         moduli.scelto = id
         moduli.revisione = m
@@ -403,9 +454,11 @@ extension StatoShell {
         guard var r = moduli.revisione, let i = r.campi.firstIndex(where: { $0.id == campoId }) else { return }
         // Sui moduli con le risposte del cliente solo anagrafica e documento (decisione 62)
         let ammesso = dato.map { !r.tipo.risposteDelCliente || $0.anagrafico } ?? true
-        r.campi[i].dato = risposta || firma || !ammesso ? nil : dato
-        r.campi[i].risposta = risposta || !ammesso
-        r.campi[i].tipo = firma ? .firma : (dato?.tipoCampo ?? (r.campi[i].tipo == .firma ? .testo : r.campi[i].tipo))
+        // Una casella da spuntare resta una casella senza dato: Prisma non la spunta mai (scelte e consensi del cliente)
+        let casella = r.campi[i].tipo == .casella && !firma
+        r.campi[i].dato = risposta || firma || !ammesso || casella ? nil : dato
+        r.campi[i].risposta = risposta || (!ammesso && !casella)
+        r.campi[i].tipo = casella ? .casella : (firma ? .firma : (dato?.tipoCampo ?? (r.campi[i].tipo == .firma ? .testo : r.campi[i].tipo)))
         r.campi[i].daConfermare = false
         if r.campi[i].origine == .vera { r.campi[i].origine = .mano }
         moduli.revisione = r
@@ -486,6 +539,7 @@ extension StatoShell {
 
     /// I due fac-simile di Prisma (proposta di polizza e adeguata verifica), con i clienti di prova.
     func caricaEsempiModuli() {
+        moduli.carica()
         let presenti = Set(moduli.tutti.filter { $0.diProva == true }.map(\.titolo))
         for (pagina, titolo, tipo) in [(FacSimileModulo.proposta, "Proposta di polizza", TipoModulo.propostaPolizza),
                                        (FacSimileModulo.adeguataVerifica, "Adeguata verifica (antiriciclaggio)", TipoModulo.adeguataVerifica)]
@@ -493,7 +547,9 @@ extension StatoShell {
             guard let pdf = FacSimileModulo.pdf(pagina), let doc = PDFDocument(data: pdf) else { continue }
             let e = RiconoscitoreModulo.riconosci(doc, tipo: tipo)
             let id = "modulo-prova-\(tipo.rawValue)"
-            let m = ModelloModulo(id: id, titolo: titolo, tipo: tipo, file: "\(id).pdf", pagine: e.pagine, campi: e.campi,
+            // Il fac-simile lo disegna Prisma: la sua mappa è già controllata
+            let campi = e.campi.map { var c = $0; c.daConfermare = false; return c }
+            let m = ModelloModulo(id: id, titolo: titolo, tipo: tipo, file: "\(id).pdf", pagine: e.pagine, campi: campi,
                                   caricatoIl: Appuntamento.alMinuto(Date()), versione: FacSimileModulo.versione,
                                   mappaConfermata: true, diProva: true)
             moduli.aggiungi(m, pdf: pdf)
@@ -502,6 +558,7 @@ extension StatoShell {
     }
 
     func togliEsempiModuli() {
+        moduli.carica()
         for m in moduli.tutti where m.diProva == true { moduli.togli(m.id) }
     }
 

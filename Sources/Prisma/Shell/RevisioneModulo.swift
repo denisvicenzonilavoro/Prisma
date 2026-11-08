@@ -33,7 +33,6 @@ private struct FoglioRevisione: View {
     let modello: ModelloModulo
 
     private typealias M = Tema.Apple.Pratiche.Moduli
-    private static let larghezzaDisegno: CGFloat = 1000
 
     var body: some View {
         let pagina = min(moduli.pagina, max(0, modello.pagine - 1))
@@ -45,7 +44,7 @@ private struct FoglioRevisione: View {
                         (geo.size.height - M.margineAltoPiano - M.marginePiano - frecce) / b.height)
             VStack(spacing: M.spazioPagine) {
                 ZStack(alignment: .topLeading) {
-                    if let img = moduli.immagine(modello, pagina: pagina, larghezza: Self.larghezzaDisegno) {
+                    if let img = moduli.immagine(modello, pagina: pagina, larghezza: M.larghezzaDisegno) {
                         Image(decorative: img, scale: 1)
                             .resizable()
                             .interpolation(.high)
@@ -99,7 +98,7 @@ private struct FoglioRevisione: View {
         }()
         return ZStack(alignment: .topLeading) {
             forma.fill(fondo)
-            forma.strokeBorder(bordo, style: StrokeStyle(lineWidth: scelta ? 2 : 1, dash: c.risposta ? M.riservatoTratteggio : []))
+            forma.strokeBorder(bordo, style: StrokeStyle(lineWidth: scelta ? M.bordoCasellaScelta : M.bordoCasella, dash: c.risposta ? M.riservatoTratteggio : []))
             Text("\(numero)")
                 .font(.system(size: max(7, M.numeroCampo * k * 1.3), weight: .bold).monospacedDigit())
                 .foregroundColor(scelta ? M.bordoScelto : M.testoCampo)
@@ -193,7 +192,7 @@ private struct ElencoRevisione: View {
             Text("\(numero)")
                 .carattereApple(Tema.Apple.Carattere.badge)
                 .foregroundColor(Tema.Apple.Colore.inchiostro2)
-                .frame(width: 18, alignment: .trailing)
+                .frame(width: M.colonnaNumero, alignment: .trailing)
             VStack(alignment: .leading, spacing: Tema.Apple.Pratiche.Moduli.spazioMinimo) {
                 Text(c.etichetta)
                     .carattereApple(M.etichettaRiga)

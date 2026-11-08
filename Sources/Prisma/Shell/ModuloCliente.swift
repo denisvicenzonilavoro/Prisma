@@ -467,7 +467,7 @@ struct ModuloCliente: View {
                 if conservaIban {
                     sezione("Per i moduli") {
                         CampoModulo(etichetta: "IBAN per l'addebito") {
-                            VStack(alignment: .leading, spacing: 4) {
+                            VStack(alignment: .leading, spacing: Misure.Rubrica.spazioNota) {
                                 TextField(bozza.iban.map(IBAN.mascherato) ?? "IT00 X000 0000 0000 0000 0000 000",
                                           text: Binding(get: { testoIban ?? "" }, set: { testoIban = $0 }))
                                     .textFieldStyle(.roundedBorder)
@@ -479,6 +479,14 @@ struct ModuloCliente: View {
                                     Text("Si mostra mascherato; mai su iPhone e iPad né nei messaggi.")
                                         .font(Tipo.kpiNota)
                                         .foregroundColor(Colori.Analisi.kpiNota)
+                                }
+                                // Togliere l'IBAN di un solo cliente (l'interruttore spento li toglie tutti): vale con «Salva»
+                                if bozza.iban != nil {
+                                    Button("Togli l'IBAN di questo cliente") {
+                                        bozza.iban = nil
+                                        testoIban = nil
+                                    }
+                                    .buttonStyle(StileVetro())
                                 }
                             }
                         }
@@ -638,6 +646,7 @@ struct ModuloCliente: View {
                 } else if let t = testoIban, IBAN.valido(t) {
                     c.iban = IBAN.pulito(t)
                 }
+                // Un campo vuoto lascia l'IBAN di prima (è mascherato nel suggerimento): si toglie con «Togli l'IBAN»
                 salva(c)
                 chiudi()
             }

@@ -53,6 +53,7 @@ private struct CorpoPraticheModuli: View {
                 }
             }
         }
+        .onAppear { moduli.carica() }
         .fileImporter(isPresented: $importa, allowedContentTypes: [.pdf], allowsMultipleSelection: true) { esito in
             if case .success(let urls) = esito { stato.importaModuli(urls) }
         }
@@ -177,8 +178,6 @@ private struct PianoPagina: View {
     let modello: ModelloModulo
 
     private typealias M = Tema.Apple.Pratiche.Moduli
-    /// La larghezza in pixel a cui si disegna la pagina (una sola misura: l'immagine resta in memoria).
-    private static let larghezzaDisegno: CGFloat = 1000
 
     var body: some View {
         let pagina = min(moduli.pagina, max(0, modello.pagine - 1))
@@ -191,7 +190,7 @@ private struct PianoPagina: View {
                         (geo.size.height - M.margineAltoPiano - M.marginePiano - frecce) / b.height)
             VStack(spacing: M.spazioPagine) {
                 ZStack(alignment: .topLeading) {
-                    if let img = moduli.immagine(modello, pagina: pagina, larghezza: Self.larghezzaDisegno) {
+                    if let img = moduli.immagine(modello, pagina: pagina, larghezza: M.larghezzaDisegno) {
                         Image(decorative: img, scale: 1)
                             .resizable()
                             .interpolation(.high)
@@ -216,7 +215,7 @@ private struct PianoPagina: View {
     }
 
     @ViewBuilder private func caselle(pagina: Int, b: CGRect, k: CGFloat) -> some View {
-        if let a = moduli.anteprima {
+        if let a = stato.anteprimaModulo {
             let ordine = modello.campi.filter { a.valori[$0.id] != nil || a.mancanti.contains($0) }.map(\.id)
             let ultimo = Double(max(ordine.count, 1))
             ForEach(modello.campi.filter { $0.pagina == pagina }) { c in
@@ -287,7 +286,7 @@ private struct CasellaModulo: View {
             switch aspetto {
             case .piena(let testo, _):
                 forma.fill(M.campoPieno)
-                forma.strokeBorder(M.bordoPieno, lineWidth: 1)
+                forma.strokeBorder(M.bordoPieno, lineWidth: M.bordoCasella)
                 TestoScritto(testo: testo, avanzamento: scritto)
                     .font(.system(size: M.valoreCampo * k, weight: .regular))
                     .foregroundColor(M.testoCampo)
@@ -297,7 +296,7 @@ private struct CasellaModulo: View {
             case .manca:
                 forma.inset(by: -M.spessoreAnello * k / 2).stroke(M.anelloManca, lineWidth: M.spessoreAnello * k)
                 forma.fill(M.campoManca)
-                forma.strokeBorder(M.bordoManca, lineWidth: 1)
+                forma.strokeBorder(M.bordoManca, lineWidth: M.bordoCasella)
                 Text("?")
                     .font(.system(size: M.valoreCampo * k, weight: .bold))
                     .foregroundColor(M.testoManca)
@@ -306,11 +305,11 @@ private struct CasellaModulo: View {
                 ZStack {
                     forma.inset(by: -M.spessoreAnello * k / 2).stroke(M.firmaAnello, lineWidth: M.spessoreAnello * k)
                     forma.fill(M.firmaFondo)
-                    forma.strokeBorder(M.firmaBordo, lineWidth: 1)
+                    forma.strokeBorder(M.firmaBordo, lineWidth: M.bordoCasella)
                 }
                 .scaleEffect(respira ? T.RespiroFirma.scala : 1)
             case .risposta:
-                forma.strokeBorder(M.riservatoBordo, style: StrokeStyle(lineWidth: 1, dash: M.riservatoTratteggio))
+                forma.strokeBorder(M.riservatoBordo, style: StrokeStyle(lineWidth: M.bordoCasella, dash: M.riservatoTratteggio))
                 Text("la risposta la dà il cliente")
                     .font(.system(size: M.riservatoCarattere * k, weight: .medium))
                     .foregroundColor(M.riservatoTesto)
@@ -457,7 +456,7 @@ private struct ColonnaCompila: View {
                 chip(cliente)
                 if let cliente { proposta(cliente) }
                 pulsante(cliente)
-                if let a = moduli.anteprima, let cliente {
+                if let a = stato.anteprimaModulo, let cliente {
                     TileFinali(stato: stato, moduli: moduli, modello: modello, cliente: cliente, anteprima: a,
                                daSalvare: $daSalvare)
                         .id(moduli.giro)
@@ -539,6 +538,10 @@ private struct ColonnaCompila: View {
                     .carattereApple(M.notaAlleanza)
                     .foregroundColor(Tema.Apple.Colore.inchiostro2)
                     .fixedSize(horizontal: false, vertical: true)
+            } else if !modello.mappaConfermata {
+                // La mappa si controlla una volta prima di compilare (decisione 61)
+                Button("Controlla la mappa dei campi") { stato.avviaRevisioneModulo(modello.id) }
+                    .buttonStyle(.applePrimarioGrande)
             } else if let c {
                 Button("✦ Compila con i dati di \(StatoShell.nomeDiBattesimo(c))") { stato.compilaModulo() }
                     .buttonStyle(.applePrimarioGrande)
@@ -736,7 +739,7 @@ private struct TileFinali: View {
         .padding(M.paddingTile)
         .frame(maxWidth: .infinity, alignment: .leading)
         .superficieApple(M.tile, raggio: M.raggioTile)
-        .overlay(forma.strokeBorder(M.bordoVera, lineWidth: 1))
+        .overlay(forma.strokeBorder(M.bordoVera, lineWidth: M.bordoCasella))
     }
 
     /// «l'», «il», «la»… davanti al nome del dato («Manca l'IBAN per l'addebito»).
@@ -771,7 +774,7 @@ private struct TileFinali: View {
         .padding(M.paddingTile)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(forma.fill(M.tileFirmeFondo))
-        .overlay(forma.strokeBorder(M.tileFirmeBordo, lineWidth: 1))
+        .overlay(forma.strokeBorder(M.tileFirmeBordo, lineWidth: M.bordoCasella))
     }
 
     private func tileRisposte(_ nome: String) -> some View {
@@ -800,7 +803,7 @@ private struct TileFinali: View {
         .padding(M.paddingTile)
         .frame(maxWidth: .infinity, alignment: .leading)
         .superficieApple(M.tile, raggio: M.raggioTile)
-        .overlay(forma.strokeBorder(M.tileRisposteBordo, lineWidth: 1))
+        .overlay(forma.strokeBorder(M.tileRisposteBordo, lineWidth: M.bordoCasella))
     }
 }
 

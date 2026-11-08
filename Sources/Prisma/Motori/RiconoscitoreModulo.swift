@@ -45,23 +45,26 @@ enum RiconoscitoreModulo {
         (["codice fiscale", "cod fiscale", "c f"], .dato(.codiceFiscale)),
         (["tipo di documento", "tipo documento"], .dato(.documentoTipo)),
         (["numero del documento", "numero documento", "n documento", "estremi del documento"], .dato(.documentoNumero)),
-        (["rilasciato il", "data di rilascio", "rilascio"], .dato(.documentoRilascio)),
+        (["rilasciato il", "data di rilascio", "data rilascio"], .dato(.documentoRilascio)),
         (["scadenza del documento", "scadenza documento", "valido fino"], .dato(.documentoScadenza)),
         (["numero di contratto", "numero contratto", "numero di polizza", "polizza n", "contratto n"], .dato(.numeroContratto)),
         (["iban"], .dato(.iban)),
+        // L'email prima dell'indirizzo («Indirizzo e-mail»)
+        (["email", "e mail", "posta elettronica"], .dato(.email)),
         (["cap"], .dato(.cap)),
         (["provincia", "prov"], .dato(.provincia)),
         (["comune", "citta", "localita"], .dato(.comune)),
         (["indirizzo", "residenza", "via"], .dato(.indirizzo)),
         (["telefono", "cellulare", "tel"], .dato(.telefono)),
-        (["email", "e mail", "posta elettronica"], .dato(.email)),
         (["professione", "occupazione", "attivita lavorativa"], .dato(.professione)),
         (["stato civile"], .dato(.statoCivile)),
         (["beneficiari", "beneficiario"], .dato(.beneficiari)),
-        (["premio", "importo del versamento", "versamento"], .dato(.premio)),
+        // La frequenza prima del premio («Frequenza del premio», «Periodicità del versamento»)
         (["frequenza", "periodicita", "rateazione"], .dato(.frequenza)),
+        (["premio", "importo del versamento", "versamento"], .dato(.premio)),
         (["decorrenza", "data di effetto"], .dato(.decorrenza)),
-        (["scadenza", "durata"], .dato(.scadenza)),
+        // «Durata» è un numero di anni, non la data di scadenza: resta da associare a mano
+        (["scadenza"], .dato(.scadenza)),
         (["capitale"], .dato(.capitale)),
         (["prodotto", "tariffa"], .dato(.prodotto)),
         (["consulente", "intermediario", "collocatore"], .dato(.consulente)),
@@ -69,8 +72,18 @@ enum RiconoscitoreModulo {
         (["nome"], .dato(.nome)),
     ]
 
-    /// Le etichette che non si associano da sole (nome e cognome insieme non si spezzano: decisione del §7.2.5 punto 5).
-    static let ambigue = ["nome e cognome", "cognome e nome", "nominativo"]
+    /// Le etichette che non si associano da sole (nome e cognome insieme non si spezzano: decisione del §7.2.5 punto 5),
+    /// e quelle che somigliano a un dato ma ne chiedono un altro che Prisma non ha (la provincia di nascita non è quella
+    /// di residenza, il luogo o l'ente di rilascio non sono la data, la PEC non è l'email).
+    static let ambigue = ["nome e cognome", "cognome e nome", "nominativo", "provincia di nascita", "prov di nascita",
+                          "stato di nascita", "cittadinanza", "nazionalita", "luogo di rilascio", "comune di rilascio",
+                          "ente di rilascio", "rilasciato da", "autorita", "pec", "durata"]
+
+    /// Le persone diverse dal cliente (contraente): un dato anagrafico nella loro casella non è del cliente, quindi la
+    /// casella resta da associare a mano («Codice fiscale del beneficiario», «Data di nascita dell'assicurato»).
+    static let altrePersone = ["beneficiario", "beneficiari", "assicurato", "assicurata", "legale rappresentante",
+                               "rappresentante", "delegato", "delegata", "esecutore", "coniuge", "minore", "tutore",
+                               "cointestatario", "cointestataria", "genitore", "figlio", "figlia", "erede", "eredi"]
 
     /// Minuscolo, senza accenti, solo lettere e cifre separate da uno spazio.
     static func normalizza(_ s: String) -> String {
@@ -83,9 +96,12 @@ enum RiconoscitoreModulo {
     static func associa(_ etichetta: String) -> AssociazioneModulo? {
         let n = " " + normalizza(etichetta) + " "
         guard n.count > 2 else { return nil }
+        guard let esito = regole.first(where: { $0.frasi.contains { n.contains(" \($0) ") } })?.esito else { return nil }
+        // Risposte del cliente e firme vincono sempre (una firma dell'assicurato resta una firma)
+        guard case .dato(let d) = esito else { return esito }
         if ambigue.contains(where: { n.contains(" \($0) ") }) { return nil }
-        for r in regole where r.frasi.contains(where: { n.contains(" \($0) ") }) { return r.esito }
-        return nil
+        if d != .beneficiari, altrePersone.contains(where: { n.contains(" \($0) ") }) { return nil }
+        return esito
     }
 
     /// Un'etichetta ha la forma di un'etichetta: breve, senza punto finale.
@@ -144,9 +160,18 @@ enum RiconoscitoreModulo {
         let associazione = associa(etichetta) ?? associa(daNome)
         var c = ModelloModulo.Campo(pagina: indice, riquadro: b, nomeAcroForm: nome.isEmpty ? nil : nome,
                                     etichetta: etichetta.isEmpty ? "Campo senza nome" : etichetta, origine: .acroForm)
-        if a.isCasella { c.tipo = .casella }
         if a.widgetFieldType == .signature { c.tipo = .firma }
+        if a.isCasella {
+            // Una casella da spuntare è una scelta o un consenso del cliente: Prisma non la spunta mai da solo, anche
+            // se il nome ricorda un dato («consenso_email», «frequenza_mensile»)
+            c.tipo = .casella
+            if case .dato? = associazione {} else { applica(associazione, a: &c) }
+            return c
+        }
         applica(associazione, a: &c)
+        // Anche sui PDF compilabili l'associazione delle regole è una proposta: l'etichetta letta nella striscia sopra la
+        // casella può essere della riga prima. L'utente la conferma nella revisione della mappa (decisione 61).
+        if c.dato != nil { c.daConfermare = true }
         return c
     }
 

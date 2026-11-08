@@ -194,6 +194,13 @@ extension Tema.Apple {
             static let titoloPagina: CGFloat = 26
             /// Le caselle sopra la pagina (in punti della pagina, poi scalate): raggio 5, bordo 1 #D5DCE2.
             static let raggioCampo: CGFloat = 5
+            /// Il bordo delle caselle e delle tile: quello del tema; 2 sulla casella scelta nella revisione.
+            static let bordoCasella = Tema.Apple.Misura.bordo
+            static let bordoCasellaScelta: CGFloat = 2
+            /// La larghezza in pixel a cui si disegna la pagina (una sola misura: l'immagine resta in memoria).
+            static let larghezzaDisegno: CGFloat = 1000
+            /// La colonna del numero nelle righe della revisione.
+            static let colonnaNumero: CGFloat = 18
             static let altezzaCampo: CGFloat = 31
             static let altezzaFirma: CGFloat = 56
             static let bordoCampo = Tema.Apple.Carta.bordoCampo
