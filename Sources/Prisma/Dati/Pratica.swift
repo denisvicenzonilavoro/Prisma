@@ -140,6 +140,9 @@ struct Pratica: Identifiable, Codable, Hashable {
 struct ImpostazioniPratiche: Codable, Equatable, Hashable {
     /// Oltre quanti giorni senza un passo nuovo una pratica è «ferma» (D3.2: 7, ferma all'ottavo giorno).
     var giorniFerma = ImpostazioniPratiche.giorniFermaPredefiniti
+    /// «Conserva l'IBAN nel dossier» (Impostazioni › Moduli, «Luce» giro 10, decisione 40): spento di base. Spento, gli
+    /// IBAN non si salvano nell'anagrafica (si scrivono solo sul modulo compilato).
+    var conservaIban: Bool?
 
     static let giorniFermaPredefiniti = 7
     /// I limiti del campo in Impostazioni (vuoto non ammesso: almeno un giorno).
@@ -148,7 +151,7 @@ struct ImpostazioniPratiche: Codable, Equatable, Hashable {
 
     init() {}
 
-    private enum CodingKeys: String, CodingKey { case giorniFerma }
+    private enum CodingKeys: String, CodingKey { case giorniFerma, conservaIban }
 
     /// Illeggibile, minore di 1 o fuori misura: torna 7.
     init(from decoder: Decoder) throws {
@@ -156,5 +159,9 @@ struct ImpostazioniPratiche: Codable, Equatable, Hashable {
         let g = (try? c.decodeIfPresent(Int.self, forKey: .giorniFerma)) ?? nil
         giorniFerma = g.flatMap { (Self.giorniFermaMinimi...Self.giorniFermaMassimi).contains($0) ? $0 : nil }
             ?? Self.giorniFermaPredefiniti
+        conservaIban = (try? c.decodeIfPresent(Bool.self, forKey: .conservaIban)) ?? nil
     }
+
+    /// L'interruttore dell'IBAN acceso.
+    var ibanConservato: Bool { conservaIban == true }
 }

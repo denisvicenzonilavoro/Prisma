@@ -6,6 +6,8 @@ import Foundation
 struct Documento: Identifiable, Codable, Hashable {
     enum Tipo: String, Codable, CaseIterable, Identifiable {
         case kid, polizza, estrattoConto, proposta, prospetto, report, altro
+        /// Un modulo compilato in Pratiche › Moduli (versione 27, «Luce» giro 10, D2.8).
+        case modulo
 
         var id: String { rawValue }
 
@@ -17,6 +19,7 @@ struct Documento: Identifiable, Codable, Hashable {
             case .proposta: return "Proposta"
             case .prospetto: return "Prospetto di Prisma"
             case .report: return "Report per il cliente"
+            case .modulo: return "Modulo compilato"
             case .altro: return "Altro"
             }
         }
@@ -32,6 +35,7 @@ struct Documento: Identifiable, Codable, Hashable {
             case .proposta: return "Proposta"
             case .prospetto: return "Prospetto"
             case .report: return "Report"
+            case .modulo: return "Modulo"
             case .altro: return "Altro"
             }
         }
@@ -63,6 +67,9 @@ struct Documento: Identifiable, Codable, Hashable {
     /// Le righe del confronto con il dossier che il consulente ha deciso di lasciare come sono in Prisma
     /// (`RigaDossier.chiave`: voce e i due valori). nil = nessuna. Una chiave vale finché i due valori restano quelli.
     var vociTenute: [String]?
+    /// Il modulo compilato da Pratiche › Moduli (versione 27, «Luce» giro 10): modello, dati che mancavano, firme. nil per
+    /// gli altri documenti. Non va in «Prisma ovunque» (decisione 44).
+    var modulo: CompilazioneModulo?
 
     /// La categoria che conta: prospetti e report sono sempre «di Prisma».
     var genere: CategoriaDocumento {
@@ -84,6 +91,7 @@ struct Documento: Identifiable, Codable, Hashable {
     private enum CodingKeys: String, CodingKey {
         case id, clienteId, titolo, tipo, file, pagine, dimensione, importatoIl, lettura, pagineOCR, campi, prodottoId, posizioneId
         case categoria, vociTenute
+        case modulo
     }
 
     init(from decoder: Decoder) throws {
@@ -105,6 +113,7 @@ struct Documento: Identifiable, Codable, Hashable {
         posizioneId = try c.decodeIfPresent(String.self, forKey: .posizioneId)
         categoria = try? c.decodeIfPresent(CategoriaDocumento.self, forKey: .categoria)
         vociTenute = try? c.decodeIfPresent([String].self, forKey: .vociTenute)
+        modulo = (try? c.decodeIfPresent(CompilazioneModulo.self, forKey: .modulo)) ?? nil
     }
 
     func campo(_ chiave: CampoDocumento) -> CampoEstratto? {
@@ -173,7 +182,7 @@ enum CategoriaDocumento: String, Codable, CaseIterable, Identifiable {
     static func da(_ tipo: Documento.Tipo) -> CategoriaDocumento {
         switch tipo {
         case .kid: return .kid
-        case .polizza, .proposta: return .contratto
+        case .polizza, .proposta, .modulo: return .contratto
         case .estrattoConto: return .estratto
         case .prospetto, .report: return .prisma
         case .altro: return .altro
@@ -184,7 +193,7 @@ enum CategoriaDocumento: String, Codable, CaseIterable, Identifiable {
     func tipo(da attuale: Documento.Tipo) -> Documento.Tipo {
         switch self {
         case .kid: return .kid
-        case .contratto: return attuale == .proposta ? .proposta : .polizza
+        case .contratto: return attuale == .proposta || attuale == .modulo ? attuale : .polizza
         case .estratto: return .estrattoConto
         case .identita, .questionario, .altro: return .altro
         case .prisma: return attuale.creatoDaPrisma ? attuale : .prospetto

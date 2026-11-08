@@ -198,6 +198,8 @@ extension Tema.Apple {
         static let ambra = Color(hex: "#B45309")
         static let rosso = Color(hex: "#E5484D")
         static let bluGrafico = Color(hex: "#0A84FF")
+        /// Il bordo delle caselle dei moduli (Pratiche › Moduli, «Luce» giro 10).
+        static let bordoCampo = Color(hex: "#D5DCE2")
     }
 }
 

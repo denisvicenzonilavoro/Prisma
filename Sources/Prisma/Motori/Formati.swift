@@ -108,3 +108,43 @@ enum Formati {
         return f.string(fromByteCount: byte)
     }
 }
+
+// MARK: - IBAN (Pratiche › Moduli, «Luce» giro 10, decisione 40)
+
+/// L'IBAN del cliente: si conserva solo con l'interruttore acceso dall'utente, si mostra mascherato, si controlla con il
+/// codice di controllo (mod 97, ISO 13616). Mai nei messaggi né in «Prisma ovunque».
+enum IBAN {
+    /// Maiuscolo, senza spazi né trattini.
+    static func pulito(_ s: String) -> String {
+        s.uppercased().filter { $0.isLetter || $0.isNumber }
+    }
+
+    /// true se la forma e il codice di controllo tornano: due lettere del paese, due cifre di controllo, da 15 a 34
+    /// caratteri, il resto mod 97 dei caratteri spostati (A = 10 … Z = 35) uguale a 1.
+    static func valido(_ s: String) -> Bool {
+        let c = Array(pulito(s))
+        guard (15...34).contains(c.count), c[0].isASCII, c[0].isLetter, c[1].isASCII, c[1].isLetter,
+              c[2].isASCII, c[2].isNumber, c[3].isASCII, c[3].isNumber,
+              c.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber) }) else { return false }
+        var resto = 0
+        for ch in c[4...] + c[..<4] {
+            let v: Int
+            if let n = ch.wholeNumberValue { v = n } else if let a = ch.asciiValue { v = Int(a) - 55 } else { return false }
+            for cifra in String(v) { resto = (resto * 10 + (cifra.wholeNumberValue ?? 0)) % 97 }
+        }
+        return resto == 1
+    }
+
+    /// A gruppi di quattro: «IT60 X054 2811 1010 0000 0123 456».
+    static func aGruppi(_ s: String) -> String {
+        let c = Array(pulito(s))
+        return stride(from: 0, to: c.count, by: 4).map { String(c[$0..<min($0 + 4, c.count)]) }.joined(separator: " ")
+    }
+
+    /// Mascherato come nel template: il paese e le ultime quattro, «IT•• •••• •••• •••• 4417».
+    static func mascherato(_ s: String) -> String {
+        let c = pulito(s)
+        guard c.count >= 8 else { return String(repeating: "•", count: c.count) }
+        return String(c.prefix(2)) + "•• •••• •••• •••• " + String(c.suffix(4))
+    }
+}
