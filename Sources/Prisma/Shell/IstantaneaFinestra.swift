@@ -53,8 +53,8 @@ enum IstantaneaFinestra {
             .background(forma.fill(Tema.Colore.Shell.fondoIstantaneaFinestra))
             // L'ombra la fa uno strato a parte: qui solo la forma della finestra
             .clipShape(forma)
-            .environmentObject(stato)
-            .environmentObject(stato.sistema)
+            .environment(stato)
+            .environment(stato.sistema)
             .environment(\.modoIstantanea, true)
             .environment(\.colorScheme, scuro ? .dark : .light)
         let inizio = CACurrentMediaTime()

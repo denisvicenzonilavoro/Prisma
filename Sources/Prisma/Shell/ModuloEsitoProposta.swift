@@ -290,12 +290,13 @@ private struct CampoEuroEsito: View {
 /// La richiesta dell'esito nel dettaglio di un appuntamento concluso (Agenda, Incontri): il modulo compatto
 /// in un riquadro di vetro color proposta.
 struct RiquadroEsitoProposta: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let appuntamento: Appuntamento
     let posizione: Posizione
     let passoIniziale: PassoEsito
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         FormEsitoProposta(posizione: posizione, appuntamento: appuntamento, passoIniziale: passoIniziale, compatto: true,
                           datiProposti: stato.datiAccettazione(posizione, appuntamento: appuntamento),
                           giorniSeguito: stato.dati.impostazioni.giorniSeguitoProposte,
@@ -310,11 +311,12 @@ struct RiquadroEsitoProposta: View {
 
 /// Il foglio dell'esito (Posizioni e Incontri), aperto da `stato.richiestaEsito`.
 struct ModuloEsitoProposta: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @Environment(\.dismiss) private var chiudiFoglio
     let richiesta: RichiestaEsito
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let p = stato.dati.posizioni.first { $0.id == richiesta.posizioneId }
         let a: Appuntamento? = richiesta.appuntamentoId.flatMap { id in stato.dati.appuntamenti.first(where: { $0.id == id }) }
         CorniceModulo(titolo: "Esito della proposta") {

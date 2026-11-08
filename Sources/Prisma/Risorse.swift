@@ -110,6 +110,11 @@ enum Risorse {
             print("ERRORE: Mercato/\(ConfigurazioneMercato.nomeFile) non leggibile dal bundle")
             return 1
         }
+        // Biblioteca (Luce, giro 6): i sei fac-simile di prova
+        guard EsempiBiblioteca.elenco.allSatisfy({ EsempiBiblioteca.pagine($0.risorsa) != nil }) else {
+            print("ERRORE: fac-simile della Biblioteca non leggibili dal bundle")
+            return 1
+        }
         if immagineNitida("Loghi/Alleanza_simbolo.png", in: CGSize(width: CGFloat.infinity, height: 15), scala: 2) == nil {
             print("ERRORE: logo Alleanza non ridotto")
             return 1

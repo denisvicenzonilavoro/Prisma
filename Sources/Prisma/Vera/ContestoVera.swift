@@ -36,6 +36,14 @@ enum ContestoVera {
         if !profilo.isEmpty { righe.append("Profilo: \(profilo.joined(separator: ", ")).") }
         if !c.canali.isEmpty { righe.append("Seguito sul canale: \(c.canali.map(\.nomeBreve).joined(separator: " e ")).") }
         if !c.nota.isEmpty { righe.append("Da ricordare: \(c.nota)") }
+        // Le aziende del cliente imprenditore («Luce» giro 7): i dati scritti dal consulente e le aree valutate da Prisma
+        for a in c.elencoAziende.prefix(2) {
+            let aree = MotoreAzienda.valuta(a, cliente: c, posizioni: f.posizioni, oggi: f.oggi)
+                .map { v in "\(v.area.titolo.lowercased()) \(v.percentuale.map { "\(Int($0.rounded()))%" } ?? (v.nonPertinente ? "non pertinente" : "da valutare"))" }
+            righe.append("AZIENDA\(a.diProva == true ? " (dati di prova)" : ""): \(a.nomeMostrato) · \(TestiAzienda.sottotitolo(a, cliente: c))"
+                         + "\(a.fatturato.map { " · \(TestiAzienda.etichettaFatturato(a).lowercased()) \(Formati.euro($0))" } ?? ""); "
+                         + aree.joined(separator: ", ") + ". Le questioni fiscali dell'azienda vanno al commercialista.")
+        }
 
         // Profilo dei bisogni (ruota calcolata dall'app)
         let rilevati = MotoreBisogni.rileva(cliente: c, posizioni: f.posizioni, analisi: f.analisi, oggi: f.oggi)

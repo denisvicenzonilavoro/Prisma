@@ -1,30 +1,31 @@
 import Foundation
+import Observation
 import SwiftUI
 
 /// Lo stato della scheda Proposta di Pratiche («Luce» giro 3, Design/template-luce-specifica.md §7.1): il bisogno
 /// scelto, la sequenza che accende le cinque tappe, le scelte di prodotto e le proposte costruite nella sessione.
 /// Un oggetto a parte, come lo smontaggio: la sequenza non pubblica StatoShell. Non si salva (la bozza costruita sì,
 /// in Posizioni, con la sua scheda di adeguatezza).
-final class StatoPraticheProposta: ObservableObject {
+@Observable final class StatoPraticheProposta {
     /// Il bisogno scelto nella barra laterale (nil = il primo).
-    @Published var scelto: String?
+    var scelto: String?
     /// Le tappe accese per il bisogno `accesiDi` (0…5) e il riquadro finale; per gli altri bisogni valgono quelle
     /// calcolate (spente, o tutte accese se la proposta è già costruita).
-    @Published fileprivate(set) var accesi = 0
-    @Published fileprivate(set) var pronta = false
-    @Published fileprivate(set) var accesiDi: String?
+    fileprivate(set) var accesi = 0
+    fileprivate(set) var pronta = false
+    fileprivate(set) var accesiDi: String?
     /// La sequenza di accensione è in corso («Costruisco…»).
-    @Published fileprivate(set) var inCorso = false
+    fileprivate(set) var inCorso = false
     /// Il prodotto scelto dal consulente fra più prodotti adatti, per bisogno.
-    @Published var sceltaProdotto: [String: String] = [:]
+    var sceltaProdotto: [String: String] = [:]
     /// Le proposte costruite nella sessione: bisogno → posizione.
     fileprivate(set) var costruite: [String: String] = [:]
     /// L'ultimo prodotto usato per area e rischio (va in testa alla scelta), finché Prisma è aperta.
     fileprivate(set) var ultimoProdotto: [String: String] = [:]
 
-    fileprivate var sequenza: Task<Void, Never>?
-    fileprivate var cacheBisogni: (versione: Int, valore: [BisognoScoperto])?
-    fileprivate var cacheCostruite: (versione: Int, valore: [String: PropostaCostruita]) = (-1, [:])
+    @ObservationIgnored fileprivate var sequenza: Task<Void, Never>?
+    @ObservationIgnored fileprivate var cacheBisogni: (versione: Int, valore: [BisognoScoperto])?
+    @ObservationIgnored fileprivate var cacheCostruite: (versione: Int, valore: [String: PropostaCostruita]) = (-1, [:])
 
     /// Ferma la sequenza in corso (cambio di bisogno o di scheda).
     func fermaSequenza() {
@@ -128,7 +129,9 @@ extension StatoShell {
         if let r = p.cacheCostruite.valore[chiave] { return r }
         guard let fonte = fonteProposta(b.clienteId) else { return nil }
         let bozza = b.propostaId.flatMap { id in dati.posizioni.first { $0.id == id } }
-        let r = MotoreProposta.costruisci(b, fonte: fonte, dati: dati, bozzaEsistente: bozza,
+        // La chiave è `versioneDati` (già letta qui sopra, quindi osservata): l'archivio si legge senza iscrivere la
+        // vista a ogni campo
+        let r = MotoreProposta.costruisci(b, fonte: fonte, dati: dati.istantaneaNonOsservata, bozzaEsistente: bozza,
                                           prodottoScelto: p.sceltaProdotto[b.id],
                                           ultimo: p.ultimoProdotto[StatoPraticheProposta.chiaveProdotto(b)],
                                           contaPagine: { ImpaginatoreProspetto.pagine($0).count })

@@ -93,7 +93,9 @@ enum DatiProvaOvunque {
         let ops = operazioni(dispositivo: o.idDispositivo ?? iPhone)
         s.dati.giornaleOvunque = ops
         // Le modifiche sono già nell'archivio del dispositivo (il giornale le registra dopo)
-        for op in ops { MotoreUnioneOvunque.applicaForzata(op, a: &s.dati) }
+        var d = s.dati.istantanea
+        for op in ops { MotoreUnioneOvunque.applicaForzata(op, a: &d) }
+        s.dati.carica(d)
         s.disponibilitaLocale = .nonDisponibile(PonteVera.macNonTrovato)
     }
 }

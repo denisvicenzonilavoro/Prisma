@@ -155,17 +155,17 @@ final class StatoMobile: ObservableObject {
         // Sul Mac Prisma si apre sulla schermata di benvenuto; su iPhone e iPad non c'è: si entra subito
         stato.bloccato = false
         stato.sistema.bloccatoStabile = false
-        mostraApertura = persistente && Self.soloDatiDiProva(stato.dati)
+        mostraApertura = persistente && Self.soloDatiDiProva(stato.dati.istantanea)
         // Una password sbagliata arriva da StatoShell.ripristina come richiesta di password (sul Mac apre
         // un avviso in Impostazioni): qui diventa il messaggio sotto il campo
-        stato.$ripristinoDaSbloccare
+        stato.ripristinoDaSbloccareCambiato
             .compactMap { $0 }
             .receive(on: DispatchQueue.main)
             .sink { [weak self] richiesta in self?.passwordRifiutata(richiesta) }
             .store(in: &abbonamenti)
         // Le app e i widget aprono le altre con `stato.apri(_:)` (risultati della Ricerca, importazioni, rimandi):
         // sul Mac la finestra viene davanti, su iPhone e iPad l'app va nella finestra di vetro
-        stato.sistema.$elenco
+        stato.sistema.elencoCambiato
             .receive(on: DispatchQueue.main)
             // Si legge l'elenco di adesso, non quello pubblicato: fra la pubblicazione e la consegna (al giro dopo)
             // le icone possono averlo già cambiato di nuovo
@@ -486,8 +486,7 @@ final class StatoMobile: ObservableObject {
             }
             return
         }
-        attesaEsito = stato.$backupInCorso
-            .dropFirst()
+        attesaEsito = stato.backupInCorsoCambiato
             .filter { !$0 }
             .first()
             .sink { [weak self] _ in

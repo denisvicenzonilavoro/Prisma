@@ -15,7 +15,7 @@ struct PDFDaSalvare: Identifiable {
 /// ricavata dai dati del cliente). Prisma non conserva la password.
 struct ModuloSalvaPDF: View {
     @Environment(\.dismiss) var chiudi
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let pdf: PDFDaSalvare
     @State private var proteggi: Bool
     @State private var password: String
@@ -34,6 +34,7 @@ struct ModuloSalvaPDF: View {
     private var valida: Bool { !proteggi || password.count >= ImpostazioniPDF.lunghezzaMinima }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         CorniceModulo(titolo: "Salva il PDF") {
             VStack(alignment: .leading, spacing: 14) {
                 Text(pdf.nome).font(Tipo.campoEtichetta).foregroundColor(Colori.Rubrica.secondario).lineLimit(2)

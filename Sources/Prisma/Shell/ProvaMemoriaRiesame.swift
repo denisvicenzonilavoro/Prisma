@@ -134,7 +134,7 @@ enum ProvaMemoriaRiesame {
         // SM13 Tempi con i clienti fittizi caricati
         do {
             let t = StatoShell(persistente: false)
-            t.dati = ClientiFittizi.completi()
+            t.dati.carica(ClientiFittizi.completi())
             if let id = t.clienti.first?.id {
                 let inizio = Date()
                 let memoria = t.memoriaRiesame(id)

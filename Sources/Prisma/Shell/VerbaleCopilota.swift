@@ -9,14 +9,15 @@ import SwiftUI
 
 @MainActor
 struct VerbaleCopilotaVista: View {
-    @EnvironmentObject var stato: StatoShell
-    @ObservedObject var copilota: StatoCopilotaIncontro
+    @Environment(StatoShell.self) var stato
+    @Bindable var copilota: StatoCopilotaIncontro
     let clienteId: String
     let incontro: Incontro?
 
     private typealias V = Tema.Apple.Copilota.Verbale
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let cliente = stato.cliente(clienteId)
         let nome = cliente?.nome ?? "Cliente"
         let sessione = copilota.sessione(per: clienteId, in: stato)

@@ -9,8 +9,8 @@ import SwiftUI
 /// Dice anche all'acqua se può rispondere: «L'acqua della scrivania» e lo sfondo animato accesi, senza «Riduci
 /// movimento» (`\.prismaCalmo`) e fuori dalle istantanee. Non disegna niente e non prende i clic.
 struct OsservatoreAcqua: View {
-    @EnvironmentObject var stato: StatoShell
-    @ObservedObject var sistema: StatoFinestre
+    @Environment(StatoShell.self) var stato
+    let sistema: StatoFinestre
     @Environment(\.prismaCalmo) private var calmo
     @Environment(\.modoIstantanea) private var modoIstantanea
     /// Le notifiche nuove viste l'ultima volta: una goccia solo quando crescono.
@@ -26,6 +26,7 @@ struct OsservatoreAcqua: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let si = consentita
         let nuove = stato.notificheNuove
         let parla = stato.veraInCorso

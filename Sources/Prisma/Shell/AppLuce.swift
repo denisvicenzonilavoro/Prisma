@@ -7,29 +7,32 @@ import SwiftUI
 
 /// Territorio: i segmenti «Oggi · La crescita · Il giro di domani» nella testata.
 struct AzioniTerritorio: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
-        SegmentatoPillola(selezione: $stato.vistaTerritorio, valori: VistaTerritorio.allCases, titolo: { $0.titolo })
+        let _ = ContaCorpi.segna()
+        SegmentatoPillola(selezione: Bindable(stato).vistaTerritorio, valori: VistaTerritorio.allCases, titolo: { $0.titolo })
             .fixedSize()
     }
 }
 
 /// Pratiche: i segmenti «Proposta · Moduli · Dopo la firma · Sinistri» nella testata.
 struct AzioniPratiche: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
-        SegmentatoPillola(selezione: $stato.schedaPratiche, valori: SchedaPratiche.allCases, titolo: { $0.titolo })
+        let _ = ContaCorpi.segna()
+        SegmentatoPillola(selezione: Bindable(stato).schedaPratiche, valori: SchedaPratiche.allCases, titolo: { $0.titolo })
             .fixedSize()
     }
 }
 
 /// Il contenuto di Territorio (giro 11): per ora lo stato «in arrivo».
 struct AppTerritorio: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         InArrivoAppLuce(app: .territorio, glifo: .mappa, titolo: stato.vistaTerritorio.titolo,
                         frase: frase(stato.vistaTerritorio),
                         nota: "Senza mandare gli indirizzi a nessun servizio: comuni e distanze si calcolano sul Mac.")
@@ -46,9 +49,10 @@ struct AppTerritorio: View {
 
 /// Il contenuto di Pratiche (giri 3 e 10): per ora lo stato «in arrivo» della scheda scelta.
 struct AppPratiche: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         if stato.schedaPratiche == .dopoLaFirma {
             // Giro 3: le pratiche dopo la firma (PraticheDopoFirma.swift)
             PraticheDopoFirma()
@@ -61,23 +65,6 @@ struct AppPratiche: View {
                             nota: "Il canale resta sempre in vista: Alleanza e consulenza indipendente, mai mescolati.",
                             canali: true)
         }
-    }
-}
-
-/// Il contenuto della Biblioteca (giro 6): per ora lo stato vuoto e «in arrivo».
-struct AppBiblioteca: View {
-    @EnvironmentObject var stato: StatoShell
-
-    var body: some View {
-        #if os(macOS)
-        // La biblioteca delle norme di Vera (fase 2, funzione 13: BibliotecaApple.swift)
-        BibliotecaApple(biblioteca: stato.biblioteca)
-        #else
-        // Su iPhone e iPad la Biblioteca non c'è ancora (decisione 114)
-        let n = NovitaLuce.trovaLaPagina
-        InArrivoAppLuce(app: .biblioteca, glifo: n.glifo, titolo: n.titolo, frase: n.frase + ".",
-                        nota: "La Biblioteca delle norme è sul Mac: i PDF che porti tu, con l'edizione di ognuno.")
-        #endif
     }
 }
 

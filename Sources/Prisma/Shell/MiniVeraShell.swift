@@ -179,7 +179,7 @@ extension StatoShell {
         let mini = miniVera
         mini.abbonamenti.removeAll()
         if concludiMiniVera(cifre) { return }
-        flussoVera.$testo
+        flussoVera.testoCambia
             .receive(on: DispatchQueue.main)
             .sink { [weak self] t in
                 guard let self, self.veraInCorso, !t.isEmpty, mini.fase == .pensa || mini.fase == .risponde else { return }
@@ -187,7 +187,7 @@ extension StatoShell {
             }
             .store(in: &mini.abbonamenti)
         // Al giro dopo: conQwen spegne e riaccende `veraInCorso` nello stesso momento
-        $veraInCorso
+        veraInCorsoSoggetto
             .removeDuplicates()
             .filter { !$0 }
             .receive(on: DispatchQueue.main)

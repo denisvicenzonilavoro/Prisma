@@ -4,7 +4,7 @@ import SwiftUI
 /// Chi non è in rubrica si aggiunge come cliente nuovo (si può escludere); chi è già in Posizioni parte escluso.
 struct ModuloImportaPosizioni: View {
     @Environment(\.dismiss) var chiudi
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let importazione: ImportazionePosizioni
     @State private var esclusi: Set<UUID>
     /// Il canale per le righe che non lo dicono (la compagnia non è Alleanza e manca la colonna).
@@ -55,6 +55,7 @@ struct ModuloImportaPosizioni: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         CorniceModulo(titolo: "Importa posizioni") {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Da «\(importazione.file)»: \(importazione.posizioni.count) righe. Colonne riconosciute: \(importazione.colonne.map(\.nome).joined(separator: ", ")).")

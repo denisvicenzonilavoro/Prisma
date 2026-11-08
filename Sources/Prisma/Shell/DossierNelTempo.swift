@@ -16,12 +16,13 @@ import SwiftUI
 
 struct NelTempoDossier: View {
     let cliente: Cliente
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     /// Il mese scelto con il cursore (−36…24); nil = oggi, o quello chiesto da un'istantanea.
     @State private var meseScelto: Double?
     @State private var conProposte = true
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let n = Tema.Apple.Clienti.NelTempo.self
         let storia = storiaCliente
         let mese = meseMostrato
@@ -373,12 +374,13 @@ struct MomentoNelTempo: View {
     let conProposte: Bool
     /// Modalità cliente o presentazione: niente note interne.
     let riservato: Bool
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     /// Un incontro o una nota «di quel riesame»: entro tre settimane dalla fotografia.
     static let giorniVicini: Double = 21
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let n = Tema.Apple.Clienti.NelTempo.self
         return VStack(alignment: .leading, spacing: n.spazioBlocchiMomento) {
             if mese < 0 {

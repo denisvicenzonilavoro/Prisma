@@ -308,7 +308,7 @@ enum MotoreRicerca {
         let ricerca = testo.trimmingCharacters(in: .whitespacesAndNewlines)
         let parole = parole(ricerca)
         guard !parole.isEmpty else { return [] }
-        let dati = stato.dati
+        let dati = stato.dati.istantanea
         let nomi = nomiClienti(dati)
         func nome(_ id: String) -> String { nomi[id] ?? "Senza cliente" }
 
@@ -387,7 +387,7 @@ enum MotoreRicerca {
 
     /// La ricerca per criterio: solo clienti e posizioni che rispettano i filtri, e tra questi quelli con tutte le parole.
     private static func cercaConFiltri(_ r: RicercaInterpretata, in stato: StatoShell, oggi: Date, esito: inout EsitoRicerca) {
-        let dati = stato.dati
+        let dati = stato.dati.istantanea
         let filtrati = FiltriRicerca.applica(r, dati: dati, oggi: oggi)
         esito.totali = filtrati.totali
         esito.totaliDeiClienti = filtrati.totaliDeiClienti

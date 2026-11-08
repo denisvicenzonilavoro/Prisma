@@ -51,10 +51,12 @@ struct CorpoPortafoglio: View, Equatable {
         let r = p.riepilogo
         // Le proposte ferme (cache oraria) e i giorni del seguito scelti in Impostazioni
         let ferme = stato.proposteInSospeso
-        let giorniSeguito = stato.dati.impostazioni.giorniSeguitoProposte
+        let giorniSeguito = stato.dati.impostazioniDeiCalcoli.giorniSeguitoProposte
         // Motivi e tempi delle decisioni, con gli stessi filtri di canale e area del riepilogo
         let statistiche = statisticheEsiti()
-        return VStack(alignment: .leading, spacing: 18) {
+        // Pigra (giro 0, tappa 4): con 200 clienti i pannelli sotto la piega (tabella dei clienti, seguito, riesami,
+        // scadenze…) si costruiscono quando si scorre, non all'apertura di Posizioni. Stesso aspetto della VStack
+        return LazyVStack(alignment: .leading, spacing: 18) {
             FasciaKPI {
                 KPI(titolo: "Patrimonio seguito", valore: Formati.euro(r.attivita)) {
                     Chip(testo: "\(p.clienti.count) \(p.clienti.count == 1 ? "cliente" : "clienti")")

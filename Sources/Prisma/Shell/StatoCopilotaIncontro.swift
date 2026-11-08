@@ -1,4 +1,5 @@
 import AVFoundation
+import Observation
 import Combine
 import Foundation
 import Speech
@@ -156,7 +157,7 @@ struct ScenaIstantaneaCopilota: Equatable {
     var qwenPronto: Bool
 }
 
-final class StatoCopilotaIncontro: ObservableObject {
+@Observable final class StatoCopilotaIncontro {
     enum Fase: Equatable {
         case pronto
         /// I permessi e la preparazione del riconoscimento: il microfono non è ancora acceso.
@@ -177,51 +178,51 @@ final class StatoCopilotaIncontro: ObservableObject {
     /// Un errore del riconoscimento fa ripartire l'ascolto, al massimo tante volte di fila.
     static let erroriDaRiprovare = 2
 
-    @Published var modo = ModoAscoltoIncontro.copilota
-    @Published private(set) var fase = Fase.pronto
+    var modo = ModoAscoltoIncontro.copilota
+    private(set) var fase = Fase.pronto
     /// La sessione dell'ascolto in corso o appena concluso (in `DatiPrisma.sessioniCopilota`).
-    @Published private(set) var sessioneId: String?
+    private(set) var sessioneId: String?
     /// Il motivo per cui non si ascolta (microfono, riconoscimento, consenso): in rosso sotto il titolo.
-    @Published private(set) var problema: String?
+    private(set) var problema: String?
     /// La frase che il riconoscimento sta ancora scrivendo.
-    @Published private(set) var rigaInCorso = ""
-    @Published private(set) var livelli: [Float] = []
+    private(set) var rigaInCorso = ""
+    private(set) var livelli: [Float] = []
     /// Secondi d'ascolto delle riprese già finite; `inizio` quella in corso.
-    @Published private(set) var secondiPrima: TimeInterval = 0
-    @Published private(set) var inizio: Date?
+    private(set) var secondiPrima: TimeInterval = 0
+    private(set) var inizio: Date?
     /// «Conserva la trascrizione» del verbale: spento di base.
-    @Published var conservaTrascrizione = false
+    var conservaTrascrizione = false
     /// Le voci del verbale da confermare (nil = tutte le proposte).
-    @Published var scelteVerbale: Set<String>?
+    var scelteVerbale: Set<String>?
     /// Il verbale riformulato da Vera con Qwen (le cifre controllate), per la sessione `verbaleVeraPer`.
-    @Published private(set) var verbaleVera: String?
-    @Published private(set) var verbaleVeraInCorso = false
-    private var verbaleVeraPer: String?
+    private(set) var verbaleVera: String?
+    private(set) var verbaleVeraInCorso = false
+    @ObservationIgnored private var verbaleVeraPer: String?
     /// La riga da cui nasce la scheda toccata.
-    @Published var indicata: String?
+    var indicata: String?
     /// iPad: le schede non ancora arrivate al Mac e perché.
-    @Published private(set) var inAttesaPonte = 0
-    @Published private(set) var motivoPonte: String?
-    @Published private(set) var invioInCorso = false
+    private(set) var inAttesaPonte = 0
+    private(set) var motivoPonte: String?
+    private(set) var invioInCorso = false
     /// Le istantanee: contatore e Qwen dichiarati.
-    @Published private(set) var scena: ScenaIstantaneaCopilota?
+    private(set) var scena: ScenaIstantaneaCopilota?
     /// Il dettaglio del verbale (già aperto nelle istantanee che lo mostrano).
-    private(set) var dettaglio = StatoDettaglio()
+    @ObservationIgnored private(set) var dettaglio = StatoDettaglio()
 
-    private var ascolto: AscoltoVera?
-    private var abbonamenti = Set<AnyCancellable>()
-    private var bloccoOsservato = false
-    private var scelta = SceltaRiconoscimento.classico
-    private var ripieghi: [SceltaRiconoscimento] = []
-    private var silenziDiFila = 0
-    private var erroriDiFila = 0
+    @ObservationIgnored private var ascolto: AscoltoVera?
+    @ObservationIgnored private var abbonamenti = Set<AnyCancellable>()
+    @ObservationIgnored private var bloccoOsservato = false
+    @ObservationIgnored private var scelta = SceltaRiconoscimento.classico
+    @ObservationIgnored private var ripieghi: [SceltaRiconoscimento] = []
+    @ObservationIgnored private var silenziDiFila = 0
+    @ObservationIgnored private var erroriDiFila = 0
     /// «Termina» con una frase a metà: arriva ancora, poi basta.
-    private var ultimaInArrivo = false
-    private weak var stato: StatoShell?
+    @ObservationIgnored private var ultimaInArrivo = false
+    @ObservationIgnored private weak var stato: StatoShell?
     /// iPad: l'ultima versione di ogni scheda e i pezzi già arrivati al Mac.
-    private var schedeInviate: [String: String] = [:]
-    private var pezziInviati: Set<String> = []
-    private var invioDaRifare = false
+    @ObservationIgnored private var schedeInviate: [String: String] = [:]
+    @ObservationIgnored private var pezziInviati: Set<String> = []
+    @ObservationIgnored private var invioDaRifare = false
 
     init() {}
 
@@ -358,7 +359,7 @@ final class StatoCopilotaIncontro: ObservableObject {
         guard !bloccoOsservato else { return }
         bloccoOsservato = true
         // Il blocco di Prisma (anche con il Mac a riposo o lo schermo spento) ferma subito l'ascolto
-        stato.sistema.$bloccato
+        stato.sistema.bloccatoCambiera
             .removeDuplicates()
             .sink { [weak self] bloccato in if bloccato { self?.interrompi() } }
             .store(in: &abbonamenti)

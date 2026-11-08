@@ -6,9 +6,9 @@ import SwiftUI
 /// le app aperte (iPad), la Ricerca come Spotlight, la guida e la presentazione. Ognuno nel suo contenitore animato:
 /// l'animazione resta sua e non tocca il resto.
 struct PannelliMobile: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @EnvironmentObject var mobile: StatoMobile
-    @ObservedObject var sistema: StatoFinestre
+    let sistema: StatoFinestre
     /// Dove finisce la barra (safe area + barra): i pannelli a destra stanno 6 punti sotto.
     let sottoBarra: CGFloat
     let misura: CGSize
@@ -16,6 +16,7 @@ struct PannelliMobile: View {
     private typealias P = Tema.Misura.Mobile.Pannelli
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let alto = sottoBarra + P.sottoBarra
         ZStack(alignment: .topLeading) {
             ZStack {
@@ -118,25 +119,26 @@ private struct VeloPannelloMobile: View {
 /// In cima, larghe: aspetto, sfondo e pioggia (gli stessi valori di Impostazioni › Aspetto). Sotto, rotonde:
 /// apri un backup, invia il backup al Mac, modalità cliente, impostazioni.
 struct CentroControlloMobile: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @EnvironmentObject var mobile: StatoMobile
 
     private typealias P = Tema.Misura.Mobile.Pannelli
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let impostazioni = stato.dati.impostazioni
         VStack(spacing: P.spazioTessere) {
             tessera("Aspetto") {
                 ControlloSegmenti(opzioni: AspettoInterfaccia.allCases.map { ($0, $0.nome) },
-                                  selezione: $stato.dati.impostazioni.aspetto, riempi: true)
+                                  selezione: Bindable(stato.dati).impostazioni.aspetto, riempi: true)
             }
             tessera("Sfondo") {
                 ControlloSegmenti(opzioni: [(true, "Animato"), (false, "Fermo")],
-                                  selezione: $stato.dati.impostazioni.sfondoAnimato, riempi: true)
+                                  selezione: Bindable(stato.dati).impostazioni.sfondoAnimato, riempi: true)
             }
             tessera("Pioggia") {
                 ControlloSegmenti(opzioni: IntensitaPioggia.allCases.map { ($0, $0.nome) },
-                                  selezione: $stato.dati.impostazioni.pioggia, riempi: true)
+                                  selezione: Bindable(stato.dati).impostazioni.pioggia, riempi: true)
                     .disabled(!impostazioni.sfondoAnimato)
                     .opacity(impostazioni.sfondoAnimato ? 1 : Tema.Misura.Shell.opacitaDisabilitato)
             }
@@ -234,13 +236,14 @@ private struct TesseraRotonda: View {
 /// «Tutte le app» sull'iPhone (il dock ne tiene quattro) e sull'iPad (il dock tiene le app del dock del Mac): pannello di vetro con le app consentite in quattro colonne,
 /// nell'ordine del dock del Mac (Clienti e Posizioni, il fulcro, in cima). Un tocco apre l'app dalla sua icona.
 struct TutteLeAppMobile: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @EnvironmentObject var mobile: StatoMobile
-    @EnvironmentObject var sistema: StatoFinestre
+    @Environment(StatoFinestre.self) var sistema
 
     private typealias P = Tema.Misura.Mobile.Pannelli
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let app = AppPrisma.allCases.filter { stato.appConsentita($0) }
         VStack(alignment: .leading, spacing: P.sottoTitolo) {
             HStack {

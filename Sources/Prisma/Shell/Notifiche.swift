@@ -44,7 +44,7 @@ enum MotoreNotifiche {
         let inizio = cal.startOfDay(for: oggi)
         let domani = cal.date(byAdding: .day, value: 1, to: inizio) ?? inizio
         let limite = cal.date(byAdding: .day, value: giorniAvanti, to: inizio) ?? inizio
-        let dati = stato.dati
+        let dati = stato.dati.istantanea
         // I nomi per id una volta sola (i clienti visibili, come `cliente(_:)`: in modalità cliente solo il suo)
         let nomi = Dictionary(stato.clienti.map { ($0.id, $0.nome) }, uniquingKeysWith: { primo, _ in primo })
         func nome(_ id: String) -> String { nomi[id] ?? "Senza cliente" }

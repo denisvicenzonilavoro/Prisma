@@ -61,7 +61,7 @@ struct TestataRiquadroTelefono: View {
 /// La mossa del giorno: la sfera con le iniziali, «La mossa del giorno» col canale, il titolo, il perché, poi
 /// «Prepara con Vera» e «Apri la scheda»; sotto il filo il prossimo incontro (un tocco apre l'Agenda).
 struct RiquadroMossaTelefono: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @EnvironmentObject var mobile: StatoMobile
     @State private var origineVera = OrigineApertura()
     @State private var origineScheda = OrigineApertura()
@@ -71,6 +71,7 @@ struct RiquadroMossaTelefono: View {
     init() {}
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let esito = stato.mossaDelGiorno()
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: M.spazioSfera) {
@@ -215,13 +216,14 @@ struct SferaMossaTelefono: View {
 /// Il prossimo incontro sotto il filo della mossa: «tra 25 minuti», l'ora, il titolo, il cliente con i canali.
 /// Un tocco apre l'appuntamento nell'Agenda.
 struct IncontroMossaTelefono: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @EnvironmentObject var mobile: StatoMobile
     @State private var origine = OrigineApertura()
 
     private typealias M = Tema.Apple.Telefono.Mossa
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         TimelineView(.everyMinute) { contesto in
             let adesso = contesto.date
             let prossimo = stato.prossimiAppuntamenti.first {
@@ -315,7 +317,7 @@ struct PuntiniCanaliTelefono: View {
 /// Ciò che richiede attenzione: scadenze vicine, attività di oggi o rimaste indietro, proposte ferme. In rosso e
 /// arancio; al massimo tre righe, «Tutto» apre Attività.
 struct RiquadroAttenzioneTelefono: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @EnvironmentObject var mobile: StatoMobile
 
     private typealias A = Tema.Apple.Telefono.Attenzione
@@ -464,7 +466,7 @@ struct RiquadroAttenzioneTelefono: View {
 
 /// La riga di Vera: la sfera (l'unico simbolo di Vera), «Vera», la frase e lo stato di Qwen sul Mac. Un tocco apre Vera.
 struct RiquadroVeraTelefono: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @EnvironmentObject var mobile: StatoMobile
     @State private var origine = OrigineApertura()
 
@@ -473,6 +475,7 @@ struct RiquadroVeraTelefono: View {
     init() {}
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let pronto = stato.disponibilitaLocale.pronto
         HStack(spacing: R.spazio) {
             SferaVera(misura: R.sfera, viva: pronto, pensa: stato.veraInCorso)
@@ -507,12 +510,13 @@ struct RiquadroVeraTelefono: View {
 /// Il portafoglio dei clienti: il totale in essere che conta, i tre anelli dello stato del lavoro (in regola,
 /// riesami, proposte concluse) con la legenda, poi la barra dei due canali, sempre distinti.
 struct RiquadroPortafoglioTelefono: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @EnvironmentObject var mobile: StatoMobile
 
     private typealias P = Tema.Apple.Telefono.Portafoglio
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let r = stato.riepilogoTuttePosizioni
         let lavoro = stato.statoDelLavoro()
         let clienti = stato.clienti.count

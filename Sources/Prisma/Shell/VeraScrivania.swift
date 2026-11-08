@@ -1,4 +1,5 @@
 import SwiftUI
+import Observation
 
 // La Vera della scrivania: sulla scrivania libera, due dita da destra a sinistra sul trackpad (o un trascinamento
 // col mouse) fanno scorrere via i widget e aprono Vera. L'acqua resta viva dietro, il dock resta.
@@ -7,13 +8,13 @@ import SwiftUI
 // Il gesto del trackpad e Esc sono in GestoVeraScrivania.swift (solo Mac); i gettoni in DesignSystem/TemaVeraScrivania.swift.
 
 /// Il gesto in corso tra le due pagine: lo osservano solo le pagine, così seguire il dito non ridisegna la shell.
-final class GestoPaginaVera: ObservableObject {
+@Observable final class GestoPaginaVera {
     /// Quanto si è spostata la pagina dall'inizio del gesto, in pagine (+ verso Vera).
-    @Published var spostamento: CGFloat = 0
+    var spostamento: CGFloat = 0
     /// Un gesto orizzontale è stato preso (trackpad o mouse).
-    var attivo = false
+    @ObservationIgnored var attivo = false
     /// La pagina da cui è partito.
-    var partenza: CGFloat = 0
+    @ObservationIgnored var partenza: CGFloat = 0
 
     /// Segue il dito: `dito` è lo spostamento orizzontale dall'inizio (negativo = verso sinistra, verso Vera).
     /// Oltre le due pagine il movimento rallenta, come gli scorrimenti del Mac.
@@ -88,9 +89,9 @@ extension StatoShell {
 
 /// La scrivania con i widget e, a destra, Vera. Sta dove prima c'era solo `Scrivania()` (ShellView.livelliScrivania).
 struct PagineScrivania: View {
-    @EnvironmentObject var stato: StatoShell
-    @ObservedObject var sistema: StatoFinestre
-    @ObservedObject var gesto: GestoPaginaVera
+    @Environment(StatoShell.self) var stato
+    let sistema: StatoFinestre
+    let gesto: GestoPaginaVera
     let misura: CGSize
     @Environment(\.accessibilityReduceMotion) private var movimentoRidotto
     @Environment(\.modoIstantanea) private var modoIstantanea
@@ -104,6 +105,7 @@ struct PagineScrivania: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let m = Tema.Misura.VeraScrivania.self
         let p = sistema.paginaVera + gesto.spostamento
         let visibile = min(max(p, 0), 1)
@@ -232,7 +234,7 @@ struct PuntiPagineVera: View {
 /// Vera sulla scrivania: vetro trasparente (l'acqua si vede e si muove dietro), piccola finché non si parla,
 /// poi si allarga con la molla della mini Vera in una conversazione comoda. Solo testo (Qwen), niente microfono.
 struct VeraScrivania: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     /// La pagina di Vera è davanti, ferma: il cursore va nel campo.
     let attiva: Bool
     @Environment(\.accessibilityReduceMotion) private var movimentoRidotto
@@ -253,6 +255,7 @@ struct VeraScrivania: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let m = Tema.Misura.VeraScrivania.self
         let grande = allargata
         let moto: Animation? = modoIstantanea ? nil : (movimentoRidotto ? Tema.Moto.dissolvenzaCalma : Tema.Moto.VeraScrivania.forma)
@@ -481,7 +484,7 @@ struct VeraScrivania: View {
         let c = Tema.Apple.Vera.Campo.self
         return HStack(alignment: .bottom, spacing: c.spazio) {
             TextField(portafoglio ? "Chiedi del portafoglio…" : c.segnaposto,
-                      text: $stato.domandaVera, axis: .vertical)
+                      text: Bindable(stato).domandaVera, axis: .vertical)
                 .textFieldStyle(.plain)
                 .carattereApple(c.testo)
                 .foregroundColor(c.coloreTesto)

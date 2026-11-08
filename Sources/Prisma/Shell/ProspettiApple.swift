@@ -541,10 +541,11 @@ extension AppProspetti {
 
 /// Il cliente dei prospetti: avatar 30, nome 14 bold e la tendina con tutti i clienti.
 private struct RigaClienteProspettiApple: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @State private var aperto = false
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let l = Tema.Apple.Prospetti.Laterale.self
         let cliente = stato.clienteAttivo
         return Button { aperto = true } label: {

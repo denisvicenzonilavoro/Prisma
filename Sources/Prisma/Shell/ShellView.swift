@@ -13,7 +13,7 @@ struct ShellView: View {
     /// Spazio di coordinate dell'intera shell (da dove si aprono le app: dock, scrivania, widget).
     static let spazioShell = "shell"
 
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @Environment(\.modoIstantanea) private var modoIstantanea
 
     /// La scala dei caratteri del tema Apple: quella scelta in Impostazioni; nelle istantanee quella di `--testo`
@@ -23,8 +23,9 @@ struct ShellView: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         CorpoShell(sistema: stato.sistema)
-            .environmentObject(stato.sistema)
+            .environment(stato.sistema)
             // Due dita sul trackpad ed Esc per la Vera della scrivania (solo Mac, mai nelle istantanee)
             .gestoVeraScrivania()
             // «Riduci movimento» di Prisma (in OR con quello del Mac) e «Dimensione del testo» del tema Apple per tutto
@@ -52,8 +53,8 @@ struct ShellView: View {
 /// Il disegno della shell: osserva StatoShell (dati, avvisi, presentazione) e StatoFinestre (finestre, pannelli, blocco).
 /// Le animazioni nuove non partono nelle istantanee (`modoIstantanea`): le schermate ferme restano quelle di prima.
 struct CorpoShell: View {
-    @EnvironmentObject var stato: StatoShell
-    @ObservedObject var sistema: StatoFinestre
+    @Environment(StatoShell.self) var stato
+    let sistema: StatoFinestre
     @Environment(\.modoIstantanea) var modoIstantanea
     /// Il puntatore è sul dock (o sul bordo in basso) mentre è nascosto: si mostra sopra le finestre.
     @State private var dockRichiamato = false
@@ -77,6 +78,7 @@ struct CorpoShell: View {
     private var dockNascosto: Bool { !sistema.visibili.isEmpty }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         GeometryReader { geo in
             let misura = misuraCongelata ?? geo.size
             let area = ShellView.area(per: misura, dockNascosto: dockNascosto)

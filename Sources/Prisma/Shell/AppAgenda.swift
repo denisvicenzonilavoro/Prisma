@@ -11,7 +11,7 @@ import SwiftUI
 /// l'occasione per rivedere la posizione del cliente. Toccando un impegno nella giornata si apre la sua traccia
 /// (TracciaImpegnoApple.swift). La griglia del mese e le sue celle sono in AgendaMese.swift.
 struct AppAgenda: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @State var modulo: Appuntamento?
     @State var moduloAttivita: Attivita?
     /// La striscia «Riesami del mese» ridotta a una riga (dura quanto la sessione, non va nell'archivio).
@@ -58,13 +58,13 @@ struct AppAgenda: View {
                 elimina: { stato.eliminaAppuntamento(a.id) },
                 spiegazione: spiegazioneModulo
             )
-            .environmentObject(stato)
+            .environment(stato)
         }
         .sheet(item: $moduloAttivita) { t in
             // L'attività salvata si ritrova nel giorno della sua scadenza
             ModuloAttivita(bozza: t, nuova: !stato.attivita.contains { $0.id == t.id },
                            salva: { stato.salvaAttivitaInAgenda($0) }, elimina: { stato.eliminaAttivita(t.id) })
-                .environmentObject(stato)
+                .environment(stato)
         }
         #if os(macOS)
         // Sul Mac «Nuova attività» arriva qui: Attività è accorpata nell'Agenda (su iPad la apre Attività)
@@ -230,9 +230,9 @@ struct AppAgenda: View {
             riepilogo
                 .padding(.leading, b.spazioPeriodo - b.spazio)
             Spacer(minLength: 0)
-            SegmentatoPillola(selezione: $stato.vistaAgenda, voci: viste)
+            SegmentatoPillola(selezione: Bindable(stato).vistaAgenda, voci: viste)
                 .fixedSize()
-            MenuTendina(selezione: $stato.filtroClienteAgenda, opzioni: clienti,
+            MenuTendina(selezione: Bindable(stato).filtroClienteAgenda, opzioni: clienti,
                         larghezza: compatta ? b.menuClientiCompatto : b.menuClienti)
             if compatta {
                 Button { nuovaAttivita() } label: { Image(systemName: "checklist") }
@@ -1003,12 +1003,13 @@ struct RigaScadenzaAgenda: View {
 // MARK: - Dettaglio dell'appuntamento
 
 struct DettaglioAppuntamento: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let evento: Appuntamento
     let modifica: () -> Void
     let nuovaAttivita: () -> Void
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let concluso = evento.stato == .concluso
         let cliente = stato.cliente(evento.clienteId)
         let posizione = evento.posizioneId.flatMap { id in stato.posizioni.first { $0.id == id } }

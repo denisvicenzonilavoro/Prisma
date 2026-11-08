@@ -40,7 +40,7 @@ enum ImportaDocumenti {
 /// Trascinamento e scelta dei file, cornice del rilascio, avviso di eliminazione, riallineamento all'apertura e
 /// al cambio del documento scelto.
 struct GestioneDocumenti: ViewModifier {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     /// Il nome del cliente nella cornice del rilascio.
     let nome: String
     /// Il pannello di sistema su iPhone e iPad (sul Mac non serve).

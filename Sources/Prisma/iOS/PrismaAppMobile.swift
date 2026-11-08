@@ -121,10 +121,10 @@ struct RadiceMobile: View {
         }
         .modifier(AspettoEAvvisoMobile(nascondiAvviso: mobile.mostraApertura || mobile.alTavolo))
         .environmentObject(mobile)
-        .environmentObject(mobile.stato)
+        .environment(mobile.stato)
         // Le viste del Mac riusate sull'iPad (intestazione, guida, ricerca) leggono anche le finestre e il blocco:
         // senza questo oggetto nell'ambiente SwiftUI si fermerebbe alla prima che lo chiede
-        .environmentObject(mobile.stato.sistema)
+        .environment(mobile.stato.sistema)
         .onOpenURL { url in mobile.ricevi(url) }
         .onChange(of: fase) { nuova in
             if nuova == .background { mobile.inBackground() }
@@ -136,11 +136,12 @@ struct RadiceMobile: View {
 /// può muoversi (Impostazioni › Sfondo, la sala opaca della presentazione) e quanta pioggia cade. Il resto
 /// (background, scena inattiva, «Riduci movimento», risparmio energetico) lo decide SfondoAcquaMobile.
 private struct AcquaMobile: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     /// Al tavolo dell'iPad c'è un foglio sul fondo opaco: l'acqua non si vede e si ferma.
     let coperta: Bool
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         // Con «Riduci movimento» di Prisma l'acqua si ferma (quello del sistema lo legge SfondoAcquaMobile)
         Materiale.SfondoScrivania(animato: stato.dati.impostazioni.sfondoAnimato && !stato.dati.impostazioni.riduciMovimento
                                       && stato.presentazione == nil && !coperta,
@@ -150,7 +151,7 @@ private struct AcquaMobile: View {
 
 /// Osserva lo StatoShell solo per l'aspetto e per l'avviso: il guscio sotto non si ricalcola per questo.
 private struct AspettoEAvvisoMobile: ViewModifier {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let nascondiAvviso: Bool
 
     func body(content: Content) -> some View {

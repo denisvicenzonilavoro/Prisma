@@ -17,12 +17,13 @@ struct DockMobile: View {
     let larghezza: CGFloat
 
     @EnvironmentObject var mobile: StatoMobile
-    @EnvironmentObject var stato: StatoShell
-    @EnvironmentObject var sistema: StatoFinestre
+    @Environment(StatoShell.self) var stato
+    @Environment(StatoFinestre.self) var sistema
 
     private typealias D = Tema.Misura.Mobile.Dock
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let voci = DisposizioneDockMobile.app(stile, consentita: { stato.appConsentita($0) })
         // Scrivania + app + «Tutte le app»
         let elementi = voci.count + 2

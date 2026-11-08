@@ -7,12 +7,13 @@ import SwiftUI
 /// quello scelto: cifre, probabilità a pallini con la traiettoria, posizioni che lavorano per lui. Le spiegazioni
 /// lunghe restano a richiesta. Sta dentro lo scorrimento del dossier.
 struct ObiettiviCliente: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let cliente: Cliente
     @State private var modulo: Obiettivo?
     @State private var daEliminare: Obiettivo?
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let elenco = stato.obiettiviCliente(cliente.id)
         let posizioni = stato.posizioniCliente(cliente.id)
         let scelto = elenco.first { $0.id == stato.obiettivoSelezionato } ?? elenco.first
@@ -106,7 +107,7 @@ struct ObiettiviCliente: View {
     /// gli obiettivi per stato a semaforo e quanto serve al mese. Un solo riquadro.
     private func quadro(_ elenco: [Obiettivo], posizioni: [Posizione]) -> some View {
         let m = Tema.Misura.DossierCliente.self
-        let avanzamenti = elenco.map { ($0, AvanzamentoObiettivo($0, posizioni: posizioni)) }
+        let avanzamenti = elenco.map { ($0, stato.avanzamento($0)) }
         let totale = elenco.reduce(0.0) { $0 + max($1.importo, 0) }
         let coperto = avanzamenti.reduce(0.0) { $0 + min($1.1.accantonato, max($1.0.importo, 0)) }
         let mancante = avanzamenti.reduce(0.0) { $0 + $1.1.mancante }
@@ -510,12 +511,13 @@ struct TestataObiettivo: View {
 
 /// Le azioni dell'obiettivo: Simula (consigliata) e Modifica in vista, le altre nel menu «⋯».
 struct AzioniObiettivo: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let obiettivo: Obiettivo
     let modifica: () -> Void
     let elimina: () -> Void
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let o = obiettivo
         HStack(spacing: Tema.Misura.DossierCliente.spazioAzioni) {
             Button { stato.simula(o) } label: { Label("Simula", systemImage: "slider.horizontal.3") }
@@ -728,12 +730,13 @@ struct ProbabilitaObiettivo: View {
 
 /// Le posizioni adatte del cliente come capsule da accendere o spegnere: accese lavorano per l'obiettivo.
 struct PosizioniObiettivo: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let obiettivo: Obiettivo
     /// Tutte le posizioni del cliente: qui restano quelle adatte (`AiutiObiettivi.posizioniAdatte`).
     let posizioni: [Posizione]
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let o = obiettivo
         let adatte = AiutiObiettivi.posizioniAdatte(posizioni)
         let m = Tema.Misura.DossierCliente.self

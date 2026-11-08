@@ -283,16 +283,17 @@ struct IngressoTavoloiPad: View {
 
 /// Il corpo dell'ingresso: osserva il tavolo (StatoMobile non si ridisegna per i suoi cambiamenti).
 private struct IngressoTavoloiPadCorpo: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @ObservedObject var tavolo: TavoloiPad
     let conCodice: Bool
 
     private typealias T = Tema.Apple.Tavolo.iPad
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         VStack(alignment: .leading, spacing: T.spazioIngresso) {
             if conCodice {
-                TextField("Codice del Mac (ABCD-EFGH-JKLM)", text: $stato.dati.impostazioni.vera.ponte.codice)
+                TextField("Codice del Mac (ABCD-EFGH-JKLM)", text: Bindable(stato.dati).impostazioni.vera.ponte.codice)
                     .campoTesto()
                     .textInputAutocapitalization(.characters)
                     .autocorrectionDisabled()

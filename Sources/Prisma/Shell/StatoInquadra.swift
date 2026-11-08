@@ -1,4 +1,5 @@
 import Combine
+import Observation
 import SwiftUI
 import UniformTypeIdentifiers
 #if os(macOS)
@@ -35,34 +36,34 @@ enum FaseInquadra: Equatable {
 }
 
 /// Lo stato della scena (un oggetto a parte: la cascata non pubblica StatoShell e le altre app non si ridisegnano).
-final class StatoInquadra: ObservableObject {
-    @Published private(set) var aperto = false
-    @Published private(set) var fase: FaseInquadra = .trascina
+@Observable final class StatoInquadra {
+    private(set) var aperto = false
+    private(set) var fase: FaseInquadra = .trascina
     /// Le righe lette, il risultato del motore e (solo per una foto trascinata o scattata) l'immagine, in memoria.
-    @Published private(set) var righe: [RigaLetta] = []
-    @Published private(set) var dati: DatiInquadrati?
-    @Published private(set) var immagine: ImmaginePiattaforma?
+    private(set) var righe: [RigaLetta] = []
+    private(set) var dati: DatiInquadrati?
+    private(set) var immagine: ImmaginePiattaforma?
     /// Da dove viene il testo: «iPhone di Denis», «polizza.jpg».
-    @Published private(set) var origine = ""
+    private(set) var origine = ""
     /// L'inquadratura arrivata sul ponte (esce da quelle in arrivo quando entra nel dossier).
-    @Published private(set) var inquadraturaId: String?
+    private(set) var inquadraturaId: String?
     /// Il cliente scelto (dall'iPhone o dal menu); nil = quello probabile.
-    @Published var clienteScelto: String?
+    var clienteScelto: String?
     /// Quante righe della scheda si vedono (la cascata) e se la lettura è finita («✓ Fatto», i pulsanti).
-    @Published private(set) var mostrate = 0
-    @Published private(set) var finito = false
+    private(set) var mostrate = 0
+    private(set) var finito = false
     /// La tabella del confronto con una temporanea (dopo «Confronta»).
-    @Published var confronto: ConfrontoTemporanea?
+    var confronto: ConfrontoTemporanea?
     /// «Aggiungi…» chiede di confermare i dati letti.
-    @Published var conferma = false
+    var conferma = false
     /// Un file trascinato sopra la zona.
-    @Published var fileSopra = false
+    var fileSopra = false
     /// iPhone: la schermata della fotocamera è aperta; l'invio al Mac in corso e la sua ricevuta.
-    @Published var telefonoAperto = false
-    @Published var inInvio = false
-    @Published var ricevuta: RicevutaPonte?
+    var telefonoAperto = false
+    var inInvio = false
+    var ricevuta: RicevutaPonte?
     /// Ogni apertura, foglio nuovo o chiusura cambia il giro: i passi in attesa di un giro vecchio non fanno nulla.
-    private(set) var giro = 0
+    @ObservationIgnored private(set) var giro = 0
 
     /// Le righe della scheda (cinque per le polizze), con il canale proposto.
     func righeScheda(canale: Canale) -> [RigaInquadra] {
@@ -269,7 +270,7 @@ extension StatoShell {
 
     /// Mentre la scena aspetta, il testo che arriva dall'iPhone entra da solo (`riceviDalPonte` lo mette in arrivo).
     func osservaInquadrature() {
-        $inquadratureInArrivo
+        inquadratureCambiate
             .receive(on: DispatchQueue.main)
             .sink { [weak self] elenco in
                 // Con lo Smontaggio davanti le righe le legge MotoreSmontaggio («Luce» giro 2)

@@ -4,7 +4,7 @@ import SwiftUI
 /// e «Salva scenario»; console a sinistra, cifra principale e grafico a destra. Senza cornice: sul Mac sta
 /// negli strumenti di Analisi 360, su iPhone e iPad anche nell'app Simulazioni.
 struct SimulatoreIpotesi: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     /// Dentro Analisi 360: «Confronta» passa allo strumento Confronto nella stessa finestra.
     var inAnalisi = false
     @State private var salvataggio: Simulazione?
@@ -43,6 +43,7 @@ struct SimulatoreIpotesi: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         VStack(spacing: 0) {
             testata
             corpo
@@ -323,7 +324,7 @@ struct SimulatoreIpotesi: View {
 /// Gli scenari salvati nel dossier: elenco, poi fino a tre a confronto (grafico e tabella).
 /// Senza cornice: negli strumenti di Analisi 360 e nell'app Simulazioni di iPhone e iPad.
 struct ScenariSalvati: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     /// Dentro Analisi 360: «Carica» e «Nuova ipotesi» passano allo strumento Simulatore nella stessa finestra.
     var inAnalisi = false
 
@@ -341,6 +342,7 @@ struct ScenariSalvati: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         VStack(spacing: 0) {
             testata
             contenuto

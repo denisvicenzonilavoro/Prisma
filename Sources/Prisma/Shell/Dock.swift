@@ -9,11 +9,12 @@ import SwiftUI
 /// in uno stato locale: passare sul dock non fa ricalcolare nient'altro dell'app. Le cornici delle icone
 /// salgono con `ChiaveIconeDock` nel registro dello stato (`StatoFinestre.iconeDock`): le finestre ne escono e vi rientrano.
 struct Dock: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     /// Quale app è davanti e quali sono aperte.
-    @EnvironmentObject var sistema: StatoFinestre
+    @Environment(StatoFinestre.self) var sistema
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let attiva = sistema.appAttiva
         let rientrano = sistema.rientrano
         let voci = AppPrisma.delDock.filter { stato.appConsentita($0) }.map { app -> VoceDock in

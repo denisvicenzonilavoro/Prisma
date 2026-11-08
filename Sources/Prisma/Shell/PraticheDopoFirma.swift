@@ -24,9 +24,10 @@ import SwiftUI
 //   su tutta la pagina). «Riduci movimento» e istantanee: tutto subito fermo nello stato finale.
 
 struct PraticheDopoFirma: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         CorpoPraticheDopo(stato: stato, dettaglioAperto: stato.praticaDettaglioIstantanea)
     }
 }
@@ -37,7 +38,7 @@ private enum FiltroPratiche: Hashable {
 }
 
 private struct CorpoPraticheDopo: View {
-    @ObservedObject var stato: StatoShell
+    let stato: StatoShell
     @StateObject private var dettaglio: StatoDettaglio
     @State private var filtro: FiltroPratiche?
 

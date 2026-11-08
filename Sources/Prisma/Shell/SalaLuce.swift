@@ -33,13 +33,14 @@ struct ProvaLuce: Equatable {
 }
 
 struct PalcoLuce: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let cliente: Cliente
     /// Sulla sala opaca della presentazione.
     var inSala = false
     @StateObject private var tela = StatoTelaLuce()
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let id = cliente.id
         let esito = CacheLuce.esito(cliente: stato.cliente(id) ?? cliente, posizioni: stato.posizioniCliente(id),
                                     obiettivi: stato.obiettiviCliente(id), eventi: stato.eventiVitaCliente(id),

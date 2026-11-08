@@ -7,21 +7,23 @@ import SwiftUI
 /// In sola lettura: serie, quote e avvisi arrivano dal Mac; il telefono non scarica nulla e non esce su internet.
 @MainActor
 struct MercatoTelefono: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         CorpoMercatoTelefono(sessione: stato.sessioneMercato)
     }
 }
 
 @MainActor
 private struct CorpoMercatoTelefono: View {
-    @EnvironmentObject var stato: StatoShell
-    @ObservedObject var sessione: SessioneMercato
+    @Environment(StatoShell.self) var stato
+    @Bindable var sessione: SessioneMercato
 
     private typealias T = Tema.Apple.Mercato.Telefono
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let tessere = stato.tessereMercato()
         let eventi = stato.eventiMercato()
         let avvisi = stato.avvisiMercato

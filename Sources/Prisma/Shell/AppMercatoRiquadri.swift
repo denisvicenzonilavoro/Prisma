@@ -9,7 +9,7 @@ import SwiftUI
 /// «Chi è toccato oggi» (o «dall'ultimo aggiornamento» con i dati vecchi): una scheda per evento, dal più toccato.
 /// Senza soglie, senza dati o senza clienti toccati la frase onesta al centro.
 struct RiquadroToccati: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let eventi: [EventoMercato]
     let vecchi: Bool
     let senzaDati: Bool
@@ -18,6 +18,7 @@ struct RiquadroToccati: View {
     private typealias K = Tema.Apple.Mercato.Toccati
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         VStack(alignment: .leading, spacing: 0) {
             Text(TestiAppMercato.titoloToccati(vecchi: vecchi))
                 .carattereApple(R.etichetta)
@@ -70,12 +71,13 @@ struct FraseVuotaMercato: View {
 /// e la data, gli avatar sovrapposti (al massimo 3, poi «+N») e «Prepara un messaggio» per il più toccato (gli altri
 /// dal menu del pulsante).
 struct SchedaToccatiMercato: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let evento: EventoMercato
 
     private typealias K = Tema.Apple.Mercato.Toccati
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let e = evento
         let forma = RoundedRectangle(cornerRadius: K.raggio, style: .continuous)
         let nomi = Dictionary(stato.clienti.map { ($0.id, $0.nome) }, uniquingKeysWith: { primo, _ in primo })
@@ -135,12 +137,13 @@ struct SchedaToccatiMercato: View {
 
 /// Gli avatar sovrapposti (30, −8, bordo 2 `cardPiena`), al massimo 3 e poi «+N»; clic: il dossier del cliente.
 struct GruppoAvatarMercato: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let clienti: [Cliente]
 
     private typealias K = Tema.Apple.Mercato.Toccati
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let mostrati = Array(clienti.prefix(RegoleTessereMercato.avatarMassimi))
         let altri = clienti.count - mostrati.count
         HStack(spacing: K.sovrapposizione) {
@@ -170,12 +173,13 @@ struct GruppoAvatarMercato: View {
 
 /// «Avvisi»: in testa il risultato della ricerca per ISIN (un posto fisso, mai tagliato), poi le righe degli avvisi.
 struct RiquadroAvvisi: View {
-    @EnvironmentObject var stato: StatoShell
-    @ObservedObject var sessione: SessioneMercato
+    @Environment(StatoShell.self) var stato
+    let sessione: SessioneMercato
 
     private typealias R = Tema.Apple.Mercato.Riquadro
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let avvisi = stato.avvisiMercato
         return VStack(alignment: .leading, spacing: 0) {
             Text(TestiAppMercato.avvisi)
@@ -214,12 +218,13 @@ struct RiquadroAvvisi: View {
 /// dell'avviso e la fonte; a destra l'interruttore «Da guardare» (spento = visto, pallino grigio). Clic sul testo:
 /// la posizione o il dossier; clic secondario: messaggio, apertura, visto.
 struct RigaAvvisoMercato: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let avviso: AvvisoMercato
 
     private typealias A = Tema.Apple.Mercato.Avviso
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let a = avviso
         let cliente = stato.cliente(a.clienteId)
         let tono = stato.tonoAvvisoMercato(a)
@@ -314,7 +319,7 @@ struct PallinoAvvisoMercato: View {
 /// l'elenco dei clienti a un clic); senza quote «Nessuna quota per …» e «Importa le quote»; un codice sbagliato la
 /// frase rossa. Entra da y +10 in 0,42 s (ferma con «Riduci movimento» e nelle istantanee).
 struct RisultatoISINMercato: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let risultato: RisultatoISIN
 
     @Environment(\.prismaStatoFinale) private var fermo
@@ -324,6 +329,7 @@ struct RisultatoISINMercato: View {
     private typealias I = Tema.Apple.Mercato.ISIN
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let visibile = fermo || entrato
         return contenuto
             .opacity(visibile ? 1 : 0)
@@ -447,7 +453,7 @@ struct RisultatoISINMercato: View {
 /// Il dettaglio che nasce dalla tessera (§12.4, Dubbio 10): il nome, la fonte e il codice, il valore con la
 /// variazione, la serie degli ultimi 12 mesi che si disegna, i limiti, il dato di terzi e quanti valori ci sono.
 struct DettaglioSerieMercato: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let id: String
 
     @Environment(\.statoDettaglioApple) private var dettaglio
@@ -455,6 +461,7 @@ struct DettaglioSerieMercato: View {
     private typealias K = Tema.Apple.Mercato.Dettaglio
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         if let s = stato.dati.mercato.serie(id) {
             contenuto(s)
         }

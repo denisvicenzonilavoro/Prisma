@@ -60,9 +60,22 @@ enum ProvaCarico {
         controlla(letto?.clienti.count == dati.clienti.count && letto?.posizioni.count == dati.posizioni.count, "Archivio riletto completo")
         controlla(scrittura + lettura < limiteArchivio, "Archivio salvato e riletto in \(secondi(scrittura + lettura)) (limite \(secondi(limiteArchivio)))")
 
+        // Archivio sul disco (giro 0, tappa 3): il file unico di prima contro la cartella a pezzi
+        do {
+            let m = try misuraDisco(dati)
+            print("INFO Disco, prima (archivio.json): \(m.kbVecchio) KB, scrittura \(secondi(m.scritturaVecchia)), avvio fino alla scrivania (lettura intera) \(secondi(m.letturaVecchia)), salvataggio di una nota \(secondi(m.notaVecchia))")
+            print("INFO Disco, dopo (a pezzi): \(m.file) file, \(m.kbPezzi) KB, scrittura intera \(secondi(m.scritturaPezzi)), indice \(secondi(m.letturaIndice)) (\(m.kbIndice) KB), lettura intera \(secondi(m.letturaPezzi)), salvataggio di una nota \(secondi(m.notaPezzi)) (\(m.scrittiNota) file, \(m.kbNota) KB)")
+            controlla(m.identico, "Cartella a pezzi riletta identica al file unico")
+            controlla(m.scrittiNota == 1, "Una nota cambiata riscrive un solo file (\(m.scrittiNota))")
+            controlla(m.letturaPezzi < limiteArchivio, "Cartella a pezzi letta in \(secondi(m.letturaPezzi)) (limite \(secondi(limiteArchivio)))")
+            controlla(m.notaPezzi < limiteNota, "Nota salvata in \(secondi(m.notaPezzi)) (limite \(secondi(limiteNota)))")
+        } catch {
+            controlla(false, "Archivio sul disco: \(error.localizedDescription)")
+        }
+
         // Vera e motori su ogni cliente
         let stato = StatoShell(persistente: false)
-        stato.dati = dati
+        stato.dati.carica(dati)
         stato.rispostePreparate = true
         let spunti: [SpuntoVera] = [.riepilogo, .checkUp, .proposte, .pensione, .resoconto]
         var peggiore = (nome: "", tempo: 0.0)
@@ -209,7 +222,7 @@ enum ProvaCarico {
 
         // Il radar del portafoglio («Luce» giro 2): tutti i clienti con un modello, in un passaggio
         var radar: RadarPortafoglio?
-        let tempoRadar = tempo { radar = MotoreRadar.calcola(stato.dati) }
+        let tempoRadar = tempo { radar = MotoreRadar.calcola(stato.dati.istantanea) }
         print("INFO Radar: \(radar?.voci.count ?? 0) clienti sul radar, \(radar?.fuori.count ?? 0) fuori tolleranza, in \(secondi(tempoRadar))")
         controlla((radar?.voci.count ?? 0) >= stato.dati.clienti.count / 2, "Radar: i clienti con un modello sono sul radar")
         controlla(tempoRadar < 0.5 * fattoreTempo, "Radar con \(stato.dati.clienti.count) clienti sotto 0,5 s")
@@ -249,6 +262,67 @@ enum ProvaCarico {
             dati.simulazioni += d.simulazioni
         }
         return dati
+    }
+
+    /// Il salvataggio di una nota nella cartella a pezzi (un file piccolo).
+    static let limiteNota = 0.25 * fattoreTempo
+
+    struct MisuraDisco {
+        var kbVecchio = 0, scritturaVecchia = 0.0, letturaVecchia = 0.0, notaVecchia = 0.0
+        var file = 0, kbPezzi = 0, kbIndice = 0, scritturaPezzi = 0.0, letturaIndice = 0.0, letturaPezzi = 0.0
+        var notaPezzi = 0.0, scrittiNota = 0, kbNota = 0
+        var identico = false
+    }
+
+    /// Prima e dopo sul disco, in una cartella temporanea: archivio.json (scrittura, lettura intera = ciò che l'avvio
+    /// aspettava, salvataggio di una nota = tutto riscritto) e la cartella a pezzi (scrittura intera, indice = ciò che
+    /// serve alla schermata di benvenuto, lettura intera in parallelo, salvataggio di una nota = il file del cliente).
+    nonisolated static func misuraDisco(_ dati: DatiPrisma) throws -> MisuraDisco {
+        let fm = FileManager.default
+        let radice = fm.temporaryDirectory.appendingPathComponent("Prisma-carico-\(UUID().uuidString)", isDirectory: true)
+        defer { try? fm.removeItem(at: radice) }
+        let prima = radice.appendingPathComponent("Prima", isDirectory: true)
+        let dopo = radice.appendingPathComponent("Dopo", isDirectory: true)
+        try fm.createDirectory(at: prima, withIntermediateDirectories: true)
+        try fm.createDirectory(at: dopo, withIntermediateDirectories: true)
+        func tempo(_ blocco: () throws -> Void) rethrows -> Double {
+            let inizio = Date()
+            try blocco()
+            return Date().timeIntervalSince(inizio)
+        }
+        var m = MisuraDisco()
+        let d = try Archivio.decodifica(Archivio.codificatore.encode(dati))
+        var conNota = d
+        guard let i = conNota.note.indices.first else { return m }
+        conNota.note[i].testo += " (un tasto)"
+
+        // Prima: un file solo, scritto e letto per intero
+        let file = prima.appendingPathComponent(Archivio.nomeFileVecchio)
+        m.scritturaVecchia = try tempo { try Archivio.nuovoCodificatore().encode(d).write(to: file, options: .atomic) }
+        m.kbVecchio = ((try? fm.attributesOfItem(atPath: file.path))?[.size] as? Int ?? 0) / 1024
+        var vecchio: DatiPrisma?
+        m.letturaVecchia = try tempo { vecchio = try Archivio.decodifica(Data(contentsOf: file)) }
+        m.notaVecchia = try tempo { try Archivio.nuovoCodificatore().encode(conNota).write(to: file, options: .atomic) }
+
+        // Dopo: la cartella a pezzi
+        let scrittore = ScrittorePezzi(cartella: dopo)
+        m.scritturaPezzi = try tempo { try scrittore.scrivi(d) }
+        let pezzi = ArchivioPezzi.cartellaPezzi(in: dopo)
+        let elenco = (fm.enumerator(at: pezzi, includingPropertiesForKeys: [.fileSizeKey])?.allObjects as? [URL] ?? []).filter { $0.pathExtension == "json" }
+        m.file = elenco.count
+        m.kbPezzi = elenco.reduce(0) { $0 + ((try? $1.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0) } / 1024
+        m.kbIndice = ((try? fm.attributesOfItem(atPath: pezzi.appendingPathComponent(ArchivioPezzi.nomeIndice).path))?[.size] as? Int ?? 0) / 1024
+        m.letturaIndice = try tempo { _ = try ArchivioPezzi.leggiIndice(pezzi) }
+        var letto: (lettura: LetturaArchivio, problemi: [ProblemaPezzo], scartati: [URL])?
+        m.letturaPezzi = try tempo { letto = try ArchivioPezzi.leggi(pezzi) }
+        m.identico = letto?.lettura.dati == vecchio && letto?.problemi.isEmpty == true && vecchio == d
+        if let l = letto?.lettura { scrittore.riparti(da: l) }
+        m.notaPezzi = try tempo { try scrittore.scrivi(conNota) }
+        m.scrittiNota = scrittore.ultimiScritti.count
+        if let f = scrittore.ultimiScritti.first {
+            m.kbNota = ((try? fm.attributesOfItem(atPath: pezzi.appendingPathComponent(f).path))?[.size] as? Int ?? 0) / 1024
+        }
+        return m
     }
 
     private static func secondi(_ s: Double) -> String {

@@ -25,7 +25,7 @@ import SwiftUI
 /// Il portafoglio del tema Apple con sotto i pannelli di sempre (`sotto`): scorre tutto insieme; il dettaglio
 /// di una scheda si apre sopra, centrato nello spazio del portafoglio.
 struct PortafoglioApple<Sotto: View>: View {
-    @ObservedObject var stato: StatoShell
+    let stato: StatoShell
     @Environment(\.prismaCalmo) private var calmo
     @Environment(\.modoIstantanea) private var istantanea
     @StateObject private var dettaglio: StatoDettaglio
@@ -36,7 +36,7 @@ struct PortafoglioApple<Sotto: View>: View {
     /// Le istantanee possono chiedere «Con le proposte» o il dettaglio della prima scheda già aperto
     /// (RichiestaIstantaneaPortafoglio): così sono nello stato voluto dal primo disegno.
     init(stato: StatoShell, @ViewBuilder sotto: () -> Sotto) {
-        _stato = ObservedObject(wrappedValue: stato)
+        self.stato = stato
         self.sotto = sotto()
         // Gli oggetti nascono una volta sola (`StateObject` valuta l'espressione solo alla prima comparsa)
         _dettaglio = StateObject(wrappedValue: Self.dettaglioIniziale(stato))
@@ -59,7 +59,8 @@ struct PortafoglioApple<Sotto: View>: View {
         let d = Tema.Apple.Posizioni.Disposizione.self
         let chiave = stato.chiaveVista
         return ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
+            // Pigra (giro 0, tappa 4): i pannelli di sotto si costruiscono quando entrano in vista
+            LazyVStack(alignment: .leading, spacing: 0) {
                 VStack(alignment: .leading, spacing: 0) {
                     TestaPortafoglioApple(stato: stato, chiave: chiave, nastro: nastro, sequenza: sequenza)
                         .equatable()
@@ -567,7 +568,8 @@ private struct NastroDaFareApple: View, Equatable {
         let n = Tema.Apple.Posizioni.Nastro.self
         let s = Tema.Apple.Posizioni.Scheda.self
         return ScrollView(.horizontal, showsIndicators: false) {
-            HStack(alignment: .top, spacing: n.spazio) {
+            // Pigro (giro 0, tappa 4): con 200 clienti il nastro ha centinaia di schede, si costruiscono solo quelle in vista
+            LazyHStack(alignment: .top, spacing: n.spazio) {
                 ForEach(m.blocchi) { b in
                     TestaGruppoDaFareApple(blocco: b)
                         .id(Self.idGruppo(b))
@@ -744,10 +746,11 @@ private struct DettaglioDaFareApple: View {
     let fatto: () -> Void
     let dossier: () -> Void
 
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @Environment(\.statoDettaglioApple) private var dettaglio
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let d = Tema.Apple.Posizioni.Dettaglio.self
         VStack(alignment: .leading, spacing: 0) {
             testata

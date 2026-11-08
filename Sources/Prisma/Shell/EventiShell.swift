@@ -63,7 +63,7 @@ extension View {
 }
 
 private struct AscoltoSblocco: ViewModifier {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let azione: () -> Void
 
     func body(content: Content) -> some View {
@@ -72,7 +72,7 @@ private struct AscoltoSblocco: ViewModifier {
 }
 
 private struct AscoltoNotificaNuova: ViewModifier {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let azione: (NotificaNuovaShell) -> Void
 
     func body(content: Content) -> some View {
@@ -82,7 +82,7 @@ private struct AscoltoNotificaNuova: ViewModifier {
 
 /// Tiene aggiornata la cornice della campanella senza ridisegnare niente (la classe non è pubblicata).
 private struct SegnoCampanella: ViewModifier {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     func body(content: Content) -> some View {
         content.background {

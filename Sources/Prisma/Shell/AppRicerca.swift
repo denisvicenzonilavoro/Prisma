@@ -7,9 +7,9 @@ import AppKit
 /// ⌘K, il dock, la barra e Vera aprono il pannello in alto come Spotlight (`RicercaSpotlight`).
 /// Si scrive, i risultati arrivano raggruppati per app; ↑ ↓ scelgono, Invio apre il risultato nella sua app.
 struct AppRicerca: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     /// App in primo piano, pannelli e blocco: decidono se le frecce scelgono i risultati.
-    @EnvironmentObject var sistema: StatoFinestre
+    @Environment(StatoFinestre.self) var sistema
     @FocusState private var fuoco: Bool
     @State private var selezione = 0
     @State private var tasti: Any?
@@ -24,6 +24,7 @@ struct AppRicerca: View {
     static let attesa = 0.15
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let sezioni = sezioni
         let elenco = sezioni.flatMap(\.risultati)
         VStack(spacing: 0) {

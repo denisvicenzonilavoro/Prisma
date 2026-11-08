@@ -10,7 +10,7 @@ extension StatoShell {
     /// (DerivatiDati); per un altro giorno si calcolano.
     func occasioniMessaggi(oggi: Date = Date()) -> OccasioniMessaggi {
         let calcola = { () -> OccasioniMessaggi in
-            let tutte = MotoreOccasioniMessaggi.calcola(dati: self.dati, oggi: oggi)
+            let tutte = MotoreOccasioniMessaggi.calcola(dati: self.datiDeiCalcoli(), oggi: oggi)
             return self.modoCliente.map { tutte.soloCliente($0) } ?? tutte
         }
         guard Calendar.current.isDateInToday(oggi) else { return calcola() }

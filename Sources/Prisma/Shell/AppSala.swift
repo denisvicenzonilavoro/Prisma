@@ -26,9 +26,10 @@ import SwiftUI
 
 /// Il contenuto della finestra della Sala.
 struct AppSala: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         CorpoSala(sala: stato.sala)
     }
 }
@@ -36,9 +37,10 @@ struct AppSala: View {
 /// Le pillole dei clienti nella testata della Sala: in modalità cliente (e nella presentazione) solo il cliente presente
 /// (decisione 2 del §1.3.8); fuori, come in Analisi 360.
 struct AzioniSala: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let t = Tema.Apple.Aree360.Testata.self
         if stato.clienti.count > 0 {
             let varianti = PilloleClienti.varianti(stato.clienti, attivo: stato.clienteAttivo,
@@ -51,13 +53,14 @@ struct AzioniSala: View {
 }
 
 private struct CorpoSala: View {
-    @EnvironmentObject var stato: StatoShell
-    @ObservedObject var sala: StatoSala
+    @Environment(StatoShell.self) var stato
+    let sala: StatoSala
     @Environment(\.prismaCalmo) private var calmo
     @Environment(\.modoIstantanea) private var istantanea
     @Namespace private var spazio
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let cliente = stato.clienteAttivo
         ZStack(alignment: .topLeading) {
             if let e = sala.esperienza, let cliente {
@@ -100,11 +103,12 @@ private struct CorpoSala: View {
 /// Esc nella Sala: dal palco torna alla griglia, dalla griglia chiude la finestra. Solo con la Sala davanti e nessun
 /// pannello o sovrapposizione sopra (che hanno il loro Esc). Osserva le finestre a parte: la Sala non si ridisegna.
 private struct EscSala: View {
-    @EnvironmentObject var stato: StatoShell
-    @ObservedObject var sistema: StatoFinestre
+    @Environment(StatoShell.self) var stato
+    let sistema: StatoFinestre
     let palco: Bool
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let libera = sistema.appAttiva == .sala && !sistema.pannelloNovita && sistema.sovrapposizione == nil
             && !sistema.pannelloNotifiche && !sistema.pannelloRicerca && sistema.guida == nil && !sistema.bloccato
             && stato.presentazione == nil
@@ -163,7 +167,7 @@ private struct GrigliaSala: View {
 
 /// La scheda grande «Il Prisma del cliente»: il saluto e gli anelli dei primi tre obiettivi del cliente attivo.
 private struct SchedaGrandeSala: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let cliente: Cliente?
     let spazio: Namespace.ID
     let apri: (EsperienzaSala) -> Void
@@ -171,6 +175,7 @@ private struct SchedaGrandeSala: View {
     private typealias S = Tema.Apple.SalaEsperienze.Scheda
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let e = EsperienzaSala.prismaCliente
         Button { apri(e) } label: {
             VStack(alignment: .leading, spacing: 0) {
@@ -290,7 +295,7 @@ private struct SchedaPiccolaSala: View {
 // MARK: - Il palco
 
 private struct PalcoSala: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let esperienza: EsperienzaSala
     let cliente: Cliente
     let spazio: Namespace.ID
@@ -299,6 +304,7 @@ private struct PalcoSala: View {
     private typealias P = Tema.Apple.SalaEsperienze.Palco
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         VStack(alignment: .leading, spacing: P.dallAlto - P.altezzaTestata) {
             testata
                 .frame(height: P.altezzaTestata)
@@ -355,7 +361,7 @@ private struct PalcoSala: View {
 /// Dentro la card del palco: la vista dell'esperienza. Finché un'esperienza non c'è, lo stato «in arrivo».
 /// `inSala`: sulla sala opaca della presentazione (si guarda e si gioca, senza i comandi del consulente).
 struct ContenutoPalco: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let esperienza: EsperienzaSala
     let cliente: Cliente
     var inSala = false
@@ -363,6 +369,7 @@ struct ContenutoPalco: View {
     @Environment(\.modoIstantanea) private var istantanea
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         // Ogni giro aggiunge qui la sua esperienza (switch su `esperienza`); un cambio di cliente la rifà da capo
         switch esperienza {
         case .giornataPensione:
@@ -422,10 +429,11 @@ struct InArrivoEsperienza: View {
 /// «▶︎ Presenta»: l'esperienza a tutta finestra sopra la sala opaca dei Prospetti (sempre scura), con il nome del
 /// cliente in alto e «Chiudi» bianco in basso. Esc la chiude. Sotto il velo l'acqua si ferma (`scrivaniaCoperta`).
 struct VistaPresentazioneEsperienza: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let esperienza: EsperienzaSala
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let s = Tema.Apple.SalaEsperienze.Presenta.self
         ZStack {
             s.velo

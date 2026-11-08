@@ -1,11 +1,12 @@
 import Foundation
+import Observation
 
 // Lo stato della palestra della trattativa (Studio › Palestra, «Luce» giro 5): cliente, difficoltà, turni, convinzione,
 // fase e il lavoro di Qwen, cancellabile. Un oggetto a parte da StatoShell (come la Sala e il copilota): ogni parola
 // che arriva ridisegna solo la conversazione, non la shell. Le modifiche avvengono sul thread principale.
 // La conversazione non si salva: alla fine si registra solo l'esito (`Impostazioni.palestra`).
 
-final class StatoPalestra: ObservableObject {
+@Observable final class StatoPalestra {
     enum Fase: Equatable {
         /// Prima di cominciare: si sceglie cliente e difficoltà.
         case attesa
@@ -21,33 +22,33 @@ final class StatoPalestra: ObservableObject {
     }
 
     /// Il cliente recitato (nil: il cliente attivo della shell, se c'è).
-    @Published var clienteId: String?
+    var clienteId: String?
     /// Il profilo inventato (solo età, lavoro e timori); usato al posto del cliente se `usaInventato`.
-    @Published var inventato = ProfiloInventatoPalestra()
-    @Published var usaInventato = false
-    @Published var difficolta = DifficoltaPalestra.realistica
-    @Published private(set) var turni: [TurnoPalestra] = []
-    @Published private(set) var fase = Fase.attesa
-    @Published private(set) var convinta = DifficoltaPalestra.realistica.convinzioneIniziale
+    var inventato = ProfiloInventatoPalestra()
+    var usaInventato = false
+    var difficolta = DifficoltaPalestra.realistica
+    private(set) var turni: [TurnoPalestra] = []
+    private(set) var fase = Fase.attesa
+    private(set) var convinta = DifficoltaPalestra.realistica.convinzioneIniziale
     /// Il testo di Vera mentre si scrive (la replica o, al primo turno, l'obiezione).
-    @Published private(set) var parziale = ""
+    private(set) var parziale = ""
     /// Vera ci mette più di 20 s.
-    @Published private(set) var lenta = false
+    private(set) var lenta = false
     /// Il campo «Oppure rispondi a parole tue…».
-    @Published var campo = ""
+    var campo = ""
     /// Il punteggio finale (nil prima della fine).
-    @Published private(set) var punteggio: Int?
+    private(set) var punteggio: Int?
     /// Il microfono del campo è acceso (la voce del Mac già in Vera).
-    @Published var ascolta = false
+    var ascolta = false
 
     /// Gli strumenti indicati da Vera nei turni («Cosa potevi usare»).
-    private(set) var strumenti: [StrumentoPalestra] = []
+    @ObservationIgnored private(set) var strumenti: [StrumentoPalestra] = []
     /// La scheda dell'allenamento in corso (fissata a «Inizia»).
-    private(set) var scheda: SchedaRecita?
-    private var compito: Task<Void, Never>?
-    private var compitoLento: Task<Void, Never>?
+    @ObservationIgnored private(set) var scheda: SchedaRecita?
+    @ObservationIgnored private var compito: Task<Void, Never>?
+    @ObservationIgnored private var compitoLento: Task<Void, Never>?
     /// Le prove passano una sessione con il Qwen finto.
-    var sessione: URLSession = .shared
+    @ObservationIgnored var sessione: URLSession = .shared
 
     var inCorso: Bool { fase == .veraScrive || fase == .tuoTurno }
 
@@ -243,7 +244,7 @@ final class StatoPalestra: ObservableObject {
     }
 
     /// La shell che registra l'esito nelle impostazioni (debole: la palestra vive dentro StatoShell).
-    private weak var stato: StatoShell?
+    @ObservationIgnored private weak var stato: StatoShell?
 
     // MARK: - Istantanee
 

@@ -8,12 +8,13 @@ import SwiftUI
 /// (MotoreNotifiche). Con «Riduci movimento» e nelle istantanee il pannello e le voci sono già al loro posto.
 /// Lo usa anche iPhone e iPad (PannelliMobile), sotto la loro barra.
 struct PannelloNotifiche: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @Environment(\.prismaCalmo) private var calmo
 
     private typealias N = Tema.Apple.CentroNotifiche
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let elenco = stato.notifiche
         ZStack(alignment: .topTrailing) {
             Color.clear
@@ -130,7 +131,7 @@ struct PannelloNotifiche: View {
 /// Una voce: pallino del gruppo, titolo in grassetto, dettaglio (con l'etichetta del canale se c'è).
 /// Entra da destra con il suo ritardo; più chiara sotto il puntatore.
 private struct VoceNotificaApple: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let notifica: Notifica
     let indice: Int
     @State private var sopra = false
@@ -138,6 +139,7 @@ private struct VoceNotificaApple: View {
     private typealias N = Tema.Apple.CentroNotifiche
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         if indice < N.vociInCascata {
             pulsante.entrataNotifica(indice)
         } else {

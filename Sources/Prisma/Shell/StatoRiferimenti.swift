@@ -60,7 +60,7 @@ extension StatoShell {
 
     /// Toglie l'indice, i suoi valori e le scelte che lo usavano (impostazioni e posizioni).
     func eliminaIndice(_ id: String) {
-        var d = dati
+        var d = dati.istantanea
         d.impostazioni.riferimenti.indici.removeAll { $0.id == id }
         d.impostazioni.riferimenti.valori.removeAll { $0.serie == id }
         if d.impostazioni.riferimenti.perPrevidenza == id { d.impostazioni.riferimenti.perPrevidenza = nil }
@@ -70,7 +70,8 @@ extension StatoShell {
             d.posizioni[i].riferimento = nil
         }
         // Una sola scrittura: un solo salvataggio e un solo ridisegno
-        if d != dati { dati = d }
+        let prima = dati.istantanea
+        if d != prima { dati.carica(d) }
     }
 
     func segnaRiferimentiRivisti() {

@@ -89,7 +89,7 @@ final class RichiestaIstantaneaMessaggi {
 
 @MainActor
 struct AppMessaggi: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @StateObject private var sessione = SessioneMessaggi()
 
     @Environment(\.prismaCalmo) private var calmo
@@ -104,6 +104,7 @@ struct AppMessaggi: View {
     private typealias M = Tema.Apple.Messaggi.Moto
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let richiesta = scatto ? RichiestaIstantaneaMessaggi.per(stato) : nil
         let elenco = sessione.elenco(stato.occasioniMessaggiConRichieste())
         let scelta = richiesta?.occasione(in: elenco) ?? sessione.occasione(in: elenco)
@@ -205,7 +206,7 @@ struct AppMessaggi: View {
 /// spedisci».
 @MainActor
 struct ColonnaOccasioniMessaggi: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let elenco: OccasioniMessaggi
     let scelta: String?
     let base: Double
@@ -215,6 +216,7 @@ struct ColonnaOccasioniMessaggi: View {
     private typealias M = Tema.Apple.Messaggi.Moto
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let forma = RoundedRectangle(cornerRadius: C.raggio, style: .continuous)
         // «Da festeggiare» in cima (i traguardi, Luce giro 5), poi «Da mandare oggi» e «Questa settimana»
         let gruppi: [(String, [OccasioneMessaggio])] = GruppoMessaggio.allCases.map { g in (g.titolo, elenco.voci(g)) }

@@ -18,8 +18,9 @@ import SwiftUI
 /// - disegno: `cacheDisplay(in:to:)` completo in un bitmap riusato (riferimento, non incrementale), una volta
 ///   sola per azione (al primo giro misurato): sul runner costa circa 1 s e varia poco;
 /// - mediana e massimo: dell'aggiornamento, più il disegno;
-/// - avvisi: gli `objectWillChange` di `StatoShell` durante l'azione (ogni avviso rivaluta tutte le viste che lo osservano,
-///   cioè le app aperte e i widget) e quelli di `StatoFinestre` (finestre, pannelli e blocco: shell, dock, barra e pannelli).
+/// - corpi: i body delle viste che leggono `StatoShell` rivalutati durante l'azione (`ContaCorpi`; fino al giro 0 di
+///   «Prisma istantaneo» erano gli `objectWillChange` di StatoShell, che con Observation non c'è più), e gli avvisi di
+///   `StatoFinestre` (finestre, pannelli e blocco: shell, dock, barra e pannelli).
 ///
 /// Due scenari: i clienti di prova, e 200 clienti con quattro app pesanti aperte sotto (Posizioni in modalità
 /// portafoglio, Prospetti e report, Clienti, Agenda). Dopo ogni scenario la shell si chiude davvero e si stampa
@@ -31,7 +32,13 @@ import SwiftUI
 ///
 /// Niente archivio e niente permessi: `StatoShell(persistente: false)` non legge né scrive il disco, non tocca
 /// il Portachiavi e non chiede il permesso delle notifiche; i promemoria del Mac sono spenti anche perché
-/// l'app è avviata con un argomento `--` (vedi `PromemoriaMac.disponibili`).
+/// l'app è avviata con un argomento `--` (vedi `PromemoriaMac.disponibili`). In più, per tutta la prova
+/// Application Support è una cartella vuota di prova (`Archivio.cartellaDiProva`), che alla fine deve essere ancora
+/// vuota: così la prova si può lanciare anche dall'app vera (Impostazioni › Strumenti › «Misura la velocità su questo
+/// Mac», MisuraVelocita.swift) senza toccare l'archivio dell'utente.
+///
+/// Le azioni di «Luce» (giro 0 di «Prisma istantaneo»): aprire la Sala, il prisma di luce, Pratiche, il radar e la
+/// Biblioteca, con le app di lavoro aperte sotto (`misuraLuce`).
 ///
 /// I limiti valgono per l'aggiornamento (stato + impaginazione: il lavoro che dipende da Prisma). Il disegno qui
 /// è fatto dalla CPU del runner Intel virtuale, senza GPU, e costa 1-3 s per qualunque azione: ha solo un limite
@@ -68,14 +75,32 @@ enum ProvaFluidita {
     static let origineSpostata = CGPoint(x: 48, y: 32)
     /// Le app pesanti dello scenario con 200 clienti, dalla più in fondo a quella in primo piano.
     static let appPesanti: [AppPrisma] = [.agenda, .presentazioni, .clienti, .posizioni]
+    /// Le azioni da misurare se si vuole una prova breve (variabile d'ambiente PRISMA_FLUIDITA_AZIONI, parole separate
+    /// da virgole, per esempio «Posizioni,radar,scuro,nota»); nil = tutte.
+    static let azioniScelte: [String]? = ProcessInfo.processInfo.environment["PRISMA_FLUIDITA_AZIONI"]
+        .map { $0.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty } }
+        .flatMap { $0.isEmpty ? nil : $0 }
+    /// L'inizio delle righe che annunciano un'azione (le legge l'avanzamento di MisuraVelocita).
+    nonisolated static let prefissoPasso = "PASSO fluidità · "
 
     static func esegui(uscita: URL? = nil) -> Int32 {
         _ = NSApplication.shared
+        // Una riga alla volta anche verso un tubo: l'avanzamento di «Misura la velocità su questo Mac» la legge subito
+        setvbuf(stdout, nil, _IOLBF, 0)
         // Come nelle istantanee: vetro disegnato, niente materiali di sistema né Metal
         Vetro.semplificato = true
         let sessione = SessioneFluidita()
         sessione.controlla(!PromemoriaMac.disponibili,
                            "Prova senza archivio, Portachiavi né permesso delle notifiche (stato non persistente, promemoria del Mac spenti)")
+        // L'archivio dell'utente resta fuori portata: al posto di Application Support una cartella vuota, che alla
+        // fine deve essere ancora vuota (la prova gira anche da Impostazioni › Strumenti, sul Mac dell'utente)
+        let cartellaFinta = cartellaIsolata()
+        defer {
+            Archivio.cartellaDiProva = nil
+            if let cartellaFinta { try? FileManager.default.removeItem(at: cartellaFinta) }
+        }
+        sessione.controlla(cartellaFinta != nil && Archivio.cartella.path.hasPrefix(cartellaFinta?.path ?? "/nessuna"),
+                           "L'archivio dell'utente è fuori portata: Prisma guarda in una cartella vuota di prova")
         guard sessione.errori == 0 else { return 1 }
         // Il genio: i conti delle strisce (CurveGenio) e il verso dell'immagine nelle strisce (MotoreGenio),
         // senza finestra. Gli errori fanno fallire la prova.
@@ -98,7 +123,36 @@ enum ProvaFluidita {
 
         scenarioRilasciato(sessione, nome: "\(DatiPrisma.demo().clienti.count) clienti", dati: nil, pesanti: false)
         scenarioRilasciato(sessione, nome: "\(molti.clienti.count) clienti", dati: molti, pesanti: true)
+        if let cartellaFinta {
+            let scritti = fileScritti(in: cartellaFinta)
+            sessione.controlla(scritti.isEmpty, scritti.isEmpty
+                ? "La prova non ha scritto nulla al posto dell'archivio: l'archivio dell'utente non è stato toccato"
+                : "La prova ha scritto dove starebbe l'archivio: \(scritti.prefix(3).joined(separator: ", "))")
+        }
         return sessione.concludi(uscita: uscita)
+    }
+
+    /// Una cartella vuota nuova, impostata come Application Support per tutta la prova (nil se non si crea).
+    static func cartellaIsolata() -> URL? {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("prisma-fluidita-\(UUID().uuidString)", isDirectory: true)
+        do {
+            try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        } catch {
+            return nil
+        }
+        Archivio.cartellaDiProva = url
+        return url
+    }
+
+    /// I file (e le cartelle) comparsi in `cartella`, con il percorso relativo.
+    nonisolated static func fileScritti(in cartella: URL) -> [String] {
+        let elenco = FileManager.default.enumerator(at: cartella, includingPropertiesForKeys: nil)?.allObjects as? [URL] ?? []
+        let base = cartella.resolvingSymlinksInPath().path
+        return elenco.map { url in
+            let p = url.resolvingSymlinksInPath().path
+            return p.hasPrefix(base) ? String(p.dropFirst(base.count + 1)) : p
+        }.sorted()
     }
 
     /// Uno scenario nel suo pool; dopo la chiusura, la durata, la memoria e se StatoShell è stato liberato.
@@ -276,6 +330,10 @@ enum ProvaFluidita {
         }, verifica: { ingrandita(.clienti) == false })])
         s.prepara(banco) { if ingrandita(.clienti) == false { stato.alternaIngrandimento(.clienti) } }
 
+        // «Luce»: la Sala, il prisma di luce, Pratiche, il radar e la Biblioteca, con le app di lavoro aperte sotto
+        // (nel giro del dock si aprono con la scrivania quasi vuota)
+        misuraLuce(s, banco, stato)
+
         s.misura(banco, [
             PassoFluidita(nome: "apri gli spazi di lavoro", azione: { stato.pannelloSpazi = true },
                           verifica: { stato.pannelloSpazi }),
@@ -291,6 +349,59 @@ enum ProvaFluidita {
         ])
         s.notaMemoria("\(nome), alla fine (shell aperta)")
         return stato
+    }
+
+    /// Le azioni nuove di «Luce» (Design/template-luce-specifica.md): ognuna si apre e si richiude, e lo stato torna
+    /// com'era (vista di Posizioni, portafoglio, palco della Sala).
+    private static func misuraLuce(_ s: SessioneFluidita, _ banco: BancoFluidita, _ stato: StatoShell) {
+        if stato.appConsentita(.sala) {
+            s.misura(banco, [
+                PassoFluidita(nome: "Luce · apri la Sala", azione: { stato.apri(.sala) },
+                              verifica: { stato.appAttiva == .sala && stato.sala.esperienza == nil }),
+                PassoFluidita(nome: "Luce · chiudi la Sala", azione: { stato.chiudi(.sala) },
+                              verifica: { !stato.aperta(.sala) }),
+            ])
+            // Il prisma di luce sul cliente attivo (nella prova è il fermo-immagine, come nelle istantanee: niente Metal)
+            let cliente = stato.clienteAttivo?.id ?? stato.dati.clienti.first?.id
+            s.misura(banco, [
+                PassoFluidita(nome: "Luce · apri il prisma di luce", azione: { stato.apriEsperienza(.prismaLuce, cliente: cliente) },
+                              verifica: { stato.appAttiva == .sala && stato.sala.esperienza == .prismaLuce }),
+                PassoFluidita(nome: "Luce · chiudi il prisma di luce", azione: {
+                    stato.tornaAllaSala()
+                    stato.chiudi(.sala)
+                }, verifica: { !stato.aperta(.sala) && stato.sala.esperienza == nil }),
+            ])
+        }
+        if stato.appConsentita(.pratiche) {
+            s.misura(banco, [
+                PassoFluidita(nome: "Luce · apri Pratiche", azione: { stato.apri(.pratiche) },
+                              verifica: { stato.appAttiva == .pratiche }),
+                PassoFluidita(nome: "Luce · chiudi Pratiche", azione: { stato.chiudi(.pratiche) },
+                              verifica: { !stato.aperta(.pratiche) }),
+            ])
+        }
+        if stato.appConsentita(.posizioni) {
+            let vista = stato.provaFuoco.vista
+            let portafoglio = stato.portafoglio
+            let dettaglio = stato.posizioneInDettaglio
+            s.misura(banco, [
+                PassoFluidita(nome: "Luce · apri il radar", azione: { stato.apriRadar() },
+                              verifica: { stato.appAttiva == .posizioni && stato.provaFuoco.vista == .radar }),
+                PassoFluidita(nome: "Luce · torna dal radar", azione: {
+                    stato.provaFuoco.vista = vista
+                    stato.portafoglio = portafoglio
+                    stato.posizioneInDettaglio = dettaglio
+                }, verifica: { stato.provaFuoco.vista == vista && stato.portafoglio == portafoglio }),
+            ])
+        }
+        if stato.appConsentita(.biblioteca) {
+            s.misura(banco, [
+                PassoFluidita(nome: "Luce · apri la Biblioteca", azione: { stato.apri(.biblioteca) },
+                              verifica: { stato.appAttiva == .biblioteca }),
+                PassoFluidita(nome: "Luce · chiudi la Biblioteca", azione: { stato.chiudi(.biblioteca) },
+                              verifica: { !stato.aperta(.biblioteca) }),
+            ])
+        }
     }
 
     /// Lascia girare il run loop senza misurare (lavori rimandati, notifiche ricalcolate), con un pool per giro.
@@ -388,6 +499,8 @@ private final class BancoFluidita {
     let finestra: NSWindow
     let conti = ContiFluidita()
     private var abbonamenti = Set<AnyCancellable>()
+    /// Gli avvisi di StatoFinestre all'inizio dell'azione (`StatoFinestre.avvisi`, al posto dell'`objectWillChange`).
+    var avvisiFinestrePrima = 0
     private var bitmap: NSBitmapImageRep?
     private var bitmapProvato = false
     private var chiuso = false
@@ -397,7 +510,7 @@ private final class BancoFluidita {
         let misura = ProvaFluidita.misura
         stato.area = ShellView.area(per: misura, dockNascosto: !stato.finestreVisibili.isEmpty)
         let vista = ShellView()
-            .environmentObject(stato)
+            .environment(stato)
             .environment(\.modoIstantanea, true)
             .frame(width: misura.width, height: misura.height)
         let h = NSHostingView(rootView: AnyView(vista))
@@ -411,9 +524,9 @@ private final class BancoFluidita {
         aspetto(scuro: false)
         f.orderFront(nil)
         let conti = self.conti
-        stato.objectWillChange.sink { _ in conti.avvisi += 1 }.store(in: &abbonamenti)
-        stato.sistema.objectWillChange.sink { _ in conti.avvisiFinestre += 1 }.store(in: &abbonamenti)
-        stato.$dati.dropFirst().sink { _ in conti.modificheDati += 1 }.store(in: &abbonamenti)
+        // StatoShell è @Observable: niente avviso unico, si contano i body rivalutati (ContaCorpi)
+        ContaCorpi.attivo = true
+        stato.modificheDati.sink { _ in conti.modificheDati += 1 }.store(in: &abbonamenti)
     }
 
     /// Aspetto della finestra (i colori dinamici del tema e il colorScheme di SwiftUI lo seguono).
@@ -425,7 +538,9 @@ private final class BancoFluidita {
 
     func azzeraConti() {
         conti.avvisi = 0
+        ContaCorpi.azzera()
         conti.avvisiFinestre = 0
+        avvisiFinestrePrima = stato.sistema.avvisi
         conti.modificheDati = 0
     }
 
@@ -521,7 +636,7 @@ private final class SessioneFluidita {
                 let inizio = CACurrentMediaTime()
                 let stato = StatoShell(persistente: false)
                 if let dati {
-                    stato.dati = dati
+                    stato.dati.carica(dati)
                     // Come all'avvio vero, le notifiche si calcolano subito su tutto l'archivio
                     stato.ricalcolaNotifiche()
                 }
@@ -552,6 +667,12 @@ private final class SessioneFluidita {
     /// il disegno al primo giro misurato.
     func misura(_ banco: BancoFluidita, _ passi: [PassoFluidita]) {
         guard !passi.isEmpty else { return }
+        // Solo alcune azioni (PRISMA_FLUIDITA_AZIONI, per misurare in fretta una tappa): un gruppo si misura se almeno un
+        // suo passo ne contiene una parola. Senza la variabile, tutte (la prova della build e di Impostazioni).
+        if let scelte = ProvaFluidita.azioniScelte,
+           !passi.contains(where: { p in scelte.contains { p.nome.localizedCaseInsensitiveContains($0) } }) {
+            return
+        }
         guard trascorso < ProvaFluidita.limiteTempo else {
             saltate += passi.count
             return
@@ -559,6 +680,8 @@ private final class SessioneFluidita {
         let primo = righe.count
         for p in passi {
             righe.append(RigaFluidita(scenario: scenario, azione: p.nome, limite: ProvaFluidita.limiteAzione))
+            // Per l'avanzamento di «Misura la velocità su questo Mac» (MisuraVelocita legge l'uscita)
+            print("\(ProvaFluidita.prefissoPasso)\(scenario) · \(p.nome)")
         }
         for giro in 0...giri {
             for (k, passo) in passi.enumerated() {
@@ -601,6 +724,8 @@ private final class SessioneFluidita {
         -> (aggiornamento: Double, disegno: Double?, avvisi: Int, avvisiFinestre: Int, datiCambiati: Bool) {
         banco.azzeraConti()
         let t = banco.aggiorna(passo.azione)
+        banco.conti.avvisi = ContaCorpi.conteggio
+        banco.conti.avvisiFinestre = banco.stato.sistema.avvisi - banco.avvisiFinestrePrima
         var d: Double?
         if disegno {
             d = banco.disegna()
@@ -626,9 +751,10 @@ private final class SessioneFluidita {
                 + "\(ProvaFluidita.giriPesanti) con le app pesanti, dopo un giro di riscaldamento) + un disegno per azione. "
                 + "Aggiornamento = azione, run loop e impaginazione; disegno = cacheDisplay completo; "
                 + "prima volta = aggiornamento del giro di riscaldamento; "
-                + "avvisi = objectWillChange di StatoShell (app e widget) e di StatoFinestre (shell, dock, barra, pannelli) durante l'azione.",
+                + "corpi = body rivalutati delle viste che leggono StatoShell (con Observation, al posto degli objectWillChange di prima); "
+                + "avvisi StatoFinestre = proprietà osservate di StatoFinestre cambiate (shell, dock, barra, pannelli) durante l'azione.",
             "",
-            "| Scenario | Azione | Mediana | Massimo | Aggiornamento | Disegno | Prima volta | Avvisi StatoShell | Avvisi StatoFinestre |",
+            "| Scenario | Azione | Mediana | Massimo | Aggiornamento | Disegno | Prima volta | Corpi rivalutati | Avvisi StatoFinestre |",
             "|---|---|---:|---:|---:|---:|---:|---:|---:|",
         ]
         for r in righe {
@@ -645,7 +771,7 @@ private final class SessioneFluidita {
                          "aggiornamento \(ProvaFluidita.ms(aggiornamento))"]
             if let disegno { parti.append("disegno \(ProvaFluidita.ms(disegno))") }
             if let p = r.primaVolta { parti.append("prima volta \(ProvaFluidita.ms(p))") }
-            if let avvisi { parti.append(avvisi == 1 ? "1 avviso di cambiamento" : "\(avvisi) avvisi di cambiamento") }
+            if let avvisi { parti.append(avvisi == 1 ? "1 corpo rivalutato" : "\(avvisi) corpi rivalutati") }
             if let avvisiFinestre { parti.append("\(avvisiFinestre) delle finestre") }
             print("INFO fluidità · \(r.scenario) · \(r.azione): \(parti.joined(separator: " · "))")
 

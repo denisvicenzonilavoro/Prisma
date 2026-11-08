@@ -77,13 +77,13 @@ final class CacheAree360: ObservableObject {
 /// cliente, area o strumento. Le istantanee possono chiederlo già aperto (`RichiestaIstantaneaAnalisi360` per
 /// Investimenti e Liquidità, `RichiestaIstantaneaSimulatore` per i simulatori).
 struct PresentatoreAree360<Contenuto: View>: View {
-    @ObservedObject var stato: StatoShell
+    let stato: StatoShell
     @StateObject private var dettaglio: StatoDettaglio
     @StateObject private var cache = CacheAree360()
     let contenuto: Contenuto
 
     init(stato: StatoShell, @ViewBuilder contenuto: () -> Contenuto) {
-        _stato = ObservedObject(wrappedValue: stato)
+        self.stato = stato
         self.contenuto = contenuto()
         // L'oggetto nasce una volta sola (`StateObject` valuta l'espressione solo alla prima comparsa)
         _dettaglio = StateObject(wrappedValue: Self.dettaglioIniziale(stato))
@@ -111,10 +111,11 @@ struct PresentatoreAree360<Contenuto: View>: View {
 
 /// Il contenuto del dettaglio aperto, secondo l'id della card da cui è nato.
 struct DettaglioArea360Apple: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let id: String
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         if SimulatoriAnalisiApple.area(id: id) != nil {
             DettaglioSimulatoreAnalisiApple(id: id)
         } else if let c = stato.cliente(stato.clienteAttivoId), let area = DettagliAree360.area(id: id) {
@@ -159,7 +160,7 @@ final class RichiestaIstantaneaAnalisi360 {
 /// La schermata delle aree di Analisi 360 (al posto della panoramica di prima): testata con le pillole dei clienti,
 /// le quattro card con l'anello e il piede con gli strumenti e le ipotesi.
 struct Analisi360Apple: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @EnvironmentObject var cache: CacheAree360
     @Environment(\.statoDettaglioApple) private var dettaglio
     @Environment(\.prismaCalmo) private var calmo
@@ -185,6 +186,7 @@ struct Analisi360Apple: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let d = Tema.Apple.Aree360.Disposizione.self
         let id = clienteMostrato ?? stato.clienteAttivoId
         return GeometryReader { geo in
@@ -193,7 +195,7 @@ struct Analisi360Apple: View {
                     testata(id)
                         .entrataCascata(Tema.Apple.Aree360.Tempi.indiceTestata, base: base)
                     // Le quattro aree o «Rispetto alle famiglie come la sua» (giro 6, FamiglieComeLaSua.swift)
-                    RigaVisteAnalisi360(vista: $stato.vistaAnalisi360, diProva: stato.tabelleFamiglie?.diProva ?? false,
+                    RigaVisteAnalisi360(vista: Bindable(stato).vistaAnalisi360, diProva: stato.tabelleFamiglie?.diProva ?? false,
                                         modoCliente: stato.inModoCliente,
                                         apriImpostazioni: { stato.apriImpostazioniFamiglie() })
                         .padding(.top, d.testataSotto)

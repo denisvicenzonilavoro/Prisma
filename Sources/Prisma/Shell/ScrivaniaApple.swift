@@ -27,7 +27,7 @@ import SwiftUI
 /// Aprire, spostare, ridurre o portare davanti una finestra pubblica StatoFinestre più volte (voli, coperture,
 /// passaggi di cornice): la disposizione dei riquadri non si ricalcola per nessuna di queste.
 struct RiquadriScrivania: View {
-    @EnvironmentObject var sistema: StatoFinestre
+    @Environment(StatoFinestre.self) var sistema
 
     var body: some View {
         CorpoRiquadriScrivania(sistema: sistema, bloccato: sistema.bloccato, davanti: !sistema.visibili.isEmpty)
@@ -265,13 +265,14 @@ struct EntrataBloccoScrivania: ViewModifier {
 // MARK: - Testata: saluto e pulsanti
 
 private struct TestataScrivania: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     // Valori, non una closure: la testata si confronta e si rifà solo quando cambiano
     let nascosto: Bool
     let base: Double
     let sotto: Bool
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let s = Tema.Apple.Scrivania.Saluto.self
         HStack(alignment: .top, spacing: Tema.Apple.Scrivania.Disposizione.spazio) {
             VStack(alignment: .leading, spacing: 0) {
@@ -463,9 +464,10 @@ struct CifraScrivania: View {
 // MARK: - La mossa del giorno
 
 private struct RiquadroMossa: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         CorpoMossaScrivania(stato: stato, chiave: stato.chiaveVista)
             .equatable()
             .riquadroScrivania(apre: { apriPosizioni() })
@@ -627,10 +629,11 @@ private struct SferaMossaScrivania: View {
 // MARK: - Agenda di oggi
 
 private struct RiquadroAgendaOggi: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let pronto: Bool
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         CorpoAgendaOggi(stato: stato, chiave: stato.chiaveVista, pronto: pronto)
             .equatable()
             .riquadroScrivania(apre: { stato.apri(.agenda) })
@@ -794,13 +797,14 @@ private struct RigaIncontroScrivania: View {
 // MARK: - Portafoglio clienti
 
 private struct RiquadroPortafoglioScrivania: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let pronto: Bool
     let ritardoAnelli: Double
     /// L'altezza della riga: sugli schermi bassi gli anelli si rimpiccioliscono per restare nel riquadro.
     let altezza: CGFloat
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let p = Tema.Apple.Scrivania.Portafoglio.self
         let lato = min(p.anelli, max(p.anelliMinimi, altezza - p.altezzaSenzaAnelli))
         CorpoPortafoglioScrivania(stato: stato, chiave: stato.chiaveVista, pronto: pronto, ritardoAnelli: ritardoAnelli,
@@ -934,9 +938,10 @@ private struct CorpoPortafoglioScrivania: View, Equatable {
 // MARK: - Vera
 
 private struct RiquadroVeraScrivania: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         // Le finestre stanno in `StatoFinestre`, che StatoShell non inoltra: le osserva SferaScrivaniaScoperta
         SferaScrivaniaScoperta(sistema: stato.sistema) { scoperta in corpo(viva: scoperta) }
     }
@@ -962,7 +967,7 @@ private struct RiquadroVeraScrivania: View {
 
 /// Ridisegna il riquadro di Vera quando la scrivania si copre o si scopre (le finestre aperte o ridotte).
 private struct SferaScrivaniaScoperta<C: View>: View {
-    @ObservedObject var sistema: StatoFinestre
+    let sistema: StatoFinestre
     let contenuto: (Bool) -> C
 
     var body: some View {
@@ -1069,9 +1074,10 @@ private struct SuggerimentoVeraScrivania: View {
 // MARK: - Da fare oggi
 
 private struct RiquadroDaFare: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         CorpoDaFareScrivania(stato: stato, chiave: stato.chiaveVista)
             .equatable()
             .riquadroScrivania(apre: { apriAttivita() })
@@ -1166,9 +1172,10 @@ private struct RigaDaFareScrivania: View {
 // MARK: - In scadenza entro 90 giorni
 
 private struct RiquadroScadenzeScrivania: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         CorpoScadenzeScrivania(stato: stato, chiave: stato.chiaveVista)
             .equatable()
             .riquadroScrivania(apre: {

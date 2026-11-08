@@ -6,13 +6,14 @@ import SwiftUI
 /// (il nome dell'app). Un tocco porta l'app nella finestra con il suo stato; «Scrivania» torna ai riquadri;
 /// «Chiudi tutte» chiude le app (lo stato dei dati resta).
 struct AppAperteiPad: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @EnvironmentObject var mobile: StatoMobile
-    @EnvironmentObject var sistema: StatoFinestre
+    @Environment(StatoFinestre.self) var sistema
 
     private typealias P = Tema.Misura.Mobile.Pannelli
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let aperte = Array(sistema.elenco.reversed())
         VStack(alignment: .leading, spacing: P.sottoTitolo) {
             Text("App aperte")
@@ -62,7 +63,7 @@ struct AppAperteiPad: View {
 
 /// Una scheda dello switcher (.sw-card): l'icona, il nome, di chi parla e se è nella finestra.
 private struct SchedaAppApertaMobile: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let finestra: StatoShell.Finestra
     let davanti: Bool
     let azione: () -> Void
@@ -72,6 +73,7 @@ private struct SchedaAppApertaMobile: View {
     private typealias A = Tema.Apple.AppAperte
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let forma = RoundedRectangle(cornerRadius: A.raggioScheda, style: .continuous)
         Button(action: azione) {
             VStack(spacing: P.spazioSchedaApp) {

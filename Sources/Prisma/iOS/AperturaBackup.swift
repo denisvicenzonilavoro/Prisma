@@ -221,7 +221,7 @@ struct AperturaBackup: View {
     private var piede: some View {
         VStack(spacing: M.spazioRiga) {
             if mobile.fase != .riuscita {
-                Button(StatoMobile.soloDatiDiProva(mobile.stato.dati) ? "Intanto guarda i dati di prova" : "Torna ai dati di questo dispositivo") {
+                Button(StatoMobile.soloDatiDiProva(mobile.stato.dati.istantanea) ? "Intanto guarda i dati di prova" : "Torna ai dati di questo dispositivo") {
                     mobile.chiudiApertura()
                 }
                 .font(Tipo.Mobile.pulsante)

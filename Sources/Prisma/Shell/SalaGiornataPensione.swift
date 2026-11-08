@@ -30,7 +30,7 @@ import UniformTypeIdentifiers
 
 /// Il contenuto del palco per una giornata della pensione.
 struct GiornataPensioneVista: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let cliente: Cliente
     /// Nella presentazione e sul tavolo la giornata si guarda, non si modifica.
     var modificabile = true
@@ -47,6 +47,7 @@ struct GiornataPensioneVista: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let nome = StatoShell.nomeBreve(cliente)
         let analisi = stato.dati.analisi[cliente.id]
         let calcolo = PensioneEsperienze.calcola(cliente: cliente, posizioni: stato.posizioniCliente(cliente.id), analisi: analisi)

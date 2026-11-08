@@ -35,10 +35,11 @@ struct PulsanteAlTavolo: View {
     @ObservedObject var tavolo: TavoloMac
     let contesto: ContestoTavolo
     var soloIcona = false
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @State private var aperto = false
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let t = Tema.Apple.Tavolo.self
         Button { aperto.toggle() } label: {
             HStack(spacing: t.spazioPuntino) {
@@ -56,7 +57,7 @@ struct PulsanteAlTavolo: View {
         .help("Al tavolo · \(tavolo.descrizione): l'iPad davanti al cliente mostra solo ciò che scegli qui")
         .popover(isPresented: $aperto, arrowEdge: .bottom) {
             PannelloAlTavolo(tavolo: tavolo, contesto: contesto)
-                .environmentObject(stato)
+                .environment(stato)
         }
     }
 }
@@ -65,11 +66,12 @@ struct PulsanteAlTavolo: View {
 struct PannelloAlTavolo: View {
     @ObservedObject var tavolo: TavoloMac
     let contesto: ContestoTavolo
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @State private var minimo = 50.0
     @State private var massimo = 1_000.0
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let t = Tema.Apple.Tavolo.self
         VStack(alignment: .leading, spacing: t.spazioPannello) {
             intestazione

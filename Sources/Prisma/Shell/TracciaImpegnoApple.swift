@@ -97,7 +97,7 @@ extension StatoShell {
 /// La traccia di un impegno, dentro il dettaglio aperto (già a misura piena).
 struct TracciaImpegnoApple: View {
     let idDettaglio: String
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @Environment(\.statoDettaglioApple) private var dettaglio
     @State private var preparando = false
 
@@ -109,6 +109,7 @@ struct TracciaImpegnoApple: View {
     private var eventoId: String { String(idDettaglio.dropFirst(Self.prefisso.count)) }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         if let e = stato.appuntamento(eventoId) {
             corpo(e)
         }

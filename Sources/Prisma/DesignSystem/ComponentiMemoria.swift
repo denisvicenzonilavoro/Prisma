@@ -211,7 +211,7 @@ struct LineaTempoRiesami: View {
 /// La scheda di una fotografia nella linea del tempo: data, da quanto, origini, cifre chiave e, chiuso
 /// di partenza, che cosa è cambiato rispetto alla fotografia precedente.
 struct SchedaFotografia: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let foto: FotografiaRiesame
     /// La fotografia salvata prima di questa (nil per la più vecchia).
     let precedente: FotografiaRiesame?
@@ -221,6 +221,7 @@ struct SchedaFotografia: View {
     @State private var aperto = false
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let m = Tema.Misura.Memoria.self
         VStack(alignment: .leading, spacing: m.spazioScheda) {
             testata

@@ -7,10 +7,11 @@ import SwiftUI
 /// Il pannello della guida: velo più una scheda di vetro centrata, come «Le tue app aperte». Il contenuto
 /// segue `sistema.guida`; cambiare scheda o pagina non anima il contenitore di ShellView.
 struct PannelloGuida: View {
-    @EnvironmentObject var stato: StatoShell
-    @EnvironmentObject var sistema: StatoFinestre
+    @Environment(StatoShell.self) var stato
+    @Environment(StatoFinestre.self) var sistema
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         GeometryReader { geo in
             let m = Tema.Misura.Guida.self
             ZStack {
@@ -106,7 +107,7 @@ struct PannelloGuida: View {
 // MARK: - Come funziona: l'introduzione in 5 pagine
 
 struct IntroduzionePrisma: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let pagina: Int
 
     private var pagine: [PaginaIntroduzione] { PaginaIntroduzione.pagine }
@@ -114,6 +115,7 @@ struct IntroduzionePrisma: View {
     private var ultima: Bool { indice == pagine.count - 1 }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let m = Tema.Misura.Guida.self
         VStack(alignment: .leading, spacing: m.spazio) {
             ZStack(alignment: .topLeading) {
@@ -264,10 +266,11 @@ private struct PaginaIntroduzioneVista: View {
 // MARK: - Le app: «Come si usa» di ognuna
 
 struct GuidaApp: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let app: AppPrisma
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let m = Tema.Misura.Guida.self
         HStack(alignment: .top, spacing: m.spazio) {
             ScrollView {
@@ -334,7 +337,7 @@ struct GuidaApp: View {
 /// «A cosa serve / Come si usa in 3 passi / Le parole da sapere» di un'app: nel popover del pulsante
 /// «Come si usa» e, più grande, nella scheda «Le app» della guida.
 struct SchedaAiutoApp: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let app: AppPrisma
     /// Nel popover: in fondo il collegamento «Tutta la guida di Prisma».
     let nelPopover: Bool
@@ -342,6 +345,7 @@ struct SchedaAiutoApp: View {
     var chiudi: (() -> Void)? = nil
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let m = Tema.Misura.Guida.self
         let aiuto = app.aiuto
         VStack(alignment: .leading, spacing: m.spazioBlocchi) {
@@ -450,7 +454,7 @@ private struct ChipParole: View {
 // MARK: - Le parole: il glossario
 
 struct GlossarioVista: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     /// La voce scelta (nil: la prima dell'elenco).
     let chiave: VoceGlossario.Chiave?
     @State private var testo = ""
@@ -464,6 +468,7 @@ struct GlossarioVista: View {
     }()
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let m = Tema.Misura.Guida.self
         let trovate = Glossario.cerca(testo, categoria: categoria)
         // La voce chiesta, se la ricerca la tiene; altrimenti la prima trovata
@@ -594,11 +599,12 @@ struct GlossarioVista: View {
 /// Il pulsante «Come si usa» dell'intestazione: apre la scheda dell'app in un popover. Nelle barre strette
 /// (`\.pulsantiSoloIcona`) resta solo l'icona, con il suggerimento.
 struct PulsanteComeSiUsa: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let app: AppPrisma
     @State private var aperto = false
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         Button { aperto.toggle() } label: {
             Label("Come si usa", systemImage: "questionmark.circle")
         }
@@ -607,7 +613,7 @@ struct PulsanteComeSiUsa: View {
         .accessibilityLabel("Come si usa \(app.titolo)")
         .popover(isPresented: $aperto, arrowEdge: .bottom) {
             SchedaAiutoApp(app: app, nelPopover: true, chiudi: { aperto = false })
-                .environmentObject(stato)
+                .environment(stato)
         }
     }
 }

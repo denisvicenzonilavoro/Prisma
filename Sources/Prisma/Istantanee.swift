@@ -332,17 +332,36 @@ enum Istantanee {
         }),
         ("87-clienti-fittizi", { s in
             // I 35 clienti di prova completi: rubrica piena e un cliente inventato aperto
-            s.dati = ClientiFittizi.completi()
+            s.dati.carica(ClientiFittizi.completi())
             s.clienteAttivoId = ClientiFittizi.prefisso + "ferraro"
             s.apri(.clienti)
         }),
         ("88-portafoglio-fittizi", { s in
-            s.dati = ClientiFittizi.completi()
+            s.dati.carica(ClientiFittizi.completi())
             s.portafoglio = true
             s.apri(.posizioni)
         }),
         ("85-impostazioni-strumenti", { s in
             // Strumenti, in fondo alla barra laterale: dati di prova, confronto dei modelli, prove
+            s.schedaImpostazioni = .strumenti
+            s.apri(.impostazioni)
+        }),
+        ("86-impostazioni-velocita", { s in
+            // Giro 0 di «Prisma istantaneo»: le tabelle delle due misure (DATI DI PROVA DICHIARATI, MisuraVelocita.swift)
+            // MisuraVelocita c'è solo sul Mac (su iPhone e iPad questa scena non serve)
+            #if os(macOS)
+            s.misureIstantanea = MisuraVelocita.diProvaIstantanea
+            s.ancoraImpostazioni = MisuraVelocita.ancora
+            #endif
+            s.schedaImpostazioni = .strumenti
+            s.apri(.impostazioni)
+        }),
+        ("86-impostazioni-velocita-scuro", { s in
+            // MisuraVelocita c'è solo sul Mac (su iPhone e iPad questa scena non serve)
+            #if os(macOS)
+            s.misureIstantanea = MisuraVelocita.diProvaIstantanea
+            s.ancoraImpostazioni = MisuraVelocita.ancora
+            #endif
             s.schedaImpostazioni = .strumenti
             s.apri(.impostazioni)
         }),
@@ -1481,7 +1500,7 @@ enum Istantanee {
         let cal = Calendar.current
         let oggi = cal.startOfDay(for: Date())
         func g(_ n: Int) -> Date { ValoriDaDocumento.mezzogiorno(cal.date(byAdding: .day, value: n, to: oggi) ?? oggi) }
-        var d = s.dati
+        var d = s.dati.istantanea
         // Nessun appuntamento futuro di Giulia, Sofia e Andrea: le loro proposte sono ferme
         let clienti: Set<String> = ["giulia", "sofia", "andrea"]
         d.appuntamenti.removeAll { clienti.contains($0.clienteId) && $0.inizio >= oggi }
@@ -1510,7 +1529,7 @@ enum Istantanee {
             sg.presentataIl = g(-60)
             sg.esitoIl = g(-40)
         }
-        s.dati = d
+        s.dati.carica(d)
     }
 
     /// Una data di questa settimana spostata indietro di `anni` (lunedì + `giorno`), per mettere le occasioni
@@ -1675,6 +1694,10 @@ enum Istantanee {
         tutteLeScene += sceneTraguardi
         // «Luce», giro 5: Studio › Palestra, la palestra della trattativa (Shell/IstantaneePalestra.swift)
         tutteLeScene += scenePalestra
+        // «Luce», giro 7: Clienti › dossier › L'azienda, i clienti imprenditori (Shell/IstantaneeAzienda.swift)
+        tutteLeScene += sceneAzienda
+        // «Luce», giro 6: Biblioteca · Trova la pagina (Shell/IstantaneeBiblioteca.swift)
+        tutteLeScene += sceneBiblioteca
         for scena in tutteLeScene where solo?.contains(scena.nome) ?? true {
             // Un pool per scena: senza il ciclo degli eventi (si esce in PrismaApp.init) niente lo svuoterebbe,
             // e stato, finestra e bitmap di ogni scena resterebbero in memoria fino all'ultima istantanea
@@ -1689,7 +1712,7 @@ enum Istantanee {
                 // La mini finestra di Vera è un pannello a parte: qui si disegna sopra la shell, dove compare
                 let vetrina = sceneVetrina.contains(scena.nome)
                 // Il foglio della fattura a grandezza piena (515): solo la carta, sempre chiara
-                let carta = cartaIstantanea(scena.nome, stato) ?? tavolaLuce(scena.nome)
+                let carta = cartaIstantanea(scena.nome, stato) ?? moduloAziendaIstantanea(scena.nome, stato) ?? tavolaLuce(scena.nome)
                 let vista = ZStack(alignment: .topTrailing) {
                     if vetrina {
                         VetrinaApple(intensita: stato.dati.impostazioni.pioggia.forza)
@@ -1704,8 +1727,8 @@ enum Istantanee {
                         }
                     }
                 }
-                    .environmentObject(stato)
-                    .environmentObject(stato.miniVera)
+                    .environment(stato)
+                    .environment(stato.miniVera)
                     .environment(\.modoIstantanea, true)
                     .environment(\.colorScheme, scuro ? .dark : .light)
                     .frame(width: misura.width, height: misura.height)

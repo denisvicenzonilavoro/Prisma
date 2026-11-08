@@ -9,7 +9,7 @@ import SwiftUI
 /// una pausa (e quando la vista sparisce o cambia il cliente). Scrivere `dati` a ogni passo del cursore
 /// ridisegnerebbe tutte le finestre aperte: sull'M1 da 8 GB si sente.
 struct SchedaTFR: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @Environment(\.modoIstantanea) private var modoIstantanea
     @State private var report = false
     @State private var daSalvare: PDFDaSalvare?
@@ -77,7 +77,7 @@ struct SchedaTFR: View {
         }
         .sheet(item: $daSalvare) { pdf in
             ModuloSalvaPDF(pdf: pdf, impostazioni: stato.dati.impostazioni.pdf)
-                .environmentObject(stato)
+                .environment(stato)
         }
         .onChange(of: stato.clienteAttivoId) { _ in
             // La bozza del cliente di prima si salva prima di passare al nuovo

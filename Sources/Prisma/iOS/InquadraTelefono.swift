@@ -26,8 +26,8 @@ extension View {
 }
 
 private struct PresentaInquadraTelefono: ViewModifier {
-    @EnvironmentObject var stato: StatoShell
-    @ObservedObject var inquadra: StatoInquadra
+    @Environment(StatoShell.self) var stato
+    let inquadra: StatoInquadra
     @Environment(\.istantaneaSchermo) private var istantanea
     @Environment(\.prismaCalmo) private var calmo
 
@@ -35,7 +35,7 @@ private struct PresentaInquadraTelefono: ViewModifier {
         content.fullScreenCover(isPresented: Binding(get: { inquadra.telefonoAperto },
                                                      set: { if !$0 { inquadra.chiudiTelefono() } })) {
             InquadraTelefono(inquadra: inquadra)
-                .environmentObject(stato)
+                .environment(stato)
                 .environment(\.istantaneaSchermo, istantanea)
                 .prismaCalmo(calmo)
         }
@@ -44,9 +44,10 @@ private struct PresentaInquadraTelefono: ViewModifier {
 
 /// Il pulsante «Inquadra» nella barra di Posizioni.
 struct PulsanteInquadraTelefono: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         Button { stato.inquadra.apriTelefono() } label: {
             Label("Inquadra", systemImage: "viewfinder")
         }
@@ -57,8 +58,8 @@ struct PulsanteInquadraTelefono: View {
 // MARK: - La schermata
 
 struct InquadraTelefono: View {
-    @EnvironmentObject var stato: StatoShell
-    @ObservedObject var inquadra: StatoInquadra
+    @Environment(StatoShell.self) var stato
+    let inquadra: StatoInquadra
     @Environment(\.istantaneaSchermo) private var istantanea
     @StateObject private var scanner = ControlloreScannerInquadra()
     @State private var scansioneDocumenti = false
@@ -66,6 +67,7 @@ struct InquadraTelefono: View {
     private typealias M = Tema.Apple.Inquadra.Mobile
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         GeometryReader { geo in
             ZStack(alignment: .topLeading) {
                 M.fondoCamera.ignoresSafeArea()

@@ -25,8 +25,22 @@ extension SchedaCliente {
     /// Le schede di Prisma che il template non ha, nel menu «Altro ▾».
     static let dellAltro: [SchedaCliente] = [.bisogni, .documenti, .inRegola, .riesami, .anagrafica, .profilo, .note]
 
-    /// Le schede del template disegnano da sé le loro card; le altre entrano nella cornice del tema.
-    var delTemplate: Bool { Self.delSegmentato.contains(self) }
+    /// Le schede del segmentato per il cliente: «L'azienda» in fondo solo se ha almeno un'azienda registrata («Luce»
+    /// giro 7, decisione 3.1).
+    static func delSegmentato(per c: Cliente?) -> [SchedaCliente] {
+        (c?.elencoAziende.isEmpty ?? true) ? delSegmentato : delSegmentato + [.azienda]
+    }
+
+    /// Le schede di «Altro» per il cliente: chi non ha un'azienda la trova qui, per aggiungerla.
+    static func dellAltro(per c: Cliente?) -> [SchedaCliente] {
+        (c?.elencoAziende.isEmpty ?? true) ? dellAltro + [.azienda] : dellAltro
+    }
+
+    /// Il titolo nel menu «Altro»: «Azienda» (§9.3.1, stato 1.4).
+    var titoloAltro: String { self == .azienda ? "Azienda" : titolo }
+
+    /// Le schede del template (e «L'azienda» di Luce) disegnano da sé le loro card; le altre entrano nella cornice del tema.
+    var delTemplate: Bool { Self.delSegmentato.contains(self) || self == .azienda }
 
     /// La scheda scorre dentro il dossier. Documenti (elenco e dettaglio scorrono da soli), Nel tempo e la linea
     /// della vita (il grafico prende tutta l'altezza) no.
@@ -113,7 +127,7 @@ extension View {
 
 /// La rubrica del tema Apple: `.lbl` con il numero dei clienti, ricerca a capsula, filtro dei preferiti, voci e piede.
 struct RubricaApple: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @Binding var ricerca: String
     @Binding var soloPreferiti: Bool
 
@@ -127,6 +141,7 @@ struct RubricaApple: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let r = Tema.Apple.Clienti.Rubrica.self
         // Filtrato e ordinato una volta per disegno, non a ogni uso
         let elenco = self.elenco
@@ -318,7 +333,7 @@ struct CampoRicercaApple: View {
 /// Il dossier del cliente attivo: testata, tessere, schede e contenuto della scheda, con il cambio di cliente e di
 /// scheda del template. `contenuto` disegna la scheda (lo fornisce AppClienti, che tiene i fogli dei moduli).
 struct DossierApple<Contenuto: View>: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     /// La superficie del dossier: sul Mac la card senza ombra; su iPad nil (sta già sul vetro della finestra).
     let superficie: Tema.Apple.Superficie?
     let modifica: (Cliente) -> Void
@@ -344,6 +359,7 @@ struct DossierApple<Contenuto: View>: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let id = clienteMostrato ?? stato.clienteAttivoId
         let scheda = schedaMostrata ?? stato.schedaCliente
         return Group {
@@ -372,7 +388,7 @@ struct DossierApple<Contenuto: View>: View {
                 .entrataCascata(0, base: baseDossier)
             TessereDossierApple(clienteId: c.id, base: baseDossier)
                 .padding(.top, k.Tessere.sopra)
-            SchedeDossierApple(selezione: $stato.schedaCliente)
+            SchedeDossierApple(selezione: Bindable(stato).schedaCliente, cliente: c)
                 .entrataCascata(k.Moto.indiceSchede, base: baseDossier)
                 .padding(.top, k.Schede.sopra)
                 .padding(.bottom, k.Schede.sotto)
@@ -419,6 +435,10 @@ struct DossierApple<Contenuto: View>: View {
     // MARK: Cambi
 
     private func cambiaCliente(_ nuovo: String) {
+        // «L'azienda» non c'è per un cliente senza azienda: si torna a «Panoramica» (riga 561 del template)
+        if stato.schedaCliente == .azienda, stato.cliente(nuovo)?.elencoAziende.isEmpty ?? true {
+            stato.schedaCliente = .panoramica
+        }
         guard nuovo != clienteMostrato else {
             esceCliente = false
             return
@@ -490,11 +510,12 @@ struct DossierApple<Contenuto: View>: View {
 /// preferito, «Modifica», «Analisi 360» e «Prospetti» (primario). Se non sta su una riga, prima le etichette
 /// dei canali diventano compatte e «Modifica» un'icona, poi i comandi scendono sotto il nome.
 struct TestataDossierApple: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let cliente: Cliente
     let modifica: () -> Void
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let t = Tema.Apple.Clienti.Testata.self
         return ViewThatFits(in: .horizontal) {
             HStack(alignment: .center, spacing: t.spazioAvatar) {
@@ -611,11 +632,12 @@ struct TestataDossierApple: View {
 /// (numero e «· importo»). Le cifre vengono dal quadro delle posizioni (`RiepilogoPosizioni`, in cache in
 /// DerivatiDati) e si contano fino al valore. Strette, vanno su due colonne.
 struct TessereDossierApple: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let clienteId: String
     var base: Double = Tema.Apple.Clienti.Moto.baseCambio
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let r = stato.riepilogoPosizioniCliente(clienteId)
         let t = Tema.Apple.Clienti.Tessere.self
         return ViewThatFits(in: .horizontal) {
@@ -695,11 +717,13 @@ struct TessereDossierApple: View {
 /// pillola bianca.
 struct SchedeDossierApple: View {
     @Binding var selezione: SchedaCliente
+    /// Il cliente del dossier: decide se «L'azienda» sta nel segmentato o in «Altro».
+    var cliente: Cliente? = nil
 
     var body: some View {
         HStack(spacing: Tema.Apple.Clienti.Schede.spazioAltro) {
-            SegmentatoPillola(selezione: $selezione, valori: SchedaCliente.delSegmentato, titolo: { $0.titolo })
-            AltroSchedeDossier(selezione: $selezione)
+            SegmentatoPillola(selezione: $selezione, valori: SchedaCliente.delSegmentato(per: cliente), titolo: { $0.titolo })
+            AltroSchedeDossier(selezione: $selezione, voci: SchedaCliente.dellAltro(per: cliente))
         }
     }
 }
@@ -708,13 +732,14 @@ struct SchedeDossierApple: View {
 /// del sistema con la scheda aperta spuntata, su iPad un `Menu`).
 struct AltroSchedeDossier: View {
     @Binding var selezione: SchedaCliente
+    var voci: [SchedaCliente] = SchedaCliente.dellAltro
 
     @Environment(\.prismaCalmo) private var calmo
     @Environment(\.modoIstantanea) private var istantanea
 
     /// La scheda di Prisma aperta (nil se è aperta una del template).
     private var scelta: SchedaCliente? {
-        SchedaCliente.dellAltro.contains(selezione) ? selezione : nil
+        voci.contains(selezione) ? selezione : nil
     }
 
     var body: some View {
@@ -722,12 +747,12 @@ struct AltroSchedeDossier: View {
         Button(action: apri) { capsula }
             .buttonStyle(StileSemplice())
             .help("Le altre schede del dossier")
-            .accessibilityLabel(scelta.map { "Altre schede, \($0.titolo)" } ?? "Altre schede")
+            .accessibilityLabel(scelta.map { "Altre schede, \($0.titoloAltro)" } ?? "Altre schede")
         #elseif os(iOS)
         Menu {
             Picker(selection: $selezione) {
-                ForEach(SchedaCliente.dellAltro, id: \.self) { s in
-                    Text(verbatim: s.titolo).tag(s)
+                ForEach(voci, id: \.self) { s in
+                    Text(verbatim: s.titoloAltro).tag(s)
                 }
             } label: {
                 Text("Altre schede")
@@ -738,7 +763,7 @@ struct AltroSchedeDossier: View {
         }
         .menuStyle(.button)
         .buttonStyle(.plain)
-        .accessibilityLabel(scelta.map { "Altre schede, \($0.titolo)" } ?? "Altre schede")
+        .accessibilityLabel(scelta.map { "Altre schede, \($0.titoloAltro)" } ?? "Altre schede")
         #endif
     }
 
@@ -746,7 +771,7 @@ struct AltroSchedeDossier: View {
         let s = Tema.Apple.Clienti.Schede.self
         let attiva = scelta != nil
         return HStack(spacing: s.spazioFreccia) {
-            Text(scelta?.titolo ?? "Altro")
+            Text(scelta?.titoloAltro ?? "Altro")
                 .lineLimit(1)
             Image(systemName: "chevron.down")
                 .font(s.freccia.font)
@@ -774,13 +799,13 @@ struct AltroSchedeDossier: View {
     #if os(macOS)
     /// Il menu del Mac: modale finché non si sceglie, quindi il bersaglio delle voci vive abbastanza.
     private func apri() {
-        let voci = SchedaCliente.dellAltro
+        let voci = self.voci
         let menu = NSMenu()
         let bersaglio = BersaglioMenuAltro { i in
             if i >= 0, i < voci.count { selezione = voci[i] }
         }
         for (i, v) in voci.enumerated() {
-            let voce = NSMenuItem(title: v.titolo, action: #selector(BersaglioMenuAltro.scegli(_:)), keyEquivalent: "")
+            let voce = NSMenuItem(title: v.titoloAltro, action: #selector(BersaglioMenuAltro.scegli(_:)), keyEquivalent: "")
             voce.target = bersaglio
             voce.tag = i
             voce.state = v == selezione ? .on : .off

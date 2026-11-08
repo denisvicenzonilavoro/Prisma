@@ -25,7 +25,7 @@ import SwiftUI
 /// Il passo «Ascolto» di Incontri: il copilota (sul Mac e sull'iPad) o le tre domande scritte con gli appunti.
 @MainActor
 struct SceltaAscoltoIncontri<Quaderno: View>: View {
-    @ObservedObject var copilota: StatoCopilotaIncontro
+    let copilota: StatoCopilotaIncontro
     let ascolto: Bool
     let clienteId: String
     let incontro: Incontro?
@@ -42,8 +42,8 @@ struct SceltaAscoltoIncontri<Quaderno: View>: View {
 
 @MainActor
 struct CopilotaIncontro: View {
-    @EnvironmentObject var stato: StatoShell
-    @ObservedObject var copilota: StatoCopilotaIncontro
+    @Environment(StatoShell.self) var stato
+    let copilota: StatoCopilotaIncontro
     let clienteId: String
     let incontro: Incontro?
 
@@ -67,6 +67,7 @@ struct CopilotaIncontro: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let cliente = stato.cliente(clienteId)
         let sessione = copilota.sessione(per: clienteId, in: stato)
         return GeometryReader { geo in
@@ -134,8 +135,8 @@ struct CopilotaIncontro: View {
 /// un solo ascolto alla volta.
 @MainActor
 struct ColonnaOggiCopilota: View {
-    @EnvironmentObject var stato: StatoShell
-    @ObservedObject var copilota: StatoCopilotaIncontro
+    @Environment(StatoShell.self) var stato
+    let copilota: StatoCopilotaIncontro
     let clienteId: String
     let incontro: Incontro?
     let cliente: Cliente?
@@ -150,6 +151,7 @@ struct ColonnaOggiCopilota: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let elenco = oggi
         return VStack(alignment: .leading, spacing: 0) {
             Text("Oggi")
@@ -282,10 +284,11 @@ struct VoceOggiCopilota: View {
 /// In fondo alla colonna: le domande scritte e gli appunti, e i prossimi passi dell'incontro.
 @MainActor
 struct CollegamentiCopilota: View {
-    @EnvironmentObject var stato: StatoShell
-    @ObservedObject var copilota: StatoCopilotaIncontro
+    @Environment(StatoShell.self) var stato
+    let copilota: StatoCopilotaIncontro
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         // Affiancati se ci stanno interi, altrimenti uno sotto l'altro (la colonna è stretta): mai troncati
         ViewThatFits(in: .horizontal) {
             HStack(spacing: Tema.Apple.Copilota.Colonna.spazioCollegamenti) { collegamenti }
@@ -309,8 +312,8 @@ struct CollegamentiCopilota: View {
 /// con il modulo per registrarlo. Senza consenso il copilota non parte.
 @MainActor
 struct SchedaConsensoCopilota: View {
-    @EnvironmentObject var stato: StatoShell
-    @ObservedObject var copilota: StatoCopilotaIncontro
+    @Environment(StatoShell.self) var stato
+    let copilota: StatoCopilotaIncontro
     let cliente: Cliente?
     /// Nella disposizione stretta (iPad in verticale): in riga, sopra la testata.
     let compatta: Bool
@@ -323,6 +326,7 @@ struct SchedaConsensoCopilota: View {
     private typealias K = Tema.Apple.Copilota.Consenso
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let consenso = cliente?.consensoCopilota
         return VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: Tema.Apple.Copilota.Testata.spazioIndicatore) {
@@ -435,8 +439,8 @@ struct ComeFunzionaCopilota: View {
 /// il verbale.
 @MainActor
 struct TestataCopilota: View {
-    @EnvironmentObject var stato: StatoShell
-    @ObservedObject var copilota: StatoCopilotaIncontro
+    @Environment(StatoShell.self) var stato
+    let copilota: StatoCopilotaIncontro
     let cliente: Cliente?
     let incontro: Incontro?
     let sessione: SessioneCopilota?
@@ -447,6 +451,7 @@ struct TestataCopilota: View {
     private var puoPartire: Bool { GuardiaCopilota.puoPartire(cliente) && !stato.solaLettura }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         HStack(alignment: .center, spacing: T.spazio) {
             if let c = cliente {
                 AvatarCliente(iniziali: c.iniziali, tinta: c.tinta.colori, lato: T.avatar)
@@ -590,8 +595,8 @@ private struct CorpoPremutoCopilota: View {
 /// cambia: un solo microfono non distingue le voci) e le parole riconosciute illuminate; in fondo la riga in corso.
 @MainActor
 struct TrascrizioneCopilotaVista: View {
-    @EnvironmentObject var stato: StatoShell
-    @ObservedObject var copilota: StatoCopilotaIncontro
+    @Environment(StatoShell.self) var stato
+    let copilota: StatoCopilotaIncontro
     let sessione: SessioneCopilota?
     let cliente: Cliente?
 
@@ -603,6 +608,7 @@ struct TrascrizioneCopilotaVista: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let riga = inCorso
         let pezzi = Array((sessione?.trascrizione ?? []).suffix(R.righeVisibili - (riga == nil ? 0 : 1)))
         return VStack(alignment: .leading, spacing: 0) {
@@ -851,13 +857,14 @@ struct ParoleCopilota: Layout {
 /// «Scarta». Sopra, quando serve, la nota su Vera non pronta e (sull'iPad) le schede in attesa del Mac.
 @MainActor
 struct ColonnaSchedeCopilota: View {
-    @EnvironmentObject var stato: StatoShell
-    @ObservedObject var copilota: StatoCopilotaIncontro
+    @Environment(StatoShell.self) var stato
+    let copilota: StatoCopilotaIncontro
     let sessione: SessioneCopilota?
 
     private typealias S = Tema.Apple.Copilota.Scheda
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let schede = sessione?.schede ?? []
         let attiva = copilota.ascolta || !schede.isEmpty
         return VStack(alignment: .leading, spacing: 0) {

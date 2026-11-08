@@ -13,41 +13,41 @@ extension AppImpostazioni {
         return VStack(alignment: .leading, spacing: M.spazioGruppi) {
             GruppoImpostazioni(titolo: "Orari di lavoro") {
                 RigaImpostazione(titolo: "Giorni di lavoro", sottotitolo: "«Pianifica» cerca solo qui") {
-                    SceltaGiorniLavoro(giorni: $stato.dati.impostazioni.orari.giorni)
+                    SceltaGiorniLavoro(giorni: Bindable(stato.dati).impostazioni.orari.giorni)
                 }
                 RigaImpostazione(titolo: "Mattina", sottotitolo: "Anche orario continuato") {
-                    sceltaFascia($stato.dati.impostazioni.orari.mattina)
+                    sceltaFascia(Bindable(stato.dati).impostazioni.orari.mattina)
                 }
                 RigaImpostazione(titolo: "Pomeriggio",
                                  sottotitolo: orari.pomeriggioAttivo ? "Dopo la pausa pranzo" : "Spento: solo il mattino") {
-                    interruttore($stato.dati.impostazioni.orari.pomeriggioAttivo)
+                    interruttore(Bindable(stato.dati).impostazioni.orari.pomeriggioAttivo)
                 }
                 // La fascia sotto il suo interruttore: una cosa per riga
                 if orari.pomeriggioAttivo {
                     RigaImpostazione(titolo: "Fascia del pomeriggio") {
-                        sceltaFascia($stato.dati.impostazioni.orari.pomeriggio)
+                        sceltaFascia(Bindable(stato.dati).impostazioni.orari.pomeriggio)
                     }
                 }
                 RigaImpostazione(titolo: "Margine tra gli appuntamenti", sottotitolo: "Prima e dopo ogni appuntamento") {
-                    segmenti(AppImpostazioni.opzioniMargini, $stato.dati.impostazioni.orari.margineMinuti)
+                    segmenti(AppImpostazioni.opzioniMargini, Bindable(stato.dati).impostazioni.orari.margineMinuti)
                 }
                 RigaImpostazione(titolo: "Riesami al giorno", sottotitolo: "Oltre, il riesame va al giorno dopo",
                                  aiuto: "Ognuno chiede la sua preparazione", ultima: true) {
-                    segmenti(AppImpostazioni.opzioniRiesami, $stato.dati.impostazioni.orari.riesamiAlGiorno)
+                    segmenti(AppImpostazioni.opzioniRiesami, Bindable(stato.dati).impostazioni.orari.riesamiAlGiorno)
                 }
             }
             GruppoImpostazioni(titolo: "Calendario") {
                 RigaImpostazione(titolo: "Festività", sottotitolo: "Nazionali italiane",
                                  aiuto: "Capodanno, Epifania, Pasqua e Pasquetta, 25 aprile, 1° maggio, 2 giugno, Ferragosto, 4 ottobre, Ognissanti, Immacolata, Natale e Santo Stefano",
                                  ultima: true) {
-                    interruttore($stato.dati.impostazioni.orari.festivi)
+                    interruttore(Bindable(stato.dati).impostazioni.orari.festivi)
                 }
             }
             GruppoImpostazioni(titolo: "Seguito delle proposte") {
                 RigaImpostazione(titolo: "Recupera dopo", sottotitolo: "Proposte senza risposta né appuntamento",
                                  aiuto: "Dopo quanti giorni una proposta presentata, senza appuntamento in agenda, torna tra le cose da recuperare (notifiche, scrivania, Portafoglio). Non è una regola di legge: è il tuo ritmo",
                                  ultima: true) {
-                    MenuTendina(selezione: $stato.dati.impostazioni.giorniSeguitoProposte,
+                    MenuTendina(selezione: Bindable(stato.dati).impostazioni.giorniSeguitoProposte,
                                 opzioni: AppImpostazioni.opzioniGiorniSeguito)
                 }
             }
@@ -145,30 +145,30 @@ extension AppImpostazioni {
             Group {
                 RigaImpostazione(titolo: "Appuntamenti", sottotitolo: "Prima dell'inizio, con il luogo") {
                     HStack(spacing: 8) {
-                        MenuTendina(selezione: $stato.dati.impostazioni.promemoria.anticipoMinuti,
+                        MenuTendina(selezione: Bindable(stato.dati).impostazioni.promemoria.anticipoMinuti,
                                     opzioni: ImpostazioniPromemoria.anticipi.map { ($0, ImpostazioniPromemoria.nomeAnticipo($0) + " prima") },
                                     larghezza: M.menuStretto)
-                        interruttore($stato.dati.impostazioni.promemoria.appuntamenti)
+                        interruttore(Bindable(stato.dati).impostazioni.promemoria.appuntamenti)
                     }
                 }
                 RigaImpostazione(titolo: "Attività", sottotitolo: "Il giorno di scadenza, \(ora)") {
-                    interruttore($stato.dati.impostazioni.promemoria.attivita)
+                    interruttore(Bindable(stato.dati).impostazioni.promemoria.attivita)
                 }
                 RigaImpostazione(titolo: "Scadenze delle polizze", sottotitolo: "30 e 7 giorni prima e il giorno stesso",
                                  aiuto: "Posizioni in essere: 30 e 7 giorni prima e il giorno stesso, \(ora)") {
-                    interruttore($stato.dati.impostazioni.promemoria.scadenze)
+                    interruttore(Bindable(stato.dati).impostazioni.promemoria.scadenze)
                 }
                 RigaImpostazione(titolo: "Compleanni dei clienti", sottotitolo: "Il giorno stesso, \(ora)") {
-                    interruttore($stato.dati.impostazioni.promemoria.compleanni)
+                    interruttore(Bindable(stato.dati).impostazioni.promemoria.compleanni)
                 }
                 RigaImpostazione(titolo: "Occasioni",
                                  sottotitolo: "\(stato.dati.impostazioni.occasioni.anticipoGiorni) giorni prima e il giorno stesso",
                                  aiuto: "\(ora): penali finite, previdenza, famiglia, coperture. L'anticipo si sceglie qui sotto, in Occasioni") {
-                    interruttore($stato.dati.impostazioni.promemoria.occasioni)
+                    interruttore(Bindable(stato.dati).impostazioni.promemoria.occasioni)
                 }
                 RigaImpostazione(titolo: "Nomi dei clienti", sottotitolo: "Spento: solo l'ora e cosa fare",
                                  aiuto: "In modalità cliente i banner non compaiono", ultima: true) {
-                    interruttore($stato.dati.impostazioni.promemoria.nomiClienti)
+                    interruttore(Bindable(stato.dati).impostazioni.promemoria.nomiClienti)
                 }
             }
             .disabled(!scelte.attivi)
@@ -190,7 +190,7 @@ extension AppImpostazioni {
                 RigaImpostazione(titolo: "Validità", sottotitolo: "Poi il profilo va aggiornato") {
                     HStack(spacing: M.spazioGriglia) {
                         EtichettaCanale(canale: .alleanza, compatta: true)
-                        MenuTendina(selezione: $stato.dati.impostazioni.conformita.mesiQuestionarioAlleanza,
+                        MenuTendina(selezione: Bindable(stato.dati).impostazioni.conformita.mesiQuestionarioAlleanza,
                                     opzioni: AppImpostazioni.opzioniMesi(AppImpostazioni.mesiQuestionario, con: regole.mesiQuestionarioAlleanza),
                                     larghezza: M.menuGriglia)
                     }
@@ -198,7 +198,7 @@ extension AppImpostazioni {
                 RigaImpostazione(titolo: "Validità", sottotitolo: "Ogni quanto si aggiorna il profilo", ultima: true) {
                     HStack(spacing: M.spazioGriglia) {
                         EtichettaCanale(canale: .indipendente, compatta: true)
-                        MenuTendina(selezione: $stato.dati.impostazioni.conformita.mesiQuestionarioIndipendente,
+                        MenuTendina(selezione: Bindable(stato.dati).impostazioni.conformita.mesiQuestionarioIndipendente,
                                     opzioni: AppImpostazioni.opzioniMesi(AppImpostazioni.mesiQuestionario, con: regole.mesiQuestionarioIndipendente),
                                     larghezza: M.menuGriglia)
                     }
@@ -208,28 +208,28 @@ extension AppImpostazioni {
             GruppoImpostazioni(titolo: "Adeguata verifica") {
                 RigaImpostazione(titolo: "Rinnovo per rischio", sottotitolo: "Antiriciclaggio") {
                     HStack(alignment: .bottom, spacing: M.spazioGriglia) {
-                        rischio(.alto, $stato.dati.impostazioni.conformita.mesiVerificaAlto,
+                        rischio(.alto, Bindable(stato.dati).impostazioni.conformita.mesiVerificaAlto,
                                 AppImpostazioni.opzioniMesi(AppImpostazioni.mesiVerificaAlto, con: regole.mesiVerificaAlto))
-                        rischio(.medio, $stato.dati.impostazioni.conformita.mesiVerificaMedio,
+                        rischio(.medio, Bindable(stato.dati).impostazioni.conformita.mesiVerificaMedio,
                                 AppImpostazioni.opzioniMesi(AppImpostazioni.mesiVerificaMedio, con: regole.mesiVerificaMedio))
-                        rischio(.basso, $stato.dati.impostazioni.conformita.mesiVerificaBasso,
+                        rischio(.basso, Bindable(stato.dati).impostazioni.conformita.mesiVerificaBasso,
                                 AppImpostazioni.opzioniMesi(AppImpostazioni.mesiVerificaBasso, con: regole.mesiVerificaBasso))
                     }
                 }
                 RigaImpostazione(titolo: "Anche sul canale indipendente", sottotitolo: "Se sei tenuto all'antiriciclaggio",
                                  ultima: true) {
-                    interruttore($stato.dati.impostazioni.conformita.verificaIndipendente)
+                    interruttore(Bindable(stato.dati).impostazioni.conformita.verificaIndipendente)
                 }
             }
             GruppoImpostazioni(titolo: "Consensi e privacy") {
                 RigaImpostazione(titolo: "Consenso commerciale", sottotitolo: "Ogni quanto riconfermarlo") {
-                    MenuTendina(selezione: $stato.dati.impostazioni.conformita.mesiCommerciale,
+                    MenuTendina(selezione: Bindable(stato.dati).impostazioni.conformita.mesiCommerciale,
                                 opzioni: AppImpostazioni.opzioniMesi(AppImpostazioni.mesiCommerciale, con: regole.mesiCommerciale),
                                 larghezza: M.menuGriglia)
                 }
                 RigaImpostazione(titolo: "Informativa privacy aggiornata il", sottotitolo: "Chi l'ha firmata prima la riceve di nuovo",
                                  ultima: true) {
-                    CampoDataFacoltativa(data: $stato.dati.impostazioni.conformita.informativaAggiornataIl,
+                    CampoDataFacoltativa(data: Bindable(stato.dati).impostazioni.conformita.informativaAggiornataIl,
                                          predefinita: Calendar.current.startOfDay(for: Date()))
                 }
             }
@@ -271,11 +271,11 @@ extension AppImpostazioni {
         GruppoImpostazioni(titolo: "PDF per i clienti") {
             RigaImpostazione(titolo: "Proponi la password", sottotitolo: "Protezione già attiva al salvataggio",
                              aiuto: "Salvando un prospetto o un report, la protezione è già attiva") {
-                interruttore($stato.dati.impostazioni.pdf.proteggi)
+                interruttore(Bindable(stato.dati).impostazioni.pdf.proteggi)
             }
             RigaImpostazione(titolo: "Password proposta", sottotitolo: "Dai dati del cliente",
                              aiuto: "Prisma non conserva nessuna password", ultima: true) {
-                MenuTendina(selezione: $stato.dati.impostazioni.pdf.regola,
+                MenuTendina(selezione: Bindable(stato.dati).impostazioni.pdf.regola,
                             opzioni: ImpostazioniPDF.Regola.allCases.map { ($0, $0.nome) }, larghezza: M.menuLargo)
             }
         }
@@ -301,7 +301,7 @@ extension AppImpostazioni {
                                  sottotitolo: ponte.abbinato ? "Abbinato" : "Da Impostazioni › Vera sul Mac",
                                  aiuto: ponte.abbinato ? "Lo trovi sul Mac in Impostazioni › Vera (arriva anche con il backup)"
                                                        : "Scrivi il codice che compare sul Mac in Impostazioni › Vera › iPhone e iPad") {
-                    TextField("ABCD-EFGH-JKLM", text: $stato.dati.impostazioni.vera.ponte.codice)
+                    TextField("ABCD-EFGH-JKLM", text: Bindable(stato.dati).impostazioni.vera.ponte.codice)
                         .campoTesto()
                         .textInputAutocapitalization(.characters)
                         .autocorrectionDisabled()
@@ -310,11 +310,11 @@ extension AppImpostazioni {
                 }
                 RigaImpostazione(titolo: "Ragionamento", sottotitolo: "Sulle domande difficili",
                                  aiuto: "Automatico: Vera ragiona sulle domande difficili o quando le dici «pensaci bene». Risponde più piano") {
-                    MenuTendina(selezione: $stato.dati.impostazioni.vera.ragionamento,
+                    MenuTendina(selezione: Bindable(stato.dati).impostazioni.vera.ragionamento,
                                 opzioni: SceltaRagionamento.allCases.map { ($0, $0.nome) }, larghezza: M.menuMedio)
                 }
                 RigaImpostazione(titolo: "Conserva le conversazioni", sottotitolo: "Nel dossier, su questo dispositivo", ultima: true) {
-                    interruttore($stato.dati.impostazioni.vera.conservaConversazioni)
+                    interruttore(Bindable(stato.dati).impostazioni.vera.conservaConversazioni)
                 }
             }
             // Solo iPad: il tavolo con il Mac, con lo stesso codice (TavoloiPad.swift)
@@ -372,22 +372,22 @@ extension AppImpostazioni {
             }
             GruppoImpostazioni(titolo: "Come lavora") {
                 RigaImpostazione(titolo: "Modello", sottotitolo: "Il nome in Ollama.") {
-                    TextField(vera.fornitore == .ollama ? MotoreLocale.modelloPredefinito : "nome del modello", text: $stato.dati.impostazioni.vera.modello)
+                    TextField(vera.fornitore == .ollama ? MotoreLocale.modelloPredefinito : "nome del modello", text: Bindable(stato.dati).impostazioni.vera.modello)
                         .campoTesto()
                         .frame(width: M.campoModello)
                         .onSubmit { stato.verificaMotoreLocale() }
                 }
                 RigaImpostazione(titolo: "Ragionamento", sottotitolo: "Sulle domande difficili.",
                                  aiuto: "Automatico: Vera ragiona sulle domande difficili o quando le dici «pensaci bene». Risponde più piano") {
-                    MenuTendina(selezione: $stato.dati.impostazioni.vera.ragionamento,
+                    MenuTendina(selezione: Bindable(stato.dati).impostazioni.vera.ragionamento,
                                 opzioni: SceltaRagionamento.allCases.map { ($0, $0.nome) }, larghezza: M.menuMedio)
                 }
                 RigaImpostazione(titolo: "Pronta all'avvio", sottotitolo: "La prima risposta non aspetta.",
                                  aiuto: "All'apertura di Prisma Vera avvia Ollama e carica il modello: la prima risposta non aspetta") {
-                    interruttore($stato.dati.impostazioni.vera.prontaAllAvvio)
+                    interruttore(Bindable(stato.dati).impostazioni.vera.prontaAllAvvio)
                 }
                 RigaImpostazione(titolo: "Conserva le conversazioni", sottotitolo: "Nel dossier, sul Mac e nei backup.", ultima: true) {
-                    interruttore($stato.dati.impostazioni.vera.conservaConversazioni)
+                    interruttore(Bindable(stato.dati).impostazioni.vera.conservaConversazioni)
                 }
             }
             .cascataImpostazioni(5)
@@ -395,19 +395,19 @@ extension AppImpostazioni {
             GruppoImpostazioni(titolo: "Memoria") {
                 RigaImpostazione(titolo: "Vera ricorda", sottotitolo: "Propone i ricordi, li salva dopo il tuo sì.",
                                  aiuto: "Ricordi su di te e sui clienti, sul Mac e cifrati. Mai numeri di documenti, conti o password") {
-                    interruttore($stato.dati.impostazioni.vera.memoriaAttiva)
+                    interruttore(Bindable(stato.dati).impostazioni.vera.memoriaAttiva)
                 }
                 RigaImpostazione(titolo: "Impara dalle correzioni", sottotitolo: "👍 e 👎 sotto le risposte.",
                                  aiuto: "Una correzione scritta diventa una lezione che Vera rilegge prima di ogni risposta") {
-                    interruttore($stato.dati.impostazioni.vera.imparaDalleCorrezioni)
+                    interruttore(Bindable(stato.dati).impostazioni.vera.imparaDalleCorrezioni)
                 }
                 RigaImpostazione(titolo: "Il filo lungo", sottotitolo: "La memoria della conversazione.",
                                  aiuto: "Misurato su questo Mac: Qwen 3.5 4B occupa 3,8 GB anche a 32.000 token. Le battute che escono dalla finestra restano in un riassunto") {
-                    MenuTendina(selezione: $stato.dati.impostazioni.vera.finestra,
+                    MenuTendina(selezione: Bindable(stato.dati).impostazioni.vera.finestra,
                                 opzioni: FinestraVera.scelte.map { ($0, FinestraVera.nome($0)) }, larghezza: M.menuMedio)
                 }
                 RigaImpostazione(titolo: "Ricerca per significato", sottotitolo: "Modello in Ollama, solo quando serve.") {
-                    TextField(RicercaVera.modelloPredefinito, text: $stato.dati.impostazioni.vera.modelloRicerca)
+                    TextField(RicercaVera.modelloPredefinito, text: Bindable(stato.dati).impostazioni.vera.modelloRicerca)
                         .campoTesto()
                         .frame(width: M.campoModello)
                 }
@@ -420,13 +420,13 @@ extension AppImpostazioni {
                 if mostraAvanzateVera {
                     RigaImpostazione(titolo: "Fornitore del modello", sottotitolo: "Ollama o compatibile OpenAI",
                                      aiuto: "Ollama, oppure un server compatibile OpenAI (MLX, llama.cpp, LM Studio). Solo indirizzi del Mac (127.0.0.1)") {
-                        MenuTendina(selezione: $stato.dati.impostazioni.vera.fornitore,
+                        MenuTendina(selezione: Bindable(stato.dati).impostazioni.vera.fornitore,
                                     opzioni: TipoFornitore.allCases.map { ($0, $0.nome) }, larghezza: M.menuMedio)
                             .onChange(of: stato.dati.impostazioni.vera.fornitore) { _ in stato.verificaMotoreLocale() }
                     }
                     RigaImpostazione(titolo: "Indirizzo", sottotitolo: "Solo 127.0.0.1", ultima: true) {
                         TextField(vera.fornitore == .ollama ? FornitoreOllama.indirizzoPredefinito : FornitoreCompatibileOpenAI.indirizzoPredefinito,
-                                  text: $stato.dati.impostazioni.vera.indirizzo)
+                                  text: Bindable(stato.dati).impostazioni.vera.indirizzo)
                             .campoTesto()
                             .frame(width: M.campoIndirizzo)
                             .onSubmit { stato.verificaMotoreLocale() }
@@ -447,7 +447,7 @@ extension AppImpostazioni {
                          aiuto: "Le stesse domande di prova (sui clienti fittizi) a ogni modello, uno alla volta: risposte e tempi affiancati in una pagina",
                          ultima: true) {
             HStack(spacing: 8) {
-                TextField(ConfrontoModelli.predefiniti, text: $stato.dati.impostazioni.vera.modelliConfronto)
+                TextField(ConfrontoModelli.predefiniti, text: Bindable(stato.dati).impostazioni.vera.modelliConfronto)
                     .campoTesto()
                     .frame(width: M.campoConfronto)
                 Button { stato.confrontaModelli() } label: { Label("Confronta", systemImage: "square.split.2x1") }
@@ -470,7 +470,7 @@ extension AppImpostazioni {
                             ? "Per una voce più naturale scarica «Federica (Premium)» in Impostazioni di Sistema › Accessibilità › Contenuti letti ad alta voce › Voce di sistema › Gestisci voci › Italiano"
                             : nil) {
             HStack(spacing: 8) {
-                MenuTendina(selezione: $stato.dati.impostazioni.vera.voce,
+                MenuTendina(selezione: Bindable(stato.dati).impostazioni.vera.voce,
                             opzioni: [(String?.none, "Automatica")] + voci.map { (String?.some($0.identifier), VoceVera.nome($0)) },
                             larghezza: M.menuLargo)
                 Button { stato.provaVoce() } label: { Label("Ascolta", systemImage: "speaker.wave.2") }
@@ -478,19 +478,19 @@ extension AppImpostazioni {
             }
         }
         RigaImpostazione(titolo: "Velocità della voce", sottotitolo: "Al centro il ritmo naturale") {
-            Slider(value: $stato.dati.impostazioni.vera.velocitaVoce, in: 0.7...1.4)
+            Slider(value: Bindable(stato.dati).impostazioni.vera.velocitaVoce, in: 0.7...1.4)
                 .frame(width: M.menuMedio)
         }
         RigaImpostazione(titolo: "Risposte a voce", sottotitolo: "Il testo resta scritto") {
-            MenuTendina(selezione: $stato.dati.impostazioni.vera.risposteAVoce,
+            MenuTendina(selezione: Bindable(stato.dati).impostazioni.vera.risposteAVoce,
                         opzioni: ImpostazioniVera.RisposteAVoce.allCases.map { ($0, $0.nome) }, larghezza: M.menuMedio)
         }
         RigaImpostazione(titolo: "Leggi tutta la risposta", sottotitolo: "Altrimenti solo l'inizio") {
-            interruttore($stato.dati.impostazioni.vera.leggiTutto)
+            interruttore(Bindable(stato.dati).impostazioni.vera.leggiTutto)
         }
         RigaImpostazione(titolo: "Riconoscimento della voce", sottotitolo: "Sempre sul Mac",
                          aiuto: "Automatico: quello nuovo di Apple su macOS 26 e successivi, altrimenti la dettatura classica") {
-            MenuTendina(selezione: $stato.dati.impostazioni.vera.riconoscimento,
+            MenuTendina(selezione: Bindable(stato.dati).impostazioni.vera.riconoscimento,
                         opzioni: SceltaRiconoscimento.allCases.map { ($0, $0.nome) }, larghezza: M.menuLargo)
             .onChange(of: stato.dati.impostazioni.vera.riconoscimento) { _ in stato.azzeraRipieghiAscolto() }
         }
@@ -514,22 +514,23 @@ extension AppImpostazioni {
         }
         RigaImpostazione(titolo: "Mostra i passaggi dell'ascolto", sottotitolo: "Sotto il campo di Vera",
                          aiuto: "Sotto il campo di Vera compare l'ultimo passaggio (preparazione, microfono, risultati, voce, dettatura): si vede dove si ferma") {
-            interruttore($stato.dati.impostazioni.vera.mostraPassaggiVoce)
+            interruttore(Bindable(stato.dati).impostazioni.vera.mostraPassaggiVoce)
         }
         RigaImpostazione(titolo: "Conversazione continua", sottotitolo: "Vera torna ad ascoltarti",
                          aiuto: "Dopo aver risposto Vera torna ad ascoltarti, finché non le dici «basta così» · ⌥⌘E per parlarle",
                          ultima: true) {
-            interruttore($stato.dati.impostazioni.vera.conversazioneContinua)
+            interruttore(Bindable(stato.dati).impostazioni.vera.conversazioneContinua)
         }
     }
 }
 
 /// La riga «La memoria di Vera» di Impostazioni › Vera: osserva la memoria, così conteggi e «Mostra» restano veri.
 private struct RigaMemoriaVera: View {
-    @EnvironmentObject var stato: StatoShell
-    @ObservedObject var memoria: StatoMemoriaVera
+    @Environment(StatoShell.self) var stato
+    let memoria: StatoMemoriaVera
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         RigaImpostazione(titolo: "La memoria di Vera", sottotitolo: "\(memoria.ricordi.count) ricordi · \(memoria.lezioni.count) lezioni", ultima: true) {
             ValoreRiga(testo: memoria.aperta ? "Nascondi" : "Mostra") {
                 let v = !memoria.aperta

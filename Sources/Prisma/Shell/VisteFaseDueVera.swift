@@ -10,7 +10,7 @@ private typealias F = Tema.Apple.FaseDueVera
 // MARK: - Lascia cadere qui
 
 private struct RilascioDocumentiVera: ViewModifier {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @State private var sopra = false
 
     func body(content: Content) -> some View {
@@ -60,7 +60,7 @@ extension View {
 // MARK: - La memoria
 
 private struct PaginaMemoriaVera: ViewModifier {
-    @ObservedObject var memoria: StatoMemoriaVera
+    @Bindable var memoria: StatoMemoriaVera
 
     func body(content: Content) -> some View {
         content.sheet(isPresented: $memoria.aperta) { MemoriaVeraVista(memoria: memoria) }
@@ -69,14 +69,15 @@ private struct PaginaMemoriaVera: ViewModifier {
 
 /// La pagina dei ricordi: «Vera ricorda», su di te e sui clienti (✎ e ✕), le lezioni dalle correzioni.
 struct MemoriaVeraVista: View {
-    @EnvironmentObject var stato: StatoShell
-    @ObservedObject var memoria: StatoMemoriaVera
+    @Environment(StatoShell.self) var stato
+    @Bindable var memoria: StatoMemoriaVera
     @State private var inModifica: String?
     @State private var testo = ""
     @State private var password = ""
     @State private var confermaRicomincia = false
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 Text("La memoria di Vera").carattereApple(F.titoloPagina)
@@ -84,7 +85,7 @@ struct MemoriaVeraVista: View {
                 Button("Fine") { memoria.aperta = false }.buttonStyle(.applePrimario)
             }
             HStack(spacing: 12) {
-                Toggle("Vera ricorda", isOn: $stato.dati.impostazioni.vera.memoriaAttiva).toggleStyle(.switch)
+                Toggle("Vera ricorda", isOn: Bindable(stato.dati).impostazioni.vera.memoriaAttiva).toggleStyle(.switch)
                 Text("\(memoria.ricordi.count) ricordi · sul Mac, cifrati").carattereApple(F.fonteRicordo).foregroundColor(F.testoPillola)
                 Spacer()
                 pillola("Non ricorda mai: numeri di documenti, conti, password")
@@ -124,7 +125,7 @@ struct MemoriaVeraVista: View {
                 HStack {
                     Text("Le lezioni").carattereApple(F.titoloColonna)
                     Spacer()
-                    Toggle("", isOn: $stato.dati.impostazioni.vera.imparaDalleCorrezioni).toggleStyle(.switch).labelsHidden()
+                    Toggle("", isOn: Bindable(stato.dati).impostazioni.vera.imparaDalleCorrezioni).toggleStyle(.switch).labelsHidden()
                         .help("Impara dalle correzioni")
                 }
                 ScrollView {
@@ -211,13 +212,14 @@ struct MemoriaVeraVista: View {
 
 /// Sotto una risposta di Vera: 👍 la segna come buona, 👎 apre la correzione che diventa una lezione.
 struct PolliciVera: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let messaggio: MessaggioVera
     @State private var correggi = false
     @State private var testo = ""
     @State private var salvata = false
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         // Con «Impara dalle correzioni» o la memoria spenti i pollici non ci sono
         if stato.dati.impostazioni.vera.imparaDalleCorrezioni && stato.dati.impostazioni.vera.memoriaAttiva { pollici }
     }
@@ -260,10 +262,11 @@ struct PolliciVera: View {
 // MARK: - Il cliente in 30 secondi
 
 struct TrentaSecondiVista: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let scheda: SchedaTrentaSecondi
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         VStack(alignment: .leading, spacing: F.spazioSezioni) {
             HStack(spacing: 10) {
                 if let c = stato.cliente(scheda.clienteId) {
@@ -299,10 +302,11 @@ struct TrentaSecondiVista: View {
 // MARK: - Le norme citate
 
 struct NormeVeraVista: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let risposta: RispostaNorme
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         VStack(alignment: .leading, spacing: 6) {
             if risposta.nonRisponde {
                 Label("Cercato in \(risposta.articoliCercati) articoli: la norma non risponde", systemImage: "magnifyingglass")

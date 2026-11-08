@@ -11,7 +11,7 @@ import SwiftUI
 /// alla loro altezza (`LettoreSemafori`). Al blocco svanisce e allo sblocco ricompare in 0,6 s (ShellView).
 /// Dalla versione «Orizzonte», prima di Cerca, la pillola «✦ Novità» con il numero delle funzioni nuove (sul Mac).
 struct BarraSuperiore: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @Environment(\.modoIstantanea) var modoIstantanea
     /// Dove sono i pulsanti veri della finestra del Mac (nil: non letti, o non ci sono).
     @State var semafori: PosizioneSemafori? = nil
@@ -19,6 +19,7 @@ struct BarraSuperiore: View {
     private typealias B = Tema.Apple.BarraAlta
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let y = spostamentoVerticale
         ZStack {
             HStack(spacing: B.spazio) {
@@ -225,7 +226,7 @@ struct BarraSuperiore: View {
 /// Il nome dell'app in primo piano («Scrivania» se non ce n'è): osserva solo le finestre,
 /// così il resto della barra non si ridisegna quando si cambia app.
 private struct TitoloAppAttiva: View {
-    @EnvironmentObject var sistema: StatoFinestre
+    @Environment(StatoFinestre.self) var sistema
 
     var body: some View {
         Text(sistema.appAttiva?.titolo ?? "Scrivania")

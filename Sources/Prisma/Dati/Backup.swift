@@ -38,6 +38,9 @@ enum ErroreBackup: LocalizedError {
     case cifratura(String)
     /// Protezione attiva ma password non disponibile: il backup non si fa in chiaro.
     case passwordNonDisponibile
+    /// Nella cartella da salvare non c'è un archivio completo: un backup così non si ripristinerebbe e, con la
+    /// rotazione, sostituirebbe quelli buoni.
+    case senzaArchivio
 
     var errorDescription: String? {
         switch self {
@@ -51,6 +54,7 @@ enum ErroreBackup: LocalizedError {
         case .backupDanneggiato: return "Il backup protetto è danneggiato o incompleto e non si può aprire: prova con un altro backup."
         case .cifratura(let m): return "Protezione del backup non riuscita: \(m)"
         case .passwordNonDisponibile: return "La password dei backup non è disponibile: scrivila in Impostazioni › Archivio. Senza password il backup non si fa, per non salvarlo in chiaro."
+        case .senzaArchivio: return "Nella cartella di Prisma non trovo un archivio completo da salvare: il backup non si fa, per non sostituire quelli buoni. Chiudi Prisma e riaprilo."
         }
     }
 
@@ -74,6 +78,9 @@ enum GestoreBackup {
     /// copie fatte a mano o di sicurezza: un ripristino non consuma la storia settimanale.
     static let massimo = 8
     static let notaAutomatico = "automatico"
+    /// Le cartelle che l'utente può lasciare fuori dai backup (la Biblioteca: PDF pesanti e circolari che possono essere
+    /// riservate). Un ripristino da un backup che non le ha tiene quelle del Mac.
+    static let cartelleEscludibili = ["Biblioteca"]
 
     /// Crea un backup di `sorgente` dentro `destinazione` e applica la rotazione.
     /// - creaCartella: false per la cartella scelta dall'utente: se non c'è (disco scollegato) è un
@@ -81,11 +88,55 @@ enum GestoreBackup {
     /// - proteggi: un backup da non eliminare con la rotazione (quello che si sta ripristinando).
     /// - password: con una password il backup è protetto («… .zip.cifrato»); nil = zip in chiaro.
     /// - iterazioni: solo per la prova (più bassa per la durata); l'app usa sempre quelle predefinite.
+    /// - escludi: cartelle dell'archivio da lasciare fuori («Biblioteca» con «Escludi la Biblioteca dal backup», «Luce»
+    ///   giro 6): il backup si fa da una copia senza quelle cartelle, nella cartella temporanea del Mac (su APFS la copia
+    ///   è un clone, non occupa spazio), che si cancella subito.
     @discardableResult
-    static func crea(sorgente: URL, destinazione: URL, nota: String? = nil, creaCartella: Bool = true, proteggi: URL? = nil,
-                     password: String? = nil, iterazioni: UInt32 = CifraturaBackup.iterazioniPredefinite) throws -> URL {
+    static func crea(sorgente: URL, escludi: [String] = [], destinazione: URL, nota: String? = nil, creaCartella: Bool = true,
+                     proteggi: URL? = nil, password: String? = nil,
+                     iterazioni: UInt32 = CifraturaBackup.iterazioniPredefinite) throws -> URL {
         if let password, password.isEmpty { throw ErroreBackup.passwordNonDisponibile }
         let fm = FileManager.default
+        var sorgente = sorgente
+        var copia: URL?
+        defer { if let copia { try? fm.removeItem(at: copia) } }
+        // Nel backup va l'archivio che varrebbe all'avvio, uno solo: la cartella a pezzi (con l'indice e senza una
+        // conversione da verificare) con il segnaposto al posto di archivio.json per le versioni di Prisma di prima,
+        // oppure archivio.json (e nessun pezzo sciolto). La scelta e la copia si fanno a coda dei salvataggi ferma: nel
+        // backup mai un salvataggio a metà (un indice nuovo con i file dei clienti di prima). Mai la copia d'avvio
+        // (nemmeno una rimasta a metà, «Archivio-all-avvio.tmp-…»), il segno della conversione o una cartella scartata.
+        // Senza nessun archivio il backup non si fa: con la rotazione sostituirebbe quelli buoni
+        let archivio: Set<String> = [ArchivioPezzi.nomeCartella, Archivio.nomeFileVecchio]
+        func lasciaFuori(_ nome: String) -> Bool {
+            escludi.contains(nome) || archivio.contains(nome) || nome.hasPrefix(Archivio.nomeCopiaAvvio)
+                || nome == Archivio.nomeConversioneDaVerificare || nome.hasPrefix(Archivio.prefissoCartellaScartata)
+        }
+        let voci = try fm.contentsOfDirectory(atPath: sorgente.path)
+        let soloArchivioJson = !voci.contains { lasciaFuori($0) && $0 != Archivio.nomeFileVecchio }
+        if soloArchivioJson {
+            // Il formato di prima, niente da lasciare fuori: lo zip della cartella com'è
+            guard Archivio.valeArchivioJson(in: sorgente) else { throw ErroreBackup.senzaArchivio }
+        } else {
+            let radice = fm.temporaryDirectory.appendingPathComponent("Prisma-copia-\(UUID().uuidString)", isDirectory: true)
+            let dentro = radice.appendingPathComponent(sorgente.lastPathComponent, isDirectory: true)
+            copia = radice
+            try fm.createDirectory(at: dentro, withIntermediateDirectories: true)
+            for nome in voci where !lasciaFuori(nome) {
+                try fm.copyItem(at: sorgente.appendingPathComponent(nome), to: dentro.appendingPathComponent(nome))
+            }
+            let da = sorgente
+            try Archivio.coda.sync {
+                if Archivio.valeArchivioJson(in: da) {
+                    try fm.copyItem(at: da.appendingPathComponent(Archivio.nomeFileVecchio), to: dentro.appendingPathComponent(Archivio.nomeFileVecchio))
+                } else if ArchivioPezzi.presente(in: da) {
+                    try fm.copyItem(at: ArchivioPezzi.cartellaPezzi(in: da), to: ArchivioPezzi.cartellaPezzi(in: dentro))
+                    try Archivio.datiSegnaposto().write(to: dentro.appendingPathComponent(Archivio.nomeFileVecchio))
+                } else {
+                    throw ErroreBackup.senzaArchivio
+                }
+            }
+            sorgente = dentro
+        }
         if creaCartella {
             try fm.createDirectory(at: destinazione, withIntermediateDirectories: true)
             #if os(macOS)
@@ -181,15 +232,13 @@ enum GestoreBackup {
         do {
             try decomprimi(zip, in: tmp)
             let candidati = [tmp.appendingPathComponent("Prisma", isDirectory: true), tmp]
-            guard let radice = candidati.first(where: { fm.fileExists(atPath: $0.appendingPathComponent("archivio.json").path) }) else {
+            // Un backup nuovo ha la cartella a pezzi, uno di prima archivio.json: si leggono tutti e due
+            guard let radice = candidati.first(where: { Archivio.presente(in: $0) }) else {
                 throw ErroreBackup.archivioMancante
             }
-            let dati: DatiPrisma
-            do {
-                dati = try Archivio.decodifica(Data(contentsOf: radice.appendingPathComponent("archivio.json")))
-            } catch {
-                throw ErroreBackup.archivioNonValido(error.localizedDescription)
-            }
+            let dati = try Archivio.leggiPerRipristino(radice)
+            // Il segnaposto per le versioni di prima non deve arrivare nella cartella dell'archivio
+            Archivio.togliSegnaposto(in: radice)
             // Un backup di una versione più recente perderebbe i dati che questa non conosce
             guard !Archivio.diVersionePiuRecente(dati) else { throw ErroreBackup.versionePiuRecente }
             return (dati, radice)
@@ -221,6 +270,11 @@ enum GestoreBackup {
         try fm.copyItem(at: estratta, to: nuova)
         // Un backup di prima del cambio di nome ha la cartella di Vera col vecchio nome
         Archivio.spostaCartellaVecchia(in: nuova)
+        // Un backup fatto con «Escludi la Biblioteca» non la porta: resta quella del Mac
+        for esclusa in cartelleEscludibili
+        where !fm.fileExists(atPath: nuova.appendingPathComponent(esclusa).path) && fm.fileExists(atPath: cartellaDati.appendingPathComponent(esclusa).path) {
+            try? fm.copyItem(at: cartellaDati.appendingPathComponent(esclusa), to: nuova.appendingPathComponent(esclusa))
+        }
         // Le copie degli archivi non leggibili restano: possono contenere gli unici dati veri
         for voce in (try? fm.contentsOfDirectory(at: cartellaDati, includingPropertiesForKeys: nil)) ?? []
         where voce.lastPathComponent.hasPrefix(Archivio.prefissoNonLeggibile) {
@@ -251,11 +305,11 @@ enum GestoreBackup {
     static func recuperaRipristino(_ cartellaDati: URL) -> Bool {
         let fm = FileManager.default
         let (nuova, precedente) = cartelleRipristino(cartellaDati)
-        guard !fm.fileExists(atPath: cartellaDati.appendingPathComponent("archivio.json").path) else {
+        guard !Archivio.presente(in: cartellaDati) else {
             try? fm.removeItem(at: nuova)
             return false
         }
-        for candidata in [precedente, nuova] where fm.fileExists(atPath: candidata.appendingPathComponent("archivio.json").path) {
+        for candidata in [precedente, nuova] where Archivio.presente(in: candidata) {
             if fm.fileExists(atPath: cartellaDati.path) {
                 let messa = cartellaDati.deletingLastPathComponent().appendingPathComponent(cartellaDati.lastPathComponent + ".incompleta \(UUID().uuidString.prefix(6))")
                 try? fm.moveItem(at: cartellaDati, to: messa)

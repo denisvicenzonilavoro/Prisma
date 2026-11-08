@@ -27,7 +27,7 @@ import SwiftUI
 
 @MainActor
 struct PannelloMessaggio: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @ObservedObject var sessione: SessioneMessaggi
     let occasione: OccasioneMessaggio
     let cliente: Cliente
@@ -62,6 +62,7 @@ struct PannelloMessaggio: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let k = chiave
         let contenuto = VStack(alignment: .leading, spacing: 0) {
             testata

@@ -1,23 +1,24 @@
 import CryptoKit
+import Observation
 import Foundation
 
 /// La memoria di Vera dentro l'app: legge e scrive il file cifrato (MemoriaVera), tiene la chiave del Portachiavi,
 /// aggiorna le lezioni attive e porta la chiave nel backup cifrata con la password dei backup. Senza persistenza (prove,
 /// istantanee) resta solo in memoria e non tocca mai il Portachiavi.
-final class StatoMemoriaVera: ObservableObject {
-    @Published private(set) var contenuto = ContenutoMemoriaVera()
+@Observable final class StatoMemoriaVera {
+    private(set) var contenuto = ContenutoMemoriaVera()
     /// La pagina dei ricordi è aperta.
-    @Published var aperta = false
+    var aperta = false
     /// Il file c'è ma la chiave no (ripristino su un altro Mac senza la password dei backup): la pagina lo dice.
-    @Published private(set) var bloccata = false
+    private(set) var bloccata = false
 
     let persistente: Bool
     /// Impostazioni › Vera › «Impara dalle correzioni»: spento, le lezioni restano ma non si usano.
-    var lezioniAccese = true { didSet { pubblicaLezioni() } }
-    private var chiave: SymmetricKey?
+    @ObservationIgnored var lezioniAccese = true { didSet { pubblicaLezioni() } }
+    @ObservationIgnored private var chiave: SymmetricKey?
     /// La chiave si chiede anche dalla ricerca, fuori dal thread principale: una sola chiave, mai due.
     private let bloccoChiave = NSLock()
-    private var caricata = false
+    @ObservationIgnored private var caricata = false
     private static let coda = DispatchQueue(label: "prisma.memoria-vera", qos: .utility)
 
     /// Aspetta le scritture in coda (prima di sostituire la cartella dei dati con un ripristino).

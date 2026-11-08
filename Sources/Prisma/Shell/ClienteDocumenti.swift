@@ -7,7 +7,7 @@ import SwiftUI
 /// lo spazio e si riapre con un clic. Si importa con il pulsante o trascinando i file: vanno a questo cliente.
 /// Sta fuori dallo scorrimento del dossier: elenco e dettaglio scorrono da soli.
 struct DocumentiCliente: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let cliente: Cliente
     /// La ricerca è della vista: scrivere non ridisegna le altre finestre.
     @State private var ricerca = ""
@@ -45,6 +45,7 @@ struct DocumentiCliente: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let voci = stato.vociDocumenti(cliente.id)
         Group {
             if voci.isEmpty {
@@ -206,13 +207,14 @@ struct DocumentiCliente: View {
 /// L'elenco stretto accanto al documento aperto: le sole tessere, gruppo per gruppo (un filo tra i gruppi), con il
 /// cerchio «da leggere»; il titolo nell'aiuto. In cima il pulsante che riapre l'elenco, in fondo «+».
 private struct ElencoStrettoDocumenti: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let gruppi: [MotoreDocumenti.Gruppo]
     let scelta: String?
     let importa: () -> Void
     let apri: () -> Void
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let m = Tema.Misura.Documenti.self
         VStack(spacing: 0) {
             PulsanteIcona(simbolo: "sidebar.left", aiuto: "Mostra l'elenco dei documenti", azione: apri)

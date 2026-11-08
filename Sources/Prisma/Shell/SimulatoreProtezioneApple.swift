@@ -25,11 +25,12 @@ private typealias SQ = Tema.Apple.SimulatoriAnalisi.Protezione
 
 /// Il simulatore della protezione per `cliente`, sulle ipotesi della sua Analisi 360 (`analisi`).
 struct SimulatoreProtezioneApple: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let cliente: Cliente
     let analisi: Binding<Analisi360>
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let i = analisi.wrappedValue.protezione
         let posizioni = stato.posizioniCliente(cliente.id)
         let e = MotoreAnalisi.protezione(i, posizioni: posizioni)
@@ -64,7 +65,7 @@ struct QuadroSimulatoreProtezione {
 }
 
 private struct CorpoSimulatoreProtezioneApple: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @Environment(\.statoDettaglioApple) private var dettaglio
     let quadro: QuadroSimulatoreProtezione
     private let massimo: Double
@@ -82,6 +83,7 @@ private struct CorpoSimulatoreProtezioneApple: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let s = Tema.Apple.SimulatoriAnalisi.self
         let colore = SQ.colore
         // Il solo calcolo di ogni passo: somme e il premio dalla tariffa

@@ -4,6 +4,7 @@ import AppKit
 import UIKit
 #endif
 import Combine
+import Observation
 import SwiftUI
 
 /// Stato della finestra Prisma: dati dell'archivio, finestre interne, backup, avvisi.
@@ -49,7 +50,7 @@ enum VoceConfronto: Hashable {
     case simulazione(String)
 }
 
-final class StatoShell: ObservableObject {
+@Observable final class StatoShell {
     struct Finestra: Identifiable, Equatable {
         let app: AppPrisma
         var id: AppPrisma { app }
@@ -59,25 +60,34 @@ final class StatoShell: ObservableObject {
         var ridotta = false
     }
 
-    /// Dati dell'archivio locale: ogni modifica viene salvata da sola.
-    @Published var dati: DatiPrisma {
-        didSet {
-            versioneDati &+= 1
-            // Gli array non toccati condividono la memoria con i vecchi: confrontarli costa O(1)
-            if dati.note != oldValue.note { versioneNote &+= 1 }
-            if !dati.stessiCalcoli(di: oldValue) { versioneCalcoli &+= 1 }
-            // «Il filo lungo» e le lezioni seguono le impostazioni di Vera
-            if dati.impostazioni.vera != oldValue.impostazioni.vera { applicaImpostazioniVera() }
-        }
-    }
-    /// Cresce a ogni modifica dei dati (salvataggio, segno della cache del dossier per Vera). Non pubblicata.
+    /// Dati dell'archivio locale, a pezzi (DatiVivi.swift): ogni campo si osserva da solo, e ogni modifica, anche
+    /// annidata (`dati.clienti[i].nome = x`) o con `dati.carica(_:)`, passa da `datiCambiati` e viene salvata da sola.
+    /// È un oggetto: per una copia a valore si usa `dati.istantanea`.
+    let dati: DatiVivi
+    /// Un segnale per ogni modifica dei dati (al posto di `$dati`): salvataggio, notifiche, promemoria, Prisma
+    /// ovunque e la prova della fluidità lo ascoltano con il loro ritardo, e leggono i dati al momento della consegna.
+    let modificheDati = PassthroughSubject<Void, Never>()
+    /// Il cliente attivo nuovo, quando cambia (il tavolo con l'iPad torna alla schermata neutra).
+    let clienteAttivoCambiato = PassthroughSubject<String, Never>()
+    /// Cresce a ogni modifica dei dati (salvataggio, segno della cache del dossier per Vera).
     private(set) var versioneDati = 0
     /// Cresce quando cambia qualcosa che entra nei calcoli e nei documenti: tutto tranne le note del taccuino,
     /// le conversazioni con Vera, gli spazi di lavoro, il cliente attivo e le impostazioni che non toccano i
-    /// calcoli (DatiPrisma.stessiCalcoli). È la chiave delle cache di DerivatiDati. Non pubblicata.
+    /// calcoli (DatiPrisma.stessiCalcoli). È la chiave delle cache di DerivatiDati. Resta osservata: una vista che legge
+    /// solo dalle cache si aggiorna grazie a lei.
     private(set) var versioneCalcoli = 0
-    /// Cresce quando cambiano le note del taccuino (le leggono i documenti, per esempio il fascicolo). Non pubblicata.
+    /// Cresce quando cambiano le note del taccuino (le leggono i documenti, per esempio il fascicolo).
     private(set) var versioneNote = 0
+    /// Le versioni per cliente delle cache dei motori (CacheClienti.swift, giro 0 tappa 4): crescono quando cambia
+    /// qualcosa di quel cliente. Non osservate: le viste si aggiornano con `versioneCalcoli`, che cresce comunque.
+    @ObservationIgnored private var versioniCliente: [String: Int] = [:]
+    /// Cresce con ciò che vale per tutti i clienti (catalogo, modelli, mercato, impostazioni dei calcoli, archivio
+    /// sostituito, campi non attribuiti a un cliente): rifà le voci di tutti.
+    @ObservationIgnored private(set) var versioneComuneClienti = 0
+    /// Il numero da cui prendono le versioni (comune e dei clienti): mai due volte lo stesso.
+    @ObservationIgnored private var ultimaVersioneClienti = 0
+    /// I motori dei singoli clienti, per cliente (CacheClienti.swift).
+    @ObservationIgnored let cacheClienti = CacheClienti()
 
     /// Finestre interne, pannelli e blocco (StatoShellFinestre.swift ne inoltra le proprietà con i nomi di sempre):
     /// cambiarli non pubblica StatoShell, così le app aperte e i widget non si ricalcolano.
@@ -87,48 +97,56 @@ final class StatoShell: ObservableObject {
     /// Dati ricavati dall'archivio, tenuti da parte per `versioneCalcoli` (DerivatiDati.swift).
     let derivati = DerivatiDati()
 
-    @Published private(set) var avviso: String?
+    private(set) var avviso: String?
     /// L'avviso è il commiato di Vera (con la sfera): dopo un pulsante della mini finestra.
-    @Published private(set) var avvisoDiVera = false
-    @Published var schermoIntero = false
-    @Published var schedaImpostazioni: SchedaImpostazioni = .panoramica
-    @Published var schedaCliente: SchedaCliente = .panoramica
+    private(set) var avvisoDiVera = false
+    var schermoIntero = false
+    var schedaImpostazioni: SchedaImpostazioni = .panoramica
+    var schedaCliente: SchedaCliente = .panoramica
     /// La scheda di Studio (Cruscotto, Parcelle e fatture, Track record, Esame OCF): resta finché l'app è aperta, così
     /// la scrivania e le novità possono aprire quella giusta (StudioApp.swift).
-    @Published var schedaStudio: SchedaStudio = .cruscotto
+    var schedaStudio: SchedaStudio = .cruscotto
     /// «Luce»: la scheda di Pratiche e la vista di Territorio (StatoSala.swift).
-    @Published var schedaPratiche: SchedaPratiche = .proposta
-    @Published var vistaTerritorio: VistaTerritorio = .oggi
+    var schedaPratiche: SchedaPratiche = .proposta
+    var vistaTerritorio: VistaTerritorio = .oggi
     /// Da dove si apre Messaggi (cliente, occasione, messaggio salvato): la scrivono le altre app con `preparaMessaggio`,
     /// l'app Messaggi la prende con `prendiRichiestaMessaggi()` (CollegamentiMessaggi.swift).
-    @Published var richiestaMessaggi: RichiestaMessaggi?
+    var richiestaMessaggi: RichiestaMessaggi?
     /// Le occasioni di Messaggi «su richiesta» (una parcella fuori dalle regole del motore), le più recenti: solo in memoria.
-    var occasioniSuRichiesta: [OccasioneMessaggio] = []
+    @ObservationIgnored var occasioniSuRichiesta: [OccasioneMessaggio] = []
     /// I file da allegare all'apertura in Mail o in Messaggi, per occasione (copie temporanee): solo in memoria.
-    var allegatiMessaggi: [String: [URL]] = [:]
+    @ObservationIgnored var allegatiMessaggi: [String: [URL]] = [:]
     /// Posizione aperta nel dettaglio (usata anche dalle istantanee).
-    @Published var posizioneInDettaglio: String?
+    var posizioneInDettaglio: String?
     /// Il pannello del dossier Posizioni a cui scorrere ("resistenza", "costi"); si consuma appena raggiunto.
-    @Published var ancoraPosizioni: String?
+    var ancoraPosizioni: String?
     /// Solo per le istantanee: il cliente del radar con il dettaglio già aperto (Posizioni › Radar, «Luce» giro 2).
-    var radarDettaglioIstantanea: String?
+    @ObservationIgnored var radarDettaglioIstantanea: String?
     /// Solo per le istantanee: la pratica con il dettaglio già aperto (Pratiche › Dopo la firma, «Luce» giro 3).
-    var praticaDettaglioIstantanea: String?
+    @ObservationIgnored var praticaDettaglioIstantanea: String?
+    #if os(macOS)
+    /// Solo per le istantanee: le misure di prova del gruppo Velocità (Impostazioni › Strumenti, MisuraVelocita.swift).
+    @ObservationIgnored var misureIstantanea: MisuraVelocita?
+    #endif
     /// Il gruppo delle Impostazioni a cui scorrere dentro la pagina (`"impostazioni-occasioni"` in Promemoria e
     /// occasioni; `"impostazioni-conformita"` porta alla pagina Conformità); si consuma appena raggiunto.
-    @Published var ancoraImpostazioni: String?
+    var ancoraImpostazioni: String?
     /// I report spuntati per il fascicolo dell'incontro (per la sessione).
-    @Published var sceltaFascicolo: Set<TipoProspetto> = TipoProspetto.fascicoloPredefinito
+    var sceltaFascicolo: Set<TipoProspetto> = TipoProspetto.fascicoloPredefinito
     /// L'appuntamento per cui si prepara il fascicolo (dà la data e il tipo d'incontro alla copertina).
-    @Published var fascicoloAppuntamento: String?
+    var fascicoloAppuntamento: String?
     /// Il documento mostrato a tutto schermo all'incontro (nil se non si presenta).
-    @Published var presentazione: Presentazione?
+    var presentazione: Presentazione? {
+        didSet { aggiornaMenu(); presentazioneCambiata.send(presentazione != nil) }
+    }
+    /// Si presenta o no (al posto di `$presentazione`, per la mini finestra di Vera).
+    let presentazioneCambiata = PassthroughSubject<Bool, Never>()
     /// L'ultima analisi del dossier calcolata, con la versione dei dati (non pubblicata). La cache vera è in
     /// DerivatiDati: questa resta come segno per la prova di Vera.
-    var cacheDossier: (chiave: Int, valore: AnalisiDossier)?
+    @ObservationIgnored var cacheDossier: (chiave: Int, valore: AnalisiDossier)?
     /// Posizioni mostra il portafoglio di tutti i clienti invece del dossier del cliente attivo.
     // Il portafoglio parla di tutti i clienti: in modalità cliente resta chiuso
-    @Published var portafoglio = false { didSet { if portafoglio && modoCliente != nil { portafoglio = false } } }
+    var portafoglio = false { didSet { if portafoglio && modoCliente != nil { portafoglio = false } } }
     /// Posizioni › Portafoglio: la vista (Portafoglio o Prova del fuoco), lo scenario e i cursori della prova del fuoco
     /// (StatoProvaFuoco.swift). Un oggetto a parte: trascinare il cursore non pubblica StatoShell. Non si salva.
     let provaFuoco = StatoProvaFuoco()
@@ -143,7 +161,9 @@ final class StatoShell: ObservableObject {
     /// Inquadra e capisci (giro 5): i testi letti con la fotocamera dell'iPhone e arrivati sul ponte cifrato
     /// (`riceviDalPonte`), in attesa che il consulente li guardi. Gli ultimi `StatoShell.massimoInquadrature`; non si
     /// salvano e non entrano nel dossier da soli.
-    @Published var inquadratureInArrivo: [InquadraturaPonte] = []
+    var inquadratureInArrivo: [InquadraturaPonte] = [] { didSet { inquadratureCambiate.send(inquadratureInArrivo) } }
+    /// Le inquadrature in arrivo quando cambiano (al posto di `$inquadratureInArrivo`, StatoInquadra.swift).
+    let inquadratureCambiate = PassthroughSubject<[InquadraturaPonte], Never>()
     /// Il copilota dell'incontro a schermo (giro 5, StatoCopilotaIncontro.swift): fase dell'ascolto, riga in corso,
     /// livelli dell'onda, verbale aperto. Un oggetto a parte: l'onda non pubblica StatoShell. Non si salva.
     let copilota = StatoCopilotaIncontro()
@@ -163,133 +183,140 @@ final class StatoShell: ObservableObject {
     /// StatoShell. Non si salva (le impostazioni dello spazio stanno in `dati.impostazioni.ovunque`).
     let ovunque = StatoOvunque()
     /// Modalità cliente: lo schermo girato verso il cliente mostra solo il suo dossier (id del cliente).
-    @Published var modoCliente: String?
+    var modoCliente: String? { didSet { aggiornaMenu() } }
     /// Il pulsante dell'intestazione di Posizioni chiede di aprire il modulo (nuova posizione o proposta).
-    @Published var richiestaNuovaPosizione: StatoPosizione?
+    var richiestaNuovaPosizione: StatoPosizione?
     /// Il pulsante "Nuovo cliente" dell'intestazione chiede alla rubrica di aprire il modulo.
-    @Published var richiestaNuovoCliente = false
+    var richiestaNuovoCliente = false
     /// Completezza dei dati: chiede a Clienti o Posizioni di aprire il modulo su un campo (si consuma appena letta).
-    @Published var richiestaCompletamento: RichiestaCompletamento?
+    var richiestaCompletamento: RichiestaCompletamento?
     /// Completezza dei dati: il campo dell'Analisi 360 da evidenziare (si toglie lasciando quell'area).
-    @Published var fuocoAnalisi: FuocoAnalisi?
+    var fuocoAnalisi: FuocoAnalisi?
     /// Seguito delle proposte: il modulo dell'esito da mostrare, con l'app che lo presenta.
-    @Published var richiestaEsito: RichiestaEsito?
+    var richiestaEsito: RichiestaEsito?
     /// Contatti letti da un file, in attesa di conferma nell'anteprima della rubrica.
-    @Published var importazione: ImportazioneClienti?
+    var importazione: ImportazioneClienti?
     /// Posizioni lette da un file, in attesa di conferma in Posizioni.
-    @Published var importazionePosizioni: ImportazionePosizioni?
+    var importazionePosizioni: ImportazionePosizioni?
     /// Il pannello «Aggiorna i valori» in Posizioni (elenco della compagnia o griglia dei valori fermi).
-    @Published var aggiornaValori: AggiornaValori.Sessione?
+    var aggiornaValori: AggiornaValori.Sessione?
 
     // Agenda e Attività (stato delle viste, non salvato)
     /// Giornata aperta in agenda.
-    @Published var giornoAgenda = Calendar.current.startOfDay(for: Date())
-    @Published var vistaAgenda: VistaAgenda = .mese
-    @Published var appuntamentoSelezionato: String?
+    var giornoAgenda = Calendar.current.startOfDay(for: Date())
+    var vistaAgenda: VistaAgenda = .mese
+    var appuntamentoSelezionato: String?
     /// nil = tutti i clienti.
-    @Published var filtroClienteAgenda: String?
+    var filtroClienteAgenda: String?
     /// L'occasione scelta in Agenda (calendario delle occasioni): non si salva.
-    @Published var occasioneSelezionata: Occasione?
+    var occasioneSelezionata: Occasione?
     /// Il gruppo di tipi della vista «Occasioni» (nil = tutti): non si salva.
-    @Published var gruppoOccasioniAgenda: GruppoOccasione?
-    @Published var attivitaSelezionata: String?
-    @Published var filtroStatoAttivita: FiltroAttivita = .aperte
-    @Published var filtroClienteAttivita: String?
-    @Published var filtroPrioritaAttivita: Attivita.Priorita?
+    var gruppoOccasioniAgenda: GruppoOccasione?
+    var attivitaSelezionata: String?
+    var filtroStatoAttivita: FiltroAttivita = .aperte
+    var filtroClienteAttivita: String?
+    var filtroPrioritaAttivita: Attivita.Priorita?
     /// Il pulsante dell'intestazione di Attività chiede di aprire il modulo.
-    @Published var richiestaNuovaAttivita = false
+    var richiestaNuovaAttivita = false
 
     // Strumenti di analisi (stato delle viste, non salvato)
     /// Area aperta in Analisi 360 (nil = panoramica).
-    @Published var areaAnalisi: AreaAnalisi? {
+    var areaAnalisi: AreaAnalisi? {
         // Un'area scelta da qualunque app (Incontri, Bisogni, Prospetti…) chiude lo strumento aperto in Analisi 360
         didSet { if areaAnalisi != nil, strumentoAnalisi != nil { strumentoAnalisi = nil } }
     }
     /// Strumento aperto in Analisi 360 (simulatore, scenari, confronto, TFR); nil = le aree di analisi.
     /// Lo imposta `apri(.simulazioni)` / `apri(.confronti)`; scegliere un'area o la panoramica lo azzera.
-    @Published var strumentoAnalisi: StrumentoAnalisi?
+    var strumentoAnalisi: StrumentoAnalisi?
     /// La vista della panoramica di Analisi 360: le quattro aree o «Rispetto alle famiglie come la sua» (giro 6,
     /// FamiglieComeLaSua.swift). Resta finché l'app è aperta; non si salva nell'archivio.
-    @Published var vistaAnalisi360: VistaAnalisi360 = .aree
+    var vistaAnalisi360: VistaAnalisi360 = .aree
     /// Ipotesi sul tavolo del simulatore.
-    @Published var bozzaSimulazione: Simulazione?
-    @Published var schedaSimulazioni: SchedaSimulazioni = .simulatore
+    var bozzaSimulazione: Simulazione?
+    var schedaSimulazioni: SchedaSimulazioni = .simulatore
     /// Scenari scelti per il confronto nella scheda Scenari.
-    @Published var scenariConfrontati: Set<String> = []
-    @Published var confrontoA: VoceConfronto?
-    @Published var confrontoB: VoceConfronto?
+    var scenariConfrontati: Set<String> = []
+    var confrontoA: VoceConfronto?
+    var confrontoB: VoceConfronto?
     /// Orizzonte comune del confronto (nil = ognuno il suo).
-    @Published var orizzonteConfronto: Int?
+    var orizzonteConfronto: Int?
     /// Orizzonte scelto per la sostituzione (nil: la durata della proposta o l'orizzonte del cliente).
-    @Published var orizzonteSostituzione: Int?
+    var orizzonteSostituzione: Int?
 
     // Incontri
-    @Published var incontroAperto: String?
-    @Published var schedaIncontro: SchedaIncontro = .preparazione
+    var incontroAperto: String?
+    var schedaIncontro: SchedaIncontro = .preparazione
     /// Proposte ricavate dagli appunti (per incontro) e quelle scelte per entrare nel dossier.
-    @Published var proposteIncontro: [String: [PropostaIncontro]] = [:]
-    @Published var proposteScelte: Set<String> = []
-    @Published var estrazioneInCorso = false
+    var proposteIncontro: [String: [PropostaIncontro]] = [:]
+    var proposteScelte: Set<String> = []
+    var estrazioneInCorso = false
 
     // Prodotti e Obiettivi
-    @Published var prodottoSelezionato: String?
-    @Published var filtroCanaleProdotti: Canale?
-    @Published var filtroAreaProdotti: AreaPosizione?
-    @Published var obiettivoSelezionato: String?
+    var prodottoSelezionato: String?
+    var filtroCanaleProdotti: Canale?
+    var filtroAreaProdotti: AreaPosizione?
+    var obiettivoSelezionato: String?
 
     // Note
-    @Published var notaSelezionata: String?
+    var notaSelezionata: String?
     /// La pagina nuova appena aperta: se resta vuota non entra nel taccuino.
-    private var bozzaNota: String?
+    @ObservationIgnored private var bozzaNota: String?
     /// nil = tutti i clienti.
-    @Published var filtroClienteNote: String?
-    @Published var ricercaNote = ""
+    var filtroClienteNote: String?
+    var ricercaNote = ""
 
     // Centro notifiche (il pannello aperto o chiuso sta in `sistema`)
     /// Le notifiche, ricalcolate poco dopo ogni modifica dei dati e una volta al minuto
     /// (non a ogni disegno della barra in alto).
-    @Published private(set) var notifiche: [Notifica] = []
-    private var timerNotifiche: Timer?
+    private(set) var notifiche: [Notifica] = []
+    @ObservationIgnored private var timerNotifiche: Timer?
+    /// Il giorno e l'ora intera di adesso, osservati: `chiaveVista` e `derivatiValidi` li leggono, così le viste che
+    /// mostrano dati ricavati (e i corpi `Equatable` con la `ChiaveVista`) si rifanno allo scoccare dell'ora e a
+    /// mezzanotte anche senza modifiche ai dati. Li aggiornano il timer delle notifiche (al minuto) e il cambio di
+    /// giorno o di fuso (`riverificaGiornoDerivati`).
+    private(set) var orologioVista = OrologioVista.di(Date())
     /// Le notifiche già viste in questa sessione (la campanella conta le altre).
-    @Published var notificheViste: Set<String> = []
+    var notificheViste: Set<String> = []
     /// Eventi interni della shell (sblocco, notifica nuova con la posizione della campanella): EventiShell.swift.
     let eventiShell = EventiShell()
     /// Promemoria del Mac: il permesso di macOS (nil finché non si sa, e sempre nelle istantanee e nelle prove).
-    @Published var permessoPromemoria: PermessoPromemoria?
+    var permessoPromemoria: PermessoPromemoria?
 
     /// Vera parla del portafoglio (tutti i clienti) invece che del cliente attivo.
-    @Published var veraPortafoglio = false { didSet { if veraPortafoglio && modoCliente != nil { veraPortafoglio = false } } }
+    var veraPortafoglio = false { didSet { if veraPortafoglio && modoCliente != nil { veraPortafoglio = false } } }
 
     // Ricerca (⌘K)
-    @Published var testoRicerca = ""
+    var testoRicerca = ""
     /// Cresce a ogni ⌘K: la Ricerca rimette il cursore nel campo.
-    @Published var richiestaFuocoRicerca = 0
+    var richiestaFuocoRicerca = 0
 
     // Documenti
-    @Published var documentoSelezionato: String?
+    var documentoSelezionato: String?
     /// Raccolta, filtri, scheda e pagina dell'anteprima dell'app Documenti.
-    @Published var vistaDocumenti = VistaDocumenti()
-    @Published var documentiInLettura: Set<String> = []
+    var vistaDocumenti = VistaDocumenti()
+    var documentiInLettura: Set<String> = []
 
     // Prospetti e report
     /// Prospetto scelto (nil = quadro delle posizioni del cliente attivo).
-    @Published var prospetto: SceltaProspetto?
+    var prospetto: SceltaProspetto?
     /// Valutazione aperta nel modulo di modifica.
-    @Published var valutazioneInModifica: ValutazioneInvestimento?
-    private var testiDocumenti = MemoriaTesti()
+    var valutazioneInModifica: ValutazioneInvestimento?
+    @ObservationIgnored private var testiDocumenti = MemoriaTesti()
 
     // Vera
-    @Published var veraInCorso = false
+    var veraInCorso = false { didSet { veraInCorsoSoggetto.send(veraInCorso) } }
+    /// `veraInCorso` com'è adesso, per chi lo segue con Combine (al posto di `$veraInCorso`, MiniVeraShell.swift).
+    let veraInCorsoSoggetto = CurrentValueSubject<Bool, Never>(false)
     /// La modalità scelta nella testata dell'app Vera («Lavoro / Conversazione»); nil = la sceglie Vera dalla domanda.
     /// Vale per le domande dell'app (non per la mini finestra) fino a «Nuova conversazione».
-    @Published var modalitaVeraScelta: ModalitaVera?
-    @Published var domandaVera = "" { didSet { if dettaturaAttiva, domandaVera != oldValue { dettaturaCambiata() } } }
+    var modalitaVeraScelta: ModalitaVera?
+    var domandaVera = "" { didSet { if dettaturaAttiva, domandaVera != oldValue { dettaturaCambiata() } } }
     /// Conversazioni non conservate nell'archivio (se l'utente lo sceglie nelle impostazioni).
-    @Published var conversazioniTemporanee: [String: [MessaggioVera]] = [:]
+    var conversazioniTemporanee: [String: [MessaggioVera]] = [:]
     /// La voce e l'orecchio di Vera: nascono alla prima parola (niente microfono finché non serve).
     /// Chi vuole solo fermarli (blocco, Vera chiusa) usa `…SeNata`/`…SeNato`, così non li fa nascere.
-    private(set) var voceVeraSeNata: VoceVera?
-    private(set) var ascoltoVeraSeNato: AscoltoVera?
+    @ObservationIgnored private(set) var voceVeraSeNata: VoceVera?
+    @ObservationIgnored private(set) var ascoltoVeraSeNato: AscoltoVera?
     var voceVera: VoceVera {
         if let v = voceVeraSeNata { return v }
         let v = VoceVera()
@@ -303,86 +330,92 @@ final class StatoShell: ObservableObject {
         return a
     }
     /// La prossima risposta di Vera si dice anche a voce (la domanda è arrivata a voce).
-    var rispostaAVoce = false
+    @ObservationIgnored var rispostaAVoce = false
     /// Conversazione a voce in corso: dopo ogni risposta Vera torna ad ascoltare, finché non le dici «basta».
-    @Published var conversazioneAVoce = false
+    var conversazioneAVoce = false { didSet { aggiornaMenu() } }
     /// Qwen sul Mac (Ollama): pronto o perché no. Si aggiorna con `verificaMotoreLocale()`.
-    @Published var disponibilitaLocale = DisponibilitaVera.nonDisponibile("Ollama non ancora verificato.")
+    var disponibilitaLocale = DisponibilitaVera.nonDisponibile("Ollama non ancora verificato.")
     /// La risposta di Vera mentre arriva (osservata solo dalla bolla in arrivo).
     let flussoVera = FlussoVera()
     /// La mini finestra di Vera (⌥ Spazio, sfera nella barra): osservata solo dal suo pannello e dalla sfera.
     let miniVera = StatoMiniVera()
     /// La risposta in corso: si interrompe con una nuova conversazione.
-    var compitoVera: Task<Void, Never>?
+    @ObservationIgnored var compitoVera: Task<Void, Never>?
     /// Il confronto tra modelli (Impostazioni › Vera): a che punto è, e dove sta l'ultimo rapporto.
-    @Published var avanzamentoConfronto: String?
-    @Published var rapportoConfronto: URL?
+    var avanzamentoConfronto: String?
+    var rapportoConfronto: URL?
     /// Nelle istantanee e nelle prove, dove Qwen non c'è: Vera risponde subito con i calcoli di Prisma.
-    var rispostePreparate = false
+    @ObservationIgnored var rispostePreparate = false
     /// L'appuntamento chiesto a Vera a cui manca ancora il giorno o l'ora: la prossima frase lo completa.
-    var appuntamentoInSospeso: Appuntamento.Bozza?
+    @ObservationIgnored var appuntamentoInSospeso: Appuntamento.Bozza?
     /// Lo scenario «E se…?» a cui manca un dato: Vera l'ha chiesto e la prossima frase lo completa (ScenariVeraShell.swift).
-    var scenarioInSospeso: ParametriScenarioVera?
+    @ObservationIgnored var scenarioInSospeso: ParametriScenarioVera?
     /// La dettatura di macOS nel campo di Vera: ogni richiesta la avvia; la frase parte da sola alla pausa.
-    @Published var richiestaDettatura = 0
-    @Published var dettaturaAttiva = false
+    var richiestaDettatura = 0
+    var dettaturaAttiva = false
     /// In automatico, dopo un fallimento: il riconoscimento con cui riprovare, quelli ancora da provare, poi la dettatura di macOS.
-    var ripiegoAscolto: SceltaRiconoscimento?
-    var ripieghiRimasti: [SceltaRiconoscimento]?
-    var usaDettatura = false
-    var lavoroDettatura: DispatchWorkItem?
+    @ObservationIgnored var ripiegoAscolto: SceltaRiconoscimento?
+    @ObservationIgnored var ripieghiRimasti: [SceltaRiconoscimento]?
+    @ObservationIgnored var usaDettatura = false
+    @ObservationIgnored var lavoroDettatura: DispatchWorkItem?
     /// La dettatura di macOS ha già scritto qualcosa in questa richiesta (per la diagnostica).
-    var dettaturaHaScritto = false
+    @ObservationIgnored var dettaturaHaScritto = false
     /// L'esito dell'ultima prova del riconoscimento e del microfono (dalle impostazioni), la prova in corso.
-    @Published var esitoProvaRiconoscimento: String?
-    @Published var esitoProvaMicrofono: String?
-    var provaInCorso: ProvaRiconoscimento?
+    var esitoProvaRiconoscimento: String?
+    var esitoProvaMicrofono: String?
+    @ObservationIgnored var provaInCorso: ProvaRiconoscimento?
     /// Modalità diagnostica: l'ultimo passaggio dell'ascolto o della voce, mostrato sotto il campo di Vera.
-    @Published var passaggioVoce: String?
+    var passaggioVoce: String?
     /// Nelle istantanee: lo stato della voce da mostrare (non c'è microfono).
-    var voceIstantanea: StatoVoce?
+    @ObservationIgnored var voceIstantanea: StatoVoce?
 
     // Backup
-    @Published private(set) var elencoBackup: [VoceBackup] = []
-    @Published private(set) var backupInCorso = false
+    private(set) var elencoBackup: [VoceBackup] = []
+    private(set) var backupInCorso = false { didSet { backupInCorsoCambiato.send(backupInCorso) } }
+    /// `backupInCorso` quando cambia (al posto di `$backupInCorso`, StatoMobile).
+    let backupInCorsoCambiato = PassthroughSubject<Bool, Never>()
     /// La password dei backup per questa sessione (dal Portachiavi o appena scritta): mai nell'archivio.
-    private var passwordBackupInMemoria: String?
+    @ObservationIgnored private var passwordBackupInMemoria: String?
     /// Il Portachiavi si legge da solo una volta per sessione (il Mac può chiedere il permesso):
     /// i backup automatici non lo richiedono a ogni controllo.
-    private var portachiaviLetto = false
+    @ObservationIgnored private var portachiaviLetto = false
     /// Impostazioni › Archivio: si apre la richiesta della password dei backup.
-    @Published var chiediPasswordBackup = false
+    var chiediPasswordBackup = false
     /// Un backup protetto da ripristinare, in attesa della password.
-    @Published var ripristinoDaSbloccare: RichiestaPasswordBackup?
+    var ripristinoDaSbloccare: RichiestaPasswordBackup? { didSet { ripristinoDaSbloccareCambiato.send(ripristinoDaSbloccare) } }
+    /// `ripristinoDaSbloccare` quando cambia (al posto di `$ripristinoDaSbloccare`, StatoMobile).
+    let ripristinoDaSbloccareCambiato = PassthroughSubject<RichiestaPasswordBackup?, Never>()
 
     /// Area delle finestre interne (sotto la barra, sopra il dock), aggiornata dalla vista. Non pubblicata:
     /// la shell disegna le finestre con la sua area (ShellView), questa serve alle azioni (aprire, spostare, affiancare).
-    var area: CGRect = CGRect(x: 0, y: 0, width: 1200, height: 700)
+    @ObservationIgnored var area: CGRect = CGRect(x: 0, y: 0, width: 1200, height: 700)
 
     /// false nelle istantanee: niente disco, niente animazioni.
     let persistente: Bool
 
-    private var lavoroAvviso: DispatchWorkItem?
+    @ObservationIgnored private var lavoroAvviso: DispatchWorkItem?
     /// Le sottoscrizioni dello stato (anche quelle di RipresaSistema.swift).
-    var abbonamenti = Set<AnyCancellable>()
+    @ObservationIgnored var abbonamenti = Set<AnyCancellable>()
     #if os(macOS)
     /// Il controllo del backup automatico, quando il Mac è libero (al posto di un timer orario).
-    private var attivitaBackup: NSBackgroundActivityScheduler?
+    @ObservationIgnored private var attivitaBackup: NSBackgroundActivityScheduler?
     /// Il tavolo con l'iPad (Tavolo/TavoloMac.swift): nasce al primo uso e ascolta in rete solo quando lo apri.
-    lazy var tavolo = TavoloMac(stato: self)
+    @ObservationIgnored lazy var tavolo = TavoloMac(stato: self)
     #endif
     /// Il salvataggio in background (Archivio.swift): generazione 0 = i dati letti all'avvio.
     private let salvataggio = SalvataggioArchivio()
     /// La memoria di Vera (fase 2 del brief): ricordi, lezioni e riassunti cifrati (StatoMemoriaVera.swift).
-    lazy var memoriaVera = StatoMemoriaVera(persistente: persistente)
+    @ObservationIgnored lazy var memoriaVera = StatoMemoriaVera(persistente: persistente)
     /// I vettori della ricerca per significato, in una cache cifrata (RicercaVera.swift).
-    lazy var indiceVera = IndiceVera(persistente: persistente) { [weak self] in self?.memoriaVera.chiaveMemoria() }
+    @ObservationIgnored lazy var indiceVera = IndiceVera(persistente: persistente) { [weak self] in self?.memoriaVera.chiaveMemoria() }
     /// La biblioteca delle norme (funzione 13, BibliotecaVera.swift).
-    lazy var biblioteca = StatoBiblioteca(persistente: persistente)
-    private var salvataggioSospeso = false
+    @ObservationIgnored lazy var biblioteca = StatoBiblioteca(persistente: persistente)
+    /// Biblioteca · «Trova la pagina» («Luce» giro 6, StatoTrovaPagina.swift): domanda, risultato, indice in memoria.
+    @ObservationIgnored lazy var trovaPagina = StatoTrovaPagina(biblioteca: biblioteca, persistente: persistente)
+    @ObservationIgnored private var salvataggioSospeso = false
     /// Stop del Mac o schermo spento (RipresaSistema.swift): i lavori a tempo aspettano il risveglio.
     private(set) var lavoriInPausa = false
-    private var ripresaLavori: DispatchWorkItem?
+    @ObservationIgnored private var ripresaLavori: DispatchWorkItem?
     /// Archivio di una versione più recente di Prisma: niente salvataggi né backup automatici.
     private(set) var solaLettura = false
     /// Archivio di una versione più recente: neanche il ripristino di un backup è sicuro.
@@ -391,76 +424,153 @@ final class StatoShell: ObservableObject {
     init(persistente: Bool = true) {
         self.persistente = persistente
         if persistente {
-            // La lettura parte già in PrismaApp.init (AvvioArchivio): qui di solito è pronta
-            let avvio = AvvioArchivio.attendi()
-            let caricati = avvio.esito
-            dati = caricati.dati
+            // La lettura parte già in PrismaApp.init (AvvioArchivio). Sul Mac basta l'indice dell'archivio a pezzi:
+            // se il resto non è ancora letto si parte dalla schermata di benvenuto con lo scheletro (impostazioni,
+            // nessun dato dei clienti) e il resto arriva da solo (`completaAvvio`), senza bloccare.
+            #if os(macOS)
+            let primo = AvvioArchivio.attendiPrimo()
+            #elseif os(iOS)
+            // Su iPhone e iPad non c'è la schermata di benvenuto: si entra subito, quindi si aspetta tutto
+            let tutto = AvvioArchivio.attendi()
+            let primo = AvvioArchivio.Primo.completo(tutto.esito, copieNonLeggibili: tutto.copieNonLeggibili)
+            #endif
+            let impostazioni: Impostazioni
+            switch primo {
+            case .completo(let esito, _):
+                dati = DatiVivi(esito.dati)
+                impostazioni = esito.dati.impostazioni
+            case .inArrivo(let scheletro):
+                dati = DatiVivi(scheletro)
+                impostazioni = scheletro.impostazioni
+                scheletroAvvio = scheletro
+                archivioPronto = false
+                salvataggioSospeso = true
+            }
             // Prisma si apre sempre sulla schermata di benvenuto (mai nelle istantanee e nelle prove):
             // prima del primo disegno e prima di collegaMenu, così il menu Vai nasce già spento
             sistema.bloccato = true
             sistema.bloccatoStabile = true
             // Prima di disegnare qualcosa: i caratteri dell'interfaccia nascono con questa misura
-            Tipo.fattore = caricati.dati.impostazioni.dimensioneTesto.fattore
-            salvataggioSospeso = caricati.solaLettura
-            solaLettura = caricati.solaLettura
-            ripristinoBloccato = caricati.bloccaRipristino
-            copieNonLeggibili = avvio.copieNonLeggibili
-            if let a = caricati.avviso {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in self?.mostraAvviso(a) }
-            }
-            // Una pagina nuova rimasta vuota alla chiusura non torna come «Bozza»
-            if dati.note.contains(where: \.vuota) { dati.note.removeAll(where: \.vuota) }
-            avviaSalvataggio()
-            #if os(macOS)
-            avviaBackupAutomatico()
-            #elseif os(iOS)
-            // Su iPhone e iPad niente backup automatico: i dati arrivano dal backup del Mac
-            #endif
-            preparaVera()
-            applicaImpostazioniVera()
-            DiagnosticaVoce.osservatore = { [weak self] riga in self?.passaggioVoce = riga }
-            aggiornaElencoBackup()
-            // Promemoria del Mac: solo qui, con l'archivio sul disco (mai nelle istantanee e nelle prove)
-            avviaPromemoria()
+            Tipo.fattore = impostazioni.dimensioneTesto.fattore
             #if os(macOS)
             // L'aspetto scelto vale prima del primo disegno: niente lampo chiaro con l'aspetto scuro
-            NSApplication.shared.appearance = StatoShell.aspettoMac(dati.impostazioni.aspetto)
-            // Stop del Mac e risveglio (RipresaSistema.swift)
-            avviaRipresa()
-            // La mini finestra di Vera: ⌥ Spazio da qualsiasi app (PannelloMiniVera.swift)
-            ControlloMiniVera.condiviso.avvia(stato: self)
-            // Il ponte di Vera per iPhone e iPad (ServerPonteVera.swift): acceso solo se scelto in Impostazioni › Vera
-            $dati.map(\.impostazioni.vera).removeDuplicates()
-                .sink { ServerPonteVera.condiviso.aggiorna($0) }
-                .store(in: &abbonamenti)
-            // I messaggi nuovi del ponte (giro 5): schede del copilota dall'iPad, testi inquadrati dall'iPhone
-            ServerPonteVera.condiviso.consegnaArrivi { [weak self] arrivo in
-                guard let stato = self else { return .rifiutata("Prisma sul Mac si sta chiudendo.") }
-                return await MainActor.run { stato.riceviDalPonte(arrivo) }
-            }
-            // Inquadra e capisci: con la scena in attesa, il testo dell'iPhone entra da solo (StatoInquadra.swift)
-            osservaInquadrature()
-            #elseif os(iOS)
-            // Su iPhone e iPad l'aspetto lo dà `.preferredColorScheme` della radice (StatoMobile);
-            // background e ritorno in primo piano (RipresaSistema.swift)
-            avviaRipresa()
+            NSApplication.shared.appearance = StatoShell.aspettoMac(impostazioni.aspetto)
             #endif
-            // Prisma ovunque (StatoOvunque.swift): spento finché l'utente non lo accende; acceso, apre lo spazio con la
-            // chiave del Portachiavi e fa un primo giro, fuori dal thread principale
-            avviaOvunque()
-            // I file rimasti da un'importazione interrotta vanno nel Cestino (il disco lavora in background);
-            // solo con l'archivio letto senza intoppi (con un archivio recuperato o di prova i file servono ancora)
-            if caricati.avviso == nil, !caricati.solaLettura, copieNonLeggibili == 0 {
-                DispatchQueue.main.asyncAfter(deadline: .now() + StatoShell.attesaPulizia) { [weak self] in
-                    guard let self, !self.lavoriInPausa else { return }
-                    self.pulisciDocumentiOrfaniInBackground()
+            switch primo {
+            case .completo(let esito, let copie):
+                completaAvvio(esito, copieNonLeggibili: copie)
+            case .inArrivo:
+                // Le modifiche fatte intanto (le impostazioni) muovono i contatori delle cache come sempre
+                collegaDati()
+                AvvioArchivio.quandoPronto { [weak self] esito, copie in
+                    self?.completaAvvio(esito, copieNonLeggibili: copie)
                 }
             }
         } else {
-            dati = DatiPrisma.demo()
+            dati = DatiVivi(DatiPrisma.demo())
+            collegaDati()
+            avviaNotifiche()
+        }
+        collegaMenu()
+    }
+
+    /// Lo scheletro con cui è partito StatoShell mentre l'archivio a pezzi finiva di arrivare (nil = partito completo).
+    @ObservationIgnored private var scheletroAvvio: DatiPrisma?
+    /// false finché l'archivio non è tutto in memoria (avvio a due tempi): niente salvataggi, sblocco in attesa.
+    @ObservationIgnored private(set) var archivioPronto = true
+    /// Lo sblocco chiesto prima che l'archivio fosse pronto (con la sua velocità): parte appena arriva.
+    @ObservationIgnored var sbloccoInAttesa: Double?
+
+    /// Il resto dell'avvio, con l'archivio intero: subito in `init` se era già letto, altrimenti appena arriva. Tutto
+    /// ciò che legge i dati dei clienti (notifiche, promemoria, Vera, Prisma ovunque, pulizia dei documenti, backup
+    /// automatici, salvataggio) parte solo da qui: mai su un archivio a metà.
+    private func completaAvvio(_ caricati: AvvioArchivio.Esito, copieNonLeggibili copie: Int) {
+        salvataggio.prepara(caricati.sulDisco)
+        solaLettura = caricati.solaLettura
+        ripristinoBloccato = caricati.bloccaRipristino
+        copieNonLeggibili = copie
+        if let a = caricati.avviso {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in self?.mostraAvviso(a) }
+        }
+        if let scheletro = scheletroAvvio {
+            // Avvio a due tempi: l'archivio intero entra con un solo `carica` (contatori delle cache rifatti); le
+            // impostazioni cambiate intanto (dallo scheletro) restano
+            var d = caricati.dati
+            if dati.impostazioni != scheletro.impostazioni { d.impostazioni = dati.impostazioni }
+            d.note.removeAll(where: \.vuota)
+            scheletroAvvio = nil
+            dati.carica(d)
+            if d.impostazioni.dimensioneTesto != scheletro.impostazioni.dimensioneTesto {
+                Tipo.fattore = d.impostazioni.dimensioneTesto.fattore
+            }
+            #if os(macOS)
+            if d.impostazioni.aspetto != scheletro.impostazioni.aspetto {
+                NSApplication.shared.appearance = StatoShell.aspettoMac(d.impostazioni.aspetto)
+            }
+            #endif
+            archivioPronto = true
+            salvataggioSospeso = caricati.solaLettura
+        } else {
+            salvataggioSospeso = caricati.solaLettura
+            // Una pagina nuova rimasta vuota alla chiusura non torna come «Bozza»
+            if dati.note.contains(where: \.vuota) { dati.note.removeAll(where: \.vuota) }
+            collegaDati()
+        }
+        // Archivio di prima (archivio.json) o con pezzi messi da parte: subito tutto nel formato a pezzi
+        if caricati.daRiscrivere, !caricati.solaLettura {
+            salvataggio.riscriviTutto(dati.istantanea) { [weak self] errore in
+                self?.mostraAvviso("Salvataggio non riuscito: \(errore.localizedDescription)")
+            }
+        }
+        avviaSalvataggio()
+        #if os(macOS)
+        avviaBackupAutomatico()
+        #elseif os(iOS)
+        // Su iPhone e iPad niente backup automatico: i dati arrivano dal backup del Mac
+        #endif
+        preparaVera()
+        applicaImpostazioniVera()
+        DiagnosticaVoce.osservatore = { [weak self] riga in self?.passaggioVoce = riga }
+        aggiornaElencoBackup()
+        // Promemoria del Mac: solo qui, con l'archivio sul disco (mai nelle istantanee e nelle prove)
+        avviaPromemoria()
+        #if os(macOS)
+        // Stop del Mac e risveglio (RipresaSistema.swift)
+        avviaRipresa()
+        // La mini finestra di Vera: ⌥ Spazio da qualsiasi app (PannelloMiniVera.swift)
+        ControlloMiniVera.condiviso.avvia(stato: self)
+        // Il ponte di Vera per iPhone e iPad (ServerPonteVera.swift): acceso solo se scelto in Impostazioni › Vera
+        // (all'avvio qui, poi da `datiCambiati` quando cambiano le impostazioni di Vera)
+        ServerPonteVera.condiviso.aggiorna(dati.impostazioni.vera)
+        // I messaggi nuovi del ponte (giro 5): schede del copilota dall'iPad, testi inquadrati dall'iPhone
+        ServerPonteVera.condiviso.consegnaArrivi { [weak self] arrivo in
+            guard let stato = self else { return .rifiutata("Prisma sul Mac si sta chiudendo.") }
+            return await MainActor.run { stato.riceviDalPonte(arrivo) }
+        }
+        // Inquadra e capisci: con la scena in attesa, il testo dell'iPhone entra da solo (StatoInquadra.swift)
+        osservaInquadrature()
+        #elseif os(iOS)
+        // Su iPhone e iPad l'aspetto lo dà `.preferredColorScheme` della radice (StatoMobile);
+        // background e ritorno in primo piano (RipresaSistema.swift)
+        avviaRipresa()
+        #endif
+        // Prisma ovunque (StatoOvunque.swift): spento finché l'utente non lo accende; acceso, apre lo spazio con la
+        // chiave del Portachiavi e fa un primo giro, fuori dal thread principale
+        avviaOvunque()
+        // I file rimasti da un'importazione interrotta vanno nel Cestino (il disco lavora in background);
+        // solo con l'archivio letto senza intoppi (con un archivio recuperato o di prova i file servono ancora)
+        if caricati.avviso == nil, !caricati.solaLettura, copieNonLeggibili == 0 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + StatoShell.attesaPulizia) { [weak self] in
+                guard let self, !self.lavoriInPausa else { return }
+                self.pulisciDocumentiOrfaniInBackground()
+            }
         }
         avviaNotifiche()
-        collegaMenu()
+        // Lo sblocco chiesto mentre l'archivio arrivava
+        if let velocita = sbloccoInAttesa {
+            sbloccoInAttesa = nil
+            sblocca(velocita: velocita)
+        }
     }
 
     deinit {
@@ -468,15 +578,91 @@ final class StatoShell: ObservableObject {
         timerNotifiche?.invalidate()
     }
 
-    /// Il menu Vai segue blocco, modalità cliente, presentazione e conversazione a voce, senza osservare StatoShell.
+    /// Il menu Vai segue blocco, modalità cliente, presentazione e conversazione a voce, senza osservare StatoShell:
+    /// il blocco da StatoFinestre, il resto dai didSet di modoCliente, presentazione e conversazioneAVoce.
     private func collegaMenu() {
-        Publishers.CombineLatest4(sistema.$bloccato, $modoCliente.map { $0 != nil },
-                                  $presentazione.map { $0 != nil }, $conversazioneAVoce)
-            .sink { [weak self] b, m, p, v in
-                self?.menu.aggiorna(bloccato: b, inModoCliente: m, inPresentazione: p, conversazioneAVoce: v)
-            }
+        sistema.bloccatoCambiera
+            .sink { [weak self] b in self?.aggiornaMenu(bloccato: b) }
             .store(in: &abbonamenti)
     }
+
+    /// Ripete al menu Vai lo stato di adesso (`bloccato` arriva da StatoFinestre prima che cambi, come `$bloccato`).
+    func aggiornaMenu(bloccato: Bool? = nil) {
+        menu.aggiorna(bloccato: bloccato ?? sistema.bloccato, inModoCliente: modoCliente != nil,
+                      inPresentazione: presentazione != nil, conversazioneAVoce: conversazioneAVoce)
+    }
+
+    /// Collega i dati a `datiCambiati` (dopo le pulizie di init, che come prima non contano come modifiche).
+    private func collegaDati() {
+        dati.aggancio = { [weak self] cambio in self?.datiCambiati(cambio) }
+    }
+
+    /// L'unico punto da cui parte tutto ciò che segue una modifica dei dati: i contatori delle cache (la regola di
+    /// `DatiPrisma.stessiCalcoli`, campo per campo), le impostazioni di Vera e il segnale `modificheDati`.
+    private func datiCambiati(_ cambio: DatiVivi.Cambio) {
+        versioneDati &+= 1
+        var veraCambiata = false
+        switch cambio {
+        case .calcoli:
+            versioneCalcoli &+= 1
+            cambiaVersioneComuneClienti()
+        case .calcoliClienti(let ids):
+            versioneCalcoli &+= 1
+            ultimaVersioneClienti &+= 1
+            for id in ids { versioniCliente[id] = ultimaVersioneClienti }
+            // Un cliente eliminato: la sua voce e la sua versione non restano in memoria fino al prossimo cambio del
+            // comune (8 GB di RAM). Di solito gli id toccati sono uno o due, quindi il controllo costa poco.
+            for id in ids where !dati.clienti.contains(where: { $0.id == id }) {
+                versioniCliente[id] = nil
+                cacheClienti.togli(id)
+            }
+        case .note:
+            versioneNote &+= 1
+        case .neutro:
+            break
+        case .clienteAttivo(let prima):
+            if dati.clienteAttivoId != prima { clienteAttivoCambiato.send(dati.clienteAttivoId) }
+        case .impostazioni(let prima):
+            if !dati.impostazioni.stessiCalcoli(di: prima) {
+                versioneCalcoli &+= 1
+                cambiaVersioneComuneClienti()
+            }
+            veraCambiata = dati.impostazioni.vera != prima.vera
+        case .tutto(let prima):
+            // Gli array non toccati condividono la memoria con i vecchi: confrontarli costa O(1)
+            let ora = dati.istantanea
+            if ora.note != prima.note { versioneNote &+= 1 }
+            if !ora.stessiCalcoli(di: prima) {
+                versioneCalcoli &+= 1
+                // Il radar di prima veniva da un altro archivio: non si mostra intanto (CacheClienti.dimenticaRadar)
+                cacheClienti.dimenticaRadar()
+                cambiaVersioneComuneClienti()
+            }
+            veraCambiata = ora.impostazioni.vera != prima.impostazioni.vera
+            if ora.clienteAttivoId != prima.clienteAttivoId { clienteAttivoCambiato.send(ora.clienteAttivoId) }
+        }
+        if veraCambiata {
+            // «Il filo lungo» e le lezioni seguono le impostazioni di Vera
+            applicaImpostazioniVera()
+            #if os(macOS)
+            // Il ponte di Vera per iPhone e iPad segue le impostazioni (solo con l'archivio sul disco)
+            if persistente { ServerPonteVera.condiviso.aggiorna(dati.impostazioni.vera) }
+            #endif
+        }
+        modificheDati.send()
+    }
+
+    /// Qualcosa che vale per tutti i clienti è cambiato: le voci di CacheClienti si rifanno tutte (e quelle dei clienti
+    /// eliminati si lasciano andare).
+    private func cambiaVersioneComuneClienti() {
+        ultimaVersioneClienti &+= 1
+        versioneComuneClienti = ultimaVersioneClienti
+        versioniCliente = [:]
+        cacheClienti.tieniSolo(Set(dati.clienti.map(\.id)))
+    }
+
+    /// La versione dei dati di un cliente per CacheClienti (0 = non cambiato da quando è cambiato il comune).
+    func versioneCliente(_ id: String) -> Int { versioniCliente[id] ?? 0 }
 
     #if os(macOS)
     /// L'aspetto da dare all'app (nil = segue il Mac); come `AspettoInterfaccia.aspettoMac`, fuori dal MainActor.
@@ -492,7 +678,7 @@ final class StatoShell: ObservableObject {
     static let soloSulMacPerOra = "Su iPhone e iPad questa funzione non c'è ancora: usala da Prisma sul Mac."
     /// Il file da scegliere con `.fileImporter` (al posto di NSOpenPanel del Mac): lo presenta il guscio
     /// dell'iPad (GuscioiPad), poi StatoMobile.importa passa la copia a `importaClienti(da:)` e simili.
-    @Published var sceltaFileMobile: SceltaFileMobile?
+    var sceltaFileMobile: SceltaFileMobile?
     #endif
 
     // MARK: - Lettura
@@ -1240,7 +1426,7 @@ final class StatoShell: ObservableObject {
     func testiObiettivo(_ id: String) -> TestiObiettivo? {
         guard let o = dati.obiettivi.first(where: { $0.id == id }) else { return nil }
         let mie = posizioniCliente(o.clienteId)
-        let altri = obiettiviCliente(o.clienteId).map { ($0, AvanzamentoObiettivo($0, posizioni: mie)) }
+        let altri = obiettiviCliente(o.clienteId).map { ($0, avanzamento($0)) }
         return TestiObiettivo(MotoreObiettivo.calcola(o, posizioni: mie), cliente: self.cliente(o.clienteId), altri: altri)
     }
 
@@ -1274,7 +1460,9 @@ final class StatoShell: ObservableObject {
 
     func contenutoProspetto(_ scelta: SceltaProspetto) -> ContenutoProspetto? {
         if case .riesame = scelta { return fonteVera(clienteAttivoId).map { CompositoreProspetti.riesame($0, conformita: conformitaCliente(clienteAttivoId), occasioni: occasioniRiesame(clienteAttivoId), memoria: memoriaRiesame(clienteAttivoId)) } }
-        return CompositoreProspetti.componi(scelta, dati: dati, cliente: clienteAttivoId, orizzonteConfronto: orizzonteConfronto)
+        // Dall'archivio dei calcoli (giro 0, tappa 2): il body di Prospetti non si iscrive a tutti i campi (aspetto, note,
+        // conversazioni…); i prospetti leggono solo campi dei calcoli, e il cliente arriva a parte
+        return CompositoreProspetti.componi(scelta, dati: datiDeiCalcoli(), cliente: clienteAttivoId, orizzonteConfronto: orizzonteConfronto)
     }
 
     /// Apre Prospetti e report su una scelta precisa (dal dettaglio di una posizione o da Confronti).
@@ -1551,10 +1739,16 @@ final class StatoShell: ObservableObject {
 
     // MARK: - Obiettivi
 
+    /// Gli obiettivi del cliente, per priorità e scadenza (dalla sua cache per cliente: con 200 clienti non si
+    /// scorre tutto l'elenco degli obiettivi a ogni disegno).
     func obiettiviCliente(_ id: String) -> [Obiettivo] {
-        dati.obiettivi.filter { $0.clienteId == id }.sorted {
+        let v = voceCliente(id)
+        if let o = v.obiettivi { return o }
+        let o = dati.obiettivi.filter { $0.clienteId == id }.sorted {
             $0.priorita != $1.priorita ? $0.priorita > $1.priorita : $0.scadenza < $1.scadenza
         }
+        v.obiettivi = o
+        return o
     }
 
     func salvaObiettivo(_ o: Obiettivo) {
@@ -1729,11 +1923,11 @@ final class StatoShell: ObservableObject {
 
     /// In cache (DerivatiDati) finché non cambiano i dati dei calcoli, il giorno o la modalità cliente.
     func bisogniRilevati(_ id: String) -> [BisognoRilevato] {
-        let d = derivatiValidi()
-        if let b = d.bisogni[id] { return b }
+        let v = voceCliente(id)
+        if let b = v.bisogni { return b }
         guard let c = cliente(id) else { return [] }
         let b = MotoreBisogni.rileva(cliente: c, posizioni: posizioniCliente(id), analisi: analisi360(id))
-        d.bisogni[id] = b
+        v.bisogni = b
         return b
     }
 
@@ -1791,10 +1985,10 @@ final class StatoShell: ObservableObject {
     func analisi360(_ id: String) -> Analisi360 {
         if let salvata = dati.analisi[id] { return salvata }
         // La prima stesura si costruisce una volta sola per dati dei calcoli, giorno e modalità cliente
-        let d = derivatiValidi()
-        if let bozza = d.analisiBozza[id] { return bozza }
+        let v = voceCliente(id)
+        if let bozza = v.analisiBozza { return bozza }
         let bozza = Analisi360(cliente: cliente(id), posizioni: posizioniCliente(id))
-        d.analisiBozza[id] = bozza
+        v.analisiBozza = bozza
         return bozza
     }
 
@@ -1935,12 +2129,12 @@ final class StatoShell: ObservableObject {
         aggiungiMessaggio(MessaggioVera(autore: .utente, testo: testo), cliente: id)
         domandaVera = ""
         let argomento = spunto ?? SpuntoPortafoglio.da(testo)
-        let bozza = VeraPortafoglio.risposta(argomento, domanda: testo, dati: dati)
+        let bozza = VeraPortafoglio.risposta(argomento, domanda: testo, dati: dati.istantanea)
         if rispostePreparate {
             aggiungiMessaggio(MessaggioVera(autore: .vera, testo: bozza.testo, titolo: bozza.titolo, motore: MotoriVera.sintesi.nome), cliente: id)
             return true
         }
-        let scheda = VeraPortafoglio.scheda(dati)
+        let scheda = VeraPortafoglio.scheda(dati.istantanea)
         let istruzioni = (IstruzioniVera.testo("chat") ?? "") + "\nQui parli del portafoglio del consulente (tutti i clienti), non di un singolo cliente."
             + (breve ? "\n\n" + IstruzioniVera.mini : "")
         let richiesta = "SCHEDA DEL PORTAFOGLIO (calcolata da Prisma)\n\(scheda)\n\nBOZZA PREPARATA DA PRISMA (numeri esatti: non cambiarli e non aggiungerne)\n\(bozza.testo)\n\nDOMANDA DEL CONSULENTE: \(testo)"
@@ -2497,8 +2691,7 @@ final class StatoShell: ObservableObject {
 
     private func avviaNotifiche() {
         ricalcolaNotifiche()
-        $dati
-            .dropFirst()
+        modificheDati
             .debounce(for: .milliseconds(400), scheduler: DispatchQueue.main)
             .sink { [weak self] _ in self?.ricalcolaNotifiche() }
             .store(in: &abbonamenti)
@@ -2509,12 +2702,22 @@ final class StatoShell: ObservableObject {
     /// con la tolleranza che lascia a macOS raggruppare i risvegli.
     private func avviaTimerNotifiche() {
         timerNotifiche?.invalidate()
+        aggiornaOrologioVista()
         let timer = Timer(timeInterval: StatoShell.intervalloNotifiche, repeats: true) { [weak self] _ in
-            DispatchQueue.main.async { self?.ricalcolaNotifiche() }
+            DispatchQueue.main.async {
+                self?.aggiornaOrologioVista()
+                self?.ricalcolaNotifiche()
+            }
         }
         timer.tolerance = StatoShell.tolleranzaNotifiche
         RunLoop.main.add(timer, forMode: .default)
         timerNotifiche = timer
+    }
+
+    /// Porta `orologioVista` al giorno e all'ora di `adesso`; non tocca nulla (e non ridisegna nessuno) se sono gli stessi.
+    func aggiornaOrologioVista(_ adesso: Date = Date()) {
+        let nuovo = OrologioVista.di(adesso)
+        if nuovo != orologioVista { orologioVista = nuovo }
     }
 
     func ricalcolaNotifiche() {
@@ -2539,8 +2742,7 @@ final class StatoShell: ObservableObject {
             PromemoriaMac.condiviso.spegni()
         }
         aggiornaPermessoPromemoria()
-        $dati
-            .dropFirst()
+        modificheDati
             .debounce(for: .seconds(2), scheduler: DispatchQueue.main)
             .sink { [weak self] _ in self?.aggiornaPromemoria() }
             .store(in: &abbonamenti)
@@ -2582,8 +2784,7 @@ final class StatoShell: ObservableObject {
     /// Salva l'archivio 0,8 s dopo l'ultima modifica, in background (codifica e scrittura non fermano le
     /// animazioni), e alla chiusura dell'app. Dati non cambiati dall'ultimo salvataggio non si riscrivono.
     private func avviaSalvataggio() {
-        $dati
-            .dropFirst()
+        modificheDati
             .debounce(for: .milliseconds(800), scheduler: DispatchQueue.main)
             .sink { [weak self] _ in self?.scrivi() }
             .store(in: &abbonamenti)
@@ -2606,16 +2807,17 @@ final class StatoShell: ObservableObject {
     /// Salva adesso e aspetta: quando torna, l'archivio sul disco è aggiornato. Lo usano backup,
     /// ripristino, riapertura e chiusura.
     func salvaOra() {
-        guard persistente, !salvataggioSospeso else { return }
+        guard persistente, !salvataggioSospeso, archivioPronto else { return }
         scrivi()
         salvataggio.attendi()
     }
 
     /// Accoda il salvataggio dei dati di adesso (niente, se questa generazione è già sul disco o in coda).
     private func scrivi() {
-        guard persistente, !salvataggioSospeso else { return }
-        // DatiPrisma è un valore: la copia va alla coda senza rischi, e la coda non legge mai `self.dati`
-        salvataggio.accoda(dati, generazione: versioneDati) { [weak self] errore in
+        // Mai un archivio a metà sopra quello vero (avvio a due tempi)
+        guard persistente, !salvataggioSospeso, archivioPronto else { return }
+        // L'istantanea è un valore: la copia va alla coda senza rischi, e la coda non legge mai `self.dati`
+        salvataggio.accoda(dati.istantanea, generazione: versioneDati) { [weak self] errore in
             self?.mostraAvviso("Salvataggio non riuscito: \(errore.localizedDescription)")
         }
     }
@@ -2788,11 +2990,12 @@ final class StatoShell: ObservableObject {
         salvaOra()
         backupInCorso = true
         let destinazione = cartellaBackup
+        let escluse = cartelleEscluseBackup
         let creaCartella = cartellaBackupPredefinita
         dati.impostazioni.backup.ultimoTentativo = Date()
         DispatchQueue.global(qos: .utility).async {
             do {
-                let url = try GestoreBackup.crea(sorgente: Archivio.cartella, destinazione: destinazione,
+                let url = try GestoreBackup.crea(sorgente: Archivio.cartella, escludi: escluse, destinazione: destinazione,
                                                  nota: automatico ? GestoreBackup.notaAutomatico : nil, creaCartella: creaCartella,
                                                  password: password)
                 DispatchQueue.main.async {
@@ -2842,6 +3045,7 @@ final class StatoShell: ObservableObject {
         StatoBiblioteca.attendiScritture()
         backupInCorso = true
         let destinazione = cartellaBackup
+        let escluse = cartelleEscluseBackup
         let creaCartella = cartellaBackupPredefinita
         // Le impostazioni di backup e il nome restano quelli di oggi, non quelli del backup
         let backupDiOggi = dati.impostazioni.backup
@@ -2853,7 +3057,7 @@ final class StatoShell: ObservableObject {
             do {
                 let estratto = try GestoreBackup.estrai(zip, password: chiave)
                 estratta = estratto.cartella
-                try GestoreBackup.crea(sorgente: Archivio.cartella, destinazione: destinazione, nota: "prima del ripristino",
+                try GestoreBackup.crea(sorgente: Archivio.cartella, escludi: escluse, destinazione: destinazione, nota: "prima del ripristino",
                                        creaCartella: creaCartella, proteggi: zip, password: perSicurezza)
                 try GestoreBackup.sostituisci(cartellaDati: Archivio.cartella, con: estratto.cartella)
                 Archivio.segnaCopieGestite()
@@ -2870,7 +3074,10 @@ final class StatoShell: ObservableObject {
                         d.impostazioni.ovunque.generazione = 0
                         d.impostazioni.ovunque.improntaIstantanea = nil
                     }
-                    self.dati = d
+                    // La cartella ora è quella del backup (magari con archivio.json di prima): il salvataggio qui sotto
+                    // la riscrive tutta nel formato a pezzi
+                    self.salvataggio.ricomincia()
+                    self.dati.carica(d)
                     // Prisma ovunque su iPhone e iPad: l'archivio ripristinato è la base nuova del giornale (le differenze
                     // con quello di prima non sono modifiche da mandare al Mac)
                     self.ovunque.base = d
@@ -2880,6 +3087,7 @@ final class StatoShell: ObservableObject {
                     // La memoria di Vera e la Biblioteca si rileggono dalla cartella ripristinata (fase 2)
                     self.memoriaVera.ricarica()
                     self.biblioteca.ricarica()
+                    self.trovaPagina.azzera()
                     self.solaLettura = false
                     self.salvataggioSospeso = false
                     self.salvaOra()
@@ -2905,7 +3113,7 @@ final class StatoShell: ObservableObject {
     }
 
     /// Copie di archivi non leggibili da sistemare (i backup automatici sono fermi).
-    @Published private(set) var copieNonLeggibili = 0
+    private(set) var copieNonLeggibili = 0
 
     /// Il consulente ha controllato: i dati di oggi vanno bene, i backup automatici ripartono.
     func riprendiBackupAutomatici() {
@@ -2938,9 +3146,10 @@ final class StatoShell: ObservableObject {
         salvaOra()
         backupInCorso = true
         let destinazione = cartellaBackup
+        let escluse = cartelleEscluseBackup
         let creaCartella = cartellaBackupPredefinita
         DispatchQueue.global(qos: .userInitiated).async {
-            let esito = Result { try GestoreBackup.crea(sorgente: Archivio.cartella, destinazione: destinazione, nota: "prima di togliere i dati di prova",
+            let esito = Result { try GestoreBackup.crea(sorgente: Archivio.cartella, escludi: escluse, destinazione: destinazione, nota: "prima di togliere i dati di prova",
                                                         creaCartella: creaCartella, password: password) }
             DispatchQueue.main.async {
                 self.backupInCorso = false
@@ -2974,9 +3183,10 @@ final class StatoShell: ObservableObject {
         salvaOra()
         backupInCorso = true
         let destinazione = cartellaBackup
+        let escluse = cartelleEscluseBackup
         let creaCartella = cartellaBackupPredefinita
         DispatchQueue.global(qos: .userInitiated).async {
-            let esito = Result { try GestoreBackup.crea(sorgente: Archivio.cartella, destinazione: destinazione, nota: "prima dell'importazione dei clienti",
+            let esito = Result { try GestoreBackup.crea(sorgente: Archivio.cartella, escludi: escluse, destinazione: destinazione, nota: "prima dell'importazione dei clienti",
                                                         creaCartella: creaCartella, password: password) }
             DispatchQueue.main.async {
                 self.backupInCorso = false
@@ -3012,9 +3222,10 @@ final class StatoShell: ObservableObject {
         salvaOra()
         backupInCorso = true
         let destinazione = cartellaBackup
+        let escluse = cartelleEscluseBackup
         let creaCartella = cartellaBackupPredefinita
         DispatchQueue.global(qos: .userInitiated).async {
-            let esito = Result { try GestoreBackup.crea(sorgente: Archivio.cartella, destinazione: destinazione, nota: "prima dell'importazione delle posizioni",
+            let esito = Result { try GestoreBackup.crea(sorgente: Archivio.cartella, escludi: escluse, destinazione: destinazione, nota: "prima dell'importazione delle posizioni",
                                                         creaCartella: creaCartella, password: password) }
             DispatchQueue.main.async {
                 self.backupInCorso = false
@@ -3073,9 +3284,10 @@ final class StatoShell: ObservableObject {
         salvaOra()
         backupInCorso = true
         let destinazione = cartellaBackup
+        let escluse = cartelleEscluseBackup
         let creaCartella = cartellaBackupPredefinita
         DispatchQueue.global(qos: .userInitiated).async {
-            let esito = Result { try GestoreBackup.crea(sorgente: Archivio.cartella, destinazione: destinazione, nota: nota,
+            let esito = Result { try GestoreBackup.crea(sorgente: Archivio.cartella, escludi: escluse, destinazione: destinazione, nota: nota,
                                                         creaCartella: creaCartella, password: password) }
             DispatchQueue.main.async {
                 self.backupInCorso = false
@@ -3108,6 +3320,8 @@ final class StatoShell: ObservableObject {
         if dati.clienti.first(where: { $0.id == dati.clienteAttivoId }) == nil {
             dati.clienteAttivoId = dati.clienti.first?.id ?? ""
         }
+        // I fac-simile della Biblioteca se ne vanno con i clienti di prova («Luce» giro 6)
+        togliEsempiBiblioteca()
     }
 
     /// Torna ai dati di prova (con backup di sicurezza dello stato attuale): i 5 clienti del template,
@@ -3124,9 +3338,10 @@ final class StatoShell: ObservableObject {
         salvaOra()
         backupInCorso = true
         let destinazione = cartellaBackup
+        let escluse = cartelleEscluseBackup
         let creaCartella = cartellaBackupPredefinita
         DispatchQueue.global(qos: .userInitiated).async {
-            let esito = Result { try GestoreBackup.crea(sorgente: Archivio.cartella, destinazione: destinazione, nota: "prima dei dati di prova",
+            let esito = Result { try GestoreBackup.crea(sorgente: Archivio.cartella, escludi: escluse, destinazione: destinazione, nota: "prima dei dati di prova",
                                                         creaCartella: creaCartella, password: password) }
             DispatchQueue.main.async {
                 self.backupInCorso = false
@@ -3137,8 +3352,10 @@ final class StatoShell: ObservableObject {
                     demo.impostazioni = self.dati.impostazioni
                     // La tolleranza del radar di prova, se l'utente non ne ha scritta una
                     if demo.impostazioni.tolleranzaRadar == nil { demo.impostazioni.tolleranzaRadar = tolleranzaProva }
-                    self.dati = demo
+                    self.dati.carica(demo)
                     self.azzeraNote()
+                    // I sei fac-simile della Biblioteca arrivano con i clienti di prova («Luce» giro 6)
+                    self.caricaEsempiBiblioteca()
                     // I file dei clienti veri restano nel backup appena fatto, non nell'archivio
                     self.pulisciDocumentiOrfani()
                     self.aggiornaElencoBackup()
@@ -3297,6 +3514,9 @@ enum SchedaCliente: String, CaseIterable, Hashable {
     case nelTempo
     /// Il patrimonio da oggi a 90 anni con gli eventi trascinabili (Orizzonte, giro 4; specifica §7).
     case lineaVita
+    /// L'azienda dei clienti imprenditori («Luce» giro 7, Design/template-luce-specifica.md §9.3): nel segmentato solo per
+    /// chi ha almeno un'azienda registrata, altrimenti in «Altro» per aggiungerla.
+    case azienda
 
     var titolo: String {
         switch self {
@@ -3312,6 +3532,7 @@ enum SchedaCliente: String, CaseIterable, Hashable {
         case .riesami: return "Riesami"
         case .nelTempo: return "Nel tempo"
         case .lineaVita: return "Linea della vita"
+        case .azienda: return "L'azienda"
         }
     }
 }

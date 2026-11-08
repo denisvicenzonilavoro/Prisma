@@ -3,7 +3,7 @@ import SwiftUI
 /// App Clienti nel tema Apple (Design/template-apple-specifica.md §4.2.1): la rubrica a sinistra (barra laterale
 /// 250) e il dossier del cliente in una card senza ombra, con le tessere che contano e le schede (DossierApple.swift).
 struct AppClienti: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @State var ricerca = ""
     @State var soloPreferiti = false
     @State var modulo: Cliente?
@@ -12,6 +12,7 @@ struct AppClienti: View {
     @State var fuoco: FuocoModulo?
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         // Il dettaglio che nasce dalle card del dossier (obiettivi) si apre sopra rubrica e dossier
         conDettaglio
         // Il modulo del familiare per la scheda Famiglia (anche quella del template)
@@ -25,9 +26,9 @@ struct AppClienti: View {
             )
             .environment(\.fuocoModulo, fuoco)
         }
-        .sheet(item: $stato.importazione) { i in
+        .sheet(item: Bindable(stato).importazione) { i in
             ModuloImportaClienti(importazione: i)
-                .environmentObject(stato)
+                .environment(stato)
         }
         .sheet(item: $familiare, onDismiss: { fuoco = nil }) { m in
             ModuloFamiliare(modifica: m, salva: salvaFamiliare, elimina: eliminaFamiliare)
@@ -198,6 +199,7 @@ struct AppClienti: View {
         case .inRegola: InRegolaCliente(cliente: c)
         case .note: note(c)
         case .riesami: CronologiaRiesami(cliente: c)
+        case .azienda: AziendaDossier(cliente: c)
         }
     }
 
@@ -454,13 +456,14 @@ struct CampoRicerca: View {
 // MARK: - Panoramica
 
 struct PanoramicaCliente: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let cliente: Cliente
     /// false sotto la Panoramica del tema Apple (DossierPanoramica.swift), che ha già la sua griglia con i dati per
     /// l'analisi, «Da ricordare» e il prossimo incontro: qui restano riesame, In regola e il dossier collegato.
     var conQuadro = true
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let prossimo = stato.prossimiAppuntamenti.first { $0.clienteId == cliente.id }
         let aperte = stato.attivitaCliente(cliente.id).filter { !$0.completata }
         let aCarico = cliente.famiglia.filter(\.aCarico).count
@@ -573,9 +576,9 @@ struct PanoramicaCliente: View {
     private var sottotitoloObiettivi: String {
         let elenco = stato.obiettiviCliente(cliente.id)
         guard !elenco.isEmpty else { return "I progetti da realizzare" }
-        let posizioni = stato.posizioniCliente(cliente.id)
+        let avanzamenti = stato.avanzamentiObiettivi(cliente.id)
         let totale = elenco.reduce(0.0) { $0 + max($1.importo, 0) }
-        let coperto = elenco.reduce(0.0) { $0 + min(AvanzamentoObiettivo($1, posizioni: posizioni).accantonato, max($1.importo, 0)) }
+        let coperto = elenco.reduce(0.0) { $0 + min(avanzamenti[$1.id]?.accantonato ?? 0, max($1.importo, 0)) }
         let quota = totale > 0 ? coperto / totale : 1
         return "\(Int((quota * 100).rounded()))% coperto"
     }

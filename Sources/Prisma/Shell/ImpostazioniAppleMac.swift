@@ -81,12 +81,18 @@ extension AppImpostazioni {
                     .entrataCascata(primo)
             }
             ForEach(Array(pagine.enumerated()), id: \.element) { i, p in
-                VoceLateraleImpostazioniApple(titolo: p.titolo, attiva: stato.schedaImpostazioni == p,
-                                              stato: statoVoceLaterale(p)) {
-                    stato.schedaImpostazioni = p
-                }
+                // Il pallino di «Prisma ovunque» legge `stato.ovunque.problema`: StatoOvunque è @Observable, quindi
+                // un errore della sincronizzazione in background lo accende da solo
+                voceLateraleApple(p)
                 .entrataCascata(primo + i + (titolo == nil ? 0 : 1), sfocatura: false)
             }
+        }
+    }
+
+    private func voceLateraleApple(_ p: SchedaImpostazioni) -> some View {
+        VoceLateraleImpostazioniApple(titolo: p.titolo, attiva: stato.schedaImpostazioni == p,
+                                      stato: statoVoceLaterale(p)) {
+            stato.schedaImpostazioni = p
         }
     }
 
@@ -226,7 +232,7 @@ extension AppImpostazioni {
             Text("Il tuo nome")
                 .carattereApple(Tema.Apple.Impostazioni.Riga.titolo)
                 .foregroundColor(Tema.Apple.Impostazioni.Riga.coloreTitolo)
-            TestoRinviato(testo: $stato.dati.impostazioni.nomeUtente, salvaOra: { stato.salvaOra() }) { bozza in
+            TestoRinviato(testo: Bindable(stato.dati).impostazioni.nomeUtente, salvaOra: { stato.salvaOra() }) { bozza in
                 TextField("Nome", text: bozza)
                     .campoTesto()
                     .frame(width: f.larghezzaCampo)

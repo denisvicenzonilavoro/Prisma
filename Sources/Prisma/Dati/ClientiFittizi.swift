@@ -84,6 +84,8 @@ enum ClientiFittizi {
         }
         c.bisogni.aggiornatoIl = giorno(-60 + indice)
         completaConformita(&c, indice: indice)
+        // L'imprenditore edile ha un'azienda di prova con il solo nome (Luce, giro 7: lo stato «da completare»)
+        if p.chiave == "moretti-f" { c.aziende = [AziendeDiProva.morettiCostruzioni()] }
         return c
     }
 

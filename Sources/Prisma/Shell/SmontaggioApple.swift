@@ -1,4 +1,5 @@
 import SwiftUI
+import Observation
 #if os(macOS)
 import AppKit
 import UniformTypeIdentifiers
@@ -23,26 +24,26 @@ import UniformTypeIdentifiers
 
 /// Lo stato dello Smontaggio: il documento letto, le scelte dell'utente e la proposta da confrontare. Resta finché
 /// Prisma è aperta, mai nell'archivio (la foto e le righe di un'altra banca non si salvano da sole).
-final class StatoSmontaggio: ObservableObject {
-    @Published var righe: [RigaLetta] = []
-    @Published var titolo = ""
+@Observable final class StatoSmontaggio {
+    var righe: [RigaLetta] = []
+    var titolo = ""
     /// Da dove viene il documento («Inquadrato con l'iPhone», il nome del file, «Fac-simile»).
-    @Published var origine = ""
-    @Published var clienteId: String?
+    var origine = ""
+    var clienteId: String?
     /// La posizione in Prisma a cui si riferisce il documento (se c'è): valore, versato e condizioni da lì.
-    @Published var posizioneId: String?
-    @Published var inLettura = false
+    var posizioneId: String?
+    var inLettura = false
     /// L'alternativa scelta: l'id di una proposta del cliente (nil = la meno costosa, decisione 5).
-    @Published var propostaId: String?
+    var propostaId: String?
     /// Righe che l'utente ha segnato come costo, con il tipo, e righe che non sono costi.
-    @Published var tipiScelti: [Int: TipoCosto] = [:]
-    @Published var esclusi: Set<Int> = []
+    var tipiScelti: [Int: TipoCosto] = [:]
+    var esclusi: Set<Int> = []
     /// Solo per le istantanee: la riga con il fumetto già aperto.
-    var fumettoIstantanea: Int?
+    @ObservationIgnored var fumettoIstantanea: Int?
     /// L'ultima inquadratura dall'iPhone già presa (non si ricarica due volte).
-    var ultimaInquadratura: String?
+    @ObservationIgnored var ultimaInquadratura: String?
     /// Cresce a ogni documento nuovo: le ellissi ripartono.
-    @Published private(set) var giro = 0
+    private(set) var giro = 0
 
     var vuoto: Bool { righe.isEmpty && !inLettura }
 
@@ -76,16 +77,16 @@ final class StatoSmontaggio: ObservableObject {
 }
 
 struct SmontaggioApple: View {
-    @ObservedObject var stato: StatoShell
-    @ObservedObject var smontaggio: StatoSmontaggio
+    let stato: StatoShell
+    let smontaggio: StatoSmontaggio
     @State private var fumetto: Int?
     @State private var sopraVassoio = false
 
     private typealias S = Tema.Apple.Posizioni.Smontaggio
 
     init(stato: StatoShell) {
-        _stato = ObservedObject(wrappedValue: stato)
-        _smontaggio = ObservedObject(wrappedValue: stato.smontaggio)
+        self.stato = stato
+        self.smontaggio = stato.smontaggio
         _fumetto = State(initialValue: stato.smontaggio.fumettoIstantanea)
     }
 

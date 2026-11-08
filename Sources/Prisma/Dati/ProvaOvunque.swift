@@ -116,6 +116,7 @@ enum ProvaOvunque {
             try provaArchivio()
             try provaNomi()
             try provaSpaziLuce()
+            try provaAziende()
             try provaSpazio(radice: radice)
             print("Prova di Prisma ovunque riuscita")
             return 0
@@ -244,6 +245,22 @@ enum ProvaOvunque {
 
     /// Lo spazio con le quattro app di Luce va nell'istantanea e torna uguale; un'app che chi legge non conosce (un
     /// Prisma più nuovo) si salta senza perdere lo spazio né gli altri dati.
+    /// Le aziende dei clienti imprenditori («Luce» giro 7, decisione 44): entrano nell'istantanea cifrata con il cliente e
+    /// tornano uguali (date e cifre comprese nel JSON canonico dello spazio).
+    private static func provaAziende() throws {
+        var dati = DatiPrisma.demo()
+        guard let i = dati.clienti.firstIndex(where: { !$0.elencoAziende.isEmpty }) else {
+            throw Fallita(motivo: "i dati di prova non hanno un cliente con un'azienda")
+        }
+        dati.clienti[i].aziende?.append(AziendeDiProva.morettiCostruzioni())
+        let istantanea = SpazioOvunque.datiIstantanea(dati)
+        try controlla(istantanea.clienti[i].aziende == dati.clienti[i].aziende, "le aziende non entrano nell'istantanea")
+        let chiaro = try JSONOvunque.codificatore().encode(istantanea)
+        let letto = try JSONOvunque.decodificatore().decode(DatiPrisma.self, from: chiaro)
+        try controlla(letto.clienti.map(\.aziende) == dati.clienti.map(\.aziende),
+                      "le aziende non tornano uguali dall'istantanea dello spazio")
+    }
+
     private static func provaSpaziLuce() throws {
         var dati = DatiPrisma.demo()
         let luce = SpazioLavoro(id: "spazio-luce", nome: "Sala con il cliente",

@@ -22,7 +22,7 @@ extension AppImpostazioni {
                     RigaImpostazione(titolo: "Backup automatico settimanale", sottotitolo: testoAutomatico,
                                      stato: b.automatico ? nil : Pillola(testo: "Spento", tono: .neutro),
                                      aiuto: testoProssimo, avvertenza: avvertenzaBackup) {
-                        interruttore($stato.dati.impostazioni.backup.automatico)
+                        interruttore(Bindable(stato.dati).impostazioni.backup.automatico)
                     }
                     .cascataImpostazioni(2)
                     RigaImpostazione(
@@ -54,7 +54,7 @@ extension AppImpostazioni {
                                                      if acceso { stato.chiediPasswordBackup = true } else { confermaTogliPassword = true }
                                                  }))
                         }
-                        .popover(isPresented: $stato.chiediPasswordBackup, arrowEdge: .leading) { moduloPassword }
+                        .popover(isPresented: Bindable(stato).chiediPasswordBackup, arrowEdge: .leading) { moduloPassword }
                     }
                     .cascataImpostazioni(5)
                 }
@@ -63,6 +63,22 @@ extension AppImpostazioni {
                 NotaImpostazioni("Se dimentichi la password, i backup protetti non si aprono più.")
                     .cascataImpostazioni(6)
             }
+
+            // «Luce» giro 6: la Biblioteca (PDF di condizioni, KID, circolari) nel backup di base, con l'interruttore
+            GruppoImpostazioni(titolo: "Biblioteca") {
+                // Il numero dei documenti viene da StatoBiblioteca (@Observable): la riga si aggiorna anche quando si
+                // aggiunge un documento con la pagina aperta
+                Group {
+                    RigaImpostazione(titolo: "Escludi la Biblioteca dal backup",
+                                     sottotitolo: testoMisuraBiblioteca,
+                                     aiuto: "Circolari e manuali interni possono essere riservati: decidi tu se possono stare in un backup su iCloud Drive. Se la escludi, un ripristino tiene la Biblioteca di questo Mac",
+                                     ultima: true) {
+                        interruttore(Binding(get: { stato.dati.impostazioni.backup.escludiBiblioteca == true },
+                                             set: { stato.dati.impostazioni.backup.escludiBiblioteca = $0 ? true : nil }))
+                    }
+                }
+            }
+            .cascataImpostazioni(6)
 
             GruppoImpostazioni(titolo: "Backup disponibili") {
                 if stato.elencoBackup.isEmpty {
@@ -105,7 +121,7 @@ extension AppImpostazioni {
                                  stato: Pillola(testo: "Versione \(DatiPrisma.versioneAttuale)", tono: .neutro), ultima: true) {
                     ValoreRiga(testo: "Mostra nel Finder") {
                         #if os(macOS)
-                        NSWorkspace.shared.activateFileViewerSelecting([Archivio.file])
+                        NSWorkspace.shared.activateFileViewerSelecting([Archivio.cartellaPezzi])
                         #elseif os(iOS)
                         // Su iPhone e iPad il Finder non c'è
                         stato.mostraAvviso(StatoShell.soloSulMacPerOra)
@@ -186,6 +202,14 @@ extension AppImpostazioni {
     }
 
     /// Nome e dimensione di un backup dell'elenco, con «protetto» se ha la password.
+    /// «La cartella pesa 12 MB, per ognuna delle 8 copie.»
+    var testoMisuraBiblioteca: String {
+        let n = stato.biblioteca.tutti.count
+        guard stato.persistente, n > 0 else { return "La Biblioteca è vuota." }
+        let misura = ByteCountFormatter.string(fromByteCount: StatoShell.misuraBiblioteca(), countStyle: .file)
+        return "\(n == 1 ? "1 documento" : "\(n) documenti"), \(misura): in ognuna delle \(GestoreBackup.massimo) copie."
+    }
+
     func descrizione(_ voce: VoceBackup) -> String {
         let base = "\(voce.nome) · \(Formati.dimensione(voce.dimensione))"
         return voce.cifrato ? base + " · protetto" : base

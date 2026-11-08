@@ -3,7 +3,7 @@ import SwiftUI
 /// Dettaglio di una posizione: dati del contratto, costi e rischio, proiezione con scenari
 /// o, per le coperture, il quadro della protezione. Si apre dentro la finestra, come su iOS 5.
 struct DettaglioPosizione: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @Environment(\.modoIstantanea) private var modoIstantanea
     let posizione: Posizione
     let modifica: () -> Void
@@ -19,6 +19,7 @@ struct DettaglioPosizione: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let p = posizione
         let prodotto = stato.prodotto(p.prodottoId)
         let finanziariaInEssere = p.area.proiettabile && p.stato == .inEssere

@@ -23,13 +23,15 @@ extension ProvaBackup {
         let scritto = cartella.appendingPathComponent("scritto.zip")
         try ScrittoreZip.crea(da: campione, a: scritto)
         let nomi = try LettoreZip.nomi(scritto)
-        guard nomi.first == "Prisma/", nomi.allSatisfy({ $0.hasPrefix("Prisma/") }), nomi.contains("Prisma/archivio.json") else {
+        let voceIndice = "Prisma/" + ArchivioPezzi.nomeCartella + "/" + ArchivioPezzi.nomeIndice
+        guard nomi.first == "Prisma/", nomi.allSatisfy({ $0.hasPrefix("Prisma/") }), nomi.contains(voceIndice),
+              nomi.contains(where: { $0.hasPrefix("Prisma/Archivio/Clienti/") && $0.hasSuffix(".json") }) else {
             return "zip di ScrittoreZip: voci inattese (\(nomi.prefix(5)))"
         }
         let daScritto = cartella.appendingPathComponent("DaScritto", isDirectory: true)
         try LettoreZip.estrai(scritto, in: daScritto)
         if let e = confrontaCartelle(daScritto.appendingPathComponent("Prisma"), campione) { return "ScrittoreZip → LettoreZip: \(e)" }
-        guard try LettoreZip.dati(scritto, voce: "Prisma/archivio.json") == Data(contentsOf: campione.appendingPathComponent("archivio.json")),
+        guard try LettoreZip.dati(scritto, voce: voceIndice) == Data(contentsOf: ArchivioPezzi.indice(in: campione)),
               try LettoreZip.dati(scritto, voce: "Prisma/manca.json") == nil else {
             return "LettoreZip.dati: una voce sola non torna uguale"
         }
@@ -174,7 +176,8 @@ extension ProvaBackup {
         let vera = cartella.appendingPathComponent("Vera", isDirectory: true)
         try fm.createDirectory(at: documenti, withIntermediateDirectories: true)
         try fm.createDirectory(at: vera, withIntermediateDirectories: true)
-        try Archivio.codificatore.encode(DatiPrisma.demo()).write(to: cartella.appendingPathComponent("archivio.json"))
+        // L'archivio a pezzi: la cartella Archivio/ con le sottocartelle (Clienti/) e i nomi dei file dei clienti
+        try Archivio.salva(DatiPrisma.demo(), in: cartella)
         try Data(#"{"prova":true}"#.utf8).write(to: vera.appendingPathComponent("memoria.json"))
         try Data("Nota di prova con gli accenti: è, à, ü.".utf8).write(to: documenti.appendingPathComponent("Nota città è ü.txt"))
         try Data().write(to: documenti.appendingPathComponent("vuoto.txt"))
@@ -203,7 +206,7 @@ extension ProvaBackup {
     static func provaDitto(zip: URL, campione: URL) throws -> String? {
         let fm = FileManager.default
         guard fm.fileExists(atPath: zip.path) else { return "lo zip \(zip.path) non c'è" }
-        guard fm.fileExists(atPath: campione.appendingPathComponent("archivio.json").path) else { return "il campione \(campione.path) non c'è" }
+        guard ArchivioPezzi.presente(in: campione) else { return "il campione \(campione.path) non c'è" }
         let radice = fm.temporaryDirectory.appendingPathComponent("Prisma-prova-ditto-\(UUID().uuidString)", isDirectory: true)
         defer { try? fm.removeItem(at: radice) }
         try fm.createDirectory(at: radice, withIntermediateDirectories: true)
@@ -224,7 +227,7 @@ extension ProvaBackup {
         } catch ErroreBackup.passwordErrata {}
         let estratto = try GestoreBackup.estrai(cifrato, password: password)
         defer { GestoreBackup.pulisciEstrazione(estratto.cartella) }
-        let attesi = try Archivio.decodifica(Data(contentsOf: campione.appendingPathComponent("archivio.json")))
+        let attesi = try Archivio.leggiPerRipristino(campione)
         guard estratto.dati == attesi else { return "i dati estratti non coincidono con il campione" }
         if let e = confrontaCartelle(estratto.cartella, campione) { return "backup estratto: \(e)" }
 

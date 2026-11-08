@@ -7,12 +7,13 @@ private typealias K = Tema.Colore.Adeguatezza
 /// canale. Si accendono, si spengono, si modificano, se ne aggiungono, si torna all'elenco di Prisma. Le spunte
 /// si mettono nella scheda di adeguatezza di ogni proposta.
 struct ImpostazioniProposte: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     /// La voce aperta nel popover di modifica (anche quella appena aggiunta).
     @State private var inModifica: String?
     @State private var confermaRipristino = false
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         VStack(alignment: .leading, spacing: Misure.Impostazioni.spazioGruppi) {
             Text("Per ogni proposta, i documenti del suo canale. Le spunte nella scheda di adeguatezza.")
                 .font(Tema.Testo.Impostazioni.nota)
@@ -63,7 +64,7 @@ struct ImpostazioniProposte: View {
                 ValoreRiga(testo: "Modifica") { inModifica = v.id }
                     .popover(isPresented: aperto, arrowEdge: .leading) {
                         ModuloVoceDocumento(voceId: v.id) { inModifica = nil }
-                            .environmentObject(stato)
+                            .environment(stato)
                     }
                 Toggle("", isOn: legameVoce(stato, v.id, \.attiva, true))
                     .toggleStyle(StileInterruttore())
@@ -99,11 +100,12 @@ private func legameVoce<V>(_ stato: StatoShell, _ id: String, _ chiave: Writable
 
 /// Il popover di una voce: titolo, riferimento, per quali proposte, solo in sostituzione, elimina.
 private struct ModuloVoceDocumento: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let voceId: String
     let chiudi: () -> Void
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         VStack(alignment: .leading, spacing: M.spazioPopover) {
             campo("Documento") {
                 TestoRinviato(testo: legameVoce(stato, voceId, \.titolo, ""), salvaOra: { stato.salvaOra() }) { bozza in

@@ -29,7 +29,7 @@ import SwiftUI
 // Valori in DesignSystem/Apple/Tema.Apple+Ovunque.swift, testi in Motori/TestiOvunque.swift.
 
 struct PaginaImpostazioniOvunque: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     /// iPhone: senza telefono d'esempio, in una colonna sola.
     var compatta = false
 
@@ -38,14 +38,15 @@ struct PaginaImpostazioniOvunque: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         CorpoImpostazioniOvunque(ovunque: stato.ovunque, compatta: compatta)
             .impostazioniApple()
     }
 }
 
 private struct CorpoImpostazioniOvunque: View {
-    @EnvironmentObject var stato: StatoShell
-    @ObservedObject var ovunque: StatoOvunque
+    @Environment(StatoShell.self) var stato
+    @Bindable var ovunque: StatoOvunque
     let compatta: Bool
 
     @State private var confermaSpegni = false
@@ -61,6 +62,7 @@ private struct CorpoImpostazioniOvunque: View {
     private var base: Double { Tema.Apple.Moto.Cascata.baseDentroApp }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         HStack(alignment: .top, spacing: P.spazioTelefono) {
             colonna
                 .frame(maxWidth: compatta ? .infinity : P.colonna, alignment: .leading)
@@ -312,7 +314,7 @@ private struct CorpoImpostazioniOvunque: View {
 /// Lo schema con i pallini in pausa quando la finestra non si vede (Prisma bloccato, Impostazioni coperte da una
 /// finestra ingrandita). Solo questa vista osserva le finestre: la pagina non si ridisegna quando si spostano.
 private struct SchemaConPausaOvunque: View {
-    @ObservedObject var sistema: StatoFinestre
+    let sistema: StatoFinestre
     let aspetto: AspettoSchemaOvunque
 
     var body: some View {
@@ -329,10 +331,10 @@ private struct SchemaConPausaOvunque: View {
 /// cancella, la chiave va nel Portachiavi.
 private struct ModuloOvunqueVista: View {
     let tipo: ModuloOvunque
-    @ObservedObject var ovunque: StatoOvunque
+    @Bindable var ovunque: StatoOvunque
     let compatta: Bool
 
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     @State private var passphrase = ""
     @State private var conferma = ""
 
@@ -382,6 +384,7 @@ private struct ModuloOvunqueVista: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         VStack(alignment: .leading, spacing: M.spazio) {
             VStack(alignment: .leading, spacing: Tema.Apple.Ovunque.Card.sottoTitolo) {
                 Text(titolo)
@@ -507,8 +510,8 @@ private struct ModuloOvunqueVista: View {
 /// per dispositivo e ora («iPhone · stamattina alle 09:12 · Nota nuova per Giulia Rossi») con «Unisci ora», poi (sul
 /// Mac) le cose arrivate di recente.
 private struct PannelloModificheOvunque: View {
-    @ObservedObject var ovunque: StatoOvunque
-    @EnvironmentObject var stato: StatoShell
+    @Bindable var ovunque: StatoOvunque
+    @Environment(StatoShell.self) var stato
 
     private typealias M = Tema.Apple.Ovunque.Modifiche
 
@@ -603,8 +606,7 @@ private struct PannelloModificheOvunque: View {
     private func descrizione(_ a: ArrivoOvunque) -> String {
         let (nome, femminile) = TestiOvunque.nomeEntita(a.entita)
         var t = "\(nome) \(femminile ? "nuova" : "nuovo")"
-        if let id = CampiOvunque.oggetto(a.entita, id: a.entitaId, in: stato.dati)?["clienteId"] as? String,
-           let c = stato.dati.clienti.first(where: { $0.id == id }) {
+        if let id = stato.clienteIdOvunque(a.entita, id: a.entitaId), let c = stato.dati.clienti.first(where: { $0.id == id }) {
             t += " per \(c.nome)"
         }
         return t + " · " + TestiOvunque.gruppo(nome: a.nomeDispositivo, data: a.il)
@@ -614,11 +616,12 @@ private struct PannelloModificheOvunque: View {
 /// Un conflitto: da dove arriva, perché, le due versioni affiancate e la scelta. Finché non si sceglie vale il Mac.
 private struct ConflittoOvunqueVista: View {
     let conflitto: ConflittoOvunque
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     private typealias M = Tema.Apple.Ovunque.Modifiche
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let op = conflitto.operazione
         let nome = conflitto.nomeDispositivo
         let cliente = stato.clienteOperazioneOvunque(op).map { " per \($0.nome)" } ?? ""
@@ -700,7 +703,7 @@ extension StatoShell {
         let piede = TestiOvunque.piedeTelefono(attesa.count)
         let daOperazione = attesa.reversed().lazy.compactMap { self.clienteOperazioneOvunque($0) }.first
         let daArrivo = dati.arriviOvunque.reversed().lazy.compactMap { a -> Cliente? in
-            guard let id = CampiOvunque.oggetto(a.entita, id: a.entitaId, in: self.dati)?["clienteId"] as? String else { return nil }
+            guard let id = self.clienteIdOvunque(a.entita, id: a.entitaId) else { return nil }
             return self.dati.clienti.first { $0.id == id }
         }.first
         guard let cliente = daOperazione ?? daArrivo ?? dati.clienti.first(where: { $0.id == clienteAttivoId }) ?? dati.clienti.first else {

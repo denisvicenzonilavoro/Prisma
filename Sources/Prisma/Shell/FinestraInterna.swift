@@ -6,7 +6,7 @@ import SwiftUI
 /// Trascinare e ridimensionare non toccano lo stato finché non si rilascia: si muove (o si reimpagina)
 /// solo questa finestra, come sul Mac, e lo stato si scrive una volta sola.
 struct FinestraInterna: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
     let finestra: StatoShell.Finestra
     let attiva: Bool
     /// L'area delle finestre (coordinate `ShellView.spazioFinestre`): spostamento e misura restano dentro.
@@ -18,6 +18,7 @@ struct FinestraInterna: View {
     @GestureState private var allungamento: CGSize = .zero
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let forma = FormaVetro.arrotondata(finestra.ingrandita ? Tema.Raggio.finestraIngrandita : Tema.Raggio.finestra)
         let dimensione = allungamento == .zero ? cornice.size : misuraAllungata(allungamento)
         VStack(spacing: 0) {

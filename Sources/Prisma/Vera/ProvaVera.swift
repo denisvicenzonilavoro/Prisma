@@ -579,7 +579,7 @@ enum ProvaVera {
             let dopo = spazi.finestreVisibili.map { spazi.cornice(di: $0) }
             controlla(dopo.count == prima.count && zip(prima, dopo).allSatisfy { abs($0.minX - $1.minX) < 1 && abs($0.width - $1.width) < 1 && abs($0.height - $1.height) < 1 },
                       "Lo spazio salvato si riapre com'era")
-            let riletto = try? Archivio.decodifica(Archivio.codificatore.encode(spazi.dati))
+            let riletto = try? Archivio.decodifica(Archivio.codificatore.encode(spazi.dati.istantanea))
             controlla(riletto?.spazi == spazi.dati.spazi && riletto?.spazi.first?.predefinito == false, "Gli spazi salvati restano nell'archivio")
             spazi.eliminaSpazio(salvato.id)
             controlla(spazi.dati.spazi.isEmpty, "Spazio eliminato")
@@ -624,7 +624,7 @@ enum ProvaVera {
         taccuino.vai(a: .nota("nota-laura"))
         controlla(taccuino.appAttiva == .note && taccuino.notaSelezionata == "nota-laura" && taccuino.noteFiltrate.contains { $0.id == "nota-laura" },
                   "Il risultato della ricerca apre la nota in Note, anche con un altro filtro")
-        let rilette = try? Archivio.decodifica(Archivio.codificatore.encode(taccuino.dati))
+        let rilette = try? Archivio.decodifica(Archivio.codificatore.encode(taccuino.dati.istantanea))
         controlla(rilette?.note == taccuino.dati.note, "Le note restano nell'archivio")
         taccuino.eliminaCliente("laura")
         controlla(!taccuino.dati.note.contains { $0.clienteId == "laura" }, "Eliminando un cliente spariscono anche le sue note")
@@ -822,35 +822,35 @@ enum ProvaVera {
         // Vera sul portafoglio: le stesse cifre del Portafoglio, una conversazione a parte
         let pf = StatoShell(persistente: false)
         pf.rispostePreparate = true
-        let quadro = VeraPortafoglio.risposta(.quadro, domanda: "", dati: pf.dati)
-        let calcolato = VeraPortafoglio.portafoglio(pf.dati, oggi: Date())
+        let quadro = VeraPortafoglio.risposta(.quadro, domanda: "", dati: pf.dati.istantanea)
+        let calcolato = VeraPortafoglio.portafoglio(pf.dati.istantanea, oggi: Date())
         controlla(quadro.testo.contains(Formati.euro(calcolato.riepilogo.attivita)), "Vera · portafoglio: il patrimonio seguito come nel Portafoglio")
         controlla(SpuntoPortafoglio.da("chi devo chiamare questa settimana?") == .ricontattare && SpuntoPortafoglio.da("cosa scade a dicembre?") == .scadenze
                   && SpuntoPortafoglio.da("Come vanno le PROPOSTE") == .proposte && SpuntoPortafoglio.da("ciao") == .quadro,
                   "Vera · portafoglio: argomenti delle domande scritte a mano")
         if let primo = calcolato.scadenze.first {
             let m = Calendar.current.component(.month, from: primo.inizio)
-            let r = VeraPortafoglio.risposta(.scadenze, domanda: "cosa scade a \(VeraPortafoglio.mesi[m - 1])?", dati: pf.dati)
+            let r = VeraPortafoglio.risposta(.scadenze, domanda: "cosa scade a \(VeraPortafoglio.mesi[m - 1])?", dati: pf.dati.istantanea)
             let altri = calcolato.scadenze.filter { Calendar.current.component(.month, from: $0.inizio) != m }.flatMap(\.posizioni)
             controlla(primo.posizioni.allSatisfy { r.testo.contains($0.nome) } && altri.allSatisfy { a in !primo.posizioni.contains { $0.nome == a.nome } ? !r.testo.contains(a.nome) : true },
                       "Vera · portafoglio: le scadenze del mese chiesto, solo quelle")
         }
         pf.dati.appuntamenti.removeAll { $0.clienteId == "laura" }
         pf.dati.incontri.removeAll { $0.clienteId == "laura" }
-        controlla(VeraPortafoglio.risposta(.ricontattare, domanda: "", dati: pf.dati).testo.contains("Laura Moretti"), "Vera · portafoglio: chi ricontattare")
+        controlla(VeraPortafoglio.risposta(.ricontattare, domanda: "", dati: pf.dati.istantanea).testo.contains("Laura Moretti"), "Vera · portafoglio: chi ricontattare")
         controlla(SpuntoPortafoglio.da("quali revisioni devo fare quest'anno?") == .riesami, "Vera · portafoglio: «revisioni» sono i riesami")
         controlla(SpuntoPortafoglio.da("chi può ancora dedurre qualcosa?") == .fineAnno, "Vera · portafoglio: «dedurre» è la fine dell'anno")
-        let fine = VeraPortafoglio.risposta(.fineAnno, domanda: "", dati: pf.dati)
+        let fine = VeraPortafoglio.risposta(.fineAnno, domanda: "", dati: pf.dati.istantanea)
         controlla(!(fine.titolo ?? "").isEmpty && !fine.testo.isEmpty, "Vera · portafoglio: spazio deducibile entro fine anno (\(fine.titolo ?? ""))")
-        let riesami = VeraPortafoglio.risposta(.riesami, domanda: "", dati: pf.dati)
+        let riesami = VeraPortafoglio.risposta(.riesami, domanda: "", dati: pf.dati.istantanea)
         controlla((riesami.titolo ?? "").hasPrefix("Riesami annuali") || (riesami.titolo ?? "").hasPrefix("Nessun riesame"), "Vera · portafoglio: i riesami da fare (\(riesami.titolo ?? ""))")
         // Fissare l'appuntamento toglie il cliente dall'elenco
-        if let laura = VeraPortafoglio.portafoglio(pf.dati, oggi: Date()).daRicontattare.first(where: { $0.id == "laura" }) {
+        if let laura = VeraPortafoglio.portafoglio(pf.dati.istantanea, oggi: Date()).daRicontattare.first(where: { $0.id == "laura" }) {
             let a = pf.bozzaRicontatto(laura)
             controlla(a.clienteId == "laura" && a.tipo == .telefonata && a.inizio > Date() && !Calendar.current.isDateInWeekend(a.inizio),
                       "Da ricontattare: la bozza è una telefonata in un giorno lavorativo")
             pf.salvaAppuntamento(a)
-            controlla(!VeraPortafoglio.portafoglio(pf.dati, oggi: Date()).daRicontattare.contains { $0.id == "laura" },
+            controlla(!VeraPortafoglio.portafoglio(pf.dati.istantanea, oggi: Date()).daRicontattare.contains { $0.id == "laura" },
                       "Da ricontattare: fissato l'appuntamento, il cliente esce dall'elenco")
         }
         pf.clienteAttivoId = "giulia"
@@ -861,7 +861,7 @@ enum ProvaVera {
         pf.veraPortafoglio = true
         pf.nuovaConversazione()
         controlla(pf.conversazione(VeraPortafoglio.chiave).isEmpty, "Vera · portafoglio: nuova conversazione")
-        controlla(VeraPortafoglio.scheda(pf.dati).count <= ContestoVera.limite, "Vera · portafoglio: scheda entro il limite del modello")
+        controlla(VeraPortafoglio.scheda(pf.dati.istantanea).count <= ContestoVera.limite, "Vera · portafoglio: scheda entro il limite del modello")
 
         // Voce: il testo parlato è pulito e breve, le impostazioni vecchie si leggono, «basta» chiude
         let parlato = TestoParlato.da(titolo: "Check-up di Marco", testo: "• **Oggi**: € 12.000 → in crescita\n1. Protezione · scoperta\n\nAltro", completo: true)
@@ -1002,6 +1002,10 @@ enum ProvaVera {
         ProvaFalloTu.esegui(controlla)
         // La fase 2: ricerca, memoria, lezioni, filo lungo, 30 secondi, norme, lascia cadere (ProvaFaseDueVera.swift)
         ProvaFaseDueVera.esegui(controlla)
+        // «Luce», giro 6: Biblioteca · Trova la pagina (frase verificata sul passo, cifre, nomi, Qwen finto) (ProvaTrovaPaginaVera.swift)
+        ProvaTrovaPaginaVera.esegui(controlla)
+        // Giro 0 di «Prisma istantaneo»: i tempi di Vera (caricamento, prima parola, parole al secondo) (ProvaMisuraVera.swift)
+        ProvaMisuraVera.esegui(controlla)
         // La fase 3: promesse, seconda lettura, differenze, coperture, resoconto (ProvaFaseTreVera.swift)
         ProvaFaseTreVera.esegui(controlla)
         // La fase 4: routine, agenda, tagliando, sussurro, mercato, stile, tre livelli, ragiona a passi (motori puri)
@@ -1192,7 +1196,7 @@ enum ProvaVera {
         controlla(riletti?.clienti.count == 35 && riletti?.posizioni.count == d.posizioni.count, "Clienti fittizi: l'archivio si salva e si rilegge")
         // Vera legge ogni cliente fittizio: scheda nei limiti e una bozza per ogni spunto
         let s = StatoShell(persistente: false)
-        s.dati = d
+        s.dati.carica(d)
         var schedeOk = true
         var bozzeOk = true
         for c in fittizi {

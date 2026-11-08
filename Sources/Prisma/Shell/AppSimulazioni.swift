@@ -4,7 +4,7 @@ import SwiftUI
 /// di Analisi 360 (`StrumentiAnalisi360`); qui resta l'involucro di iPhone e iPad: cornice ed elenco laterale
 /// attorno alle stesse viste (`SimulatoreIpotesi`, `ScenariSalvati`, `SchedaTFR`).
 struct AppSimulazioni: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     private var cliente: String { stato.clienteAttivoId }
     private var salvate: [Simulazione] { stato.simulazioniCliente(cliente) }
@@ -15,6 +15,7 @@ struct AppSimulazioni: View {
     }
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         CorniceStrumento(
             notaStato: "Calcoli eseguiti in locale · rendimento costante, nessuna previsione o raccomandazione",
             notaDestra: "\(salvate.count) \(salvate.count == 1 ? "scenario" : "scenari") nel dossier"
@@ -39,7 +40,7 @@ struct AppSimulazioni: View {
         DossierRail()
         EtichettaRail(testo: "Vista")
         SegmentiAnalisi(opzioni: [(SchedaSimulazioni.simulatore, "Simulatore"), (.scenari, "Scenari"), (.tfr, "TFR")],
-                        selezione: $stato.schedaSimulazioni)
+                        selezione: Bindable(stato).schedaSimulazioni)
         if stato.schedaSimulazioni != .tfr {
             railPosizioni
         }

@@ -26,7 +26,7 @@ import UniformTypeIdentifiers
 
 /// Lo strato della scena nella shell (sopra barra, finestre e dock): vuoto quando la scena è chiusa.
 struct StratoInquadra: View {
-    @ObservedObject var inquadra: StatoInquadra
+    let inquadra: StatoInquadra
     @Environment(\.modoIstantanea) private var istantanea
     @Environment(\.prismaCalmo) private var calmo
 
@@ -49,13 +49,14 @@ struct StratoInquadra: View {
 
 /// Il velo, l'iPhone disegnato e la scheda «Prisma sul Mac», centrati; la scena si rimpicciolisce nelle finestre basse.
 struct ScenaInquadra: View {
-    @EnvironmentObject var stato: StatoShell
-    @ObservedObject var inquadra: StatoInquadra
+    @Environment(StatoShell.self) var stato
+    let inquadra: StatoInquadra
 
     private typealias D = Tema.Apple.Inquadra.Disposizione
     private typealias A = Tema.Apple.Inquadra.Apparecchio
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         GeometryReader { geo in
             ZStack {
                 // Il velo comune della scena del telefono (DesignSystem/Apple/ScenaTelefono.swift)
@@ -105,7 +106,7 @@ struct ScenaInquadra: View {
 
 /// L'iPhone con la tacca: nello schermo l'inquadratura, il foglio letto, la linea della scansione e la scritta.
 private struct TelefonoInquadra: View {
-    @ObservedObject var inquadra: StatoInquadra
+    let inquadra: StatoInquadra
     @Environment(\.prismaStatoFinale) private var fermo
     @Environment(\.prismaScatto) private var scatto
     @State private var entrato = false
@@ -226,12 +227,13 @@ private struct LineaScansione: View {
 // MARK: - La scheda «Prisma sul Mac»
 
 private struct SchedaInquadraMac: View {
-    @EnvironmentObject var stato: StatoShell
-    @ObservedObject var inquadra: StatoInquadra
+    @Environment(StatoShell.self) var stato
+    let inquadra: StatoInquadra
 
     private typealias S = Tema.Apple.Inquadra.Scheda
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         VStack(alignment: .leading, spacing: 0) {
             testa
             Text(titolo)
@@ -487,12 +489,13 @@ struct TabellaConfrontoInquadra: View {
 
 /// La zona dove trascinare la foto o il PDF della polizza, con «Scegli un file…».
 private struct ZonaInquadra: View {
-    @EnvironmentObject var stato: StatoShell
-    @ObservedObject var inquadra: StatoInquadra
+    @Environment(StatoShell.self) var stato
+    let inquadra: StatoInquadra
 
     private typealias Z = Tema.Apple.Inquadra.Zona
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         let sopra = inquadra.fileSopra
         let forma = RoundedRectangle(cornerRadius: Z.raggio, style: .continuous)
         return VStack(spacing: Z.spazio) {
@@ -517,9 +520,10 @@ private struct ZonaInquadra: View {
 
 /// «◎ Inquadra con l’iPhone» accanto ai segmenti del Portafoglio (§9.1.1).
 struct PulsanteInquadra: View {
-    @EnvironmentObject var stato: StatoShell
+    @Environment(StatoShell.self) var stato
 
     var body: some View {
+        let _ = ContaCorpi.segna()
         Button { stato.apriInquadra() } label: {
             Label("Inquadra con l’iPhone", systemImage: "viewfinder")
         }

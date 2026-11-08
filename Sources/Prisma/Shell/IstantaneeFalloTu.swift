@@ -43,7 +43,7 @@ extension Istantanee {
     nonisolated static func preparaClientela(_ s: StatoShell) {
         s.rispostePreparate = true
         s.disponibilitaLocale = .pronto
-        s.dati = ClientiFittizi.completi()
+        s.dati.carica(ClientiFittizi.completi())
         s.veraPortafoglio = true
         let domanda = "Chi non ha una protezione per il coniuge?"
         s.aggiungiMessaggio(MessaggioVera(autore: .utente, testo: domanda), cliente: VeraPortafoglio.chiave, parla: false)

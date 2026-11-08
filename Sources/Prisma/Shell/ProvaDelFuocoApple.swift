@@ -32,7 +32,7 @@ import UIKit
 /// (`rimonta`, come le schede di Studio). In modalità cliente il Portafoglio non si apre (StatoShell.portafoglio).
 struct VistePortafoglioApple<Portafoglio: View>: View {
     let stato: StatoShell
-    @ObservedObject var prova: StatoProvaFuoco
+    @Bindable var prova: StatoProvaFuoco
     let portafoglio: Portafoglio
 
     @Environment(\.prismaCalmo) private var calmo
@@ -44,7 +44,7 @@ struct VistePortafoglioApple<Portafoglio: View>: View {
 
     init(stato: StatoShell, @ViewBuilder portafoglio: () -> Portafoglio) {
         self.stato = stato
-        _prova = ObservedObject(wrappedValue: stato.provaFuoco)
+        self.prova = stato.provaFuoco
         _mostrata = State(initialValue: stato.provaFuoco.vista)
         self.portafoglio = portafoglio()
     }
@@ -169,7 +169,7 @@ private struct TestataVistePortafoglio: View {
 /// La vista «Prova del fuoco»: card dello scenario, titolo della lista e «Chi chiamare, in ordine».
 struct ProvaDelFuocoApple: View, Equatable {
     let stato: StatoShell
-    @ObservedObject var prova: StatoProvaFuoco
+    @Bindable var prova: StatoProvaFuoco
     let chiave: ChiaveVista
     let solaLettura: Bool
 
@@ -491,7 +491,7 @@ enum MisuraRigaFuoco: Equatable {
 // MARK: - Card dello scenario
 
 private struct CardScenarioFuoco: View {
-    @ObservedObject var prova: StatoProvaFuoco
+    @Bindable var prova: StatoProvaFuoco
     let esito: EsitoProvaFuoco?
     let inCorso: Bool
     let spenta: Bool

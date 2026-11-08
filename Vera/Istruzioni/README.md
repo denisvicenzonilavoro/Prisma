@@ -34,6 +34,8 @@ L'assistente si chiama Vera (prima si chiamava Ruby, e prima ancora Eve). Le ist
 
 - `norme.md`: «Il codice in tasca» (funzione 13): risposte solo dagli articoli trovati nella biblioteca delle norme, in JSON con gli id degli articoli; senza articolo o con una cifra che non è nell'articolo la risposta si scarta e Vera dice che la norma non risponde.
 
+- `biblioteca.md`: Biblioteca · «Trova la pagina» («Luce», giro 6): risposte solo dai 6 passi che Prisma trova con BM25 nei documenti della Biblioteca (condizioni, KID, circolari, normativa), in JSON con lo schema fisso `Vera/Schemi/biblioteca.json` (trovato, passo, frase, risposta). Prisma verifica che la frase stia parola per parola nel passo e che le cifre della risposta siano nel passo: altrimenti mostra la pagina senza citazione. A Qwen non vanno mai dati dei clienti.
+
 - `promesse.md`: «Le promesse» (funzione 8): gli impegni del consulente in note, appunti, resoconti e messaggi aperti, in JSON (frase, cosa, quando). Le regole di Prisma li trovano sempre (`PromesseVera.conRegole`); Qwen li cerca solo su richiesta («cerca le promesse di Marco») e una promessa vale solo se la frase è nella fonte.
 
 - `motivazione.md`: la bozza della motivazione di adeguatezza della «seconda lettura» (funzione 10), dalla bozza di Prisma con i controlli della scheda. Una cifra cambiata o una parola a rischio fanno restare la bozza di Prisma; entra nella scheda solo con «Inserisci» e mai se la scheda è firmata.
