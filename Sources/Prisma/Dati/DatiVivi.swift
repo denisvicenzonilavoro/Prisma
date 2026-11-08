@@ -81,9 +81,9 @@ import Observation
     var confrontiDocumenti: [ConfrontoDocumenti] { didSet(prima) { segnalaClienti(prima, confrontiDocumenti, \.clienteId) } }
     var coperture: [CoperturaPolizza] { didSet(prima) { segnalaClienti(prima, coperture, \.clienteId) } }
     /// Le spese del consulente non entrano in nessun calcolo in cache (giro 9 di «Luce»).
-    var speseStudio: ArchivioSpese { didSet { segnala(.neutro) } }
+    var speseStudio: ArchivioSpese { didSet(prima) { _ = prima; segnala(.neutro) } }
     /// I km per cliente di Studio › Spese: nessun calcolo in cache.
-    var kmClienti: [String: Double] { didSet { segnala(.neutro) } }
+    var kmClienti: [String: Double] { didSet(prima) { _ = prima; segnala(.neutro) } }
     var clienteAttivoId: String { didSet(prima) { segnala(.clienteAttivo(prima: prima)) } }
     var impostazioni: Impostazioni { didSet(prima) { segnala(.impostazioni(prima: prima)) } }
 
