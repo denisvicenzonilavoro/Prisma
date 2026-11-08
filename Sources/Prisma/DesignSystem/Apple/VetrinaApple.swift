@@ -269,7 +269,21 @@ extension VetrinaApple {
                 }
             }
             RiquadroVetrinaApple(titolo: "Telefono disegnato") {
-                TelefonoDisegnato { SchermoTelefonoVuoto() }
+                // «Luce» giro 13: la carta d'identità fac-simile (dati di prova) e il pulsante della nota vocale, fermi
+                TelefonoDisegnato {
+                    ZStack(alignment: .top) {
+                        SchermoTelefonoVuoto()
+                        CartaIdentitaDisegnata(accesi: [.cognome, .nome, .dataNascita])
+                            .rotationEffect(.degrees(Tema.Apple.NuovoCliente.Carta.rotazione))
+                            .padding(.horizontal, Tema.Apple.NuovoCliente.Carta.lati)
+                            .padding(.top, Tema.Apple.NuovoCliente.Carta.dallAlto)
+                        VStack {
+                            Spacer(minLength: 0)
+                            FacciaPulsanteRegistra(ascolta: false, fatto: false)
+                                .padding(.bottom, Tema.Apple.NotaVocale.Registra.dalFondo)
+                        }
+                    }
+                }
                     .scaleEffect(M.scalaTelefono)
                     .frame(width: Tema.Apple.Apparecchio.larghezza * M.scalaTelefono,
                            height: Tema.Apple.Apparecchio.altezza * M.scalaTelefono)
