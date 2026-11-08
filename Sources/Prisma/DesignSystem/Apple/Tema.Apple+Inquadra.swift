@@ -238,7 +238,7 @@ extension Tema.Apple.Moto {
         static var chiusura: Animation { .linear(duration: durataChiusura) }
         /// L'iPhone entra da y +60 e −4° in 0,7 s con la molla leggera `cubic-bezier(.34,1.3,.64,1)`.
         static let durataTelefono = 0.70
-        static let curvaTelefono = Curva(x1: 0.34, y1: 1.3, x2: 0.64, y2: 1)
+        static let curvaTelefono = Curva.mollaLeggera
         static var telefono: Animation { curvaTelefono.animazione(durataTelefono) }
         static let spostamentoTelefono: CGFloat = 60
         static let rotazioneTelefono: Double = -4
