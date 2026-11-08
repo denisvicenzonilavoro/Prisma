@@ -270,12 +270,15 @@ struct ValoreConsulenteVista: View {
             Group {
                 if let r = v.rapporto {
                     Text("Per ogni euro di \(v.provvigioniStimate == nil ? "parcella" : "compenso"), circa \(rapporto(r)) euro di valore\(r < 1 ? " misurabile" : "").")
+                        .carattereApple(V.rapporto)
+                        .foregroundColor(Tema.Apple.Colore.inchiostro)
                 } else {
+                    // Stato vuoto: una nota, non la frase grande del rapporto
                     Text("Nessun compenso registrato: il rapporto non si calcola.")
+                        .carattereApple(V.nota)
+                        .foregroundColor(V.coloreNota)
                 }
             }
-            .carattereApple(V.rapporto)
-            .foregroundColor(Tema.Apple.Colore.inchiostro)
             .fixedSize(horizontal: false, vertical: true)
             .padding(V.paddingRapporto)
             .frame(width: V.larghezzaRapporto, alignment: .leading)
@@ -397,6 +400,7 @@ private struct DettaglioValoreVista: View {
         }
         .padding(V.paddingDettaglio)
         .frame(width: V.larghezzaDettaglio)
+        .background(RoundedRectangle(cornerRadius: V.raggioDettaglio, style: .continuous).fill(V.fondoDettaglio))
         .superficieApple(V.superficieDettaglio, raggio: V.raggioDettaglio)
     }
 }

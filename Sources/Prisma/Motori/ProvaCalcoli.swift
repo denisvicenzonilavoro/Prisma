@@ -1282,6 +1282,10 @@ enum ProvaCalcoli {
         // «Luce», giro 4: la Sala, una giornata della pensione (resto, priorità, voci senza importo, senza e con il piano)
         // e il gioco del rischio (soglie, confronto con il dichiarato, testi di prova dalla risorsa, partite incomplete)
         ProvaCalcoliSala.esegui(verificaEsterna)
+        // «Luce», giro 8: la lettera dal futuro (scheda dei fatti, lettera fissa), Lancia l'anno (seme fisso, stesso
+        // risparmio, eventi solo con probabilità e fonte, coperture) e Quanto vale avermi accanto (attribuzione, deduzioni,
+        // sostituzioni, parcelle, canali, presto per misurare)
+        ProvaCalcoliRacconti.esegui(verificaEsterna)
         // «Luce», giro 5: la tua settimana e il tuo anno (pagine solo con i dati, settimana lun-dom, la firma, in arrivo
         // per giorno, famiglie una volta, primo anno, momento senza cifre) e i traguardi festeggiati (una volta, anniversari,
         // mutuo, studi, festeggiati e scartati, idea solo dalle note, «Da festeggiare», lettura tollerante)

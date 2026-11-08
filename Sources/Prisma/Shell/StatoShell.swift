@@ -1459,7 +1459,7 @@ enum VoceConfronto: Hashable {
     }
 
     func contenutoProspetto(_ scelta: SceltaProspetto) -> ContenutoProspetto? {
-        if case .riesame = scelta { return fonteVera(clienteAttivoId).map { CompositoreProspetti.riesame($0, conformita: conformitaCliente(clienteAttivoId), occasioni: occasioniRiesame(clienteAttivoId), memoria: memoriaRiesame(clienteAttivoId)) } }
+        if case .riesame = scelta { return fonteVera(clienteAttivoId).map { CompositoreProspetti.riesame($0, conformita: conformitaCliente(clienteAttivoId), occasioni: occasioniRiesame(clienteAttivoId), memoria: memoriaRiesame(clienteAttivoId), valore: clienteAttivo.map(valoreConsulente)) } }
         // Dall'archivio dei calcoli (giro 0, tappa 2): il body di Prospetti non si iscrive a tutti i campi (aspetto, note,
         // conversazioni…); i prospetti leggono solo campi dei calcoli, e il cliente arriva a parte
         return CompositoreProspetti.componi(scelta, dati: datiDeiCalcoli(), cliente: clienteAttivoId, orizzonteConfronto: orizzonteConfronto)
@@ -3472,6 +3472,8 @@ enum SchedaImpostazioni: String, CaseIterable, Hashable, Identifiable {
     case portafogliModello
     /// La soglia delle pratiche ferme di Pratiche › Dopo la firma («Luce» giro 3, ImpostazioniPraticheVista.swift).
     case pratiche
+    /// Gli imprevisti di Lancia l'anno con probabilità e fonte, le avvertenze della Sala («Luce» giro 8, ImpostazioniSalaVista.swift).
+    case sala
     /// Dati di prova, confronto dei modelli, prove di promemoria e voce.
     case strumenti
 
@@ -3495,6 +3497,7 @@ enum SchedaImpostazioni: String, CaseIterable, Hashable, Identifiable {
         case .mercato: return "Mercato"
         case .portafogliModello: return "Portafogli modello"
         case .pratiche: return "Pratiche"
+        case .sala: return "Sala"
         case .strumenti: return "Strumenti"
         }
     }

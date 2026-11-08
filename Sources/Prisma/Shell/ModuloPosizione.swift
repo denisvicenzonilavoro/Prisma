@@ -128,6 +128,8 @@ struct ModuloPosizione: View {
                     }
                     if bozza.area == .protezione {
                         CampoModulo(etichetta: "Capitale assicurato") { campoEuroFacoltativo($bozza.capitaleAssicurato) }
+                        // «Luce» giro 8: quanto pagherebbe per un evento, dalle condizioni (Sala › Lancia l'anno)
+                        CampoModulo(etichetta: "Indennizzo stimato per evento") { campoEuroFacoltativo($bozza.indennizzoStimato) }
                         CampoModulo(etichetta: "Rischio coperto") {
                             MenuTendina(selezione: $bozza.rischio,
                                         opzioni: [(RischioCoperto?.none, "Non indicato")] + RischioCoperto.allCases.map { (Optional($0), $0.nome) },

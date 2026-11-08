@@ -110,6 +110,11 @@ enum Risorse {
             print("ERRORE: Mercato/\(ConfigurazioneMercato.nomeFile) non leggibile dal bundle")
             return 1
         }
+        // Sala (Luce, giro 8): gli eventi di Lancia l'anno, testi di prova senza probabilità
+        guard let eventi = MotoreLanciaAnno.caricati, !eventi.eventi.isEmpty, eventi.eventi.allSatisfy({ $0.probabilita == nil }) else {
+            print("ERRORE: \(MotoreLanciaAnno.fileEventi) non leggibile dal bundle (o con probabilità non date dall'utente)")
+            return 1
+        }
         // Biblioteca (Luce, giro 6): i sei fac-simile di prova
         guard EsempiBiblioteca.elenco.allSatisfy({ EsempiBiblioteca.pagine($0.risorsa) != nil }) else {
             print("ERRORE: fac-simile della Biblioteca non leggibili dal bundle")

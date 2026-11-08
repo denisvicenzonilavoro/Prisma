@@ -8,8 +8,10 @@ extension CompositoreProspetti {
 
     /// Con `memoria` (giro 6) il prospetto apre l'ordine del giorno con quanto è cambiato dal riesame precedente e
     /// aggiunge la cronologia dei riesami; senza è identico a prima (Vera lo chiama senza).
+    /// Con `valore` («Luce» giro 8, decisione 58) aggiunge «Quanto vale avermi accanto»: le cifre del lavoro fatto,
+    /// solo qui, nel prospetto per il consulente.
     static func riesame(_ f: FonteVera, conformita: EsitoConformita? = nil, occasioni: [Occasione]? = nil,
-                        memoria: MemoriaRiesame? = nil) -> ContenutoProspetto {
+                        memoria: MemoriaRiesame? = nil, valore: ValoreConsulente? = nil) -> ContenutoProspetto {
         let r = MotoreRiesame.calcola(f, conformita: conformita, occasioni: occasioni)
         let data: (Date) -> String = { Formati.dataBreve.string(from: $0) }
         var b: [BloccoProspetto] = []
@@ -194,6 +196,12 @@ extension CompositoreProspetti {
             b += bloccoCronologia(m)
         }
 
+        // Quanto vale avermi accanto: per il consulente, con le stesse cifre e la stessa nota della Sala
+        if let v = valore {
+            sezione("Quanto vale avermi accanto")
+            b += bloccoValore(v)
+        }
+
         sezione("Domande da fare")
         let domande = r.domande + (memoria.map { TestiMemoria.domande($0.variazioni) } ?? [])
         b.append(.testo(domande.map { "• \($0)" }.joined(separator: "\n")))
@@ -205,6 +213,35 @@ extension CompositoreProspetti {
         return ContenutoProspetto(occhiello: "Prospetto di dettaglio · Riesame annuale", titolo: "\(titoloRiesame) di \(f.cliente.nome)",
                                   sottotitolo: "Preparato il \(Formati.dataEstesa.string(from: f.oggi))" + (r.ultimoContatto.map { " · ultimo incontro il \(Formati.dataEstesa.string(from: $0))" } ?? "") + precedente,
                                   cliente: f.cliente.nome, data: f.oggi, blocchi: b)
+    }
+
+    /// Le voci del valore del lavoro con il cliente (o «presto per misurare»), il compenso per canale, la nota.
+    static func bloccoValore(_ v: ValoreConsulente) -> [BloccoProspetto] {
+        var b: [BloccoProspetto] = []
+        guard !v.presto, let totale = v.totale else {
+            b.append(.testo("Presto per misurare: il rapporto è cominciato il \(Formati.dataBreve.string(from: v.dal)) o non ci sono ancora raccomandazioni accettate."))
+            return b
+        }
+        b.append(.indicatori([
+            IndicatoreProspetto(etichetta: "Valore stimato", valore: (v.parziale ? "almeno " : "") + Formati.euro(totale),
+                                nota: "dal \(Formati.dataBreve.string(from: v.dal))"),
+            IndicatoreProspetto(etichetta: "Compenso", valore: Formati.euro(v.compenso),
+                                nota: v.provvigioniNonStimate ? "provvigioni Alleanza non stimate" : "parcelle e provvigioni stimate"),
+            IndicatoreProspetto(etichetta: "Per euro di compenso", valore: v.rapporto.map { String(format: "%.1f", $0).replacingOccurrences(of: ".", with: ",") } ?? "—",
+                                nota: "euro di valore"),
+            IndicatoreProspetto(etichetta: "Protetto (caso morte)", valore: v.protetto.map(Formati.euro) ?? "—", nota: "non entra nel totale"),
+        ]))
+        b.append(.tabella(TabellaProspetto(
+            colonne: [ColonnaProspetto(titolo: "Voce", peso: 1.6), ColonnaProspetto(titolo: "Cifra", peso: 1, destra: true),
+                      ColonnaProspetto(titolo: "Alleanza", peso: 1, destra: true), ColonnaProspetto(titolo: "Indipendente", peso: 1, destra: true),
+                      ColonnaProspetto(titolo: "Nota", peso: 2.6)],
+            righe: v.voci.map { x -> [CellaProspetto] in
+                [.f(x.tipo.titolo), .t(x.totale.map(Formati.euro) ?? "—"),
+                 .t(x.perCanale[.alleanza].map(Formati.euro) ?? "—"), .t(x.perCanale[.indipendente].map(Formati.euro) ?? "—"),
+                 .t(x.motivoAssente ?? (x.stima ? "stima" : "—"))]
+            })))
+        b.append(.nota("Contano solo le posizioni nate da raccomandazioni accettate dopo l'inizio del rapporto. Tasse con il reddito di oggi (stima); costi tagliati sul valore di oggi della nuova posizione; alternativa dal track record (stima). Documento ad uso del consulente: non è una comunicazione al cliente."))
+        return b
     }
 
     /// In testa all'ordine del giorno: che cosa è cambiato dal riesame precedente (tabella con il canale come

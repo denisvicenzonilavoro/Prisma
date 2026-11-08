@@ -1688,6 +1688,8 @@ enum Istantanee {
         tutteLeScene += sceneSalaGiro4
         // «Luce», giro 4: Sala › Il gioco del rischio e Una giornata della pensione (Shell/IstantaneeSalaGiochi.swift)
         tutteLeScene += sceneSalaGiochi
+        // «Luce», giro 8: Sala › la lettera dal futuro, Lancia l'anno, Quanto vale avermi accanto (Shell/IstantaneeSalaRacconti.swift)
+        tutteLeScene += sceneSalaRacconti
         // «Luce», giro 5: la tua settimana e il tuo anno (Shell/IstantaneeStorie.swift)
         tutteLeScene += sceneStorie
         // «Luce», giro 5: i traguardi festeggiati in Messaggi (Shell/IstantaneeTraguardi.swift)

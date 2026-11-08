@@ -117,6 +117,7 @@ enum ProvaOvunque {
             try provaNomi()
             try provaSpaziLuce()
             try provaAziende()
+            try provaRacconti()
             try provaSpazio(radice: radice)
             print("Prova di Prisma ovunque riuscita")
             return 0
@@ -247,6 +248,22 @@ enum ProvaOvunque {
     /// Prisma più nuovo) si salta senza perdere lo spazio né gli altri dati.
     /// Le aziende dei clienti imprenditori («Luce» giro 7, decisione 44): entrano nell'istantanea cifrata con il cliente e
     /// tornano uguali (date e cifre comprese nel JSON canonico dello spazio).
+    /// «Luce» giro 8 (decisione 44): l'inizio del rapporto e l'indennizzo stimato entrano nell'istantanea con il cliente e
+    /// la posizione e tornano uguali; le impostazioni della Sala vanno con le altre impostazioni.
+    private static func provaRacconti() throws {
+        var dati = DatiPrisma.demo()
+        dati.clienti[0].clienteDal = Date(timeIntervalSinceReferenceDate: 700_000_000)
+        dati.posizioni[0].indennizzoStimato = 4_500
+        dati.impostazioni.sala.avvertenzaLettera = "Avvertenza di prova."
+        let istantanea = SpazioOvunque.datiIstantanea(dati)
+        let chiaro = try JSONOvunque.codificatore().encode(istantanea)
+        let letto = try JSONOvunque.decodificatore().decode(DatiPrisma.self, from: chiaro)
+        try controlla(letto.clienti[0].clienteDal == dati.clienti[0].clienteDal && letto.posizioni[0].indennizzoStimato == 4_500,
+                      "l'inizio del rapporto o l'indennizzo stimato non tornano uguali dall'istantanea dello spazio")
+        try controlla(letto.impostazioni.sala == istantanea.impostazioni.sala,
+                      "le impostazioni della Sala non tornano uguali dall'istantanea dello spazio")
+    }
+
     private static func provaAziende() throws {
         var dati = DatiPrisma.demo()
         guard let i = dati.clienti.firstIndex(where: { !$0.elencoAziende.isEmpty }) else {

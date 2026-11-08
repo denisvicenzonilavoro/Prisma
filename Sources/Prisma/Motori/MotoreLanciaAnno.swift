@@ -358,7 +358,8 @@ enum MotoreLanciaAnno {
         v.voci[i].valore += importo
     }
 
-    /// Un'entrata va sul conto; una spesa esce dal conto e, se non basta, dalle altre voci in proporzione.
+    /// Un'entrata va sul conto; una spesa esce dal conto, poi da ciò che si è messo da parte per gli obiettivi (è lì per
+    /// questo) e, se non basta, dalle altre voci in proporzione.
     private static func applica(_ v: inout VitaLanciaAnno, _ importo: Double) {
         guard let i = v.voci.firstIndex(where: \.conto) else { return }
         if importo >= 0 || v.voci[i].valore + importo >= 0 {
@@ -367,6 +368,12 @@ enum MotoreLanciaAnno {
         }
         var manca = -(v.voci[i].valore + importo)
         v.voci[i].valore = 0
+        for j in v.voci.indices where v.voci[j].anniVersamento != nil && manca > 0 {
+            let preso = min(manca, max(0, v.voci[j].valore))
+            v.voci[j].valore -= preso
+            manca -= preso
+        }
+        guard manca > 0.005 else { return }
         let altre = v.voci.indices.filter { $0 != i && v.voci[$0].valore > 0 }
         let totale = altre.reduce(0) { $0 + v.voci[$1].valore }
         guard totale > 0 else {
@@ -408,8 +415,9 @@ enum MotoreLanciaAnno {
             }
             guard let polizza else { return (EffettoAnno(importo: -x, frase: "Dai risparmi: −\(euro(x))"), nil) }
             if let indennizzo = polizza.indennizzoStimato {
-                let netto = -x + indennizzo * inflazione
-                return (EffettoAnno(importo: netto, frase: "«\(polizza.nome)» copre \(euro(indennizzo * inflazione)): \(segnato(netto))"), polizza)
+                // L'indennizzo è la cifra scritta dal consulente dalle condizioni: non si rivaluta con l'inflazione
+                let netto = -x + indennizzo
+                return (EffettoAnno(importo: netto, frase: "«\(polizza.nome)» copre \(euro(indennizzo)): \(segnato(netto))"), polizza)
             }
             // Senza indennizzo stimato la spesa resta tutta: nessuna cifra per la parte coperta
             return (EffettoAnno(importo: -x, frase: "Coperto da «\(polizza.nome)»: l’indennizzo dipende dalle condizioni"), polizza)

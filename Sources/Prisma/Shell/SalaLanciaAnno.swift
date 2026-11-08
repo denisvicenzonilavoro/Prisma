@@ -191,6 +191,9 @@ struct LanciaAnnoVista: View {
                         .carattereApple(L.cifra)
                         .foregroundColor(conPiano ? L.coloreCifraCon : L.coloreCifraSenza)
                         .lineLimit(1)
+                } else {
+                    // La stessa altezza del riquadro accanto
+                    Text(" ").carattereApple(L.cifra).accessibilityHidden(true)
                 }
             }
             ZStack {
@@ -403,6 +406,7 @@ private struct CartaAnno: View {
             .padding(L.paddingCarta)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .fixedSize(horizontal: false, vertical: true)
         .background(L.fondoCarta)
         .clipShape(RoundedRectangle(cornerRadius: L.raggioCarta, style: .continuous))
         .ombraApple(.card)

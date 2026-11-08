@@ -67,11 +67,11 @@ enum LetteraVera {
     /// Parole che nella versione «senza il piano» raccontano rinunce o paure oltre le cifre (decisione 80).
     static let scenariNegativi = #"paur|rinunc|rimpiant|lasciat[oi] perdere|più strett|fatica|purtroppo|preoccup|ansia|angosc|sacrific|difficolt|non ce la|stent|povert|rimorso"#
 
-    /// Nomi che la lettera non dice mai (compagnie, prodotti): la parola «Alleanza» e i nomi e gli emittenti delle
-    /// posizioni del cliente.
+    /// Nomi che la lettera non dice mai (compagnie, prodotti): la parola «Alleanza» e i nomi e gli emittenti dei
+    /// prodotti del cliente (investimento, risparmio, previdenza, protezione; non la casa né il conto).
     static func vietati(_ posizioni: [Posizione]) -> [String] {
-        var r = ["Alleanza", "Generali"]
-        for p in posizioni {
+        var r = ["Alleanza"]
+        for p in posizioni where p.area.proiettabile || p.area == .protezione {
             for t in [p.nome, p.emittente] {
                 let x = t.trimmingCharacters(in: .whitespacesAndNewlines)
                 if x.count >= 6 { r.append(x) }

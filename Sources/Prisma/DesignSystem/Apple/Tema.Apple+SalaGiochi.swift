@@ -413,6 +413,8 @@ extension Tema.Apple.SalaEsperienze {
         static let paddingDettaglio: CGFloat = 24
         static let raggioDettaglio = Tema.Apple.Raggio.card
         static let superficieDettaglio = Tema.Apple.Superficie.card
+        /// Il dettaglio è opaco: sopra il palco non si legge ciò che c'è sotto.
+        static let fondoDettaglio = K.cardPiena
         static let titoloDettaglio = C.titoloFinestra
         static let rigaDettaglio = C.corpo
         static let sottoRigaDettaglio = C.secondario

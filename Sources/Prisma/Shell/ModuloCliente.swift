@@ -435,6 +435,10 @@ struct ModuloCliente: View {
                     CampoModulo(etichetta: "Codice fiscale") {
                         TextField("", text: $bozza.codiceFiscale).textFieldStyle(.roundedBorder)
                     }
+                    // «Luce» giro 8: da quando è cominciata la consulenza (Sala › Quanto vale avermi accanto)
+                    CampoModulo(etichetta: "Cliente dal") {
+                        CampoDataFacoltativa(data: $bozza.clienteDal, predefinita: Date())
+                    }
                     CampoModulo(etichetta: "Professione") {
                         TextField("", text: $bozza.professione).textFieldStyle(.roundedBorder)
                     }

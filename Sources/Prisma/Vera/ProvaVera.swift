@@ -998,6 +998,8 @@ enum ProvaVera {
         ProvaCopilota.esegui(controlla)
         // La palestra della trattativa («Luce» giro 5): schema, livelli, cifre solo di Prisma, Qwen finto (ProvaPalestraVera.swift)
         ProvaPalestraVera.esegui(controlla)
+        // «Luce», giro 8: la lettera dal futuro (scheda dei fatti, streaming, cifre, promesse, «senza il piano», Qwen finto) (ProvaLetteraVera.swift)
+        ProvaLetteraVera.esegui(controlla)
         // La fase 1 del brief: strumenti, scheda di conferma, «Fallo tu», «Chiedi alla tua clientela», «Mai a caso» (ProvaFalloTu.swift)
         ProvaFalloTu.esegui(controlla)
         // La fase 2: ricerca, memoria, lezioni, filo lungo, 30 secondi, norme, lascia cadere (ProvaFaseDueVera.swift)

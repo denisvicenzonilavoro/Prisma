@@ -171,6 +171,8 @@ enum ProvaBackup {
             ProvaBackup.aggiungiPalestraDiProva(&originale)
             // «Luce», giro 7: le aziende dei clienti imprenditori, una completa e una con il solo nome (ProvaBackupAziende.swift)
             ProvaBackup.aggiungiAziendeDiProva(&originale)
+            // «Luce», giro 8: inizio del rapporto, indennizzo stimato e impostazioni della Sala (ProvaBackupRacconti.swift)
+            ProvaBackup.aggiungiRaccontiDiProva(&originale)
             // Vera, fase 3: promesse, confronti, coperture e un resoconto (ProvaBackupFaseTreVera.swift)
             ProvaBackup.aggiungiFaseTreVeraDiProva(&originale)
             // Il versamento mensile previsto dell'obiettivo (cursore del dettaglio nel tema Apple)
@@ -281,6 +283,11 @@ enum ProvaBackup {
             }
             // La giornata della pensione e le partite del gioco del rischio (versione 27, «Luce» giro 4) (ProvaBackupSala.swift)
             if let e = try verificaSala(originale: originale, estratto: estratto.dati) {
+                print("ERRORE: \(e)")
+                return 1
+            }
+            // Inizio del rapporto, indennizzo stimato e impostazioni della Sala (versione 27, «Luce» giro 8) (ProvaBackupRacconti.swift)
+            if let e = try verificaRacconti(originale: originale, estratto: estratto.dati) {
                 print("ERRORE: \(e)")
                 return 1
             }
