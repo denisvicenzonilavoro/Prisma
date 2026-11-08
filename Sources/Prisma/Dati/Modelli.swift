@@ -82,6 +82,10 @@ struct Cliente: Identifiable, Codable, Hashable {
     /// dossier» acceso (Impostazioni › Moduli), si mostra mascherato, entra nei backup e mai in «Prisma ovunque» né nei
     /// messaggi. Solo un IBAN valido (mod 97).
     var iban: String?
+    /// La posizione sulla mappa messa a mano dal consulente (versione 27, «Luce» giro 11): vince sul comune
+    /// dell'indirizzo. nil = la posizione viene dal comune (`MotoreTerritorio.luoghi`). Entra nei backup e nello spazio
+    /// cifrato di «Prisma ovunque» con il cliente, ma non si modifica dal dispositivo.
+    var luogo: LuogoManuale?
 
     init(id: String, nome: String, iniziali: String, tinta: TintaAvatar, tema: String, email: String,
          telefono: String, preferito: Bool, nota: String, creatoIl: Date) {
@@ -125,6 +129,7 @@ struct Cliente: Identifiable, Codable, Hashable {
         case aziende
         case clienteDal
         case luogoNascita, iban
+        case luogo
     }
 
     /// Lettura tollerante: i campi aggiunti nelle versioni successive possono mancare.
@@ -169,6 +174,8 @@ struct Cliente: Identifiable, Codable, Hashable {
         luogoNascita = ((try? c.decodeIfPresent(String.self, forKey: .luogoNascita)) ?? nil)
             .flatMap { $0.trimmingCharacters(in: .whitespaces).isEmpty ? nil : $0 }
         iban = ((try? c.decodeIfPresent(String.self, forKey: .iban)) ?? nil).flatMap { IBAN.valido($0) ? IBAN.pulito($0) : nil }
+        // Posizione a mano (versione 27, giro 11): illeggibile o fuori scala = dal comune dell'indirizzo
+        luogo = ((try? c.decodeIfPresent(LuogoManuale.self, forKey: .luogo)) ?? nil).flatMap { $0.coordinata.valida ? $0 : nil }
     }
 
     /// Le aziende registrate (vuoto se nessuna).
@@ -415,10 +422,13 @@ struct Appuntamento: Identifiable, Codable, Hashable {
     /// Dove si è svolto: dal cliente, in studio, altrove («Luce» giro 9, decisione 100, versione 27). nil = non indicato:
     /// Prisma non lo indovina dal testo di `luogo`, e per i chilometri la visita resta da chiedere («Dove eri?»).
     var presso: LuogoIncontro?
+    /// Proposto dal Territorio («＋ Aggiungi … al giro», «Luce» giro 11, versione 27) e non ancora confermato in Agenda.
+    /// nil = confermato (tutti gli appuntamenti di prima). Si sincronizza con «Prisma ovunque».
+    var daConfermare: Bool?
 
     init(id: String, clienteId: String, titolo: String, inizio: Date, durataMinuti: Int, luogo: String,
          note: String, stato: Stato, tipo: TipoAppuntamento = .altro, canale: Canale? = nil, posizioneId: String? = nil,
-         presso: LuogoIncontro? = nil) {
+         presso: LuogoIncontro? = nil, daConfermare: Bool? = nil) {
         self.id = id
         self.clienteId = clienteId
         self.titolo = titolo
@@ -431,6 +441,7 @@ struct Appuntamento: Identifiable, Codable, Hashable {
         self.canale = canale
         self.posizioneId = posizioneId
         self.presso = presso
+        self.daConfermare = daConfermare
     }
 
     var fine: Date { inizio.addingTimeInterval(TimeInterval(durataMinuti * 60)) }
@@ -471,6 +482,8 @@ struct Appuntamento: Identifiable, Codable, Hashable {
         posizioneId = try c.decodeIfPresent(String.self, forKey: .posizioneId)
         // «Luce» giro 9 (versione 27): gli archivi di prima non l'hanno; un valore sconosciuto = non indicato
         presso = (try? c.decodeIfPresent(LuogoIncontro.self, forKey: .presso)) ?? nil
+        // «Luce» giro 11 (versione 27): gli archivi di prima non l'hanno; un valore illeggibile = confermato
+        daConfermare = (try? c.decodeIfPresent(Bool.self, forKey: .daConfermare)) ?? nil
     }
 }
 

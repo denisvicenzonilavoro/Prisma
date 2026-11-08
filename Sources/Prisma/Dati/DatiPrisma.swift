@@ -172,6 +172,9 @@ struct DatiPrisma: Codable, Equatable {
     ///     correzioni dei giri, ore richieste per anno, nomi nel pacchetto spenti) e dove si
     ///     è svolto un appuntamento (`Appuntamento.presso`: dal cliente, in studio, altrove; nil = da chiedere).
     ///     I km di andata e ritorno per cliente (`kmClienti`), nel file di ogni cliente.
+    ///     Giro 11: la posizione a mano del cliente (`Cliente.luogo`), l'appuntamento da confermare
+    ///     (`Appuntamento.daConfermare`) e le impostazioni del Territorio (`Impostazioni.territorio`), letti con
+    ///     tolleranza. Le tabelle dei comuni e dei confini sono risorse, non archivio.
     static let versioneAttuale = 27
 
     init(clienti: [Cliente], appuntamenti: [Appuntamento], attivita: [Attivita], posizioni: [Posizione],
@@ -451,6 +454,10 @@ struct Impostazioni: Codable, Equatable {
     /// dall'utente, gli anni della partita, le avvertenze e il titolo del valore approvati. Letta con tolleranza: senza,
     /// nessun evento a caso e i segnaposto dichiarati.
     var sala = ImpostazioniSala()
+    /// Impostazioni › Territorio (versione 27, «Luce» giro 11): stima delle distanze (fattore strada, velocità, minuti
+    /// minimi), deviazione e visita breve del giro, zone dell'utente, attenzioni che accendono l'anello e partenza.
+    /// Letta con tolleranza: senza, i valori di base dichiarati «stima». Non entra nei calcoli in cache.
+    var territorio = ImpostazioniTerritorio()
 
     init() {}
 
@@ -469,6 +476,7 @@ struct Impostazioni: Codable, Equatable {
         case storie, traguardi
         case palestra
         case sala
+        case territorio
     }
 
     init(from decoder: Decoder) throws {
@@ -527,6 +535,8 @@ struct Impostazioni: Codable, Equatable {
         palestra = ((try? c.decodeIfPresent(ImpostazioniPalestra.self, forKey: .palestra)) ?? nil) ?? ImpostazioniPalestra()
         // Sala, racconti senza uscita (versione 27, giro 8): senza o illeggibile, nessun evento e i segnaposto
         sala = ((try? c.decodeIfPresent(ImpostazioniSala.self, forKey: .sala)) ?? nil) ?? ImpostazioniSala()
+        // Territorio (versione 27, giro 11): senza o illeggibile, i valori di base
+        territorio = ((try? c.decodeIfPresent(ImpostazioniTerritorio.self, forKey: .territorio)) ?? nil) ?? ImpostazioniTerritorio()
     }
 }
 
