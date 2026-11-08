@@ -120,6 +120,7 @@ enum ProvaOvunque {
             try provaRacconti()
             try provaSpese()
             try provaModuliIban()
+            try provaNoteInArrivo()
             try provaSpazio(radice: radice)
             print("Prova di Prisma ovunque riuscita")
             return 0
@@ -349,6 +350,30 @@ enum ProvaOvunque {
                       "il luogo di nascita non torna dall'istantanea o l'IBAN è tornato")
         // L'archivio del Mac li tiene
         try controlla(dati.clienti[i].iban == iban && dati.documenti.contains { $0.id == d.id }, "l'istantanea ha toccato l'archivio del Mac")
+    }
+
+    /// La nota vocale e il nuovo cliente («Luce» giro 13, decisione 44): le note dettate sull'iPhone non entrano mai
+    /// nell'istantanea dello spazio e il dispositivo, accogliendola, tiene le sue (vuote); la cittadinanza del cliente invece
+    /// passa, cifrata come il luogo di nascita.
+    private static func provaNoteInArrivo() throws {
+        var dati = DatiPrisma.demo()
+        guard let i = dati.clienti.firstIndex(where: { $0.id == "giulia" }) else { throw Fallita(motivo: "manca Giulia nei dati di prova") }
+        dati.clienti[i].cittadinanza = "Italiana"
+        dati.noteInArrivo = [NotaVocaleDiProva.inArrivo(dati, oggi: ora(0))]
+        let istantanea = SpazioOvunque.datiIstantanea(dati)
+        try controlla(istantanea.noteInArrivo.isEmpty, "le note dettate sull'iPhone entrano nell'istantanea di Prisma ovunque")
+        let chiaro = try JSONOvunque.codificatore().encode(istantanea)
+        try controlla(!String(decoding: chiaro, as: UTF8.self).contains("mandarle il confronto"),
+                      "il testo di una nota dettata è nell'istantanea di Prisma ovunque")
+        let letto = try JSONOvunque.decodificatore().decode(DatiPrisma.self, from: chiaro)
+        try controlla(letto.clienti.first { $0.id == "giulia" }?.cittadinanza == "Italiana", "la cittadinanza non torna dall'istantanea")
+        var telefono = DatiPrisma.demo()
+        telefono.noteInArrivo = []
+        let ist = IstantaneaOvunque(generazione: 1, mac: "mac-prova", nomeMac: "Mac", scrittaIl: Date(), vistoFinoA: [:], lamport: 0,
+                                    modificheAmmesse: true, dati: istantanea)
+        try controlla(SincroniaOvunque.accogli(ist, in: telefono).dati.noteInArrivo.isEmpty,
+                      "accogliendo l'istantanea il dispositivo riceve note dettate")
+        try controlla(dati.noteInArrivo.count == 1, "l'istantanea ha toccato le note dell'archivio del Mac")
     }
 
     private static func provaSpaziLuce() throws {

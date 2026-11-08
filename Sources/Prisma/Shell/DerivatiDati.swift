@@ -516,6 +516,8 @@ extension DatiPrisma {
         // Chilometri, spese e scadenze («Luce» giro 9) si calcolano nella vista, senza cache
         b.speseStudio = a.speseStudio
         b.kmClienti = a.kmClienti
+        // Le note dall'iPhone («Luce» giro 13) non entrano in nessun calcolo in cache
+        b.noteInArrivo = a.noteInArrivo
         b.impostazioni.studio.spese = a.impostazioni.studio.spese
         return a == b
     }

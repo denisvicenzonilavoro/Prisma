@@ -91,6 +91,10 @@ struct DatiPrisma: Codable, Equatable {
     /// Studio › Spese (versione 27, «Luce» giro 9). Un dato del cliente: sta nel suo file della cartella a pezzi e se ne va
     /// con lui. Resta sul Mac: non entra in «Prisma ovunque».
     var kmClienti: [String: Double] = [:]
+    /// Le note dettate sull'iPhone e arrivate sul Mac (versione 27, «Luce» giro 13, `Dati/NotaInArrivo.swift`): il testo, il
+    /// cliente e le proposte da confermare. Sezione «ovunque» della cartella a pezzi, nei backup, mai in «Prisma ovunque»;
+    /// le decise si tolgono dopo 30 giorni.
+    var noteInArrivo: [NotaInArrivo] = []
     var clienteAttivoId: String
     var impostazioni: Impostazioni
 
@@ -172,6 +176,8 @@ struct DatiPrisma: Codable, Equatable {
     ///     correzioni dei giri, ore richieste per anno, nomi nel pacchetto spenti) e dove si
     ///     è svolto un appuntamento (`Appuntamento.presso`: dal cliente, in studio, altrove; nil = da chiedere).
     ///     I km di andata e ritorno per cliente (`kmClienti`), nel file di ogni cliente.
+    ///     Giro 13: le note dettate sull'iPhone (`noteInArrivo`, con le proposte da confermare, lette con tolleranza:
+    ///     una nota illeggibile si scarta) e la cittadinanza del cliente (`Cliente.cittadinanza`).
     static let versioneAttuale = 27
 
     init(clienti: [Cliente], appuntamenti: [Appuntamento], attivita: [Attivita], posizioni: [Posizione],
@@ -241,6 +247,7 @@ struct DatiPrisma: Codable, Equatable {
         case partiteRischio
         case promesse, confrontiDocumenti, coperture
         case speseStudio, kmClienti
+        case noteInArrivo
     }
 
     /// Lettura tollerante: gli archivi delle versioni precedenti non hanno tutte le sezioni.
@@ -309,6 +316,8 @@ struct DatiPrisma: Codable, Equatable {
         // I km per cliente: un valore negativo o non finito si scarta, gli altri restano
         kmClienti = (((try? c.decodeIfPresent([String: Double].self, forKey: .kmClienti)) ?? nil) ?? [:])
             .filter { $0.value.isFinite && $0.value >= 0 }
+        // Le note dall'iPhone (versione 27, giro 13): una nota illeggibile si scarta, le altre restano
+        noteInArrivo = ((try? c.decodeIfPresent(ElencoTollerante<NotaInArrivo>.self, forKey: .noteInArrivo)) ?? nil)?.elementi ?? []
         clienteAttivoId = try c.decodeIfPresent(String.self, forKey: .clienteAttivoId) ?? (clienti.first?.id ?? "")
         impostazioni = try c.decodeIfPresent(Impostazioni.self, forKey: .impostazioni) ?? Impostazioni()
     }
@@ -364,6 +373,7 @@ struct DatiPrisma: Codable, Equatable {
         try metti(coperture, .coperture)
         try metti(speseStudio, .speseStudio)
         try metti(kmClienti, .kmClienti)
+        try metti(noteInArrivo, .noteInArrivo)
         try metti(clienteAttivoId, .clienteAttivoId)
         try metti(impostazioni, .impostazioni)
     }

@@ -37,7 +37,7 @@ import Observation
     @ObservationIgnored private var inCarica = false
 
     /// Numero dei campi di `DatiPrisma` copiati qui (la prova lo confronta con Mirror).
-    static let numeroCampi = 41
+    static let numeroCampi = 42
 
     var versione: Int { didSet { segnala(.calcoli) } }
     var clienti: [Cliente] { didSet(prima) { segnalaClienti(prima, clienti, \.id) } }
@@ -80,6 +80,8 @@ import Observation
     var speseStudio: ArchivioSpese { didSet { segnala(.neutro) } }
     /// I km per cliente di Studio › Spese: nessun calcolo in cache.
     var kmClienti: [String: Double] { didSet { segnala(.neutro) } }
+    /// Le note dall'iPhone («Luce» giro 13): nessun calcolo in cache.
+    var noteInArrivo: [NotaInArrivo] { didSet { segnala(.neutro) } }
     var clienteAttivoId: String { didSet(prima) { segnala(.clienteAttivo(prima: prima)) } }
     var impostazioni: Impostazioni { didSet(prima) { segnala(.impostazioni(prima: prima)) } }
 
@@ -123,6 +125,7 @@ import Observation
         coperture = d.coperture
         speseStudio = d.speseStudio
         kmClienti = d.kmClienti
+        noteInArrivo = d.noteInArrivo
         clienteAttivoId = d.clienteAttivoId
         impostazioni = d.impostazioni
     }
@@ -213,6 +216,7 @@ import Observation
         d.coperture = coperture
         d.speseStudio = speseStudio
         d.kmClienti = kmClienti
+        d.noteInArrivo = noteInArrivo
         return d
     }
 
@@ -257,6 +261,7 @@ import Observation
         d.coperture = _coperture
         d.speseStudio = _speseStudio
         d.kmClienti = _kmClienti
+        d.noteInArrivo = _noteInArrivo
         return d
     }
 
@@ -304,6 +309,7 @@ import Observation
         if coperture != d.coperture { coperture = d.coperture }
         if speseStudio != d.speseStudio { speseStudio = d.speseStudio }
         if kmClienti != d.kmClienti { kmClienti = d.kmClienti }
+        if noteInArrivo != d.noteInArrivo { noteInArrivo = d.noteInArrivo }
         if clienteAttivoId != d.clienteAttivoId { clienteAttivoId = d.clienteAttivoId }
         if impostazioni != d.impostazioni { impostazioni = d.impostazioni }
         inCarica = false

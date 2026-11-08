@@ -613,6 +613,11 @@ enum ProvaBackup {
                 print("ERRORE: \(errore)")
                 return 1
             }
+            // La nota vocale e il nuovo cliente di «Luce» (giro 13): note dall'iPhone e cittadinanza (ProvaBackupNoteVocali.swift)
+            if let errore = try provaNoteVocali(radice: radice) {
+                print("ERRORE: \(errore)")
+                return 1
+            }
             // L'archivio a pezzi su disco: conversione, backup, file rovinati, soli file cambiati, interruzioni (ProvaBackupArchivioPezzi.swift)
             if let errore = try provaArchivioPezzi(radice: radice, originale: originale) {
                 print("ERRORE: \(errore)")
