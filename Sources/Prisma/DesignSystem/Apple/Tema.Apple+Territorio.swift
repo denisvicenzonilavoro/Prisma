@@ -176,6 +176,7 @@ extension Tema.Apple {
             static let spessoreOnda: CGFloat = 2
             static let ondaDa: CGFloat = 6
             static let ondaA: CGFloat = 46
+            static let opacitaOnda = 0.9
             /// Le luci non ancora nate nell'anno scelto non si vedono; quelle appena nate fanno l'onda.
         }
 
@@ -234,6 +235,8 @@ extension Tema.Apple {
             static let passoAnnoCalmo = 0.9
             static let nascita = 0.7
             static let scalaPicco: CGFloat = 1.4
+            /// La nascita arriva al picco a metà (0 → 1,4 → 1).
+            static let frazionePicco = 0.5
             static let onda = 1.1
             static let conteggio = 0.6
             static let tracciato = 2.0
