@@ -21,10 +21,10 @@ extension StatoShell {
 
     /// L'andamento delle posizioni di un cliente (il grafico del dettaglio di una scheda «Da fare»).
     func andamentoCliente(_ id: String) -> AndamentoPortafoglio {
-        let d = derivatiValidi()
-        if let v = d.andamentiCliente[id] { return v }
+        let voce = voceCliente(id)
+        if let v = voce.andamento { return v }
         let v = MotoreAndamentoPortafoglio.calcola(posizioniCliente(id), oggi: Date())
-        d.andamentiCliente[id] = v
+        voce.andamento = v
         return v
     }
 

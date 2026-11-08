@@ -27,7 +27,7 @@ extension View {
 
 private struct PresentaInquadraTelefono: ViewModifier {
     @Environment(StatoShell.self) var stato
-    @ObservedObject var inquadra: StatoInquadra
+    let inquadra: StatoInquadra
     @Environment(\.istantaneaSchermo) private var istantanea
     @Environment(\.prismaCalmo) private var calmo
 
@@ -59,7 +59,7 @@ struct PulsanteInquadraTelefono: View {
 
 struct InquadraTelefono: View {
     @Environment(StatoShell.self) var stato
-    @ObservedObject var inquadra: StatoInquadra
+    let inquadra: StatoInquadra
     @Environment(\.istantaneaSchermo) private var istantanea
     @StateObject private var scanner = ControlloreScannerInquadra()
     @State private var scansioneDocumenti = false

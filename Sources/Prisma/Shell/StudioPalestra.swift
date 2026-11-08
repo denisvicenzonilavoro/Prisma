@@ -91,7 +91,7 @@ enum TestiPalestra {
 /// Il contenuto di Studio › Palestra.
 struct PalestraStudioVista: View {
     let stato: StatoShell
-    @ObservedObject var palestra: StatoPalestra
+    @Bindable var palestra: StatoPalestra
     let base: Double
 
     private typealias P = Tema.Apple.Palestra
@@ -122,7 +122,7 @@ struct PalestraStudioVista: View {
 
 private struct ColonnaPalestra: View {
     let stato: StatoShell
-    @ObservedObject var palestra: StatoPalestra
+    @Bindable var palestra: StatoPalestra
     let scheda: SchedaRecita?
 
     @Environment(\.prismaCalmo) private var calmo
@@ -316,7 +316,7 @@ private struct BarraAvanzamentoPalestra: View {
 
 private struct ConversazionePalestra: View {
     let stato: StatoShell
-    @ObservedObject var palestra: StatoPalestra
+    @Bindable var palestra: StatoPalestra
     let scheda: SchedaRecita?
 
     @Environment(\.prismaCalmo) private var calmo
@@ -712,7 +712,7 @@ private struct OpzionePalestra: View {
 /// strumenti di Prisma per il cliente recitato.
 private struct FinePalestra: View {
     let stato: StatoShell
-    @ObservedObject var palestra: StatoPalestra
+    @Bindable var palestra: StatoPalestra
     let scheda: SchedaRecita
 
     @Environment(\.prismaCalmo) private var calmo
@@ -784,7 +784,7 @@ private struct FinePalestra: View {
 /// Pulsanti invisibili, solo per i tasti: 1/2/3 e A/B/C scelgono la risposta. Ci sono solo con Studio davanti, senza la
 /// ricerca aperta e con il campo senza cursore, così le lettere non si rubano a un testo che si sta scrivendo.
 private struct ScorciatoiePalestra: View {
-    @ObservedObject var sistema: StatoFinestre
+    let sistema: StatoFinestre
     let quante: Int
     let scegli: (Int) -> Void
 

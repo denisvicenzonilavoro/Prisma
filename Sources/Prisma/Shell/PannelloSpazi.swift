@@ -5,7 +5,7 @@ import SwiftUI
 struct PannelloSpazi: View {
     @Environment(StatoShell.self) var stato
     /// Le finestre aperte, da salvare come spazio.
-    @EnvironmentObject var sistema: StatoFinestre
+    @Environment(StatoFinestre.self) var sistema
     @State private var nome = ""
 
     var body: some View {

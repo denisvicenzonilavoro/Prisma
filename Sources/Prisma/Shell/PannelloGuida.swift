@@ -8,7 +8,7 @@ import SwiftUI
 /// segue `sistema.guida`; cambiare scheda o pagina non anima il contenitore di ShellView.
 struct PannelloGuida: View {
     @Environment(StatoShell.self) var stato
-    @EnvironmentObject var sistema: StatoFinestre
+    @Environment(StatoFinestre.self) var sistema
 
     var body: some View {
         let _ = ContaCorpi.segna()

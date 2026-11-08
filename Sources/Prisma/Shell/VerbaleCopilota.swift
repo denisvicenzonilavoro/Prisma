@@ -10,7 +10,7 @@ import SwiftUI
 @MainActor
 struct VerbaleCopilotaVista: View {
     @Environment(StatoShell.self) var stato
-    @ObservedObject var copilota: StatoCopilotaIncontro
+    @Bindable var copilota: StatoCopilotaIncontro
     let clienteId: String
     let incontro: Incontro?
 

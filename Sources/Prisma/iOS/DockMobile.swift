@@ -18,7 +18,7 @@ struct DockMobile: View {
 
     @EnvironmentObject var mobile: StatoMobile
     @Environment(StatoShell.self) var stato
-    @EnvironmentObject var sistema: StatoFinestre
+    @Environment(StatoFinestre.self) var sistema
 
     private typealias D = Tema.Misura.Mobile.Dock
 

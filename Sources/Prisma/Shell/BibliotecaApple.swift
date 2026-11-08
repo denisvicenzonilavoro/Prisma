@@ -9,7 +9,7 @@ import UniformTypeIdentifiers
 /// pulsante o trascinandoli. Vera risponde alle domande sulle norme citando l'articolo («Apri l'articolo» porta qui).
 struct BibliotecaApple: View {
     @Environment(StatoShell.self) var stato
-    @ObservedObject var biblioteca: StatoBiblioteca
+    @Bindable var biblioteca: StatoBiblioteca
     @State private var sopra = false
 
     private typealias F = Tema.Apple.FaseDueVera

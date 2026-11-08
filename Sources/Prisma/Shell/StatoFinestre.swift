@@ -1,4 +1,5 @@
 import Combine
+import Observation
 import SwiftUI
 
 // Proprietario: G1 (movimento delle finestre). Creato dalle fondamenta (G0).
@@ -6,65 +7,78 @@ import SwiftUI
 /// Finestre interne, pannelli e blocco: lo osservano solo shell, dock, barra e pannelli,
 /// così aprire o cambiare app non ricalcola il contenuto delle app aperte né i widget.
 /// StatoShell lo tiene in `sistema` e ne inoltra le proprietà con i nomi di sempre.
-final class StatoFinestre: ObservableObject {
+@Observable final class StatoFinestre {
     typealias Finestra = StatoShell.Finestra
 
+    /// Quante volte è cambiata una proprietà osservata (la prova della fluidità, colonna «avvisi StatoFinestre»; prima
+    /// erano gli `objectWillChange`).
+    @ObservationIgnored var avvisi = 0
+    /// Il blocco che sta per cambiare, con il valore nuovo (al posto di `$bloccato`: menu Vai, copilota dell'incontro).
+    @ObservationIgnored let bloccatoCambiera = PassthroughSubject<Bool, Never>()
+    /// L'elenco delle finestre è cambiato (al posto di `$elenco`: le app nella finestra di vetro di iPhone e iPad).
+    @ObservationIgnored let elencoCambiato = PassthroughSubject<Void, Never>()
+
     /// Finestre aperte; l'ultima è quella in primo piano.
-    @Published var elenco: [Finestra] = []
+    var elenco: [Finestra] = [] {
+        didSet { avvisi &+= 1; elencoCambiato.send() }
+    }
     /// La schermata di benvenuto copre le finestre (il lucchetto in alto).
-    @Published var bloccato = false
-    @Published var pannelloAppAperte = false
+    var bloccato = false {
+        willSet { bloccatoCambiera.send(newValue) }
+        didSet { avvisi &+= 1 }
+    }
+    var pannelloAppAperte = false { didSet { avvisi &+= 1 } }
     /// Il pannello degli spazi di lavoro è aperto.
-    @Published var pannelloSpazi = false
-    @Published var pannelloNotifiche = false
+    var pannelloSpazi = false { didSet { avvisi &+= 1 } }
+    var pannelloNotifiche = false { didSet { avvisi &+= 1 } }
     /// Il pannello «Le novità» (✦ Novità nella barra, versione «Orizzonte»): sopra le notifiche, sotto il blocco.
-    @Published var pannelloNovita = false
+    var pannelloNovita = false { didSet { avvisi &+= 1 } }
     /// La sovrapposizione a tutto palco della versione «Luce» (SovrapposizioneLuce.swift): una sola alla volta.
-    @Published var sovrapposizione: SovrapposizioneLuce? = nil
+    var sovrapposizione: SovrapposizioneLuce? = nil { didSet { avvisi &+= 1 } }
     /// Il pannello di ricerca (⌘K, come Spotlight) è aperto: sta sopra tutto, non è una finestra.
-    @Published var pannelloRicerca = false
+    var pannelloRicerca = false { didSet { avvisi &+= 1 } }
     /// Il pannello «Guida di Prisma» aperto, con la sua pagina (nil = chiuso). Lo osservano solo la shell e il pannello.
-    @Published var guida: PaginaGuida? = nil
+    var guida: PaginaGuida? = nil { didSet { avvisi &+= 1 } }
     /// Finestre appena aperte che aspettano il giro dopo per animarsi (G1).
-    @Published var inArrivo: Set<AppPrisma> = []
+    var inArrivo: Set<AppPrisma> = [] { didSet { avvisi &+= 1 } }
     /// FLIP in corso: cornice di partenza e progresso (G1).
-    @Published var flip: [AppPrisma: PassaggioCornice] = [:]
+    var flip: [AppPrisma: PassaggioCornice] = [:] { didSet { avvisi &+= 1 } }
     /// Finestre del tutto coperte da una finestra ingrandita, a transizione finita: non si disegnano (G1).
-    @Published var coperte: Set<AppPrisma> = []
+    var coperte: Set<AppPrisma> = [] { didSet { avvisi &+= 1 } }
     /// Finestre ridotte nel dock a genio finito: i loro controlli sono spenti (i tasti non ci finiscono).
-    @Published var spente: Set<AppPrisma> = []
+    var spente: Set<AppPrisma> = [] { didSet { avvisi &+= 1 } }
     /// Finestre coperte dalla loro istantanea durante un effetto di Core Animation (genio, chiusura: MotoreGenio):
     /// si disegnano a opacità 0, di colpo, e non ricevono clic. Con il vetro di Apple la finestra viva non si
     /// può deformare né sfumare senza fantasmi: si muove la sua istantanea.
-    @Published var nascoste: Set<AppPrisma> = []
+    var nascoste: Set<AppPrisma> = [] { didSet { avvisi &+= 1 } }
     /// App il cui genio è in corso: il dock resta in vista anche se dovrebbe essere nascosto (come macOS con
     /// il dock nascosto, che lo mostra durante la riduzione), così il genio va in un'icona che si vede.
-    @Published var dockPerEffetti: Set<AppPrisma> = []
+    var dockPerEffetti: Set<AppPrisma> = [] { didSet { avvisi &+= 1 } }
     /// Finestre chiuse che rientrano nella loro icona del dock: restano nell'elenco finché il volo non finisce.
-    @Published var rientrano: Set<AppPrisma> = []
+    var rientrano: Set<AppPrisma> = [] { didSet { avvisi &+= 1 } }
     /// Dove sono le icone del dock e da dove escono le finestre (non pubblicato: VoloFinestra.swift).
     let iconeDock = RegistroIconeDock()
     /// Finestre chiuse che si tolgono al giro dopo (prima si nascondono, così escono senza transizione): non pubblicato.
-    var inChiusura: Set<AppPrisma> = []
+    @ObservationIgnored var inChiusura: Set<AppPrisma> = []
     /// Da dove si apre ogni app (coordinate `ShellView.spazioShell`): non pubblicato, si legge all'apertura.
     /// Riducendo un'app vale il centro della sua icona nel dock, dove va il «genio».
-    var origini: [AppPrisma: CGPoint] = [:]
+    @ObservationIgnored var origini: [AppPrisma: CGPoint] = [:]
     /// La scrivania sta sotto una finestra ingrandita, a transizione finita: non si disegna (resta montata).
-    @Published var scrivaniaNascosta = false
+    var scrivaniaNascosta = false { didSet { avvisi &+= 1 } }
     /// La pagina della scrivania (VeraScrivania.swift): 0 = i widget, 1 = Vera. A riposo vale 0 o 1; il dito
     /// la sposta in `gestoVera`, che osservano solo le due pagine (seguire il gesto non ridisegna la shell).
-    @Published var paginaVera: CGFloat = 0
+    var paginaVera: CGFloat = 0 { didSet { avvisi &+= 1 } }
     let gestoVera = GestoPaginaVera()
     /// Il blocco a transizione finita: l'acqua non riparte né si ferma a metà dell'animazione, e la scrivania
     /// nascosta si prepara all'entrata dello sblocco.
-    @Published var bloccatoStabile = false
+    var bloccatoStabile = false { didSet { avvisi &+= 1 } }
     /// Misura della shell (non pubblicata): serve a sapere dov'è l'icona di un'app nel dock.
-    var misura: CGSize = .zero
+    @ObservationIgnored var misura: CGSize = .zero
     // Contatori delle transizioni (non pubblicati): un lavoro rimandato vale solo se nel frattempo non ne è partita un'altra
-    var giroCoperte = 0
-    var giroBlocco = 0
-    var giroScrivania = 0
-    var giroPresentazione = 0
+    @ObservationIgnored var giroCoperte = 0
+    @ObservationIgnored var giroBlocco = 0
+    @ObservationIgnored var giroScrivania = 0
+    @ObservationIgnored var giroPresentazione = 0
 
     var visibili: [Finestra] { elenco.filter { !$0.ridotta } }
     /// App in primo piano (nil = scrivania).
@@ -80,6 +94,7 @@ struct PassaggioCornice: Equatable {
 }
 
 /// Solo ciò che cambia titoli e abilitazioni del menu Vai: il menu non osserva StatoShell.
+/// Resta un ObservableObject: lo osserva solo ComandiPrisma, un `Commands`, dove `@ObservedObject` è la strada sicura.
 final class StatoMenu: ObservableObject {
     @Published private(set) var bloccato = false
     @Published private(set) var inModoCliente = false

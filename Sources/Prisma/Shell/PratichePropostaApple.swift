@@ -17,7 +17,7 @@ struct PratichePropostaApple: View {
 
 private struct CorpoPraticheProposta: View {
     let stato: StatoShell
-    @ObservedObject var proposta: StatoPraticheProposta
+    let proposta: StatoPraticheProposta
 
     @Environment(\.prismaCalmo) private var calmo
     @Environment(\.modoIstantanea) private var istantanea

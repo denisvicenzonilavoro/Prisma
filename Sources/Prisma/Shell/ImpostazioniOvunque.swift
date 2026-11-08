@@ -46,7 +46,7 @@ struct PaginaImpostazioniOvunque: View {
 
 private struct CorpoImpostazioniOvunque: View {
     @Environment(StatoShell.self) var stato
-    @ObservedObject var ovunque: StatoOvunque
+    @Bindable var ovunque: StatoOvunque
     let compatta: Bool
 
     @State private var confermaSpegni = false
@@ -314,7 +314,7 @@ private struct CorpoImpostazioniOvunque: View {
 /// Lo schema con i pallini in pausa quando la finestra non si vede (Prisma bloccato, Impostazioni coperte da una
 /// finestra ingrandita). Solo questa vista osserva le finestre: la pagina non si ridisegna quando si spostano.
 private struct SchemaConPausaOvunque: View {
-    @ObservedObject var sistema: StatoFinestre
+    let sistema: StatoFinestre
     let aspetto: AspettoSchemaOvunque
 
     var body: some View {
@@ -331,7 +331,7 @@ private struct SchemaConPausaOvunque: View {
 /// cancella, la chiave va nel Portachiavi.
 private struct ModuloOvunqueVista: View {
     let tipo: ModuloOvunque
-    @ObservedObject var ovunque: StatoOvunque
+    @Bindable var ovunque: StatoOvunque
     let compatta: Bool
 
     @Environment(StatoShell.self) var stato
@@ -510,7 +510,7 @@ private struct ModuloOvunqueVista: View {
 /// per dispositivo e ora («iPhone · stamattina alle 09:12 · Nota nuova per Giulia Rossi») con «Unisci ora», poi (sul
 /// Mac) le cose arrivate di recente.
 private struct PannelloModificheOvunque: View {
-    @ObservedObject var ovunque: StatoOvunque
+    @Bindable var ovunque: StatoOvunque
     @Environment(StatoShell.self) var stato
 
     private typealias M = Tema.Apple.Ovunque.Modifiche
@@ -606,8 +606,7 @@ private struct PannelloModificheOvunque: View {
     private func descrizione(_ a: ArrivoOvunque) -> String {
         let (nome, femminile) = TestiOvunque.nomeEntita(a.entita)
         var t = "\(nome) \(femminile ? "nuova" : "nuovo")"
-        if let id = CampiOvunque.oggetto(a.entita, id: a.entitaId, in: stato.dati.istantanea)?["clienteId"] as? String,
-           let c = stato.dati.clienti.first(where: { $0.id == id }) {
+        if let id = stato.clienteIdOvunque(a.entita, id: a.entitaId), let c = stato.dati.clienti.first(where: { $0.id == id }) {
             t += " per \(c.nome)"
         }
         return t + " · " + TestiOvunque.gruppo(nome: a.nomeDispositivo, data: a.il)
@@ -704,7 +703,7 @@ extension StatoShell {
         let piede = TestiOvunque.piedeTelefono(attesa.count)
         let daOperazione = attesa.reversed().lazy.compactMap { self.clienteOperazioneOvunque($0) }.first
         let daArrivo = dati.arriviOvunque.reversed().lazy.compactMap { a -> Cliente? in
-            guard let id = CampiOvunque.oggetto(a.entita, id: a.entitaId, in: self.dati.istantanea)?["clienteId"] as? String else { return nil }
+            guard let id = self.clienteIdOvunque(a.entita, id: a.entitaId) else { return nil }
             return self.dati.clienti.first { $0.id == id }
         }.first
         guard let cliente = daOperazione ?? daArrivo ?? dati.clienti.first(where: { $0.id == clienteAttivoId }) ?? dati.clienti.first else {

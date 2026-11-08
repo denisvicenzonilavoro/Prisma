@@ -5,7 +5,7 @@ import SwiftUI
 /// viene «letta» (un filo d'accento attorno e una luce che la percorre dall'alto in basso); quando la risposta è
 /// pronta si illumina un momento (anello d'accento e alone), poi torna com'era. Non tocca i clic.
 struct LetturaVeraFinestra: View {
-    @ObservedObject var mini: StatoMiniVera
+    let mini: StatoMiniVera
     let forma: FormaVetro
 
     @Environment(\.accessibilityReduceMotion) private var movimentoRidotto

@@ -54,7 +54,7 @@ struct AzioniSala: View {
 
 private struct CorpoSala: View {
     @Environment(StatoShell.self) var stato
-    @ObservedObject var sala: StatoSala
+    let sala: StatoSala
     @Environment(\.prismaCalmo) private var calmo
     @Environment(\.modoIstantanea) private var istantanea
     @Namespace private var spazio
@@ -104,7 +104,7 @@ private struct CorpoSala: View {
 /// pannello o sovrapposizione sopra (che hanno il loro Esc). Osserva le finestre a parte: la Sala non si ridisegna.
 private struct EscSala: View {
     @Environment(StatoShell.self) var stato
-    @ObservedObject var sistema: StatoFinestre
+    let sistema: StatoFinestre
     let palco: Bool
 
     var body: some View {

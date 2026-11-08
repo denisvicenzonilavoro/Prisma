@@ -27,7 +27,7 @@ import SwiftUI
 /// Aprire, spostare, ridurre o portare davanti una finestra pubblica StatoFinestre più volte (voli, coperture,
 /// passaggi di cornice): la disposizione dei riquadri non si ricalcola per nessuna di queste.
 struct RiquadriScrivania: View {
-    @EnvironmentObject var sistema: StatoFinestre
+    @Environment(StatoFinestre.self) var sistema
 
     var body: some View {
         CorpoRiquadriScrivania(sistema: sistema, bloccato: sistema.bloccato, davanti: !sistema.visibili.isEmpty)
@@ -967,7 +967,7 @@ private struct RiquadroVeraScrivania: View {
 
 /// Ridisegna il riquadro di Vera quando la scrivania si copre o si scopre (le finestre aperte o ridotte).
 private struct SferaScrivaniaScoperta<C: View>: View {
-    @ObservedObject var sistema: StatoFinestre
+    let sistema: StatoFinestre
     let contenuto: (Bool) -> C
 
     var body: some View {

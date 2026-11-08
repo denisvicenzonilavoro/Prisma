@@ -1,4 +1,5 @@
 import SwiftUI
+import Observation
 
 // La Sala della versione «Luce» (Design/template-luce-specifica.md §1.3): la casa delle 11 esperienze da vivere con il
 // cliente. Qui il modello (le esperienze, nell'ordine di `ESP` del template) e lo stato della Sala, a parte da
@@ -110,18 +111,18 @@ enum VistaTerritorio: String, CaseIterable, Identifiable, Hashable {
 }
 
 /// Lo stato della Sala: l'esperienza sul palco (nil = la griglia). Lo osservano solo la Sala e la presentazione.
-final class StatoSala: ObservableObject {
-    @Published var esperienza: EsperienzaSala?
+@Observable final class StatoSala {
+    var esperienza: EsperienzaSala?
     /// «▶︎ Presenta» ha acceso la modalità cliente: alla chiusura della presentazione si spegne (non pubblicato).
-    var presentazioneHaAccesoModoCliente = false
+    @ObservationIgnored var presentazioneHaAccesoModoCliente = false
     /// Solo istantanee (giro 4): lo stato di prova del prisma di luce e il tratto di prova di «Disegna il tuo futuro»
     /// (punti 0…1 nell'area del grafico, x = età da oggi a 90 anni, y = patrimonio da 0 al massimo dell'asse).
-    var provaLuce: ProvaLuce?
-    var provaDisegno: [CGPoint]?
+    @ObservationIgnored var provaLuce: ProvaLuce?
+    @ObservationIgnored var provaDisegno: [CGPoint]?
     /// Una giornata della pensione: «Senza piano» o «Con il piano», ricordato tra un'apertura e l'altra (§4.2.1).
-    var giornataConPiano = false
+    @ObservationIgnored var giornataConPiano = false
     /// Istantanee: il punto del gioco del rischio da disegnare (scenario e risposte già date). Non pubblicato.
-    var rischioIstantanea: PuntoGiocoRischio?
+    @ObservationIgnored var rischioIstantanea: PuntoGiocoRischio?
 }
 
 extension StatoShell {

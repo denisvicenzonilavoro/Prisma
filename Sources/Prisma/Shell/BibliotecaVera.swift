@@ -1,17 +1,18 @@
 import Foundation
+import Observation
 
 /// La biblioteca delle norme sul Mac (funzione 13): i PDF che porta l'utente stanno in Prisma/Biblioteca/ con il loro
 /// indice per articolo (biblioteca.json). Entra nel backup con il resto della cartella dell'archivio. Su iPhone e iPad non
 /// c'è (decisione 114 di Luce). Nelle prove e nelle istantanee resta in memoria.
-final class StatoBiblioteca: ObservableObject {
-    @Published private(set) var testi: [TestoNorma] = []
-    @Published var scelto: String?
-    @Published var articoloScelto: String?
-    @Published var cerca = ""
-    @Published private(set) var inLettura: [String] = []
+@Observable final class StatoBiblioteca {
+    private(set) var testi: [TestoNorma] = []
+    var scelto: String?
+    var articoloScelto: String?
+    var cerca = ""
+    private(set) var inLettura: [String] = []
 
     let persistente: Bool
-    private var caricata = false
+    @ObservationIgnored private var caricata = false
     private static let coda = DispatchQueue(label: "prisma.biblioteca", qos: .userInitiated)
 
     init(persistente: Bool) { self.persistente = persistente }

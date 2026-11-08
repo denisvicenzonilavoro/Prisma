@@ -55,7 +55,7 @@ final class ControlloMiniVera {
         guard self.stato == nil else { return }
         self.stato = stato
         let mini = stato.miniVera
-        mini.$visibile
+        mini.visibileCambia
             .removeDuplicates()
             .sink { [weak self] v in self?.mostra(v) }
             .store(in: &abbonamenti)
@@ -128,7 +128,7 @@ final class ControlloMiniVera {
         p.esc = { [weak stato] in stato?.chiudiMiniVera() }
         let vista = VistaMiniVera()
             .environment(stato)
-            .environmentObject(stato.miniVera)
+            .environment(stato.miniVera)
         let host = NSHostingView(rootView: vista)
         // La misura del pannello la decide il controllo, non il contenuto
         host.sizingOptions = []

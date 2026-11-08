@@ -38,8 +38,8 @@ struct AppBiblioteca: View {
 #if os(macOS)
 struct VistaBiblioteca: View {
     @Environment(StatoShell.self) var stato
-    @ObservedObject var biblioteca: StatoBiblioteca
-    @ObservedObject var trova: StatoTrovaPagina
+    let biblioteca: StatoBiblioteca
+    @Bindable var trova: StatoTrovaPagina
     @State private var sopra = false
     @State private var daTogliere: String?
     @State private var daModificare: String?

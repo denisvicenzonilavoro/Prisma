@@ -198,7 +198,7 @@ struct FoglioSoglieMercato: View {
 
 struct FoglioImportaMercato: View {
     @Environment(StatoShell.self) var stato
-    @ObservedObject var sessione: SessioneMercato
+    let sessione: SessioneMercato
 
     @State private var fonte = ""
     @State private var nome = ""

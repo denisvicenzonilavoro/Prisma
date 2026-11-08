@@ -232,7 +232,7 @@ private struct LuceDelPulsante: View {
 struct PannelloAppAperte: View {
     @Environment(StatoShell.self) var stato
     /// Le finestre aperte e quella in primo piano.
-    @EnvironmentObject var sistema: StatoFinestre
+    @Environment(StatoFinestre.self) var sistema
 
     var body: some View {
         let _ = ContaCorpi.segna()

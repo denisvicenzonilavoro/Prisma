@@ -174,7 +174,7 @@ struct GruppoAvatarMercato: View {
 /// «Avvisi»: in testa il risultato della ricerca per ISIN (un posto fisso, mai tagliato), poi le righe degli avvisi.
 struct RiquadroAvvisi: View {
     @Environment(StatoShell.self) var stato
-    @ObservedObject var sessione: SessioneMercato
+    let sessione: SessioneMercato
 
     private typealias R = Tema.Apple.Mercato.Riquadro
 

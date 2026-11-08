@@ -9,7 +9,7 @@ import AppKit
 struct AppRicerca: View {
     @Environment(StatoShell.self) var stato
     /// App in primo piano, pannelli e blocco: decidono se le frecce scelgono i risultati.
-    @EnvironmentObject var sistema: StatoFinestre
+    @Environment(StatoFinestre.self) var sistema
     @FocusState private var fuoco: Bool
     @State private var selezione = 0
     @State private var tasti: Any?

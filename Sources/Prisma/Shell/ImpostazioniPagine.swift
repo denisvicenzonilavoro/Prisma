@@ -527,7 +527,7 @@ extension AppImpostazioni {
 /// La riga «La memoria di Vera» di Impostazioni › Vera: osserva la memoria, così conteggi e «Mostra» restano veri.
 private struct RigaMemoriaVera: View {
     @Environment(StatoShell.self) var stato
-    @ObservedObject var memoria: StatoMemoriaVera
+    let memoria: StatoMemoriaVera
 
     var body: some View {
         let _ = ContaCorpi.segna()

@@ -14,8 +14,10 @@ import Observation
 @Observable final class DatiVivi {
     /// Che cosa è cambiato, per i contatori delle cache di StatoShell (la stessa regola di `DatiPrisma.stessiCalcoli`).
     enum Cambio {
-        /// Un campo che entra nei calcoli e nei documenti.
+        /// Un campo che entra nei calcoli e nei documenti, di tutti i clienti (o non attribuibile a uno solo).
         case calcoli
+        /// Un campo dei calcoli cambiato solo per questi clienti (le loro voci di CacheClienti si rifanno, le altre no).
+        case calcoliClienti(Set<String>)
         /// Le note del taccuino (hanno la loro versione).
         case note
         /// Un campo che non entra in nessun calcolo in cache (conversazioni, spazi, cliente attivo…).
@@ -38,29 +40,29 @@ import Observation
     static let numeroCampi = 39
 
     var versione: Int { didSet { segnala(.calcoli) } }
-    var clienti: [Cliente] { didSet { segnala(.calcoli) } }
-    var appuntamenti: [Appuntamento] { didSet { segnala(.calcoli) } }
-    var attivita: [Attivita] { didSet { segnala(.calcoli) } }
-    var posizioni: [Posizione] { didSet { segnala(.calcoli) } }
-    var simulazioni: [Simulazione] { didSet { segnala(.calcoli) } }
-    var analisi: [String: Analisi360] { didSet { segnala(.calcoli) } }
-    var incontri: [Incontro] { didSet { segnala(.calcoli) } }
+    var clienti: [Cliente] { didSet(prima) { segnalaClienti(prima, clienti, \.id) } }
+    var appuntamenti: [Appuntamento] { didSet(prima) { segnalaClienti(prima, appuntamenti, \.clienteId) } }
+    var attivita: [Attivita] { didSet(prima) { segnalaClienti(prima, attivita, \.clienteId) } }
+    var posizioni: [Posizione] { didSet(prima) { segnalaClienti(prima, posizioni, \.clienteId) } }
+    var simulazioni: [Simulazione] { didSet(prima) { segnalaClienti(prima, simulazioni, \.clienteId) } }
+    var analisi: [String: Analisi360] { didSet(prima) { segnalaAnalisi(prima) } }
+    var incontri: [Incontro] { didSet(prima) { segnalaClienti(prima, incontri, \.clienteId) } }
     var prodotti: [Prodotto] { didSet { segnala(.calcoli) } }
-    var obiettivi: [Obiettivo] { didSet { segnala(.calcoli) } }
-    var documenti: [Documento] { didSet { segnala(.calcoli) } }
-    var valutazioni: [ValutazioneInvestimento] { didSet { segnala(.calcoli) } }
+    var obiettivi: [Obiettivo] { didSet(prima) { segnalaClienti(prima, obiettivi, \.clienteId) } }
+    var documenti: [Documento] { didSet(prima) { segnalaClienti(prima, documenti, \.clienteId) } }
+    var valutazioni: [ValutazioneInvestimento] { didSet(prima) { segnalaClienti(prima, valutazioni, \.clienteId) } }
     var conversazioni: [String: [MessaggioVera]] { didSet { segnala(.neutro) } }
-    var commenti: [CommentoReport] { didSet { segnala(.calcoli) } }
+    var commenti: [CommentoReport] { didSet(prima) { segnalaClienti(prima, commenti, \.clienteId) } }
     var note: [Nota] { didSet { segnala(.note) } }
     var spazi: [SpazioLavoro] { didSet { segnala(.neutro) } }
-    var fotografie: [FotografiaRiesame] { didSet { segnala(.calcoli) } }
+    var fotografie: [FotografiaRiesame] { didSet(prima) { segnalaClienti(prima, fotografie, \.clienteId) } }
     var schedeAdeguatezza: [SchedaAdeguatezza] { didSet { segnala(.neutro) } }
     var confrontiTFR: [String: IpotesiTFR] { didSet { segnala(.neutro) } }
-    var parcelle: [Parcella] { didSet { segnala(.calcoli) } }
-    var raccomandazioni: [Raccomandazione] { didSet { segnala(.calcoli) } }
-    var messaggi: [MessaggioCliente] { didSet { segnala(.calcoli) } }
-    var eventiVita: [EventoLineaVita] { didSet { segnala(.calcoli) } }
-    var sessioniCopilota: [SessioneCopilota] { didSet { segnala(.calcoli) } }
+    var parcelle: [Parcella] { didSet(prima) { segnalaClienti(prima, parcelle, \.clienteId) } }
+    var raccomandazioni: [Raccomandazione] { didSet(prima) { segnalaClienti(prima, raccomandazioni, \.clienteId) } }
+    var messaggi: [MessaggioCliente] { didSet(prima) { segnalaClienti(prima, messaggi, \.clienteId) } }
+    var eventiVita: [EventoLineaVita] { didSet(prima) { segnalaClienti(prima, eventiVita, \.clienteId) } }
+    var sessioniCopilota: [SessioneCopilota] { didSet(prima) { segnalaClienti(prima, sessioniCopilota, \.clienteId) } }
     var giornaleOvunque: [OperazioneOvunque] { didSet { segnala(.calcoli) } }
     var conflittiOvunque: [ConflittoOvunque] { didSet { segnala(.calcoli) } }
     var arriviOvunque: [ArrivoOvunque] { didSet { segnala(.calcoli) } }
@@ -70,10 +72,10 @@ import Observation
     var ocf: ArchivioOCF { didSet { segnala(.neutro) } }
     var portafogliModello: [PortafoglioModello] { didSet { segnala(.calcoli) } }
     var pratiche: [Pratica] { didSet { segnala(.neutro) } }
-    var partiteRischio: [PartitaRischio] { didSet { segnala(.calcoli) } }
-    var promesse: [PromessaCliente] { didSet { segnala(.calcoli) } }
-    var confrontiDocumenti: [ConfrontoDocumenti] { didSet { segnala(.calcoli) } }
-    var coperture: [CoperturaPolizza] { didSet { segnala(.calcoli) } }
+    var partiteRischio: [PartitaRischio] { didSet(prima) { segnalaClienti(prima, partiteRischio, \.clienteId) } }
+    var promesse: [PromessaCliente] { didSet(prima) { segnalaClienti(prima, promesse, \.clienteId) } }
+    var confrontiDocumenti: [ConfrontoDocumenti] { didSet(prima) { segnalaClienti(prima, confrontiDocumenti, \.clienteId) } }
+    var coperture: [CoperturaPolizza] { didSet(prima) { segnalaClienti(prima, coperture, \.clienteId) } }
     var clienteAttivoId: String { didSet(prima) { segnala(.clienteAttivo(prima: prima)) } }
     var impostazioni: Impostazioni { didSet(prima) { segnala(.impostazioni(prima: prima)) } }
 
@@ -129,6 +131,42 @@ import Observation
         if !inCarica { aggancio?(cambio) }
     }
 
+    /// Un campo dei clienti cambiato: segnala solo i clienti toccati (CacheClienti), o nulla se l'array è uguale.
+    private func segnalaClienti<T: Equatable>(_ prima: [T], _ ora: [T], _ cliente: KeyPath<T, String>) {
+        guard !inCarica else { return }
+        segnala(.calcoliClienti(Self.clientiToccati(prima, ora, cliente)))
+    }
+
+    private func segnalaAnalisi(_ prima: [String: Analisi360]) {
+        guard !inCarica else { return }
+        var ids = Set<String>()
+        for (id, a) in analisi where prima[id] != a { ids.insert(id) }
+        for id in prima.keys where analisi[id] == nil { ids.insert(id) }
+        segnala(.calcoliClienti(ids))
+    }
+
+    /// I clienti degli elementi diversi fra due versioni di un array: con la stessa lunghezza posto per posto, se no
+    /// tutto ciò che sta fra il pezzo iniziale e quello finale uguali (aggiunte, tolte, spostamenti). In più, mai in
+    /// meno: un elemento cambiato porta sempre il cliente di prima e quello di adesso. Gli elementi non toccati
+    /// condividono la memoria, quindi il confronto costa poco.
+    static func clientiToccati<T: Equatable>(_ a: [T], _ b: [T], _ cliente: KeyPath<T, String>) -> Set<String> {
+        var ids = Set<String>()
+        if a.count == b.count {
+            for i in a.indices where a[i] != b[i] {
+                ids.insert(a[i][keyPath: cliente])
+                ids.insert(b[i][keyPath: cliente])
+            }
+            return ids
+        }
+        var inizio = 0
+        while inizio < a.count, inizio < b.count, a[inizio] == b[inizio] { inizio += 1 }
+        var fine = 0
+        while fine < a.count - inizio, fine < b.count - inizio, a[a.count - 1 - fine] == b[b.count - 1 - fine] { fine += 1 }
+        for x in a[inizio..<(a.count - fine)] { ids.insert(x[keyPath: cliente]) }
+        for x in b[inizio..<(b.count - fine)] { ids.insert(x[keyPath: cliente]) }
+        return ids
+    }
+
     /// Una copia dell'archivio com'è adesso (un valore: le modifiche successive non la toccano). Gli array non
     /// toccati condividono la memoria, quindi costa poco. Letta in un body iscrive la vista a tutti i campi.
     var istantanea: DatiPrisma {
@@ -167,6 +205,48 @@ import Observation
         d.promesse = promesse
         d.confrontiDocumenti = confrontiDocumenti
         d.coperture = coperture
+        return d
+    }
+
+    /// La stessa copia di `istantanea`, letta senza iscrivere chi la chiede a nessun campo: solo per le cache che hanno già
+    /// la loro chiave osservata (`StatoShell.datiDeiCalcoli`, su `versioneCalcoli`). Letta altrove darebbe viste che non
+    /// si aggiornano.
+    var istantaneaNonOsservata: DatiPrisma {
+        var d = DatiPrisma(clienti: _clienti, appuntamenti: _appuntamenti, attivita: _attivita, posizioni: _posizioni,
+                           clienteAttivoId: _clienteAttivoId, impostazioni: _impostazioni)
+        d.versione = _versione
+        d.simulazioni = _simulazioni
+        d.analisi = _analisi
+        d.incontri = _incontri
+        d.prodotti = _prodotti
+        d.obiettivi = _obiettivi
+        d.documenti = _documenti
+        d.valutazioni = _valutazioni
+        d.conversazioni = _conversazioni
+        d.commenti = _commenti
+        d.note = _note
+        d.spazi = _spazi
+        d.fotografie = _fotografie
+        d.schedeAdeguatezza = _schedeAdeguatezza
+        d.confrontiTFR = _confrontiTFR
+        d.parcelle = _parcelle
+        d.raccomandazioni = _raccomandazioni
+        d.messaggi = _messaggi
+        d.eventiVita = _eventiVita
+        d.sessioniCopilota = _sessioniCopilota
+        d.giornaleOvunque = _giornaleOvunque
+        d.conflittiOvunque = _conflittiOvunque
+        d.arriviOvunque = _arriviOvunque
+        d.inquadratureDaConfermare = _inquadratureDaConfermare
+        d.mercato = _mercato
+        d.famiglie = _famiglie
+        d.ocf = _ocf
+        d.portafogliModello = _portafogliModello
+        d.pratiche = _pratiche
+        d.partiteRischio = _partiteRischio
+        d.promesse = _promesse
+        d.confrontiDocumenti = _confrontiDocumenti
+        d.coperture = _coperture
         return d
     }
 

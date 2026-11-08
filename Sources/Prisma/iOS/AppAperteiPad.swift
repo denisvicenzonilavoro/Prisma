@@ -8,7 +8,7 @@ import SwiftUI
 struct AppAperteiPad: View {
     @Environment(StatoShell.self) var stato
     @EnvironmentObject var mobile: StatoMobile
-    @EnvironmentObject var sistema: StatoFinestre
+    @Environment(StatoFinestre.self) var sistema
 
     private typealias P = Tema.Misura.Mobile.Pannelli
 

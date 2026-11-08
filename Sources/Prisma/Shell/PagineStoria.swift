@@ -81,7 +81,7 @@ private struct UnevenRoundedRectangleStoria: Shape {
 struct PaginaStoriaVista: View {
     @Environment(StatoShell.self) var stato
     let pagina: PaginaStoria
-    @ObservedObject var storia: StatoStoria
+    let storia: StatoStoria
 
     private typealias S = Tema.Apple.Storia
     private typealias M = Tema.Apple.Moto.Storia

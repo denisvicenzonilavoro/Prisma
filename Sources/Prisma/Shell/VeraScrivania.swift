@@ -1,4 +1,5 @@
 import SwiftUI
+import Observation
 
 // La Vera della scrivania: sulla scrivania libera, due dita da destra a sinistra sul trackpad (o un trascinamento
 // col mouse) fanno scorrere via i widget e aprono Vera. L'acqua resta viva dietro, il dock resta.
@@ -7,13 +8,13 @@ import SwiftUI
 // Il gesto del trackpad e Esc sono in GestoVeraScrivania.swift (solo Mac); i gettoni in DesignSystem/TemaVeraScrivania.swift.
 
 /// Il gesto in corso tra le due pagine: lo osservano solo le pagine, così seguire il dito non ridisegna la shell.
-final class GestoPaginaVera: ObservableObject {
+@Observable final class GestoPaginaVera {
     /// Quanto si è spostata la pagina dall'inizio del gesto, in pagine (+ verso Vera).
-    @Published var spostamento: CGFloat = 0
+    var spostamento: CGFloat = 0
     /// Un gesto orizzontale è stato preso (trackpad o mouse).
-    var attivo = false
+    @ObservationIgnored var attivo = false
     /// La pagina da cui è partito.
-    var partenza: CGFloat = 0
+    @ObservationIgnored var partenza: CGFloat = 0
 
     /// Segue il dito: `dito` è lo spostamento orizzontale dall'inizio (negativo = verso sinistra, verso Vera).
     /// Oltre le due pagine il movimento rallenta, come gli scorrimenti del Mac.
@@ -89,8 +90,8 @@ extension StatoShell {
 /// La scrivania con i widget e, a destra, Vera. Sta dove prima c'era solo `Scrivania()` (ShellView.livelliScrivania).
 struct PagineScrivania: View {
     @Environment(StatoShell.self) var stato
-    @ObservedObject var sistema: StatoFinestre
-    @ObservedObject var gesto: GestoPaginaVera
+    let sistema: StatoFinestre
+    let gesto: GestoPaginaVera
     let misura: CGSize
     @Environment(\.accessibilityReduceMotion) private var movimentoRidotto
     @Environment(\.modoIstantanea) private var modoIstantanea

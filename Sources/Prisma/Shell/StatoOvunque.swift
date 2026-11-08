@@ -1,5 +1,6 @@
 #if os(macOS)
 import AppKit
+import Observation
 #elseif os(iOS)
 import UIKit
 #endif
@@ -44,48 +45,48 @@ enum ModuloOvunque: Equatable {
     case cambia
 }
 
-final class StatoOvunque: ObservableObject {
+@Observable final class StatoOvunque {
     /// Una sincronizzazione (o l'apertura dello spazio) sta lavorando.
-    @Published var inCorso = false
-    @Published var problema: ProblemaOvunque?
+    var inCorso = false
+    var problema: ProblemaOvunque?
     /// Qualche file è in iCloud ma non ancora su questo apparecchio.
-    @Published var attesaICloud = false
+    var attesaICloud = false
     /// Mac: le operazioni lette nei giornali e non ancora unite (controllo leggero con FSEvents).
-    @Published var inArrivo: [OperazioneOvunque] = []
+    var inArrivo: [OperazioneOvunque] = []
     /// I nomi dei dispositivi per id («iPhone», «iPad»).
-    @Published var nomiDispositivi: [String: String] = [:]
+    var nomiDispositivi: [String: String] = [:]
     /// Le operazioni unite dall'ultima sincronizzazione (Mac).
-    @Published var ultimeUnite: [OperazioneOvunque] = []
+    var ultimeUnite: [OperazioneOvunque] = []
     /// Cresce a ogni sincronizzazione riuscita: il lucchetto della nuvola rimbalza.
-    @Published var giri = 0
+    var giri = 0
     /// Il modulo aperto nella pagina e il suo errore.
-    @Published var modulo: ModuloOvunque?
-    @Published var erroreModulo: String?
+    var modulo: ModuloOvunque?
+    var erroreModulo: String?
     /// Mac: la cartella scelta nel modulo (prima dell'accensione). iPhone e iPad: quella scelta con File.
-    @Published var cartellaScelta: URL?
+    var cartellaScelta: URL?
     /// «Vedi»: le modifiche in attesa e «Da decidere» aperte sotto la riga.
-    @Published var modificheAperte = false
+    var modificheAperte = false
     /// iPhone e iPad: il selettore di File per la cartella.
-    @Published var sceltaCartella = false
+    var sceltaCartella = false
 
     /// La chiave madre di questa sessione (dal Portachiavi o dalla passphrase appena scritta). Mai nell'archivio.
-    var chiave: ChiaveSpazio?
+    @ObservationIgnored var chiave: ChiaveSpazio?
     /// La cartella aperta (su iOS tiene aperto il security scope per la sessione).
-    var cartella: CartellaCondivisaFile?
+    @ObservationIgnored var cartella: CartellaCondivisaFile?
     /// Dispositivo: l'archivio all'ultima registrazione del giornale (si confronta con quello di adesso).
-    var base: DatiPrisma?
+    @ObservationIgnored var base: DatiPrisma?
     /// Mac: l'archivio visto all'ultimo controllo del ritmo (senza le impostazioni dello spazio e senza Vera).
-    var ultimiDatiVisti: DatiPrisma?
-    var ultimoTentativoIstantanea: Date?
+    @ObservationIgnored var ultimiDatiVisti: DatiPrisma?
+    @ObservationIgnored var ultimoTentativoIstantanea: Date?
     /// Un altro giro chiesto mentre uno lavorava.
-    var ancoraUnGiro = false
-    var ancoraForzato = false
-    var lavoroIstantanea: DispatchWorkItem?
-    var lavoroGiornale: DispatchWorkItem?
-    var lavoroControllo: DispatchWorkItem?
-    var avviato = false
+    @ObservationIgnored var ancoraUnGiro = false
+    @ObservationIgnored var ancoraForzato = false
+    @ObservationIgnored var lavoroIstantanea: DispatchWorkItem?
+    @ObservationIgnored var lavoroGiornale: DispatchWorkItem?
+    @ObservationIgnored var lavoroControllo: DispatchWorkItem?
+    @ObservationIgnored var avviato = false
     #if os(macOS)
-    var osservatore: OsservatoreCartellaOvunque?
+    @ObservationIgnored var osservatore: OsservatoreCartellaOvunque?
     #endif
     /// Il lavoro con i file e la cifratura, uno alla volta.
     let coda = DispatchQueue(label: "prisma.ovunque", qos: .utility)
@@ -178,10 +179,24 @@ extension StatoShell {
         } else if let c = JSONOvunque.oggetto(op.prima)?["clienteId"] as? String {
             id = c
         } else {
-            id = CampiOvunque.oggetto(op.entita, id: op.entitaId, in: dati.istantanea)?["clienteId"] as? String
+            id = clienteIdOvunque(op.entita, id: op.entitaId)
         }
         guard let id else { return nil }
         return dati.clienti.first { $0.id == id }
+    }
+
+    /// Il cliente dell'oggetto sull'archivio (nil se non c'è): legge solo il campo di quell'entità, così una vista che lo
+    /// chiede non si iscrive a tutto l'archivio (come faceva `CampiOvunque.oggetto` sull'istantanea).
+    func clienteIdOvunque(_ e: EntitaOvunque, id: String) -> String? {
+        switch e {
+        case .nota: return dati.note.first { $0.id == id }?.clienteId
+        case .attivita: return dati.attivita.first { $0.id == id }?.clienteId
+        case .appuntamento: return dati.appuntamenti.first { $0.id == id }?.clienteId
+        case .eventoVita: return dati.eventiVita.first { $0.id == id }?.clienteId
+        case .sessioneCopilota: return dati.sessioniCopilota.first { $0.id == id }?.clienteId
+        case .inquadratura: return dati.inquadratureDaConfermare.first { $0.id == id }?.clienteId
+        case .bisogni: return dati.clienti.first { $0.id == id }?.id
+        }
     }
 
     // MARK: - Avvio e collegamenti

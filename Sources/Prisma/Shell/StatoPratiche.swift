@@ -8,9 +8,19 @@ extension StatoShell {
     /// Le pratiche con il loro stato, nell'ordine della scheda (in modalità cliente solo quelle del suo cliente:
     /// ma Pratiche in modalità cliente non si apre).
     func statiPratiche(oggi: Date = Date()) -> [StatoPratica] {
-        let tutti = MotorePratiche.stati(dati.istantanea, oggi: oggi)
+        let tutti = MotorePratiche.stati(datiPratiche(), oggi: oggi)
         guard let solo = modoCliente else { return tutti }
         return tutti.filter { $0.clienteId == solo }
+    }
+
+    /// L'archivio per MotorePratiche: i dati dei calcoli (senza iscriversi a tutto l'archivio) più le pratiche, le schede
+    /// di adeguatezza e le impostazioni, che non entrano nei calcoli e si leggono vive (la vista si iscrive a quelle).
+    func datiPratiche() -> DatiPrisma {
+        var d = datiDeiCalcoli()
+        d.pratiche = dati.pratiche
+        d.schedeAdeguatezza = dati.schedeAdeguatezza
+        d.impostazioni = dati.impostazioni
+        return d
     }
 
     /// Una proposta appena accettata apre la sua pratica, se la posizione non ne ha già una. Data di apertura: quella
@@ -52,7 +62,7 @@ extension StatoShell {
     /// l'occasione nella pratica, così la card dice «✓ Sollecito pronto». `apri`: false lascia Pratiche davanti
     /// (istantanee e prove).
     func sollecitaPratica(_ praticaId: String, apri: Bool = true, oggi: Date = Date()) {
-        guard let s = MotorePratiche.stati(dati.istantanea, oggi: oggi).first(where: { $0.id == praticaId }),
+        guard let s = MotorePratiche.stati(datiPratiche(), oggi: oggi).first(where: { $0.id == praticaId }),
               let o = MotorePratiche.occasioneSollecito(s, oggi: oggi),
               let i = dati.pratiche.firstIndex(where: { $0.id == praticaId }) else { return }
         if !solaLettura { dati.pratiche[i].sollecitoOccasioneId = o.id }

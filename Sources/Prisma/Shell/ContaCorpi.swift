@@ -19,18 +19,3 @@ enum ContaCorpi {
 
     static func azzera() { conteggio = 0 }
 }
-
-/// Rivaluta `contenuto` quando cambia un `ObservableObject` che una vista legge attraverso StatoShell (per esempio
-/// `stato.sessioneMercato`). Con `ObservableObject` StatoShell pubblicava così spesso che queste letture si
-/// aggiornavano «per caso»; con Observation ogni vista si aggiorna solo per ciò che osserva davvero.
-struct OsservaOggetto<Oggetto: ObservableObject, Contenuto: View>: View {
-    @ObservedObject private var oggetto: Oggetto
-    private let contenuto: () -> Contenuto
-
-    init(_ oggetto: Oggetto, @ViewBuilder contenuto: @escaping () -> Contenuto) {
-        _oggetto = ObservedObject(wrappedValue: oggetto)
-        self.contenuto = contenuto
-    }
-
-    var body: some View { contenuto() }
-}

@@ -60,7 +60,7 @@ extension View {
 // MARK: - La memoria
 
 private struct PaginaMemoriaVera: ViewModifier {
-    @ObservedObject var memoria: StatoMemoriaVera
+    @Bindable var memoria: StatoMemoriaVera
 
     func body(content: Content) -> some View {
         content.sheet(isPresented: $memoria.aperta) { MemoriaVeraVista(memoria: memoria) }
@@ -70,7 +70,7 @@ private struct PaginaMemoriaVera: ViewModifier {
 /// La pagina dei ricordi: «Vera ricorda», su di te e sui clienti (✎ e ✕), le lezioni dalle correzioni.
 struct MemoriaVeraVista: View {
     @Environment(StatoShell.self) var stato
-    @ObservedObject var memoria: StatoMemoriaVera
+    @Bindable var memoria: StatoMemoriaVera
     @State private var inModifica: String?
     @State private var testo = ""
     @State private var password = ""

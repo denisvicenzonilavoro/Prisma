@@ -78,6 +78,16 @@ enum VoceConfronto: Hashable {
     private(set) var versioneCalcoli = 0
     /// Cresce quando cambiano le note del taccuino (le leggono i documenti, per esempio il fascicolo).
     private(set) var versioneNote = 0
+    /// Le versioni per cliente delle cache dei motori (CacheClienti.swift, giro 0 tappa 4): crescono quando cambia
+    /// qualcosa di quel cliente. Non osservate: le viste si aggiornano con `versioneCalcoli`, che cresce comunque.
+    @ObservationIgnored private var versioniCliente: [String: Int] = [:]
+    /// Cresce con ciò che vale per tutti i clienti (catalogo, modelli, mercato, impostazioni dei calcoli, archivio
+    /// sostituito, campi non attribuiti a un cliente): rifà le voci di tutti.
+    @ObservationIgnored private(set) var versioneComuneClienti = 0
+    /// Il numero da cui prendono le versioni (comune e dei clienti): mai due volte lo stesso.
+    @ObservationIgnored private var ultimaVersioneClienti = 0
+    /// I motori dei singoli clienti, per cliente (CacheClienti.swift).
+    @ObservationIgnored let cacheClienti = CacheClienti()
 
     /// Finestre interne, pannelli e blocco (StatoShellFinestre.swift ne inoltra le proprietà con i nomi di sempre):
     /// cambiarli non pubblica StatoShell, così le app aperte e i widget non si ricalcolano.
@@ -495,7 +505,7 @@ enum VoceConfronto: Hashable {
     /// Il menu Vai segue blocco, modalità cliente, presentazione e conversazione a voce, senza osservare StatoShell:
     /// il blocco da StatoFinestre, il resto dai didSet di modoCliente, presentazione e conversazioneAVoce.
     private func collegaMenu() {
-        sistema.$bloccato
+        sistema.bloccatoCambiera
             .sink { [weak self] b in self?.aggiornaMenu(bloccato: b) }
             .store(in: &abbonamenti)
     }
@@ -519,6 +529,11 @@ enum VoceConfronto: Hashable {
         switch cambio {
         case .calcoli:
             versioneCalcoli &+= 1
+            cambiaVersioneComuneClienti()
+        case .calcoliClienti(let ids):
+            versioneCalcoli &+= 1
+            ultimaVersioneClienti &+= 1
+            for id in ids { versioniCliente[id] = ultimaVersioneClienti }
         case .note:
             versioneNote &+= 1
         case .neutro:
@@ -526,13 +541,19 @@ enum VoceConfronto: Hashable {
         case .clienteAttivo(let prima):
             if dati.clienteAttivoId != prima { clienteAttivoCambiato.send(dati.clienteAttivoId) }
         case .impostazioni(let prima):
-            if !dati.impostazioni.stessiCalcoli(di: prima) { versioneCalcoli &+= 1 }
+            if !dati.impostazioni.stessiCalcoli(di: prima) {
+                versioneCalcoli &+= 1
+                cambiaVersioneComuneClienti()
+            }
             veraCambiata = dati.impostazioni.vera != prima.vera
         case .tutto(let prima):
             // Gli array non toccati condividono la memoria con i vecchi: confrontarli costa O(1)
             let ora = dati.istantanea
             if ora.note != prima.note { versioneNote &+= 1 }
-            if !ora.stessiCalcoli(di: prima) { versioneCalcoli &+= 1 }
+            if !ora.stessiCalcoli(di: prima) {
+                versioneCalcoli &+= 1
+                cambiaVersioneComuneClienti()
+            }
             veraCambiata = ora.impostazioni.vera != prima.impostazioni.vera
             if ora.clienteAttivoId != prima.clienteAttivoId { clienteAttivoCambiato.send(ora.clienteAttivoId) }
         }
@@ -546,6 +567,18 @@ enum VoceConfronto: Hashable {
         }
         modificheDati.send()
     }
+
+    /// Qualcosa che vale per tutti i clienti è cambiato: le voci di CacheClienti si rifanno tutte (e quelle dei clienti
+    /// eliminati si lasciano andare).
+    private func cambiaVersioneComuneClienti() {
+        ultimaVersioneClienti &+= 1
+        versioneComuneClienti = ultimaVersioneClienti
+        versioniCliente = [:]
+        cacheClienti.tieniSolo(Set(dati.clienti.map(\.id)))
+    }
+
+    /// La versione dei dati di un cliente per CacheClienti (0 = non cambiato da quando è cambiato il comune).
+    func versioneCliente(_ id: String) -> Int { versioniCliente[id] ?? 0 }
 
     #if os(macOS)
     /// L'aspetto da dare all'app (nil = segue il Mac); come `AspettoInterfaccia.aspettoMac`, fuori dal MainActor.
@@ -1798,11 +1831,11 @@ enum VoceConfronto: Hashable {
 
     /// In cache (DerivatiDati) finché non cambiano i dati dei calcoli, il giorno o la modalità cliente.
     func bisogniRilevati(_ id: String) -> [BisognoRilevato] {
-        let d = derivatiValidi()
-        if let b = d.bisogni[id] { return b }
+        let v = voceCliente(id)
+        if let b = v.bisogni { return b }
         guard let c = cliente(id) else { return [] }
         let b = MotoreBisogni.rileva(cliente: c, posizioni: posizioniCliente(id), analisi: analisi360(id))
-        d.bisogni[id] = b
+        v.bisogni = b
         return b
     }
 
@@ -1860,10 +1893,10 @@ enum VoceConfronto: Hashable {
     func analisi360(_ id: String) -> Analisi360 {
         if let salvata = dati.analisi[id] { return salvata }
         // La prima stesura si costruisce una volta sola per dati dei calcoli, giorno e modalità cliente
-        let d = derivatiValidi()
-        if let bozza = d.analisiBozza[id] { return bozza }
+        let v = voceCliente(id)
+        if let bozza = v.analisiBozza { return bozza }
         let bozza = Analisi360(cliente: cliente(id), posizioni: posizioniCliente(id))
-        d.analisiBozza[id] = bozza
+        v.analisiBozza = bozza
         return bozza
     }
 

@@ -36,7 +36,7 @@ struct AppMercato: View {
 @MainActor
 private struct CorpoMercato: View {
     @Environment(StatoShell.self) var stato
-    @ObservedObject var sessione: SessioneMercato
+    @Bindable var sessione: SessioneMercato
     @StateObject private var dettaglio: StatoDettaglio
     @Environment(\.prismaScatto) private var scatto
 
@@ -44,7 +44,7 @@ private struct CorpoMercato: View {
     private typealias M = Tema.Apple.Mercato.Moto
 
     init(sessione: SessioneMercato, dettaglioAperto: String?) {
-        _sessione = ObservedObject(wrappedValue: sessione)
+        self.sessione = sessione
         _dettaglio = StateObject(wrappedValue: dettaglioAperto.map {
             StatoDettaglio(aperto: $0, misura: Tema.Apple.Mercato.Dettaglio.misura)
         } ?? StatoDettaglio())
@@ -160,7 +160,7 @@ struct OcchielloMercato: View {
 
 private struct OcchielloMercatoCorpo: View {
     @Environment(StatoShell.self) var stato
-    @ObservedObject var sessione: SessioneMercato
+    @Bindable var sessione: SessioneMercato
 
     var body: some View {
         let _ = ContaCorpi.segna()
@@ -184,7 +184,7 @@ struct AzioniMercato: View {
 
 private struct AzioniMercatoCorpo: View {
     @Environment(StatoShell.self) var stato
-    @ObservedObject var sessione: SessioneMercato
+    @Bindable var sessione: SessioneMercato
 
     private typealias I = Tema.Apple.Mercato.ISIN
 
@@ -206,7 +206,7 @@ private struct AzioniMercatoCorpo: View {
 /// Il campo ISIN a pillola (`chip`, raggio 99) con «Cerca» dentro: Invio cerca, Esc svuota (sul Mac).
 struct CampoISINMercato: View {
     @Environment(StatoShell.self) var stato
-    @ObservedObject var sessione: SessioneMercato
+    @Bindable var sessione: SessioneMercato
 
     private typealias I = Tema.Apple.Mercato.ISIN
 

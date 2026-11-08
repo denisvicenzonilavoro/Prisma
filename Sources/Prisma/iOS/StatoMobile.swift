@@ -165,7 +165,7 @@ final class StatoMobile: ObservableObject {
             .store(in: &abbonamenti)
         // Le app e i widget aprono le altre con `stato.apri(_:)` (risultati della Ricerca, importazioni, rimandi):
         // sul Mac la finestra viene davanti, su iPhone e iPad l'app va nella finestra di vetro
-        stato.sistema.$elenco
+        stato.sistema.elencoCambiato
             .receive(on: DispatchQueue.main)
             // Si legge l'elenco di adesso, non quello pubblicato: fra la pubblicazione e la consegna (al giro dopo)
             // le icone possono averlo già cambiato di nuovo

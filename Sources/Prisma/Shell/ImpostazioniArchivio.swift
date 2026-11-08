@@ -66,9 +66,9 @@ extension AppImpostazioni {
 
             // «Luce» giro 6: la Biblioteca (PDF di condizioni, KID, circolari) nel backup di base, con l'interruttore
             GruppoImpostazioni(titolo: "Biblioteca") {
-                // Il numero dei documenti viene da StatoBiblioteca (ObservableObject, non osservato da StatoShell):
-                // osservato qui, la riga si aggiorna anche quando si aggiunge un documento con la pagina aperta
-                OsservaOggetto(stato.biblioteca) {
+                // Il numero dei documenti viene da StatoBiblioteca (@Observable): la riga si aggiorna anche quando si
+                // aggiunge un documento con la pagina aperta
+                Group {
                     RigaImpostazione(titolo: "Escludi la Biblioteca dal backup",
                                      sottotitolo: testoMisuraBiblioteca,
                                      aiuto: "Circolari e manuali interni possono essere riservati: decidi tu se possono stare in un backup su iCloud Drive. Se la escludi, un ripristino tiene la Biblioteca di questo Mac",

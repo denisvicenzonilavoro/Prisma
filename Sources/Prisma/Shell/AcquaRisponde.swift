@@ -10,7 +10,7 @@ import SwiftUI
 /// movimento» (`\.prismaCalmo`) e fuori dalle istantanee. Non disegna niente e non prende i clic.
 struct OsservatoreAcqua: View {
     @Environment(StatoShell.self) var stato
-    @ObservedObject var sistema: StatoFinestre
+    let sistema: StatoFinestre
     @Environment(\.prismaCalmo) private var calmo
     @Environment(\.modoIstantanea) private var modoIstantanea
     /// Le notifiche nuove viste l'ultima volta: una goccia solo quando crescono.

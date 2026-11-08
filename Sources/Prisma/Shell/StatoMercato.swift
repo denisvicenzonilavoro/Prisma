@@ -1,5 +1,6 @@
 #if os(macOS)
 import AppKit
+import Observation
 #endif
 import SwiftUI
 import UniformTypeIdentifiers
@@ -27,20 +28,20 @@ struct ImportazioneMercatoInAttesa: Equatable {
 
 /// Lo stato di Mercato che non si salva: il campo ISIN, il risultato, lo scaricamento in corso, il foglio aperto.
 /// Un oggetto a parte (`StatoShell.sessioneMercato`): scrivere nel campo non pubblica StatoShell.
-final class SessioneMercato: ObservableObject {
-    @Published var testoISIN = ""
+@Observable final class SessioneMercato {
+    var testoISIN = ""
     /// nil = nessuna ricerca in vista.
-    @Published var risultatoISIN: RisultatoISIN?
+    var risultatoISIN: RisultatoISIN?
     /// Cresce a ogni ricerca: il risultato rientra con il suo movimento.
-    @Published var giroRicerca = 0
-    @Published var inAggiornamento = false
-    @Published var foglio: FoglioMercato?
-    @Published var importazione: ImportazioneMercatoInAttesa?
+    var giroRicerca = 0
+    var inAggiornamento = false
+    var foglio: FoglioMercato?
+    var importazione: ImportazioneMercatoInAttesa?
     /// Istantanee: la tessera con il dettaglio già aperto.
-    var dettaglioIstantanea: String?
+    @ObservationIgnored var dettaglioIstantanea: String?
 
     /// La configurazione delle serie (file del consulente o del pacchetto), letta una volta per sessione.
-    private(set) lazy var configurazione: ConfigurazioneMercato? = ConfigurazioneMercato.carica()
+    @ObservationIgnored private(set) lazy var configurazione: ConfigurazioneMercato? = ConfigurazioneMercato.carica()
 
     /// Rilegge la configurazione (dopo che il consulente ha cambiato il file).
     func ricaricaConfigurazione() { configurazione = ConfigurazioneMercato.carica() }

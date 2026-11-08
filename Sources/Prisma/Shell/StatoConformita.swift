@@ -7,11 +7,13 @@ extension StatoShell {
     /// L'esito di conformità di un cliente visibile, calcolato una volta per dati dei calcoli e giorno.
     /// Le regole di Impostazioni entrano nei dati dei calcoli: cambiandole, la cache si rifà da sola.
     func conformitaCliente(_ id: String) -> EsitoConformita? {
-        let d = derivatiValidi()
-        if let e = d.conformita[id] { return e }
+        let v = voceCliente(id)
+        if let e = v.conformita { return e }
         guard let c = cliente(id) else { return nil }
-        let e = MotoreConformita.calcola(cliente: c, posizioni: posizioniCliente(id), regole: dati.impostazioni.conformita)
-        d.conformita[id] = e
+        // Le regole entrano nei calcoli: cambiandole cambia il comune di CacheClienti. Lette senza iscrivere la vista a
+        // tutte le impostazioni (aspetto, sfondo…)
+        let e = MotoreConformita.calcola(cliente: c, posizioni: posizioniCliente(id), regole: dati.impostazioniDeiCalcoli.conformita)
+        v.conformita = .some(e)
         return e
     }
 

@@ -16,8 +16,8 @@ struct PaginaImpostazioniMercato: View {
     @Environment(StatoShell.self) var stato
 
     var body: some View {
-        // SessioneMercato è un ObservableObject dentro StatoShell: la pagina ne legge configurazione e aggiornamento
-        OsservaOggetto(stato.sessioneMercato) { corpo }
+        // SessioneMercato è @Observable: la pagina si aggiorna da sola quando cambiano configurazione e aggiornamento
+        corpo
     }
 
     @ViewBuilder private var corpo: some View {

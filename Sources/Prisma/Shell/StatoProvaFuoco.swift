@@ -1,4 +1,5 @@
 import SwiftUI
+import Observation
 
 // Posizioni › Portafoglio · Prova del fuoco (Design/template-novita-specifica.md §6.1, §6.4): la vista scelta, lo
 // scenario e il valore dei tre cursori. Non si salvano nell'archivio: restano finché Prisma è aperta (§6.4, ultima
@@ -51,16 +52,16 @@ struct CursoreScenarioFuoco {
 }
 
 /// Lo stato della prova del fuoco che resta finché l'app è aperta.
-final class StatoProvaFuoco: ObservableObject {
+@Observable final class StatoProvaFuoco {
     /// Gli anni dell'inflazione alta (il cursore cambia solo il tasso).
     static let anniInflazione = 3
 
-    @Published var vista: VistaPosizioni = .portafoglio
-    @Published var scelta: SceltaScenarioFuoco = .mercati
+    var vista: VistaPosizioni = .portafoglio
+    var scelta: SceltaScenarioFuoco = .mercati
     /// I valori dei tre cursori: ognuno resta il suo quando si cambia chip.
-    @Published var calo: Double = SceltaScenarioFuoco.mercati.cursore?.iniziale ?? 25
-    @Published var punti: Double = SceltaScenarioFuoco.tassi.cursore?.iniziale ?? 2
-    @Published var tasso: Double = SceltaScenarioFuoco.inflazione.cursore?.iniziale ?? 5
+    var calo: Double = SceltaScenarioFuoco.mercati.cursore?.iniziale ?? 25
+    var punti: Double = SceltaScenarioFuoco.tassi.cursore?.iniziale ?? 2
+    var tasso: Double = SceltaScenarioFuoco.inflazione.cursore?.iniziale ?? 5
 
     /// Lo scenario scelto con il valore del suo cursore.
     var scenario: ScenarioFuoco { scenario(scelta) }

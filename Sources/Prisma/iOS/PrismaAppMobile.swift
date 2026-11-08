@@ -124,7 +124,7 @@ struct RadiceMobile: View {
         .environment(mobile.stato)
         // Le viste del Mac riusate sull'iPad (intestazione, guida, ricerca) leggono anche le finestre e il blocco:
         // senza questo oggetto nell'ambiente SwiftUI si fermerebbe alla prima che lo chiede
-        .environmentObject(mobile.stato.sistema)
+        .environment(mobile.stato.sistema)
         .onOpenURL { url in mobile.ricevi(url) }
         .onChange(of: fase) { nuova in
             if nuova == .background { mobile.inBackground() }

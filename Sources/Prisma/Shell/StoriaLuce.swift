@@ -1,4 +1,5 @@
 import SwiftUI
+import Observation
 
 // «La tua settimana, il tuo anno» (versione «Luce», giro 5, Design/template-luce-specifica.md §5.2): la storia a tutto
 // palco sopra la scrivania (SovrapposizioneLuce.storia), una pagina alla volta, testo bianco su fondi colorati fissi.
@@ -18,16 +19,16 @@ import SwiftUI
 // Le pagine sono in PagineStoria.swift; i valori in DesignSystem/Apple/Tema.Apple+Storie.swift.
 
 /// Le pagine della storia aperta e quella in corso. Un oggetto a parte: sfogliare non ridisegna la shell.
-final class StatoStoria: ObservableObject {
-    @Published var tipo: TipoStoria = .settimana
-    @Published var pagine: [PaginaStoria] = []
-    @Published var pagina = 0
+@Observable final class StatoStoria {
+    var tipo: TipoStoria = .settimana
+    var pagine: [PaginaStoria] = []
+    var pagina = 0
     /// La settimana raccontata (per «Ecco la tua settimana · …»).
-    var periodo: DateInterval?
+    @ObservationIgnored var periodo: DateInterval?
     /// I dati sono quelli di prova: «dati di prova» in piccolo sulla prima pagina.
-    var diProva = false
+    @ObservationIgnored var diProva = false
     /// Solo istantanee: l'invito «La tua settimana è pronta» sulla scrivania anche se oggi non è lunedì.
-    var invitoIstantanea = false
+    @ObservationIgnored var invitoIstantanea = false
 
     var corrente: PaginaStoria? { pagine.indices.contains(pagina) ? pagine[pagina] : nil }
     var ultima: Bool { pagina >= pagine.count - 1 }
@@ -154,7 +155,7 @@ extension StatoShell {
 /// La storia a tutto palco: fondo, pagina, barre, «✕», zone di tocco e tasti.
 struct StoriaLuce: View {
     @Environment(StatoShell.self) var stato
-    @ObservedObject var storia: StatoStoria
+    let storia: StatoStoria
 
     @Environment(\.modoIstantanea) private var istantanea
     @Environment(\.prismaCalmo) private var calmo

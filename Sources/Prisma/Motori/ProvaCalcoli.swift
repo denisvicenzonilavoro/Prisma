@@ -1258,6 +1258,9 @@ enum ProvaCalcoli {
         ProvaCalcoliPensioneEsperienze.esegui(verificaEsterna)
         // «Luce», giro 2: il radar del portafoglio (distanza dal modello, spostamenti nei canali, costi dai motori, bozze)
         ProvaCalcoliRadar.esegui(verificaEsterna)
+        // Giro 0 di «Prisma istantaneo», tappa 4: le cache dei motori per cliente non restano vecchie (rifatto solo il
+        // cliente cambiato, uguale al calcolo da zero; impostazioni dei calcoli e catalogo: rifatti tutti)
+        ProvaCalcoliCacheClienti.esegui(verificaEsterna)
         // «Luce», giro 7: la scheda «L'azienda» dei clienti imprenditori (persona chiave dalle coperture collegate, TFM sì/no
         // senza calcoli fiscali, welfare e continuità dalle liste dell'utente, dati mancanti detti, frasi dai dati veri)
         ProvaCalcoliAzienda.esegui(verificaEsterna)

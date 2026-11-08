@@ -11,7 +11,7 @@ import SwiftUI
 struct Dock: View {
     @Environment(StatoShell.self) var stato
     /// Quale app è davanti e quali sono aperte.
-    @EnvironmentObject var sistema: StatoFinestre
+    @Environment(StatoFinestre.self) var sistema
 
     var body: some View {
         let _ = ContaCorpi.segna()

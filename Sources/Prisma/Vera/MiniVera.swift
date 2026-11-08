@@ -1,4 +1,5 @@
 import Combine
+import Observation
 import Foundation
 
 // La mini finestra di Vera (Design/vera-mini.html): Vera compare sopra quello che stai facendo, ascolta, pensa
@@ -298,46 +299,48 @@ struct DomandaMiniVera: Equatable {
 }
 
 /// Lo stato della mini finestra: lo osservano solo il pannello e la sfera nella barra.
-final class StatoMiniVera: ObservableObject {
-    @Published var aperta = false
+@Observable final class StatoMiniVera {
+    var aperta = false
     /// true appena si apre, false appena comincia a chiudersi: guida l'entrata e l'uscita.
-    @Published var visibile = false
-    @Published var fase = FaseMiniVera.scrivi
+    var visibile = false { willSet { visibileCambia.send(newValue) } }
+    /// La visibilità che sta per cambiare, con il valore di adesso all'iscrizione (al posto di `$visibile`: il pannello).
+    @ObservationIgnored let visibileCambia = CurrentValueSubject<Bool, Never>(false)
+    var fase = FaseMiniVera.scrivi
     /// Il gettone del contesto: nil se l'hai tolto (Vera parla del portafoglio).
-    @Published var contesto: ContestoMiniVera?
+    var contesto: ContestoMiniVera?
     /// La domanda in corso (detta o scritta).
-    @Published var domanda = ""
+    var domanda = ""
     /// Il campo per scrivere.
-    @Published var testo = ""
+    var testo = ""
     /// Il passo che Vera sta facendo mentre pensa.
-    @Published var passo = ""
+    var passo = ""
     /// La risposta: il testo (che cresce mentre arriva), le cifre di Prisma e il motore.
-    @Published var risposta = ""
-    @Published var titolo: String?
-    @Published var cifre = CifreMiniVera()
+    var risposta = ""
+    var titolo: String?
+    var cifre = CifreMiniVera()
     /// La risposta sta ancora arrivando (le barrette accanto a «Vera»).
-    @Published var inArrivo = false
+    var inArrivo = false
     /// Un avviso breve sopra gli spunti (per esempio «Non ti ho sentito»).
-    @Published var nota: String?
+    var nota: String?
     /// «Mi sto svegliando…»: perché Qwen non è pronto, se la preparazione non è riuscita.
-    @Published var motivoNonPronta: String?
-    @Published var preparazioneInCorso = false
+    var motivoNonPronta: String?
+    var preparazioneInCorso = false
     /// Quanto può allungarsi la scheda: lo schermo sotto la barra (lo misura il pannello sul Mac).
-    @Published var altezzaMassima = Tema.Misura.MiniVera.altezzaMassima
+    var altezzaMassima = Tema.Misura.MiniVera.altezzaMassima
 
     /// I passi di «pensa», uno dopo l'altro.
-    var passi: [String] = []
+    @ObservationIgnored var passi: [String] = []
     /// La conversazione in cui finisce la domanda (il cliente o il portafoglio): la stessa dell'app Vera.
-    var chiave = ""
+    @ObservationIgnored var chiave = ""
     /// Quanti messaggi aveva la conversazione prima della domanda.
-    var messaggiPrima = 0
+    @ObservationIgnored var messaggiPrima = 0
     /// La domanda in attesa che Qwen si svegli: «Riprova» (o Qwen pronto) la manda.
-    var pendente: DomandaMiniVera?
+    @ObservationIgnored var pendente: DomandaMiniVera?
     /// La domanda è arrivata a voce, dalla mini finestra (l'ascolto è suo).
-    var ascoltoMio = false
-    var gesto = GestoScorciatoia()
-    var abbonamenti = Set<AnyCancellable>()
-    var timerPassi: Timer?
+    @ObservationIgnored var ascoltoMio = false
+    @ObservationIgnored var gesto = GestoScorciatoia()
+    @ObservationIgnored var abbonamenti = Set<AnyCancellable>()
+    @ObservationIgnored var timerPassi: Timer?
 
     var larghezza: CGFloat { fase.capsula ? Tema.Misura.MiniVera.larghezzaCapsula : Tema.Misura.MiniVera.larghezzaScheda }
 

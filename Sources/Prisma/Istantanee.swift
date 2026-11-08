@@ -1728,7 +1728,7 @@ enum Istantanee {
                     }
                 }
                     .environment(stato)
-                    .environmentObject(stato.miniVera)
+                    .environment(stato.miniVera)
                     .environment(\.modoIstantanea, true)
                     .environment(\.colorScheme, scuro ? .dark : .light)
                     .frame(width: misura.width, height: misura.height)

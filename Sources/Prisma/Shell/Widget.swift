@@ -11,7 +11,7 @@ import SwiftUI
 ///   ┌─ Da fare ─┐┌─ Scadenze ─┐┌─ Portafoglio ─┐
 struct BachecaWidget: View {
     /// Il blocco: con la schermata di benvenuto i widget escono, allo sblocco rientrano uno dopo l'altro.
-    @EnvironmentObject var sistema: StatoFinestre
+    @Environment(StatoFinestre.self) var sistema
     @Environment(\.modoIstantanea) private var istantanea
     /// Vero poco dopo la prima comparsa: all'apertura di Prisma i widget entrano uno dopo l'altro.
     @State private var avviato = false

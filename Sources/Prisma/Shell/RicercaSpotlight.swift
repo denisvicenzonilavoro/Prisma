@@ -94,7 +94,7 @@ final class TastiSpotlight: @unchecked Sendable {
 
 struct RicercaSpotlight: View {
     @Environment(StatoShell.self) var stato
-    @EnvironmentObject var sistema: StatoFinestre
+    @Environment(StatoFinestre.self) var sistema
     @Environment(\.modoIstantanea) private var modoIstantanea
     @StateObject private var motore = StatoSpotlight()
     @FocusState private var fuoco: Bool

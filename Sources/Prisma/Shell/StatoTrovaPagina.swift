@@ -1,5 +1,6 @@
 #if os(macOS)
 import AppKit
+import Observation
 #endif
 import Foundation
 
@@ -54,26 +55,26 @@ struct RisultatoBiblioteca: Equatable {
     }
 }
 
-final class StatoTrovaPagina: ObservableObject {
-    @Published var domanda = ""
-    @Published var risultato: RisultatoBiblioteca?
-    @Published var aperta: PaginaAperta?
-    @Published private(set) var letture: [LetturaBiblioteca] = []
-    @Published private(set) var indice: IndiceBiblioteca = .vuoto
+@Observable final class StatoTrovaPagina {
+    var domanda = ""
+    var risultato: RisultatoBiblioteca?
+    var aperta: PaginaAperta?
+    private(set) var letture: [LetturaBiblioteca] = []
+    private(set) var indice: IndiceBiblioteca = .vuoto
     /// Cresce a ogni pagina nuova da raggiungere: il vassoio fa il giro delle pagine.
-    @Published private(set) var giro = 0
+    private(set) var giro = 0
 
     let persistente: Bool
     let biblioteca: StatoBiblioteca
-    private var firmaIndice: String?
-    private var indiceInCorso: String?
-    private var inAttesa: [(IndiceBiblioteca) -> Void] = []
-    var compito: Task<Void, Never>?
+    @ObservationIgnored private var firmaIndice: String?
+    @ObservationIgnored private var indiceInCorso: String?
+    @ObservationIgnored private var inAttesa: [(IndiceBiblioteca) -> Void] = []
+    @ObservationIgnored var compito: Task<Void, Never>?
     /// Il testo dei documenti senza file (prove, istantanee, fac-simile in memoria).
-    private var memoria: [String: [String]] = [:]
+    @ObservationIgnored private var memoria: [String: [String]] = [:]
     /// Il testo letto dai file, al più ~4 milioni di caratteri (i meno recenti si dimenticano).
-    private var cache: [String: [String]] = [:]
-    private var ordineCache: [String] = []
+    @ObservationIgnored private var cache: [String: [String]] = [:]
+    @ObservationIgnored private var ordineCache: [String] = []
     private static let tettoCache = 4_000_000
     private static let coda = DispatchQueue(label: "prisma.biblioteca.indice", qos: .utility)
     static let codaLettura = DispatchQueue(label: "prisma.biblioteca.lettura", qos: .userInitiated)

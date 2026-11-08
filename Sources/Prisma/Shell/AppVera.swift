@@ -648,7 +648,7 @@ private struct OsservaVoce<C: View>: View {
 /// La risposta di Vera mentre arriva (streaming): prima i puntini «sta scrivendo», poi il testo che Qwen scrive,
 /// parola per parola, nella bolla delle risposte. Osserva solo `FlussoVera`.
 struct NuvolaInArrivo: View {
-    @ObservedObject var flusso: FlussoVera
+    let flusso: FlussoVera
     var portafoglio = false
     /// Chiamato quando arriva la prima parola.
     var iniziata: () -> Void = {}

@@ -179,7 +179,7 @@ extension StatoShell {
         let mini = miniVera
         mini.abbonamenti.removeAll()
         if concludiMiniVera(cifre) { return }
-        flussoVera.$testo
+        flussoVera.testoCambia
             .receive(on: DispatchQueue.main)
             .sink { [weak self] t in
                 guard let self, self.veraInCorso, !t.isEmpty, mini.fase == .pensa || mini.fase == .risponde else { return }

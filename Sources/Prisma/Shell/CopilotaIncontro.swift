@@ -25,7 +25,7 @@ import SwiftUI
 /// Il passo «Ascolto» di Incontri: il copilota (sul Mac e sull'iPad) o le tre domande scritte con gli appunti.
 @MainActor
 struct SceltaAscoltoIncontri<Quaderno: View>: View {
-    @ObservedObject var copilota: StatoCopilotaIncontro
+    let copilota: StatoCopilotaIncontro
     let ascolto: Bool
     let clienteId: String
     let incontro: Incontro?
@@ -43,7 +43,7 @@ struct SceltaAscoltoIncontri<Quaderno: View>: View {
 @MainActor
 struct CopilotaIncontro: View {
     @Environment(StatoShell.self) var stato
-    @ObservedObject var copilota: StatoCopilotaIncontro
+    let copilota: StatoCopilotaIncontro
     let clienteId: String
     let incontro: Incontro?
 
@@ -136,7 +136,7 @@ struct CopilotaIncontro: View {
 @MainActor
 struct ColonnaOggiCopilota: View {
     @Environment(StatoShell.self) var stato
-    @ObservedObject var copilota: StatoCopilotaIncontro
+    let copilota: StatoCopilotaIncontro
     let clienteId: String
     let incontro: Incontro?
     let cliente: Cliente?
@@ -285,7 +285,7 @@ struct VoceOggiCopilota: View {
 @MainActor
 struct CollegamentiCopilota: View {
     @Environment(StatoShell.self) var stato
-    @ObservedObject var copilota: StatoCopilotaIncontro
+    let copilota: StatoCopilotaIncontro
 
     var body: some View {
         let _ = ContaCorpi.segna()
@@ -313,7 +313,7 @@ struct CollegamentiCopilota: View {
 @MainActor
 struct SchedaConsensoCopilota: View {
     @Environment(StatoShell.self) var stato
-    @ObservedObject var copilota: StatoCopilotaIncontro
+    let copilota: StatoCopilotaIncontro
     let cliente: Cliente?
     /// Nella disposizione stretta (iPad in verticale): in riga, sopra la testata.
     let compatta: Bool
@@ -440,7 +440,7 @@ struct ComeFunzionaCopilota: View {
 @MainActor
 struct TestataCopilota: View {
     @Environment(StatoShell.self) var stato
-    @ObservedObject var copilota: StatoCopilotaIncontro
+    let copilota: StatoCopilotaIncontro
     let cliente: Cliente?
     let incontro: Incontro?
     let sessione: SessioneCopilota?
@@ -596,7 +596,7 @@ private struct CorpoPremutoCopilota: View {
 @MainActor
 struct TrascrizioneCopilotaVista: View {
     @Environment(StatoShell.self) var stato
-    @ObservedObject var copilota: StatoCopilotaIncontro
+    let copilota: StatoCopilotaIncontro
     let sessione: SessioneCopilota?
     let cliente: Cliente?
 
@@ -858,7 +858,7 @@ struct ParoleCopilota: Layout {
 @MainActor
 struct ColonnaSchedeCopilota: View {
     @Environment(StatoShell.self) var stato
-    @ObservedObject var copilota: StatoCopilotaIncontro
+    let copilota: StatoCopilotaIncontro
     let sessione: SessioneCopilota?
 
     private typealias S = Tema.Apple.Copilota.Scheda

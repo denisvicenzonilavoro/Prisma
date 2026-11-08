@@ -18,7 +18,7 @@ struct MercatoTelefono: View {
 @MainActor
 private struct CorpoMercatoTelefono: View {
     @Environment(StatoShell.self) var stato
-    @ObservedObject var sessione: SessioneMercato
+    @Bindable var sessione: SessioneMercato
 
     private typealias T = Tema.Apple.Mercato.Telefono
 

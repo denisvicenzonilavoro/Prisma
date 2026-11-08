@@ -25,12 +25,12 @@ extension StatoShell {
     /// La completezza dei dati di un cliente (Panoramica, Analisi 360, documenti): si rifà solo se cambiano i dati
     /// dei calcoli, il giorno o la modalità cliente. La chiave versioneCalcoli copre clienti, posizioni e Analisi 360.
     func completezzaCliente(_ id: String) -> CompletezzaCliente? {
-        let d = derivatiValidi()
-        if let c = d.completezze[id] { return c }
+        let v = voceCliente(id)
+        if let c = v.completezza { return c }
         guard let cl = cliente(id) else { return nil }
         let c = MotoreCompletezza.calcola(cliente: cl, posizioni: posizioniCliente(id), analisi: dati.analisi[id],
                                           oggi: Calendar.current.startOfDay(for: Date()))
-        d.completezze[id] = c
+        v.completezza = .some(c)
         return c
     }
 

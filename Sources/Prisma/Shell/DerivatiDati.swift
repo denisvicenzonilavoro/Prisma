@@ -9,6 +9,8 @@ import Foundation
 final class DerivatiDati {
     /// Il radar del portafoglio (Posizioni › Radar): con Observation la vista lo chiede a ogni rivalutazione.
     var radar: RadarPortafoglio?
+    /// La copia dell'archivio per i motori che vogliono tutto `DatiPrisma` (StatoShell.datiDeiCalcoli).
+    var datiCalcoli: DatiPrisma?
     /// Ciò da cui dipende tutto il resto: con una chiave nuova si riparte da zero.
     struct Chiave: Equatable {
         let versione: Int
@@ -88,10 +90,6 @@ final class DerivatiDati {
     var diOggi: [Appuntamento]?
     var aperte: [Attivita]?
     var riepilogoTutte: RiepilogoPosizioni?
-    var riepiloghiCliente: [String: RiepilogoPosizioni] = [:]
-    var dossier: [String: AnalisiDossier] = [:]
-    var coerenze: [String: EsitoCoerenza] = [:]
-    var fisco: [String: FiscoPolizzeCliente] = [:]
     var chiaveRiesami: ChiaveRiesame?
     var riesami: [String: Riesame?] = [:]
     /// La memoria del riesame (fotografie e variazioni), per cliente (StatoMemoriaRiesame.swift).
@@ -101,12 +99,8 @@ final class DerivatiDati {
     var dovuti: (ora: Int, valore: [RiesameDovuto])?
     var portafoglio: (chiave: ChiavePortafoglio, valore: Portafoglio)?
     var documento: (chiave: ChiaveDocumento, valore: DocumentoStampabile?)?
-    /// Completezza dei dati per l'analisi, per cliente (StatoCompletezza.swift).
-    var completezze: [String: CompletezzaCliente] = [:]
     /// Le proposte ferme, con l'ora del calcolo (StatoSeguito.swift).
     var seguito: (ora: Int, valore: [PropostaInSospeso])?
-    /// Le scadenze di conformità («In regola»), per cliente (StatoConformita.swift).
-    var conformita: [String: EsitoConformita] = [:]
     /// Le occasioni per intervallo di date e filtro (AgendaOccasioni.swift).
     var occasioni: [ChiaveOccasioni: [Occasione]] = [:]
     /// Le scadenze di conformità di tutti i clienti visibili, per il centro notifiche (Notifiche.swift).
@@ -119,21 +113,14 @@ final class DerivatiDati {
     var nastroDaFare: (ora: Int, valore: NastroDaFare)?
     /// L'andamento del portafoglio di tutti i clienti visibili, con l'ora del calcolo (StatoPortafoglioApple.swift).
     var andamentoPortafoglio: (ora: Int, valore: AndamentoPortafoglio)?
-    /// L'andamento delle posizioni di un cliente (dettaglio della scheda «Da fare»).
-    var andamentiCliente: [String: AndamentoPortafoglio] = [:]
     /// I tre anelli del Portafoglio clienti della scrivania, con l'ora del calcolo (StatoScrivania.swift).
     var statoDelLavoro: (ora: Int, valore: StatoDelLavoro)?
     /// I riesami del mese della striscia dell'Agenda (RiesamiAgenda.swift): il body dell'Agenda li chiede a ogni disegno.
     var riesamiMese: [ChiaveRiesamiMese: RiesamiDelMese] = [:]
     /// Impegni, scadenze, occasioni e attività per giorno dell'Agenda (StatoShell.giorniAgenda), per intervallo.
     var indiciAgenda: [ChiaveGiorniAgenda: GiorniAgenda] = [:]
-    /// Le cifre delle aree di Analisi 360 per cliente, con l'ora del calcolo (Analisi360Apple.swift): restano anche
-    /// chiudendo e riaprendo l'app, finché non cambiano i dati dei calcoli, il giorno, l'ora o la modalità cliente.
-    var aree360: (ora: Int, valori: [String: AreeAnalisi360])?
-    /// I bisogni rilevati per cliente (StatoShell.bisogniRilevati): le card di Analisi 360 li chiedono a ogni disegno.
-    var bisogni: [String: [BisognoRilevato]] = [:]
-    /// La prima stesura dell'Analisi 360 dalle posizioni, per i clienti senza un'analisi salvata (StatoShell.analisi360).
-    var analisiBozza: [String: Analisi360] = [:]
+    // Le voci dei singoli clienti (riepilogo, dossier, coerenza, fisco, conformità, completezza, bisogni, prima stesura
+    // dell'Analisi 360, andamento, aree di Analisi 360, attenzioni, radar) stanno in CacheClienti, per cliente.
     /// Il cruscotto di Studio di oggi (StatoStudio.swift): dipende solo dai dati dei calcoli, dal giorno e dalla modalità cliente.
     var cruscottoStudio: CruscottoStudio?
     /// Il track record di Studio di oggi (StatoTrackRecord.swift): stesse dipendenze del cruscotto.
@@ -161,10 +148,6 @@ final class DerivatiDati {
         diOggi = nil
         aperte = nil
         riepilogoTutte = nil
-        riepiloghiCliente = [:]
-        dossier = [:]
-        coerenze = [:]
-        fisco = [:]
         chiaveRiesami = nil
         riesami = [:]
         memorie = [:]
@@ -172,27 +155,22 @@ final class DerivatiDati {
         dovuti = nil
         portafoglio = nil
         documento = nil
-        completezze = [:]
         seguito = nil
-        conformita = [:]
         occasioni = [:]
         conformitaClienti = nil
         deducibiliFineAnno = nil
         mossaDelGiorno = nil
         nastroDaFare = nil
         andamentoPortafoglio = nil
-        andamentiCliente = [:]
         statoDelLavoro = nil
         riesamiMese = [:]
         indiciAgenda = [:]
-        aree360 = nil
         vista = nil
-        bisogni = [:]
-        analisiBozza = [:]
         cruscottoStudio = nil
         trackRecord = nil
         occasioniMessaggi = nil
         radar = nil
+        datiCalcoli = nil
     }
 }
 
@@ -218,12 +196,27 @@ extension StatoShell {
         return derivati
     }
 
-    /// Il radar del portafoglio, in cache per `versioneCalcoli` e giorno: legge solo clienti, posizioni, prodotti, portafogli
-    /// modello e la tolleranza del radar, tutti campi «dei calcoli». Così la vista del radar non legge l'archivio intero.
+    /// L'archivio per i motori che chiedono tutto `DatiPrisma`, letto una volta per `versioneCalcoli`, giorno e modalità
+    /// cliente e **senza iscrivere la vista a tutti i campi** (giro 0, tappa 2): chi lo chiede in un body si aggiorna solo
+    /// con `versioneCalcoli` (e l'ora, come ogni dato ricavato). Valgono solo i campi dei calcoli (`DatiPrisma.stessiCalcoli`):
+    /// note, conversazioni, spazi, pratiche, allenamento OCF, schede di adeguatezza, confronti del TFR, cliente attivo e le
+    /// impostazioni che non toccano i calcoli possono essere vecchi. Chi ne ha bisogno li legge dai dati vivi e li rimette
+    /// nella copia (così si iscrive solo a quelli), come `statiPratiche` e `traguardi`.
+    func datiDeiCalcoli() -> DatiPrisma {
+        let d = derivatiValidi()
+        if let x = d.datiCalcoli { return x }
+        let x = dati.istantaneaNonOsservata
+        d.datiCalcoli = x
+        return x
+    }
+
+    /// Il radar del portafoglio: una voce per cliente dalla cache per cliente (CacheClienti), il quadro in cache per
+    /// `versioneCalcoli` e giorno. Legge solo clienti, posizioni, prodotti, portafogli modello e la tolleranza del radar,
+    /// tutti campi «dei calcoli»: la vista del radar non legge l'archivio intero.
     func radarPortafoglio() -> RadarPortafoglio {
         let d = derivatiValidi()
         if let r = d.radar { return r }
-        let r = MotoreRadar.calcola(dati.istantanea)
+        let r = radarDaiClienti()
         d.radar = r
         return r
     }
@@ -298,28 +291,28 @@ extension StatoShell {
 
     /// Il quadro delle posizioni di un cliente (widget del cliente in primo piano).
     func riepilogoPosizioniCliente(_ id: String) -> RiepilogoPosizioni {
-        let d = derivatiValidi()
-        if let r = d.riepiloghiCliente[id] { return r }
+        let v = voceCliente(id)
+        if let r = v.riepilogo { return r }
         let r = RiepilogoPosizioni(posizioniCliente(id))
-        d.riepiloghiCliente[id] = r
+        v.riepilogo = r
         return r
     }
 
     /// La coerenza con il profilo delle posizioni del cliente (pannello del dossier e dettaglio delle proposte).
     func coerenzaCliente(_ c: Cliente) -> EsitoCoerenza {
-        let d = derivatiValidi()
-        if let e = d.coerenze[c.id] { return e }
+        let v = voceCliente(c.id)
+        if let e = v.coerenza { return e }
         let e = MotoreCoerenza.calcola(cliente: c, posizioni: posizioniCliente(c.id), prodotti: dati.prodotti)
-        d.coerenze[c.id] = e
+        v.coerenza = e
         return e
     }
 
     /// Il fisco delle polizze di un cliente (Analisi 360): detrazioni, capitali al decesso, bollo, deducibilità.
     func fiscoPolizze(_ c: Cliente) -> FiscoPolizzeCliente {
-        let d = derivatiValidi()
-        if let f = d.fisco[c.id] { return f }
+        let v = voceCliente(c.id)
+        if let f = v.fisco { return f }
         let f = FiscoPolizze.riepilogo(cliente: c, posizioni: posizioniCliente(c.id))
-        d.fisco[c.id] = f
+        v.fisco = f
         return f
     }
 
@@ -342,18 +335,13 @@ extension StatoShell {
     /// ora e modalità cliente (come `ChiaveVista`). La cache sta qui e non nella finestra: chiudere e riaprire
     /// Analisi 360 non rifà i motori.
     func aree360(_ id: String) -> AreeAnalisi360 {
-        let d = derivatiValidi()
+        let voce = voceCliente(id)
         let ora = DerivatiDati.ora()
-        if let c = d.aree360, c.ora == ora, let v = c.valori[id] { return v }
+        if let c = voce.aree360, c.ora == ora { return c.valore }
         let v = MotoreAree360.calcola(cliente: cliente(id), posizioni: posizioniCliente(id),
                                       analisi: analisi360(id), obiettivi: obiettiviCliente(id),
                                       prodotti: dati.prodotti)
-        // Senza copiare il dizionario: si scrive direttamente nella voce (o se ne apre una nuova per l'ora)
-        if d.aree360?.ora == ora {
-            d.aree360?.valori[id] = v
-        } else {
-            d.aree360 = (ora, [id: v])
-        }
+        voce.aree360 = (ora, v)
         return v
     }
 
@@ -367,7 +355,7 @@ extension StatoShell {
             daRicontattare: MotorePortafoglio.daRicontattare(posizioni, clienti: clienti, appuntamenti: appuntamenti, incontri: dati.incontri),
             dovuti: riesamiDovuti(),
             fine: MotoreFineAnno.conSpazio(clienti: clienti, posizioni: posizioni),
-            attenzioni: MotoreAttenzioni.calcola(clienti: clienti, posizioni: posizioni))
+            attenzioni: attenzioniDaiClienti())
         d.portafoglioComune = (ora, v)
         return v
     }

@@ -8,7 +8,7 @@ import SwiftUI
 struct PannelliMobile: View {
     @Environment(StatoShell.self) var stato
     @EnvironmentObject var mobile: StatoMobile
-    @ObservedObject var sistema: StatoFinestre
+    let sistema: StatoFinestre
     /// Dove finisce la barra (safe area + barra): i pannelli a destra stanno 6 punti sotto.
     let sottoBarra: CGFloat
     let misura: CGSize
@@ -238,7 +238,7 @@ private struct TesseraRotonda: View {
 struct TutteLeAppMobile: View {
     @Environment(StatoShell.self) var stato
     @EnvironmentObject var mobile: StatoMobile
-    @EnvironmentObject var sistema: StatoFinestre
+    @Environment(StatoFinestre.self) var sistema
 
     private typealias P = Tema.Misura.Mobile.Pannelli
 

@@ -75,6 +75,11 @@ enum ProvaFluidita {
     static let origineSpostata = CGPoint(x: 48, y: 32)
     /// Le app pesanti dello scenario con 200 clienti, dalla più in fondo a quella in primo piano.
     static let appPesanti: [AppPrisma] = [.agenda, .presentazioni, .clienti, .posizioni]
+    /// Le azioni da misurare se si vuole una prova breve (variabile d'ambiente PRISMA_FLUIDITA_AZIONI, parole separate
+    /// da virgole, per esempio «Posizioni,radar,scuro,nota»); nil = tutte.
+    static let azioniScelte: [String]? = ProcessInfo.processInfo.environment["PRISMA_FLUIDITA_AZIONI"]
+        .map { $0.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty } }
+        .flatMap { $0.isEmpty ? nil : $0 }
     /// L'inizio delle righe che annunciano un'azione (le legge l'avanzamento di MisuraVelocita).
     nonisolated static let prefissoPasso = "PASSO fluidità · "
 
@@ -494,6 +499,8 @@ private final class BancoFluidita {
     let finestra: NSWindow
     let conti = ContiFluidita()
     private var abbonamenti = Set<AnyCancellable>()
+    /// Gli avvisi di StatoFinestre all'inizio dell'azione (`StatoFinestre.avvisi`, al posto dell'`objectWillChange`).
+    var avvisiFinestrePrima = 0
     private var bitmap: NSBitmapImageRep?
     private var bitmapProvato = false
     private var chiuso = false
@@ -519,7 +526,6 @@ private final class BancoFluidita {
         let conti = self.conti
         // StatoShell è @Observable: niente avviso unico, si contano i body rivalutati (ContaCorpi)
         ContaCorpi.attivo = true
-        stato.sistema.objectWillChange.sink { _ in conti.avvisiFinestre += 1 }.store(in: &abbonamenti)
         stato.modificheDati.sink { _ in conti.modificheDati += 1 }.store(in: &abbonamenti)
     }
 
@@ -534,6 +540,7 @@ private final class BancoFluidita {
         conti.avvisi = 0
         ContaCorpi.azzera()
         conti.avvisiFinestre = 0
+        avvisiFinestrePrima = stato.sistema.avvisi
         conti.modificheDati = 0
     }
 
@@ -660,6 +667,12 @@ private final class SessioneFluidita {
     /// il disegno al primo giro misurato.
     func misura(_ banco: BancoFluidita, _ passi: [PassoFluidita]) {
         guard !passi.isEmpty else { return }
+        // Solo alcune azioni (PRISMA_FLUIDITA_AZIONI, per misurare in fretta una tappa): un gruppo si misura se almeno un
+        // suo passo ne contiene una parola. Senza la variabile, tutte (la prova della build e di Impostazioni).
+        if let scelte = ProvaFluidita.azioniScelte,
+           !passi.contains(where: { p in scelte.contains { p.nome.localizedCaseInsensitiveContains($0) } }) {
+            return
+        }
         guard trascorso < ProvaFluidita.limiteTempo else {
             saltate += passi.count
             return
@@ -712,6 +725,7 @@ private final class SessioneFluidita {
         banco.azzeraConti()
         let t = banco.aggiorna(passo.azione)
         banco.conti.avvisi = ContaCorpi.conteggio
+        banco.conti.avvisiFinestre = banco.stato.sistema.avvisi - banco.avvisiFinestrePrima
         var d: Double?
         if disegno {
             d = banco.disegna()
@@ -738,7 +752,7 @@ private final class SessioneFluidita {
                 + "Aggiornamento = azione, run loop e impaginazione; disegno = cacheDisplay completo; "
                 + "prima volta = aggiornamento del giro di riscaldamento; "
                 + "corpi = body rivalutati delle viste che leggono StatoShell (con Observation, al posto degli objectWillChange di prima); "
-                + "avvisi StatoFinestre = objectWillChange di StatoFinestre (shell, dock, barra, pannelli) durante l'azione.",
+                + "avvisi StatoFinestre = proprietà osservate di StatoFinestre cambiate (shell, dock, barra, pannelli) durante l'azione.",
             "",
             "| Scenario | Azione | Mediana | Massimo | Aggiornamento | Disegno | Prima volta | Corpi rivalutati | Avvisi StatoFinestre |",
             "|---|---|---:|---:|---:|---:|---:|---:|---:|",

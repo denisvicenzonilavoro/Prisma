@@ -226,7 +226,7 @@ struct BarraSuperiore: View {
 /// Il nome dell'app in primo piano («Scrivania» se non ce n'è): osserva solo le finestre,
 /// così il resto della barra non si ridisegna quando si cambia app.
 private struct TitoloAppAttiva: View {
-    @EnvironmentObject var sistema: StatoFinestre
+    @Environment(StatoFinestre.self) var sistema
 
     var body: some View {
         Text(sistema.appAttiva?.titolo ?? "Scrivania")

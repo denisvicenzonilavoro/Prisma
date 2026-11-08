@@ -81,15 +81,9 @@ extension AppImpostazioni {
                     .entrataCascata(primo)
             }
             ForEach(Array(pagine.enumerated()), id: \.element) { i, p in
-                Group {
-                    if p == .ovunque {
-                        // Il pallino legge `stato.ovunque.problema` (@Published di StatoOvunque, non di StatoShell):
-                        // senza osservarlo un errore della sincronizzazione in background non lo accenderebbe
-                        OsservaOggetto(stato.ovunque) { voceLateraleApple(p) }
-                    } else {
-                        voceLateraleApple(p)
-                    }
-                }
+                // Il pallino di «Prisma ovunque» legge `stato.ovunque.problema`: StatoOvunque è @Observable, quindi
+                // un errore della sincronizzazione in background lo accende da solo
+                voceLateraleApple(p)
                 .entrataCascata(primo + i + (titolo == nil ? 0 : 1), sfocatura: false)
             }
         }

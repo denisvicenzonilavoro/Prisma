@@ -26,7 +26,7 @@ import UniformTypeIdentifiers
 
 /// Lo strato della scena nella shell (sopra barra, finestre e dock): vuoto quando la scena è chiusa.
 struct StratoInquadra: View {
-    @ObservedObject var inquadra: StatoInquadra
+    let inquadra: StatoInquadra
     @Environment(\.modoIstantanea) private var istantanea
     @Environment(\.prismaCalmo) private var calmo
 
@@ -50,7 +50,7 @@ struct StratoInquadra: View {
 /// Il velo, l'iPhone disegnato e la scheda «Prisma sul Mac», centrati; la scena si rimpicciolisce nelle finestre basse.
 struct ScenaInquadra: View {
     @Environment(StatoShell.self) var stato
-    @ObservedObject var inquadra: StatoInquadra
+    let inquadra: StatoInquadra
 
     private typealias D = Tema.Apple.Inquadra.Disposizione
     private typealias A = Tema.Apple.Inquadra.Apparecchio
@@ -106,7 +106,7 @@ struct ScenaInquadra: View {
 
 /// L'iPhone con la tacca: nello schermo l'inquadratura, il foglio letto, la linea della scansione e la scritta.
 private struct TelefonoInquadra: View {
-    @ObservedObject var inquadra: StatoInquadra
+    let inquadra: StatoInquadra
     @Environment(\.prismaStatoFinale) private var fermo
     @Environment(\.prismaScatto) private var scatto
     @State private var entrato = false
@@ -228,7 +228,7 @@ private struct LineaScansione: View {
 
 private struct SchedaInquadraMac: View {
     @Environment(StatoShell.self) var stato
-    @ObservedObject var inquadra: StatoInquadra
+    let inquadra: StatoInquadra
 
     private typealias S = Tema.Apple.Inquadra.Scheda
 
@@ -490,7 +490,7 @@ struct TabellaConfrontoInquadra: View {
 /// La zona dove trascinare la foto o il PDF della polizza, con «Scegli un file…».
 private struct ZonaInquadra: View {
     @Environment(StatoShell.self) var stato
-    @ObservedObject var inquadra: StatoInquadra
+    let inquadra: StatoInquadra
 
     private typealias Z = Tema.Apple.Inquadra.Zona
 

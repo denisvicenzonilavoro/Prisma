@@ -151,7 +151,7 @@ struct SalutoScrivaniaMobile: View {
 
 /// Quante app sono aperte: osserva solo le finestre, così la scrivania non si ricalcola quando si apre un'app.
 struct TestoAppAperteMobile: View {
-    @EnvironmentObject var sistema: StatoFinestre
+    @Environment(StatoFinestre.self) var sistema
 
     var body: some View {
         Text(testo)
