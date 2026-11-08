@@ -200,6 +200,14 @@ extension Tema.Apple {
         static let spazio: CGFloat = 12
         static let nota = Tema.Apple.Carattere(dimensione: 11.5, peso: .regular, interlinea: 1.4)
         static let coloreNota = Tema.Apple.Colore.inchiostro2
+        static let opacitaGruppoAltro: Double = 0.7
+        static let opacitaEscluso: Double = 0.75
+        /// I pallini radunati occupano l'82% del raggio, a spirale con l'angolo aureo.
+        static let riempimentoCerchio: CGFloat = 0.82
+        static let angoloAureo: Double = 2.399963
+        static let paddingChip = Tema.Apple.Misura.padding(4, 10)
+        static let paddingPillola = Tema.Apple.Misura.padding(2, 7)
+        static let spazioRiga: CGFloat = 2
 
         /// Il colore di un gruppo nella mappa.
         static func tinta(_ t: TipoGruppoCampagna) -> Color {

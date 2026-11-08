@@ -558,7 +558,7 @@ struct DettaglioPotenziale: View {
         VStack(alignment: .leading, spacing: P.spazioMedio) {
             HStack(spacing: P.spazioMedio) {
                 if p.fase == .daContattare || p.fase == .primoIncontro {
-                    Button("Fissa il primo incontro") { stato.fissaPrimoIncontro(p.id) }
+                    Button("Fissa il primo incontro") { _ = stato.fissaPrimoIncontro(p.id) }
                         .buttonStyle(.apple)
                 }
                 Button("Scrivigli") {
