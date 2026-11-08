@@ -699,15 +699,4 @@ final class TavoloMac: ObservableObject {
     }
 }
 
-extension DocumentoStampabile {
-    /// Un documento già impaginato, di qualsiasi formato (la presa visione del tavolo).
-    init(titolo: String, cliente: String, genere: String, formato: CGSize, pagine: [AnyView], tipo: Documento.Tipo) {
-        self.titolo = titolo
-        self.cliente = cliente
-        self.genere = genere
-        self.formato = formato
-        self.pagine = pagine
-        self.tipo = tipo
-    }
-}
 #endif

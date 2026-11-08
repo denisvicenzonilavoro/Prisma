@@ -18,6 +18,17 @@ struct DocumentoStampabile {
     let pagine: [AnyView]
     var tipo: Documento.Tipo = .prospetto
 
+    /// Un documento già impaginato, di qualsiasi formato (la presa visione del tavolo, la lettera dal futuro):
+    /// su Mac, iPhone e iPad.
+    init(titolo: String, cliente: String, genere: String, formato: CGSize, pagine: [AnyView], tipo: Documento.Tipo) {
+        self.titolo = titolo
+        self.cliente = cliente
+        self.genere = genere
+        self.formato = formato
+        self.pagine = pagine
+        self.tipo = tipo
+    }
+
     /// Un prospetto di dettaglio impaginato su carta (posizione, confronto).
     init(_ contenuto: ContenutoProspetto) {
         let impaginate = ImpaginatoreProspetto.pagine(contenuto)
