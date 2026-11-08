@@ -1046,6 +1046,8 @@ enum ProvaVera {
         ProvaSuMisuraVera.esegui(controlla)
         // Due velocità: regole, modello Apple spento, sotto macOS 26 tutto a Qwen, ripiego (ProvaDueVelocitaVera.swift)
         ProvaDueVelocitaVera.esegui(controlla)
+        // Il cervello grande: non collegato, guardiano, etichetta del motore (ProvaCervelloGrandeVera.swift)
+        ProvaCervelloGrandeVera.esegui(controlla)
         #if os(macOS)
         // La mini finestra: ⌥ Spazio, i cinque stati, cifre e canali, «non pronta» (ProvaMiniVera.swift)
         ProvaMiniVera.esegui(controlla)
