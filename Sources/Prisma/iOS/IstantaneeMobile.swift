@@ -269,6 +269,20 @@ enum IstantaneeMobile {
                     m.stato.clienteAttivoId = "giulia"
                     m.apri(.posizioni)
                 }, ritocco: { m in IstantaneeMobile.inquadra(m) }),
+                // «Luce» giro 13: la carta d'identità fac-simile (dati di prova dichiarati) letta sull'iPhone, con «Manda al Mac»
+                Scena(nome: "75-nuovo-cliente-iphone", prepara: { m in
+                    m.apri(.clienti)
+                }, ritocco: { m in IstantaneeMobile.cartaIdentita(m) }),
+                // «Luce» giro 13: la nota vocale (il testo del template, dati di prova): in ascolto, pronta, in coda
+                Scena(nome: "775-nota-iphone-ascolto", prepara: { m in
+                    m.apri(.incontri)
+                }, ritocco: { m in IstantaneeMobile.notaVocale(m, fase: .ascolto) }),
+                Scena(nome: "776-nota-iphone-pronta", prepara: { m in
+                    m.apri(.incontri)
+                }, ritocco: { m in IstantaneeMobile.notaVocale(m, fase: .fermata) }),
+                Scena(nome: "777-nota-iphone-in-coda", prepara: { m in
+                    m.apri(.incontri)
+                }, ritocco: { m in IstantaneeMobile.notaVocale(m, fase: .inCoda) }),
                 // Prisma ovunque (giro 8, dati di prova di Shell/IstantaneeOvunque.swift): il dossier di Giulia sulla copia
                 // cifrata con la pillola «Senza Mac» nella barra; Impostazioni › iPhone e iPad con l'ultima copia letta e
                 // le 3 modifiche da unire; la prima volta, con la scelta della cartella e la passphrase
@@ -331,6 +345,45 @@ enum IstantaneeMobile {
         guard !m.stato.inquadra.telefonoAperto else { return }
         m.stato.inquadra.apriTelefono()
         m.stato.inquadra.mostra(righe: FoglioInquadraDiProva.righe(), origine: "", subito: true)
+    }
+
+    /// Nuovo cliente sull'iPhone («Luce» giro 13): la carta fac-simile (CartaIdentitaFacSimile, dati di prova dichiarati)
+    /// letta e tutta accesa, con «Manda al Mac». Nessuna foto, nessuna fotocamera nel simulatore.
+    static func cartaIdentita(_ m: StatoMobile) {
+        guard !m.stato.nuovoCliente.telefonoAperto else { return }
+        m.stato.nuovoCliente.apriTelefono()
+        m.stato.nuovoCliente.mostra(righe: CartaIdentitaFacSimile.righe(), origine: "", subito: true)
+    }
+
+    /// La nota vocale sull'iPhone («Luce» giro 13): la schermata «Una nota veloce» con il testo del template
+    /// (NotaVocaleDiProva, dati di prova dichiarati), l'onda ferma nella forma del template e, in coda, due note.
+    static func notaVocale(_ m: StatoMobile, fase: FaseNotaTelefono) {
+        guard !m.stato.notaVeloceAperta else { return }
+        let n = m.stato.notaTelefono
+        let livelli: [Float] = (0..<StatoNotaVocaleTelefono.livelliTenuti).map { i in Float(0.2 + 0.6 * abs(sin(Double(i) * 0.5))) }
+        var coda: [CodaNoteVocali.VoceCoda] = []
+        if fase == .inCoda {
+            let quando = Date(timeIntervalSinceReferenceDate: 815_000_000)
+            coda = [
+                CodaNoteVocali.VoceCoda(nota: NotaVocaleDiProva.ponte(quando: quando, id: NotaVocaleDiProva.prefisso + "coda-1")),
+                CodaNoteVocali.VoceCoda(nota: NotaVocalePonte(id: NotaVocaleDiProva.prefisso + "coda-2",
+                                                              testo: "Laura ha chiesto il riepilogo delle polizze: mandarlo entro venerdì.",
+                                                              quando: quando.addingTimeInterval(3_600), durata: 6,
+                                                              dispositivo: NotaVocaleDiProva.dispositivo), tentativi: 1,
+                                        ultimoMotivo: PonteVera.macNonTrovato),
+            ]
+        }
+        let riga: String
+        switch fase {
+        case .ascolto: riga = "Ascolto · sull’iPhone"
+        case .fermata: riga = "Pronta. Tocca ✓ per mandarla al Mac"
+        case .inCoda: riga = "Il Mac non è raggiungibile: la nota parte quando sarai in rete con il Mac"
+        case .mandata: riga = "✓ Nota mandata al Mac"
+        case .pronta: riga = ""
+        }
+        n.clienteSuggerito = "giulia"
+        n.preparaIstantanea(fase: fase, testo: NotaVocaleDiProva.testo, livelli: fase == .ascolto ? livelli : [], riga: riga, coda: coda)
+        m.stato.notaVeloceAperta = true
     }
 
     /// Attese: la prima scena (primo avvio, caratteri e icone da preparare) e le altre; lo scatto dello script.

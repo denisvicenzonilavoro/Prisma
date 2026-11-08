@@ -26,6 +26,11 @@ struct AzioniIncontri: View {
             }
         }
         .buttonStyle(.apple)
+        // iPad: la stessa schermata dell'iPhone (iOS/NotaVocaleTelefono.swift)
+        .fullScreenCover(isPresented: Bindable(stato).notaVeloceAperta) {
+            NotaVocaleTelefono(nota: stato.notaTelefono)
+                .environment(stato)
+        }
         #endif
     }
 }
