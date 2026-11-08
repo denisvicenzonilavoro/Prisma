@@ -406,5 +406,16 @@ enum ProvaAgendaOrganizzaVera {
         } else {
             controlla(false, "Agenda, revisione: lo spostamento in blocco di Marco non si prepara")
         }
+        // Secondo giro: chiedere gli orari degli impegni non è una ricerca; un nome di passaggio non limita il blocco
+        for frase in ["Dammi gli orari degli appuntamenti di domani", "Cercami gli orari di giovedì"] {
+            let r = AgendaOrganizzaVera.riconosce(frase)
+            controlla(r == nil, "Agenda, revisione: «\(frase)» non è una ricerca di orari: \(r.map { "\($0)" } ?? "nil")")
+        }
+        controlla(AgendaOrganizzaVera.riconosce("Proponimi due orari per Marco entro giovedì") == .cerca,
+                  "Agenda, revisione: «proponimi due orari per Marco» resta una ricerca")
+        let tutto = AgendaOrganizzaVera.interpreta("Libera giovedì, sposta tutto a venerdì e avvisa Marco", contesto: x)
+        controlla(tutto?.intento == .spostaBlocco && tutto?.clienteId == nil && tutto?.nomeDetto == nil
+                  && tutto.map { AgendaOrganizzaVera.domanda($0, oggi: oggi, cal: cal) == nil } == true,
+                  "Agenda, revisione: «sposta tutto… e avvisa Marco» sposta tutta la giornata: \(tutto?.clienteId ?? "nil"), \(tutto?.nomeDetto ?? "nil")")
     }
 }

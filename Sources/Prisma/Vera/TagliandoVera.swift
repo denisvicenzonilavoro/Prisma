@@ -379,7 +379,7 @@ enum TagliandoVera {
                 let azione = AzioneConferma(
                     strumento: strumentoUnisci, app: .clienti,
                     titolo: "Unisco «\(doppia.nome)» in «\(resta.nome)»",
-                    dettaglio: "Resta la scheda di «\(resta.nome)»: posizioni, documenti, appuntamenti, note e tutto il resto dell'altra passano qui (le raccomandazioni registrate restano dove sono). La scheda doppia non si cancella: resta in archivio, segnata come unita.",
+                    dettaglio: "Resta la scheda di «\(resta.nome)»: posizioni, documenti, appuntamenti e note dell'altra passano qui, e i dati d'anagrafica che qui mancano la completano; quelli diversi restano sulla scheda unita e li scrivo nelle note (le raccomandazioni registrate restano dove sono). La scheda doppia non si cancella: resta in archivio, segnata come unita.",
                     argomenti: ["principale": resta.id, "doppione": doppia.id],
                     avviso: differenze.isEmpty ? nil : "Le due schede hanno \(differenze.joined(separator: " e ")) divers\(differenze.count == 1 ? "o" : "i"): resta quello di «\(resta.nome)», l'altro passa nelle note.")
                 let ids = [resta.id, doppia.id].sorted()

@@ -38,6 +38,9 @@ extension StatoShell {
     }
 
     static let domandaClientePassi = "Di quale cliente divido il budget? Dimmi il nome, o apri il suo dossier."
+    /// «Rifai i calcoli» con un solo obiettivo rimasto e senza la protezione: un avviso, non una domanda (la risposta non
+    /// avrebbe una richiesta da riprendere).
+    static let avvisoRifaiPassiUnSolo = "Uno degli obiettivi della richiesta non è più nel dossier: con un solo obiettivo e senza la protezione non c'è niente da dividere. Scrivimi di nuovo la richiesta con le voci da dividere."
     /// Una domanda di Vera aspetta la risposta per questo tempo; dopo, la frase è una richiesta nuova.
     static let attesaRispostaPassi: TimeInterval = 30 * 60
     /// Al massimo tante domande di seguito sulla stessa richiesta.
@@ -48,7 +51,7 @@ extension StatoShell {
     /// nominato, quello del dossier aperto. In modalità cliente sempre e solo quello davanti a te.
     func clientePassi(_ testo: String, chiave: String) -> String? {
         if inModoCliente { return clienteDellaRichiesta(testo, chiave: chiave) }
-        let noti = dati.clienti.map { ClienteNoto(id: $0.id, nome: $0.nome) }
+        let noti = clientiAttivi.map { ClienteNoto(id: $0.id, nome: $0.nome) }
         let nominati = InterpreteComandi.clientiNominati(InterpreteComandi.pulisci(testo), noti)
         let aperto = chiave != VeraPortafoglio.chiave && cliente(chiave) != nil ? chiave : nil
         if nominati.count == 1 { return nominati[0].id }
@@ -59,7 +62,9 @@ extension StatoShell {
     /// Legge la richiesta: il cliente (quello scelto nella risposta a «Di quale cliente…?», se c'è), poi budget,
     /// protezione e obiettivi (`PassiVera.capisci`).
     func risolviPassi(_ testo: String, chiave: String, clienteScelto: String? = nil) -> EsitoRichiestaPassi {
-        guard let id = clienteScelto ?? clientePassi(testo, chiave: chiave), let d = datiPassi(cliente: id) else { return .senzaCliente }
+        // Una scheda unita dal tagliando porta alla scheda principale
+        guard let id = (clienteScelto ?? clientePassi(testo, chiave: chiave)).map({ schedaPrincipaleTagliando($0) }),
+              let d = datiPassi(cliente: id) else { return .senzaCliente }
         switch PassiVera.capisci(testo, cliente: d.cliente, obiettivi: d.obiettivi) {
         case .domanda(let domanda): return .domanda(domanda)
         case .richiesta(let r): return .pronta(r, d)
@@ -71,19 +76,66 @@ extension StatoShell {
     /// e risalendo le coppie domanda dell'utente → domanda di Vera si arriva a una richiesta completa. Le frasi
     /// dell'utente si uniscono in ordine. nil se la conversazione è andata avanti o la domanda è vecchia.
     func richiestaPassiInSospeso(_ chiave: String, adesso: Date = Date()) -> String? {
+        sospesoPassi(chiave, adesso: adesso)?.testo
+    }
+
+    /// Come `richiestaPassiInSospeso`, con il cliente già scelto rispondendo a «Di quale cliente…?» lungo la catena
+    /// (la richiesta può nominare più persone: senza il cliente scelto la domanda successiva lo perderebbe).
+    func sospesoPassi(_ chiave: String, adesso: Date = Date()) -> (testo: String, clienteScelto: String?)? {
         let c = conversazione(chiave)
         guard let ultima = c.last, adesso.timeIntervalSince(ultima.data) < Self.attesaRispostaPassi else { return nil }
         var i = c.count - 1
         var pezzi: [String] = []
+        var scelto: String?
         for _ in 0..<Self.domandeDiSeguitoPassi {
             guard i >= 1, c[i].autore == .vera, c[i].titolo == Self.titoloPassi, c[i].pianoPassi == nil, c[i].conferma == nil,
-                  c[i - 1].autore == .utente else { return nil }
+                  c[i].testo != Self.avvisoRifaiPassiUnSolo, c[i - 1].autore == .utente else { return nil }
+            // La risposta dell'utente a «Di quale cliente…?» è il messaggio dopo la domanda (se c'è già)
+            if scelto == nil, !inModoCliente, c[i].testo == Self.domandaClientePassi, i + 1 < c.count, c[i + 1].autore == .utente {
+                scelto = clienteUnicoNominato(c[i + 1].testo)
+            }
             let frase = c[i - 1].testo
             pezzi.insert(frase, at: 0)
-            if PassiVera.eUnaRichiesta(frase) { return pezzi.joined(separator: " ") }
+            if PassiVera.eUnaRichiesta(frase) { return (pezzi.joined(separator: " "), scelto) }
             i -= 2
         }
         return nil
+    }
+
+    /// Il solo cliente nominato nella frase (nil se nessuno o più di uno).
+    private func clienteUnicoNominato(_ testo: String) -> String? {
+        let nominati = InterpreteComandi.clientiNominati(InterpreteComandi.pulisci(testo), clientiAttivi.map { ClienteNoto(id: $0.id, nome: $0.nome) })
+        return nominati.count == 1 ? nominati[0].id : nil
+    }
+
+    /// Una risposta breve a una domanda dei passi («Marco», il titolo dell'obiettivo, «anche la protezione»): niente
+    /// domande («?», «perché», «raccontami»…), niente richieste di «Tre livelli», poche parole. Le altre frasi non
+    /// consumano la richiesta in sospeso e vanno ai loro motori.
+    static func rispostaBrevePassi(_ testo: String) -> Bool {
+        guard !testo.contains("?"), !TreLivelliVera.eUnaRichiesta(testo) else { return false }
+        let t = InterpreteComandi.pulisci(testo)
+        guard DateItaliane.cerca(Self.domandaNonRispostaPassi, t) == nil else { return false }
+        return t.split(whereSeparator: { $0 == " " }).count <= Self.paroleRispostaPassi
+    }
+
+    static let domandaNonRispostaPassi = #"\b(?:perch[eé]|raccontami|racconta|spiega(?:mi)?|cosa|come|quali?|quando|quanto|chi|dove|mostra(?:mi)?|apri|fammi|dimmi|fissa|prepara(?:mi)?|scrivi)\b"#
+    static let paroleRispostaPassi = 8
+
+    /// Quando la richiesta riguarda un altro cliente (nominato) e la conversazione aperta è il dossier di un altro, la
+    /// risposta va nella conversazione del cliente della richiesta: le sue cifre e le azioni della scheda non restano
+    /// nel dossier di un altro (che in modalità cliente si vedrebbe). Nel portafoglio e in modalità cliente resta qui.
+    private func chiavePassi(cliente id: String?, chiave: String) -> String {
+        guard !inModoCliente, chiave != VeraPortafoglio.chiave, cliente(chiave) != nil,
+              let id, id != chiave, cliente(id) != nil else { return chiave }
+        return id
+    }
+
+    /// Porta la conversazione nel dossier del cliente della richiesta e lo dice in quella aperta (che così non ha più
+    /// una domanda in sospeso).
+    private func spostaPassi(da chiave: String, a nuova: String) {
+        guard nuova != chiave, let c = cliente(nuova) else { return }
+        aggiungiMessaggio(MessaggioVera(autore: .vera, testo: "Continuo nella conversazione di \(c.nome), nel suo dossier.", motore: MotoriVera.sintesi.nome), cliente: chiave)
+        if clienteAttivoId == chiave { clienteAttivoId = nuova }
     }
 
     /// «Marco ha 400 € al mese: protezione e studi, come li divido?», «ragiona a passi: …». true se l'ha gestita.
@@ -91,30 +143,43 @@ extension StatoShell {
     /// solo se così Vera va avanti (piano pronto o una domanda nuova), altrimenti la frase passa agli altri motori.
     func chiediPassi(_ testo: String, chiave: String) -> Bool {
         guard dati.impostazioni.vera.passi.attivo else { return false }
-        if !PassiVera.eUnaRichiesta(testo), let prima = richiestaPassiInSospeso(chiave) {
-            // «Marco» in risposta a «Di quale cliente…?» vale anche se la richiesta nominava più persone
+        if !PassiVera.eUnaRichiesta(testo), Self.rispostaBrevePassi(testo), let sospeso = sospesoPassi(chiave) {
+            let prima = sospeso.testo
+            // «Marco» in risposta a «Di quale cliente…?» vale anche se la richiesta nominava più persone; dopo, il cliente
+            // scelto prima lungo la catena
             var scelto: String?
-            if !inModoCliente, conversazione(chiave).last?.testo == Self.domandaClientePassi {
-                let nominati = InterpreteComandi.clientiNominati(InterpreteComandi.pulisci(testo), dati.clienti.map { ClienteNoto(id: $0.id, nome: $0.nome) })
-                if nominati.count == 1 { scelto = nominati[0].id }
+            if !inModoCliente {
+                scelto = conversazione(chiave).last?.testo == Self.domandaClientePassi ? clienteUnicoNominato(testo) : sospeso.clienteScelto
             }
-            let esito = risolviPassi(prima + " " + testo, chiave: chiave, clienteScelto: scelto)
+            let unita = prima + " " + testo
+            let esito = risolviPassi(unita, chiave: chiave, clienteScelto: scelto)
             let ultimaDomanda = conversazione(chiave).last?.testo
             switch esito {
             case .pronta: break
             case .domanda(let d) where d != ultimaDomanda: break
             default: return false
             }
-            // Nella conversazione la risposta resta come l'ha scritta l'utente
-            aggiungiMessaggio(MessaggioVera(autore: .utente, testo: testo), cliente: chiave)
+            let destinazione = chiavePassi(cliente: scelto ?? clientePassi(unita, chiave: chiave), chiave: chiave)
             domandaVera = ""
-            concludiPassi(esito, chiave: chiave)
+            if destinazione != chiave {
+                // Nel dossier del cliente la richiesta intera, così una domanda successiva ritrova la catena
+                spostaPassi(da: chiave, a: destinazione)
+                aggiungiMessaggio(MessaggioVera(autore: .utente, testo: unita), cliente: destinazione)
+            } else {
+                // Nella conversazione la risposta resta come l'ha scritta l'utente
+                aggiungiMessaggio(MessaggioVera(autore: .utente, testo: testo), cliente: chiave)
+            }
+            concludiPassi(esito, chiave: destinazione)
             return true
         }
         guard richiestaPassi(testo) else { return false }
-        aggiungiMessaggio(MessaggioVera(autore: .utente, testo: testo), cliente: chiave)
+        let esito = risolviPassi(testo, chiave: chiave)
+        let destinazione: String
+        if case .senzaCliente = esito { destinazione = chiave } else { destinazione = chiavePassi(cliente: clientePassi(testo, chiave: chiave), chiave: chiave) }
         domandaVera = ""
-        concludiPassi(risolviPassi(testo, chiave: chiave), chiave: chiave)
+        if destinazione != chiave { spostaPassi(da: chiave, a: destinazione) }
+        aggiungiMessaggio(MessaggioVera(autore: .utente, testo: testo), cliente: destinazione)
+        concludiPassi(esito, chiave: destinazione)
         return true
     }
 
@@ -218,9 +283,10 @@ extension StatoShell {
         // Gli obiettivi tolti nel frattempo escono dalla richiesta
         r.obiettiviIds = r.obiettiviIds.filter { d.obiettivo($0) != nil }
         guard !r.obiettiviIds.isEmpty else { return mostraAvviso("Gli obiettivi della richiesta non sono più nel dossier.") }
-        // Resta un solo obiettivo senza la protezione: non c'è niente da dividere, Vera chiede invece di un piano vuoto
+        // Resta un solo obiettivo senza la protezione: non c'è niente da dividere, Vera lo dice invece di un piano vuoto
+        // (un avviso, non una domanda: non c'è una richiesta in chat da riprendere)
         guard r.protezione || r.obiettiviIds.count >= 2 else {
-            rispostaPassi("Tra cosa divido i \(CifreDoc.euro(r.budgetMensile)) al mese? Uno degli obiettivi non è più nel dossier: dimmi se c'è anche la protezione o un altro obiettivo.", chiave: chiave)
+            rispostaPassi(Self.avvisoRifaiPassiUnSolo, chiave: chiave)
             return
         }
         eseguiPassi(r, dati: d, chiave: chiave)
@@ -300,8 +366,10 @@ extension StatoShell {
         vecchio.richiesta.protezione = false
         vecchio.richiesta.obiettiviIds = Array(piano.richiesta.obiettiviIds.prefix(1)) + ["obiettivo-tolto"]
         s.rifaiPassi(vecchio, chiave: p)
-        controlla(s.conversazione(p).last?.pianoPassi == nil && s.conversazione(p).last?.testo.hasPrefix("Tra cosa divido") == true,
-                  "Ragiona a passi: con un solo obiettivo rimasto e senza protezione Vera chiede invece di un piano vuoto")
+        controlla(s.conversazione(p).last?.pianoPassi == nil && s.conversazione(p).last?.testo == avvisoRifaiPassiUnSolo,
+                  "Ragiona a passi: con un solo obiettivo rimasto e senza protezione Vera lo dice invece di un piano vuoto")
+        controlla(s.richiestaPassiInSospeso(p) == nil,
+                  "Ragiona a passi: l'avviso di «Rifai i calcoli» non è una domanda che aspetta risposta")
         // Un piano preparato tempo fa e pubblicato adesso ha la data di adesso
         if let c = s.cliente("marco"),
            let ieri = Calendar.current.date(byAdding: .day, value: -1, to: Date()),
@@ -311,5 +379,61 @@ extension StatoShell {
                       "Ragiona a passi: la cascata parte quando il piano compare, non quando è iniziata la richiesta")
         }
         s.veraPortafoglio = false
+        provaPassiRisposte(controlla)
+        // Le schede nascoste in modalità cliente (anche quella di un piano su un altro cliente): FalloTuShell.swift
+        provaSchedaNascostaInModoCliente(controlla)
+    }
+
+    /// Le risposte alle domande dei passi: una domanda vera («Raccontami Marco», «Perché…?») non consuma la richiesta in
+    /// sospeso; il cliente scelto con «Marco» resta per la domanda successiva; una richiesta su un altro cliente fatta
+    /// nel dossier di un altro va nella conversazione del cliente della richiesta.
+    static func provaPassiRisposte(_ controlla: (Bool, String) -> Void) {
+        let p = VeraPortafoglio.chiave
+        let richiesta = "Ha 400 € al mese: vuole proteggere Elena e continuare con gli studi di Tommaso. Come li divido?"
+        // Una domanda per un altro motore non è la risposta a «Di quale cliente…?»
+        let a = StatoShell(persistente: false)
+        a.rispostePreparate = true
+        a.veraPortafoglio = true
+        _ = a.chiediPassi(richiesta, chiave: p)
+        let n = a.conversazione(p).count
+        controlla(!a.chiediPassi("Raccontami Marco", chiave: p) && !a.chiediPassi("Perché il fondo pensione conviene a Marco?", chiave: p)
+                  && a.conversazione(p).count == n && a.richiestaPassiInSospeso(p) == richiesta,
+                  "Ragiona a passi: «Raccontami Marco» e «Perché…?» non rispondono alla domanda di Vera, la richiesta resta in sospeso")
+        _ = a.smistaVera("Raccontami Marco", chiave: p)
+        controlla(a.conversazione(p).last?.pianoPassi == nil && a.conversazione(p).last?.titolo != titoloPassi,
+                  "Ragiona a passi: dopo «Di quale cliente…?», «Raccontami Marco» va a «Il cliente in 30 secondi», non al piano")
+        a.veraPortafoglio = false
+
+        // Con i clienti fittizi la richiesta nomina Marco e Tommaso: «Marco» resta il cliente anche dopo la domanda
+        // sull'obiettivo
+        let f = StatoShell(persistente: false)
+        f.rispostePreparate = true
+        f.dati.carica(ClientiFittizi.completi())
+        f.veraPortafoglio = true
+        let dueNomi = "Marco ha 400 € al mese: proteggere Elena e gli studi di Tommaso, come li divido?"
+        controlla(f.chiediPassi(dueNomi, chiave: p) && f.conversazione(p).last?.testo == domandaClientePassi,
+                  "Ragiona a passi: con Marco e Tommaso nominati nel portafoglio Vera chiede di quale cliente")
+        controlla(f.chiediPassi("Marco", chiave: p), "Ragiona a passi: «Marco» risponde anche con due clienti nominati")
+        if f.conversazione(p).last?.pianoPassi == nil, let obiettivo = f.datiPassi(cliente: "marco")?.obiettivi.first?.titolo {
+            controlla(f.sospesoPassi(p)?.clienteScelto == "marco",
+                      "Ragiona a passi: il cliente scelto con «Marco» resta nella richiesta in sospeso")
+            controlla(f.chiediPassi(obiettivo, chiave: p), "Ragiona a passi: il titolo dell'obiettivo risponde alla seconda domanda")
+        }
+        controlla(f.conversazione(p).last?.pianoPassi?.richiesta.clienteId == "marco",
+                  "Ragiona a passi: dopo «Marco» e l'obiettivo il piano è su Marco: \(f.conversazione(p).last?.testo ?? "")")
+        f.veraPortafoglio = false
+
+        // Nel dossier di Laura una richiesta su Marco: il piano e la scheda vanno nella conversazione di Marco
+        let l = StatoShell(persistente: false)
+        l.rispostePreparate = true
+        l.veraPortafoglio = false
+        if let laura = l.dati.clienti.first(where: { $0.id != "marco" })?.id {
+            l.clienteAttivoId = laura
+            controlla(l.chiediPassi(ProvaCollegaPassi.frase, chiave: laura), "Ragiona a passi: la richiesta su Marco dal dossier di un altro cliente")
+            controlla(l.conversazione("marco").last?.pianoPassi?.richiesta.clienteId == "marco"
+                      && !l.conversazione(laura).contains(where: { $0.pianoPassi != nil || $0.conferma != nil })
+                      && l.clienteAttivoId == "marco",
+                      "Ragiona a passi: il piano su Marco e la sua scheda stanno nella conversazione di Marco, non nel dossier di un altro")
+        }
     }
 }

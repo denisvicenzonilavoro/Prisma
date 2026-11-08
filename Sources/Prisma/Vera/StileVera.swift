@@ -636,7 +636,8 @@ enum StileVera {
     }
 
     /// Impara di nuovo e tiene le scelte del consulente: le regole scritte da lui restano come sono, quelle che ha
-    /// spento restano spente; le regole imparate senza più prove escono dal profilo.
+    /// spento restano spente (anche quando l'apprendimento non le ritrova più, così non si riaccendono da sole);
+    /// escono dal profilo solo le regole imparate accese che non hanno più prove.
     static func aggiorna(_ attuale: ProfiloStile, messaggi: [MessaggioCliente], clienti: [Cliente], oggi: Date) -> ProfiloStile {
         unisci(imparato: impara(messaggi: messaggi, clienti: clienti, oggi: oggi), attuale: attuale)
     }
@@ -661,6 +662,8 @@ enum StileVera {
             r[keyPath: k] = vecchia
         } else if r[keyPath: k] != nil {
             r[keyPath: k]?.attiva = vecchia.attiva
+        } else if !vecchia.attiva {
+            r[keyPath: k] = vecchia   // spenta dal consulente: resta spenta, l'apprendimento non la riaccende
         }
     }
 

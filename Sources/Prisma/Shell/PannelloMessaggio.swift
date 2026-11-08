@@ -437,7 +437,7 @@ struct PannelloMessaggio: View {
             }
         }
         let prima = sessione.idSalvato(k)
-        let esito = stato.apriMessaggio(occasione, tono: k.tono, canale: k.canale, scritto: s, id: prima)
+        let esito = stato.apriMessaggio(occasione, tono: s.tono ?? k.tono, canale: k.canale, scritto: s, id: prima)
         stato.mostraAvviso(esito.messaggio)
         if esito.aperto {
             sessione.ricordaSalvato(k, id: prima ?? stato.dati.messaggi.last(where: { $0.occasioneId == occasione.id })?.id)
@@ -451,7 +451,7 @@ struct PannelloMessaggio: View {
         let prima = sessione.idSalvato(k)
         let statoPrima = prima.flatMap { id in stato.dati.messaggi.first(where: { $0.id == id })?.stato }
         let nuovo: StatoMessaggio = (statoPrima == .apertoInMail || statoPrima == .apertoInMessaggi) ? (statoPrima ?? .salvato) : .salvato
-        guard let m = stato.salvaMessaggio(occasione, tono: k.tono, canale: k.canale, scritto: s, stato: nuovo, id: prima) else {
+        guard let m = stato.salvaMessaggio(occasione, tono: s.tono ?? k.tono, canale: k.canale, scritto: s, stato: nuovo, id: prima) else {
             return
         }
         sessione.ricordaSalvato(k, id: m.id)

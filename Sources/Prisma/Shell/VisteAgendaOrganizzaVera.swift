@@ -88,6 +88,11 @@ enum AgendaOrganizzaGriglia {
         }.map(\.appuntamentoId))
     }
 
+    /// Nessun impegno pianificato nel giorno (i blocchi «Non disponibile» non contano): il giorno è davvero libero.
+    static func giornoLibero(_ giorno: Date, appuntamenti: [Appuntamento], cal: Calendar) -> Bool {
+        !appuntamenti.contains { $0.stato == .pianificato && $0.tipo != .nonDisponibile && cal.isDate($0.inizio, inSameDayAs: giorno) }
+    }
+
     /// Gli impegni delle mosse tolte con ✕ dalla scheda «Conferma» (non si spostano: non si disegnano come proposte).
     static func mosseTolte(_ scheda: SchedaConfermaVera?) -> Set<String> {
         guard let scheda else { return [] }
@@ -335,6 +340,17 @@ struct AgendaOrganizzaSpostamentoVista: View {
 
     private var cal: Calendar { MotorePianificazione.calendario }
 
+    /// Annullato, lasciato stare o sostituito: le mosse non si possono più confermare, la griglia mostra solo gli
+    /// impegni di adesso con una pillola neutra.
+    private var chiusa: String? {
+        switch scheda?.stato {
+        case .annullata: return "Annullato"
+        case .rinunciata: return "Lasciato stare"
+        case .sostituita: return "Sostituito"
+        default: return nil
+        }
+    }
+
     var body: some View {
         let _ = ContaCorpi.segna()
         let giorni = [cal.startOfDay(for: spostamento.da), cal.startOfDay(for: spostamento.a)]
@@ -345,11 +361,16 @@ struct AgendaOrganizzaSpostamentoVista: View {
                 .padding(G.paddingGriglia)
                 .superficieApple(Tema.Apple.Vera.SchedaCalcoli.superficie, raggio: Tema.Apple.Raggio.tile)
             HStack(spacing: G.spazio) {
-                if eseguito {
+                if let chiusa {
+                    PillolaFaseTre(testo: chiusa, colore: G.occupato)
+                } else if eseguito {
                     let appuntamenti = stato.dati.appuntamenti
                     let fatte = AgendaOrganizzaGriglia.mosseFatte(spostamento, appuntamenti: appuntamenti)
                     let rimaste = AgendaOrganizzaGriglia.mosseRimaste(spostamento, appuntamenti: appuntamenti, cal: cal)
-                    if rimaste.isEmpty, !fatte.isEmpty {
+                    // «È libero» solo se nel giorno di partenza non resta davvero nessun impegno (anche di altri
+                    // clienti, quando lo spostamento era di un cliente solo): lo dice l'agenda di adesso
+                    if rimaste.isEmpty, !fatte.isEmpty,
+                       AgendaOrganizzaGriglia.giornoLibero(spostamento.da, appuntamenti: appuntamenti, cal: cal) {
                         PillolaFaseTre(testo: "\(AgendaOrganizzaGriglia.maiuscola(Formati.giornoSettimana.string(from: spostamento.da))) è libero ✓", colore: F.verde)
                     } else {
                         PillolaFaseTre(testo: "Spostati \(fatte.count) di \(spostamento.mosse.count)", colore: F.arancio)
@@ -361,7 +382,7 @@ struct AgendaOrganizzaSpostamentoVista: View {
                         .foregroundColor(F.coloreDettaglio)
                         .lineLimit(2)
                 }
-                if !spostamento.restano.isEmpty {
+                if chiusa == nil, !spostamento.restano.isEmpty {
                     PillolaFaseTre(testo: spostamento.restano.count == 1 ? "Uno resta dov'è" : "\(spostamento.restano.count) restano dove sono", colore: F.arancio)
                 }
                 Spacer(minLength: 0)
@@ -379,7 +400,8 @@ struct AgendaOrganizzaSpostamentoVista: View {
         let appuntamenti = stato.dati.appuntamenti
         // Le mosse da disegnare nel giorno di arrivo: dopo «Conferma» solo quelle avvenute davvero, prima le righe non tolte
         let tolte = AgendaOrganizzaGriglia.mosseTolte(scheda)
-        let disegnate: Set<String> = eseguito
+        let disegnate: Set<String> = chiusa != nil ? []
+            : eseguito
             ? AgendaOrganizzaGriglia.mosseFatte(spostamento, appuntamenti: appuntamenti)
             : Set(spostamento.mosse.map(\.appuntamentoId)).subtracting(tolte)
         var elenco: [BloccoAgendaOrganizza] = []

@@ -349,21 +349,34 @@ enum MercatoClientiVera {
     // MARK: Riconoscere la frase
 
     /// La frase è un evento di mercato (per lo smistamento: prima delle domande generali a Qwen). Un evento a metà
-    /// (manca la misura) conta solo se la frase dice un verbo di mercato forte («sale», «taglia», «crolla») o nomina il
-    /// mercato (BCE, inflazione, borse): «Che tasso ha il mutuo di Marco?» e «Che tasso c'è su questo mutuo?» restano
-    /// domande normali («su», «aumentare», «riduco» non bastano).
+    /// (manca la misura) conta solo se la frase dice un verbo di mercato forte («sale», «taglia», «crolla») e non è una
+    /// domanda che chiede un dato o una spiegazione («Com'è andata la borsa oggi?», «Cos'è l'inflazione?», «Cosa ha
+    /// deciso la BCE sui tassi?», «Quanto ha perso la borsa?»: vanno a Qwen). Per i tassi serve anche che la frase nomini
+    /// la BCE, l'Euribor o il costo del denaro: «Che tasso ha il mutuo di Marco?» e «Il tasso del mutuo è salito?»
+    /// restano domande normali («su», «aumentare», «riduco» non bastano).
     static func eUnEvento(_ frase: String) -> Bool {
         switch riconosci(frase, oggi: Date()) {
         case .evento: return true
         case .nessuno: return false
         case .incompleto(let genere, _):
             let t = normale(frase)
-            let soggetto = DateItaliane.cerca(soggettoMercato, t) != nil
+            guard versoForte(t), DateItaliane.cerca(domandaDiUnDato, t) == nil else { return false }
             // «tasso» da solo è anche quello di un mutuo o di un prestito («Il tasso del mutuo di Marco è salito?»):
             // per i tassi serve che la frase nomini la BCE, l'Euribor o il costo del denaro, il verbo forte non basta
-            if genere == .tassiBCE { return soggetto }
-            return versoForte(t) || soggetto
+            if genere == .tassiBCE { return DateItaliane.cerca(soggettoMercato, t) != nil }
+            return true
         }
+    }
+
+    /// L'inizio delle domande che chiedono un dato o una spiegazione sul mercato (non annunciano un evento).
+    private static let domandaDiUnDato = #"^(?:dimmi )?(?:com'[eè]|come (?:va|vanno|sta|stanno|[eè] andat|sono andat|si (?:[eè]|sono) moss)|quant[oa]\b|qual [eè]|quali sono|cos'[eè]|che cos'[eè]|(?:che )?cosa (?:ha|hanno|[eè]|sono|significa|vuol dire|succede)\b|perch[eé]\b|di quanto\b)"#
+
+    /// La frase è un'ipotesi («Supponiamo che…», «Se la BCE tagliasse…», «Simula un crollo…», «Ipotizziamo…», «Mettiamo
+    /// che…», «Facciamo finta che…», «E se…», «Cosa succederebbe…»): resta degli scenari (ScenariVera), non è un evento
+    /// accaduto. Le aperture sono quelle degli scenari, sul loro testo semplificato (senza accenti).
+    static func ipotesi(_ frase: String) -> Bool {
+        DateItaliane.cerca(ScenariVera.apertura, ScenariVera.semplice(frase)) != nil
+            || DateItaliane.cerca(#"\be se\b|cosa succede se|cosa succederebbe"#, normale(frase)) != nil
     }
 
     /// Le parole che nominano il mercato in modo esplicito (non «tasso» o «azioni» da soli).
@@ -373,7 +386,7 @@ enum MercatoClientiVera {
     static func riconosci(_ frase: String, oggi: Date, cal: Calendar = .current) -> RiconoscimentoEventoVera {
         let t = normale(frase)
         // Una domanda su un cliente o un «e se» resta degli scenari (ScenariVera)
-        guard DateItaliane.cerca(#"\be se\b|cosa succede se|cosa succederebbe"#, t) == nil, let genere = tipo(t) else { return .nessuno }
+        guard !ipotesi(frase), let genere = tipo(t) else { return .nessuno }
         let periodo = DateItaliane.cerca(#"\b(in (?:una|un|due|tre|quattro|cinque|sei|\d+) (?:settiman[ae]|giorn[oi]|sedut[ae]|mes[ei]|ann[oi])|da inizio (?:anno|mese)|in giornata|nell'ultima settimana|nell'ultimo mese|questa settimana|oggi|ieri)\b"#, t)?.1[1]
         let detto = "Detto a Vera"
         switch genere {
@@ -1411,5 +1424,34 @@ enum TestiMercatoClienti {
     static func maiuscola(_ s: String) -> String {
         guard let primo = s.first else { return s }
         return primo.uppercased() + s.dropFirst()
+    }
+}
+
+// MARK: - Prova: ipotesi e domande
+
+extension MercatoClientiVera {
+    /// Le ipotesi restano degli scenari e le domande su un dato vanno a Qwen: nessuna delle due è un evento accaduto
+    /// (da chiamare in `ProvaMercatoClientiVera`, accanto ai casi del riconoscimento).
+    static func provaIpotesiEDomande(_ controlla: (Bool, String) -> Void) {
+        let oggi = Date()
+        let ipotesi = ["Supponiamo che le borse perdano il 20%: cosa cambia per Marco?",
+                       "Se la BCE tagliasse i tassi di 50 punti base, cosa cambia?",
+                       "Simula un crollo delle borse del 30%",
+                       "Ipotizziamo che l'inflazione salga al 5%",
+                       "Mettiamo che le borse perdano il 15%",
+                       "Facciamo finta che la BCE alzi i tassi di mezzo punto",
+                       "Cosa succederebbe se le borse crollassero del 25%?"]
+        for f in ipotesi {
+            controlla(riconosci(f, oggi: oggi) == .nessuno && !eUnEvento(f),
+                      "Mercato per i clienti: «\(f)» è un'ipotesi degli scenari, non un evento")
+        }
+        let domande = ["Com'è andata la borsa oggi?", "Quanto è l'inflazione adesso?", "Cos'è l'inflazione?",
+                       "Cosa ha deciso la BCE sui tassi?", "Quanto ha perso la borsa oggi?"]
+        for f in domande {
+            controlla(!eUnEvento(f), "Mercato per i clienti: «\(f)» è una domanda, non un evento")
+        }
+        controlla(eUnEvento("La BCE ha tagliato i tassi") && eUnEvento("Le borse sono crollate")
+                    && eUnEvento("Le borse hanno perso l'8% in una settimana"),
+                  "Mercato per i clienti: gli eventi detti restano eventi (anche a metà, con il verbo forte)")
     }
 }

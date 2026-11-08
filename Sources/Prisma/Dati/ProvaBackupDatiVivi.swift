@@ -67,7 +67,7 @@ extension ProvaBackup {
             ("un'attività", { $0.attivita.removeLast() }),
             ("il mercato", { $0.mercato = ArchivioMercato() }),
             ("i portafogli modello", { $0.portafogliModello = [] }),
-            // Vera, fase 4: routine, tagliando, spiegazioni in tre livelli e profilo di stile neutri; voci chiuse del cliente
+            // Vera, fase 4: routine, tagliando, spiegazioni in tre livelli e profilo di stile e voci chiuse del sussurro neutri
             ("le routine", { $0.routine = ArchivioRoutine(routine: [RoutineVera.pronte()[0]]) }),
             ("il tagliando", { $0.tagliando.ignorate.append("prova") }),
             ("le impostazioni del tagliando", { $0.impostazioni.tagliando.ora = 4 }),

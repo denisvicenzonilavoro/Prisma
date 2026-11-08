@@ -18,6 +18,8 @@ struct TestoScrittoMessaggio: Equatable {
     var modello: String?
     /// Perché è rimasto il testo di Prisma («Vera non è pronta…», «una cifra non è nella scheda…»); nil se l'ha scritto Vera.
     var avviso: String?
+    /// Il tu o Lei usato davvero (lo stile del consulente può cambiare quello chiesto); nil = quello chiesto.
+    var tono: TonoMessaggio? = nil
 }
 
 enum MessaggiVera {

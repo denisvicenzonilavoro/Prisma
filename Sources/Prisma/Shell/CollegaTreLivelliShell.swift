@@ -22,6 +22,11 @@ extension StatoShell {
     /// la pagina del fondo pensione di Marco»).
     static let trelivelliAzioni = #"^(?:scrivi|manda|invia|spedisci|inoltra|gira|fissa|chiama|telefona|sposta|aggiungi|crea)(?:mi|gli|le|ci|lo|la|li|glielo|gliela|glieli)?\b"#
 
+    /// Le bozze di «Fallo tu» («prepara una mail per Marco che spieghi perché il fondo pensione gli conviene», «prepara
+    /// un messaggio a Giulia: spiegale la protezione»): non sono una spiegazione a tre livelli. Sul testo già pulito
+    /// («mi prepari» è già «preparami»); «preparami la pagina del fondo pensione di Marco» resta qui.
+    static let trelivelliBozze = #"^prepara(?:mi)?\s+(?:un'\s*|(?:un|una|il|la|lo)\s+)(?:messaggio|mail|e-mail|email|bozza|risposta|sms|whatsapp)\b"#
+
     /// Qwen si usa solo se è pronto (e non nelle prove e nelle istantanee con le risposte preparate).
     private var qwenPerTreLivelli: MotoreLocale? { generativo != nil && !rispostePreparate ? qwen : nil }
 
@@ -80,6 +85,7 @@ extension StatoShell {
         guard !SpuntoVera.allCases.contains(where: { $0.domanda.caseInsensitiveCompare(frase) == .orderedSame }),
               TreLivelliVera.eUnaRichiesta(testo),
               DateItaliane.cerca(Self.trelivelliAzioni, t) == nil,
+              DateItaliane.cerca(Self.trelivelliBozze, t) == nil,
               DateItaliane.cerca(Self.trelivelliNorme, t) == nil,
               // «Quali dei miei clienti non hanno un fondo pensione e perché?» è una domanda sulla clientela, anche nel dossier
               !ClientelaVera.eUnaDomanda(testo, clienti: dati.clienti.map { ClienteNoto(id: $0.id, nome: $0.nome) }, soloEspliciti: true),
@@ -206,13 +212,56 @@ extension StatoShell {
         return true
     }
 
-    /// Il PDF salvato da una scheda «Conferma» di questa spiegazione (il più recente), se c'è ancora.
+    /// Il PDF salvato da una scheda «Conferma» di questa spiegazione (il più recente), se c'è ancora. Si lega alla
+    /// spiegazione dall'azione eseguita (argomento «spiegazione» e documento nell'esito), mai dal titolo: il titolo della
+    /// pagina è fisso per argomento e due spiegazioni dello stesso argomento hanno cifre diverse. Una scheda annullata
+    /// ha già tolto il suo documento (`trelivelliDisfaPagina`), quindi non conta.
     func trelivelliDocumento(_ id: String) -> String? {
         guard let s = trelivelliSpiegazione(id) else { return nil }
-        let titolo = "Prospetto · \(s.pagina.titolo)"
-        let suoi = dati.documenti.filter { $0.clienteId == s.clienteId && $0.titolo == titolo }
-        guard let recente = suoi.map(\.importatoIl).max() else { return nil }
-        // A parità di minuto vince l'ultimo aggiunto (i documenti si aggiungono in fondo)
-        return suoi.last { $0.importatoIl == recente }?.id
+        let messaggi = conversazione(s.clienteId) + conversazione(VeraPortafoglio.chiave)
+        let documenti = Set(dati.documenti.lazy.filter { $0.clienteId == s.clienteId }.map(\.id))
+        var trovato: (data: Date, id: String)?
+        for m in messaggi {
+            guard let scheda = m.conferma, scheda.stato == .eseguita else { continue }
+            for a in scheda.azioni where a.strumento == Self.trelivelliStrumentoPagina && a.argomenti["spiegazione"] == id {
+                guard let e = a.esito, e.fatta, let d = e.oggetto, documenti.contains(d) else { continue }
+                if trovato.map({ m.data >= $0.data }) ?? true { trovato = (m.data, d) }
+            }
+        }
+        return trovato?.id
+    }
+}
+
+/// Le correzioni del secondo giro su «Tre livelli»: le bozze di «Fallo tu» non diventano spiegazioni e «Apri il PDF»
+/// apre solo il PDF salvato da quella spiegazione (non quello di un'altra spiegazione con lo stesso titolo). Da chiamare
+/// in `Prisma --prova-vera` (accanto a `ProvaTreLivelliVera`).
+enum ProvaCorrezioniTreLivelliVera {
+    static func esegui(_ controlla: (Bool, String) -> Void) {
+        for frase in ["Prepara una mail per Marco che spieghi perché il fondo pensione gli conviene",
+                      "Prepara un messaggio a Giulia: spiegale la protezione in parole semplici"] {
+            controlla(DateItaliane.cerca(StatoShell.trelivelliBozze, InterpreteComandi.pulisci(frase)) != nil,
+                      "Tre livelli: «\(frase)» resta una bozza di «Fallo tu»")
+        }
+        let pagina = "Preparami la pagina del fondo pensione di Marco"
+        controlla(DateItaliane.cerca(StatoShell.trelivelliBozze, InterpreteComandi.pulisci(pagina)) == nil,
+                  "Tre livelli: «\(pagina)» resta ai tre livelli")
+
+        let s = StatoShell(persistente: false)
+        s.rispostePreparate = true
+        s.clienteAttivoId = "marco"
+        s.veraPortafoglio = false
+        s.trelivelliSpiega(.previdenza, cliente: "marco", domanda: "Il fondo pensione di Marco in una pagina", livello: .pagina, chiave: "marco")
+        let a = s.conversazione("marco").last?.treLivelli
+        s.trelivelliSpiega(.previdenza, cliente: "marco", domanda: "Il fondo pensione di Marco in una pagina, di nuovo", livello: .pagina, chiave: "marco")
+        let b = s.conversazione("marco").last?.treLivelli
+        guard let a, let b, a != b, let m = s.trelivelliProponiPagina(a, chiave: "marco") else {
+            return controlla(false, "Tre livelli: mancano le due spiegazioni dello stesso argomento per la prova del PDF")
+        }
+        s.confermaSchedaVera(messaggio: m.id)
+        let doc = s.messaggioVera(m.id)?.conferma?.azioni.first?.esito?.oggetto
+        controlla(doc != nil && s.trelivelliDocumento(a) == doc && s.trelivelliDocumento(b) == nil,
+                  "Tre livelli: «Apri il PDF» apre solo il PDF salvato da quella spiegazione, non da un'altra con lo stesso titolo")
+        s.annullaSchedaVera(messaggio: m.id)
+        controlla(s.trelivelliDocumento(a) == nil, "Tre livelli: annullato il salvataggio, la scheda non apre più il PDF")
     }
 }

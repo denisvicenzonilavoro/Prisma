@@ -52,9 +52,12 @@ struct SussurroDossierVista: View {
     // MARK: Una voce
 
     private func riga(_ v: VoceSussurro) -> some View {
-        // La scheda in attesa, altrimenti l'ultima della voce: così `onChange` vede anche il passaggio a «eseguita»
+        // La scheda in attesa, altrimenti l'ultima della voce: così `onChange` vede anche il passaggio a «eseguita».
+        // Solo le schede fatte tutte di azioni di questa voce: una scheda della chat con più voci resta nella chat e qui
+        // compare solo il rimando (niente copie della stessa scheda sotto ogni voce)
         let messaggio = stato.schedaSussurroAperta(v) ?? stato.ultimaSchedaSussurro(v)
         let scheda = messaggio.flatMap { stato.messaggioVera($0)?.conferma }
+        let inChat = scheda?.stato == .daConfermare ? nil : stato.schedaSussurroInChat(v)
         return HStack(alignment: .top, spacing: A.sussurroSpazioRiga) {
             Circle()
                 .fill(Self.colore(v.tono))
@@ -72,7 +75,7 @@ struct SussurroDossierVista: View {
                     .lineLimit(1)
                     .padding(.top, A.sussurroSopraFonte)
                 HStack(spacing: A.sussurroSpazioPulsanti) {
-                    pulsante(v, aperta: scheda?.stato == .daConfermare)
+                    pulsante(v, aperta: scheda?.stato == .daConfermare || inChat != nil)
                     menu(v)
                     Spacer(minLength: 0)
                 }
@@ -80,6 +83,12 @@ struct SussurroDossierVista: View {
                 if let messaggio, let scheda, scheda.stato == .daConfermare {
                     SchedaConfermaVeraVista(scheda: scheda, messaggio: messaggio)
                         .padding(.top, A.sussurroSopraScheda)
+                } else if let inChat {
+                    Button("In attesa nella chat di Vera") { stato.apriSchedaSussurroInChat(inChat) }
+                        .buttonStyle(.apple)
+                        .fixedSize()
+                        .padding(.top, A.sussurroSopraScheda)
+                        .help("La scheda «Conferma» con questa voce aspetta nella chat di Vera")
                 }
             }
             Spacer(minLength: 0)
@@ -94,7 +103,7 @@ struct SussurroDossierVista: View {
     private func pulsante(_ v: VoceSussurro, aperta: Bool) -> some View {
         Button(v.azione.titolo) {
             // Una scheda già in attesa per la voce non se ne fa un'altra (niente doppioni né attività ripetute)
-            guard stato.schedaSussurroAperta(v) == nil else { return }
+            guard stato.schedaSussurroAperta(v) == nil, stato.schedaSussurroInChat(v) == nil else { return }
             stato.eseguiSussurro(v)
         }
         .buttonStyle(.apple)
@@ -121,13 +130,21 @@ struct SussurroDossierVista: View {
         .accessibilityLabel(Text("Altro sulla voce"))
     }
 
-    /// Confermata ed eseguita: la voce si chiude (l'esito resta nella conversazione del cliente). Lasciata stare,
-    /// sostituita o annullata: torna il pulsante.
+    /// Confermata ed eseguita: la voce la chiude già `chiudiSussurriConfermati`, azione per azione (solo quelle attive e
+    /// riuscite); qui resta l'avviso con l'esito dell'azione di questa voce. Solo le schede vecchie, senza la chiave della
+    /// voce negli argomenti, si chiudono da qui. Lasciata stare, sostituita o annullata: torna il pulsante.
     private func cambiata(_ v: VoceSussurro, stato nuovo: SchedaConfermaVera.Stato?, scheda: SchedaConfermaVera?) {
         switch nuovo {
         case .eseguita?:
-            let esito = scheda?.attive.compactMap(\.esito).first
-            if esito?.fatta != false { stato.chiudiSussurro(v) }
+            guard let scheda else { return }
+            let conChiave = scheda.azioni.contains { $0.argomenti[StatoShell.argomentoSussurro] != nil }
+            let esito: EsitoAzioneVera?
+            if conChiave {
+                esito = scheda.attive.first { $0.argomenti[StatoShell.argomentoSussurro] == v.chiave }?.esito
+            } else {
+                esito = scheda.attive.compactMap(\.esito).first
+                if esito?.fatta == true { stato.chiudiSussurro(v) }
+            }
             if let testo = esito?.messaggio { stato.mostraAvviso(testo, daVera: true) }
         default:
             // In attesa, lasciata stare, sostituita o annullata: la scheda si ricava di nuovo dalla conversazione
@@ -158,27 +175,75 @@ extension StatoShell {
     /// La richiesta con cui `schedaSussurro` scrive la scheda di una voce (serve per ritrovarla nella conversazione).
     static func testoRichiestaSussurro(_ v: VoceSussurro) -> String { "\(v.azione.titolo): \(v.testo)" }
 
-    /// L'id del messaggio di Vera con la scheda «Conferma» ancora in attesa per la voce, cercato nella conversazione
-    /// del cliente della voce (l'ultimo: origine sussurro, da confermare, stessa voce). nil se non ce n'è.
+    /// Dove cercare le schede di una voce: la conversazione del cliente e quella del portafoglio (una domanda fatta in
+    /// chat dal portafoglio, «cosa devo sapere su Sofia?», mette lì la sua scheda).
+    private func messaggiSussurro(_ v: VoceSussurro) -> [MessaggioVera] {
+        conversazione(v.clienteId) + conversazione(VeraPortafoglio.chiave)
+    }
+
+    /// L'id del messaggio di Vera con la scheda «Conferma» ancora in attesa fatta tutta di azioni della voce (quella del
+    /// pulsante del dossier, o una della chat con la sola voce), nella conversazione del cliente o del portafoglio.
+    /// nil se non ce n'è.
     func schedaSussurroAperta(_ v: VoceSussurro) -> String? {
-        Self.cercaSchedaSussurro(v, in: conversazione(v.clienteId), soloInAttesa: true)
+        Self.cercaSchedaSussurro(v, in: messaggiSussurro(v), soloInAttesa: true)
     }
 
-    /// L'id dell'ultimo messaggio di Vera con una scheda «Conferma» della voce, in qualunque stato.
+    /// L'id dell'ultimo messaggio di Vera con una scheda «Conferma» fatta tutta di azioni della voce, in qualunque stato.
     func ultimaSchedaSussurro(_ v: VoceSussurro) -> String? {
-        Self.cercaSchedaSussurro(v, in: conversazione(v.clienteId), soloInAttesa: false)
+        Self.cercaSchedaSussurro(v, in: messaggiSussurro(v), soloInAttesa: false)
     }
 
-    /// La ricerca pura. La voce si riconosce dalla chiave negli argomenti dell'azione («sussurro»), quando c'è, o
-    /// dalla richiesta scritta da `schedaSussurro`.
-    static func cercaSchedaSussurro(_ v: VoceSussurro, in messaggi: [MessaggioVera], soloInAttesa: Bool) -> String? {
+    /// Una scheda della chat con più voci, ancora in attesa, che ha fra le azioni attive quella della voce: nel dossier
+    /// la voce mostra il rimando alla chat (la scheda è una sola: confermarla esegue anche le altre voci).
+    func schedaSussurroInChat(_ v: VoceSussurro) -> String? {
+        Self.cercaSchedaSussurro(v, in: messaggiSussurro(v), soloInAttesa: true, soloDellaVoce: false)
+    }
+
+    /// Apre Vera sulla conversazione che tiene la scheda (quella del cliente o il portafoglio).
+    func apriSchedaSussurroInChat(_ id: String) {
+        guard !inModoCliente else { return }
+        let nelPortafoglio = conversazione(VeraPortafoglio.chiave).contains { $0.id == id }
+        if nelPortafoglio {
+            veraPortafoglio = true
+        } else if let c = conversazioniConMessaggio(id) {
+            clienteAttivoId = c
+            veraPortafoglio = false
+        }
+        if !aperta(.vera) { apri(.vera) }
+    }
+
+    /// Il cliente della conversazione che contiene il messaggio (fra quelle dei clienti).
+    private func conversazioniConMessaggio(_ id: String) -> String? {
+        dati.clienti.first { c in conversazione(c.id).contains { $0.id == id } }?.id
+    }
+
+    /// La ricerca pura (il più recente). La voce si riconosce dalla chiave e dal cliente negli argomenti delle azioni
+    /// («sussurro», «cliente»), quando ci sono, o dalla richiesta scritta da `schedaSussurro` (schede vecchie).
+    /// `soloDellaVoce`: tutte le azioni della scheda sono della voce (si mostra sotto la voce); altrimenti basta
+    /// un'azione attiva della voce (una scheda della chat con più voci: una voce tolta con ✕ non si lega più).
+    static func cercaSchedaSussurro(_ v: VoceSussurro, in messaggi: [MessaggioVera], soloInAttesa: Bool, soloDellaVoce: Bool = true) -> String? {
         let richiesta = testoRichiestaSussurro(v)
-        return messaggi.last { m in
-            guard let s = m.conferma, s.origine == .sussurro else { return false }
-            if soloInAttesa, s.stato != .daConfermare { return false }
-            let chiavi = s.azioni.compactMap { $0.argomenti["sussurro"] }
-            return chiavi.isEmpty ? s.richiesta == richiesta : chiavi.contains(v.chiave)
-        }?.id
+        let chiaveSussurro = StatoShell.argomentoSussurro
+        func dellaVoce(_ a: AzioneConferma) -> Bool {
+            a.argomenti[chiaveSussurro] == v.chiave && (a.argomenti["cliente"].map { $0 == v.clienteId } ?? true)
+        }
+        var trovato: MessaggioVera?
+        for m in messaggi {
+            guard let s = m.conferma, s.origine == .sussurro else { continue }
+            if soloInAttesa, s.stato != .daConfermare { continue }
+            let conChiave = s.azioni.contains { $0.argomenti[chiaveSussurro] != nil }
+            let vale: Bool
+            if !conChiave {
+                vale = soloDellaVoce && s.richiesta == richiesta
+            } else if soloDellaVoce {
+                // Contano le azioni attive: una riga tolta con ✕ non lega (né slega) la scheda alla voce
+                vale = !s.attive.isEmpty && s.attive.allSatisfy(dellaVoce)
+            } else {
+                vale = !s.attive.allSatisfy(dellaVoce) && s.attive.contains(where: dellaVoce)
+            }
+            if vale, trovato.map({ m.data >= $0.data }) ?? true { trovato = m }
+        }
+        return trovato?.id
     }
 }
 
@@ -240,5 +305,39 @@ enum ProvaSchedaSussurroAperta {
         _ = s.confermaSchedaVera(messaggio: mid)
         controlla(s.schedaSussurroAperta(v) == nil && s.ultimaSchedaSussurro(v) == mid && s.dati.attivita.count == attivita + 1,
                   "Scheda del sussurro: confermata, la scheda non è più in attesa e l'attività è una sola")
+        schedaDellaChat(controlla)
+    }
+
+    /// Una scheda della chat con più voci («Cosa devo sapere su Sofia?»): non si lega a nessuna voce del dossier (niente
+    /// copie sotto ogni voce), la voce mostra il rimando; una voce tolta con ✕ non si lega più. Chiesta dal portafoglio,
+    /// la scheda si ritrova lo stesso.
+    private static func schedaDellaChat(_ controlla: (Bool, String) -> Void) {
+        let oggi = Date()
+        for chiave in ["sofia", VeraPortafoglio.chiave] {
+            let s = StatoShell(persistente: false)
+            s.rispostePreparate = true
+            guard let i = s.dati.clienti.firstIndex(where: { $0.id == "sofia" }) else { return }
+            s.dati.clienti[i].consensi = Consensi()
+            if chiave == "sofia" { s.clienteAttivoId = "sofia"; s.veraPortafoglio = false } else { s.veraPortafoglio = true }
+            let voci = s.vociSussurro(dati: s.dati.istantanea, clienteId: "sofia", oggi: oggi).filter { $0.azione.cambia }
+            _ = s.chiediSussurro("Cosa devo sapere su Sofia?", chiave: chiave)
+            guard let m = s.conversazione(chiave).last(where: { $0.conferma?.origine == .sussurro }), let scheda = m.conferma else {
+                controlla(voci.isEmpty, "Scheda del sussurro (\(chiave)): la domanda in chat prepara la scheda delle voci")
+                continue
+            }
+            let legate = voci.filter { v in scheda.azioni.contains { $0.argomenti[StatoShell.argomentoSussurro] == v.chiave } }
+            if scheda.azioni.count > 1 {
+                controlla(legate.allSatisfy { s.schedaSussurroAperta($0) == nil && s.schedaSussurroInChat($0) == m.id },
+                          "Scheda del sussurro (\(chiave)): la scheda della chat con più voci non si copia sotto ogni voce, la voce rimanda alla chat")
+                // Una voce tolta con ✕ non si lega più alla scheda
+                if let tolta = legate.first, let k = scheda.azioni.firstIndex(where: { $0.argomenti[StatoShell.argomentoSussurro] == tolta.chiave }) {
+                    s.aggiornaSchedaVera(messaggio: m.id) { $0.azioni[k].tolta = true }
+                    controlla(s.schedaSussurroInChat(tolta) == nil && s.schedaSussurroAperta(tolta) == nil,
+                              "Scheda del sussurro (\(chiave)): la voce tolta con ✕ non è più legata alla scheda della chat")
+                }
+            } else if let v = legate.first {
+                controlla(s.schedaSussurroAperta(v) == m.id, "Scheda del sussurro (\(chiave)): la scheda della chat con la sola voce si ritrova nel dossier")
+            }
+        }
     }
 }

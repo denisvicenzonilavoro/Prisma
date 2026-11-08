@@ -464,6 +464,9 @@ enum SincroniaOvunque {
         nuovo.partiteRischio = locale.partiteRischio
         // Vera, fase 4: ciò che l'istantanea non porta resta quello del dispositivo
         nuovo.routine.esiti = locale.routine.esiti
+        // Le routine sono del Mac (non passano dal giornale), ma un lancio fatto qui non torna «dovuto» per
+        // un'istantanea scritta prima: di ogni routine si tiene l'ultimo lancio più recente dei due
+        nuovo.routine.routine = SpazioOvunque.unisciUltimiLanci(nuovo.routine.routine, locale.routine.routine)
         nuovo.tagliando = locale.tagliando
         nuovo.spiegazioniTreLivelli = locale.spiegazioniTreLivelli
         // I «Non ora» del sussurro non sono nel giornale: quelli del dispositivo si uniscono a quelli del Mac
@@ -500,6 +503,23 @@ enum SincroniaOvunque {
 }
 
 extension SpazioOvunque {
+    /// Le routine si salvano, si modificano e partono solo sul Mac: su un dispositivo con lo spazio acceso arrivano con
+    /// l'istantanea e una modifica fatta lì sparirebbe alla successiva (le routine non sono nel giornale).
+    static func routineSoloSulMac(_ d: DatiPrisma) -> Bool {
+        d.impostazioni.ovunque.acceso && d.impostazioni.ovunque.ruolo == .dispositivo
+    }
+
+    /// Le routine del Mac con, per ognuna, l'ultimo lancio più recente fra Mac e dispositivo.
+    static func unisciUltimiLanci(_ mac: [RoutineVera], _ locali: [RoutineVera]) -> [RoutineVera] {
+        let lanci = Dictionary(locali.compactMap { r in r.ultimoLancio.map { (r.id, $0) } }, uniquingKeysWith: { max($0, $1) })
+        return mac.map { r in
+            guard let qui = lanci[r.id], qui > (r.ultimoLancio ?? .distantPast) else { return r }
+            var n = r
+            n.ultimoLancio = qui
+            return n
+        }
+    }
+
     /// Le voci chiuse del sussurro di due archivi insieme: una per cliente e chiave, con la chiusura più recente, solo
     /// per i clienti che ci sono ancora. Una voce riaperta sul Mac resta chiusa sul dispositivo fino alla scadenza
     /// (al massimo `RegoleSussurro.giorniChiusura` giorni): è solo una preferenza di vista.

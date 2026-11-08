@@ -45,7 +45,7 @@ extension StatoShell {
 
     /// Il cliente di un ricordo: quello nominato, altrimenti quello della conversazione (nel portafoglio: su di te).
     func clienteDelRicordo(_ testo: String, chiave: String) -> String? {
-        let noti = dati.clienti.map { ClienteNoto(id: $0.id, nome: $0.nome) }
+        let noti = clientiAttivi.map { ClienteNoto(id: $0.id, nome: $0.nome) }
         let nominati = InterpreteComandi.clientiNominati(testo.lowercased(), noti)
         if nominati.count == 1 { return nominati[0].id }
         if chiave == VeraPortafoglio.chiave { return nil }

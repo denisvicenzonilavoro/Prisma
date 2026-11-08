@@ -519,6 +519,8 @@ extension DatiPrisma {
         b.tagliando = a.tagliando
         b.impostazioni.tagliando = a.impostazioni.tagliando
         a.spiegazioniTreLivelli = []; b.spiegazioniTreLivelli = []
+        // Le voci chiuse del sussurro sono una preferenza di vista: niente cache dei calcoli
+        a.sussurriChiusi = []; b.sussurriChiusi = []
         b.impostazioni.stileVera = a.impostazioni.stileVera
         return a == b
     }

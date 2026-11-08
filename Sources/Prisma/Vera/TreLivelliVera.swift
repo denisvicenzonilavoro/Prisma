@@ -217,8 +217,20 @@ enum TreLivelliVera {
         guard argomento(t) != nil else { return false }
         // Le azioni (agenda, messaggi) e le domande sui documenti vanno ai loro motori
         if DateItaliane.cerca(#"^(?:fissa|sposta|blocca|ricordami|manda|scrivi a|invia|cancella)\b|\b(?:esclusion\w*|franchigi\w*|carenz\w*)\b"#, t) != nil { return false }
-        return DateItaliane.cerca(#"\btre livelli\b|\bin (?:una|1) pagina\b|\bperch[eé]\b|\bspieg\w*|\bconvien\w*|\bparole semplici\b|\bper il cliente\b|\bda (?:stampare|consegnare)\b"#, t) != nil
+        // «E se Marco versasse 100 € in più nel fondo pensione, conviene?»: è uno scenario, le cifre le ricalcola Prisma
+        // (chiediScenarioVera). Resta dei tre livelli solo se il formato è chiesto apertamente («in tre livelli»…).
+        if ScenariVera.sembraScenario(testo), DateItaliane.cerca(formatoEsplicito, t) == nil { return false }
+        return DateItaliane.cerca(formatoEsplicito + #"|\bperch[eé]\b|\bspieg\w*|\bconvien\w*"#, t) != nil
     }
+
+    /// Le parole che chiedono apertamente la spiegazione a tre livelli (o una delle sue versioni).
+    static let formatoEsplicito = #"\btre livelli\b|\bin (?:una|1) pagina\b|\bparole semplici\b|\bper il cliente\b|\bda (?:stampare|consegnare)\b"#
+
+    /// Frasi che sembrano dei tre livelli ma sono scenari «E se…»: devono restare a chiediScenarioVera (per la prova).
+    static let scenariNonTreLivelli = [
+        "E se Marco versasse 100 € in più al mese nel fondo pensione, conviene?",
+        "Se Sofia mettesse la liquidità nel PIP, perché le converrebbe?",
+    ]
 
     /// Il livello che il consulente chiede per primo (quello che la scheda apre); di base il tecnico.
     static func livelloChiesto(_ testo: String) -> LivelloTreLivelli {

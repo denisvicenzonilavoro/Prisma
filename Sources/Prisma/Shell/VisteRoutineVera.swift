@@ -71,8 +71,16 @@ private struct SpuntaRoutine: View {
 struct RoutineEsitoVista: View {
     @Environment(StatoShell.self) var stato
     let esito: EsitoRoutine
-    /// Il messaggio di Vera che lo contiene (nil nella pagina): serve ai pulsanti per sapere se la scheda aspetta.
+    /// Il messaggio di Vera che lo contiene (nella pagina lo cerca `messaggioConEsito`): serve ai pulsanti per sapere
+    /// se la scheda aspetta.
     var messaggio: String? = nil
+    /// Nella pagina, quando il messaggio non si trova più: se il lancio aveva preparato una bozza, non si sa se è stata
+    /// confermata, quindi i pulsanti verso Messaggi restano spenti invece di aprire Messaggi forse vuota.
+    var messaggioPerso = false
+
+    private var bozzaSenzaScheda: Bool {
+        messaggioPerso && esito.azioni.contains { $0.strumento == RegistroStrumenti.messaggiPrepara }
+    }
     /// Solo per le risposte appena arrivate: i passi si spuntano uno alla volta.
     var anima = false
 
@@ -119,6 +127,8 @@ struct RoutineEsitoVista: View {
         .accessibilityElement(children: .combine)
     }
 
+    static let avvisoBozzaPersa = "La bozza si conferma nella chat di Vera, e quella conversazione non c'è più: rilancia la routine"
+
     private var risultato: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
@@ -136,12 +146,17 @@ struct RoutineEsitoVista: View {
             if !esito.risultato.pulsanti.isEmpty {
                 HStack(spacing: 8) {
                     ForEach(Array(esito.risultato.pulsanti.enumerated()), id: \.offset) { i, p in
+                        let spento = bozzaSenzaScheda && p.app == .messaggi
                         if i == 0 {
                             Button(p.titolo) { stato.apriPulsanteRoutine(p, messaggio: messaggio) }
                                 .buttonStyle(.applePrimario).fixedSize()
+                                .disabled(spento)
+                                .help(spento ? Self.avvisoBozzaPersa : "")
                         } else {
                             Button(p.titolo) { stato.apriPulsanteRoutine(p, messaggio: messaggio) }
                                 .buttonStyle(.apple).fixedSize()
+                                .disabled(spento)
+                                .help(spento ? Self.avvisoBozzaPersa : "")
                         }
                     }
                 }
@@ -317,7 +332,8 @@ struct RoutineVeraPagina: View {
                     if let e = stato.ultimoEsitoRoutine(r.id) {
                         Text("Ultimo lancio: \(Formati.dataEstesa.string(from: e.data)), \(Formati.ora.string(from: e.data)) · «\(e.richiesta)»")
                             .carattereApple(F.nota).foregroundColor(F.coloreDettaglio)
-                        RoutineEsitoVista(esito: e)
+                        let m = stato.messaggioConEsito(e.id)
+                        RoutineEsitoVista(esito: e, messaggio: m?.id, messaggioPerso: m == nil)
                     } else {
                         passi(r)
                     }

@@ -240,7 +240,9 @@ extension StatoShell {
             guard let c = arg["cliente"], let evento = arg["evento"] else { continue }
             let occasione = "\(TipoOccasioneMessaggio.avvisoMercato.rawValue)-\(c)-\(evento)"
             if dati.messaggi.contains(where: { $0.occasioneId == occasione && $0.stato == .bozza }) {
-                scheda.azioni[i].avviso = "In Messaggi c'è già una bozza per questo evento: togli la riga con ✕ se non la vuoi doppia."
+                // Nasce già tolta: «Fallo tu» rifiuta comunque la bozza doppia
+                scheda.azioni[i].avviso = "In Messaggi c'è già una bozza per questo evento: questa riga non ne crea un'altra."
+                scheda.azioni[i].tolta = true
             }
         }
         let conProfilo = !dati.impostazioni.stileVera.vuoto
@@ -279,21 +281,32 @@ extension StatoShell {
 
     /// «Prepara N messaggi» dalla scena: l'elenco e le bozze vanno nella conversazione del portafoglio di Vera, dove
     /// c'è la scheda «Conferma».
-    /// Se l'evento ha già un elenco nel portafoglio non lo rifà: con le bozze pronte lo dice, senza le prepara su quello.
+    /// Se l'evento ha già un elenco nel portafoglio: con le bozze pronte lo dice; lo riusa solo se ha gli stessi
+    /// clienti e le stesse cifre dell'esito appena mostrato (l'id dell'evento di una serie resta uguale per settimane),
+    /// altrimenti aggiunge un elenco nuovo con l'esito di adesso e prepara le bozze su quello.
     func preparaBozzeMercatoDaScena(_ esito: EsitoMercatoVera) {
         guard !inModoCliente, !solaLettura, !esito.toccati.isEmpty else { return }
         scenaMercatoClientiVera = nil
         veraPortafoglio = true
         if let gia = elencoMercatoClienti(evento: esito.evento.id) {
-            if !aperta(.vera) { apri(.vera) }
             if bozzeMercatoPronte(gia) {
+                if !aperta(.vera) { apri(.vera) }
                 return mostraAvviso("Le bozze per questo evento sono già pronte nella conversazione.")
             }
-            return preparaBozzeMercatoClienti(messaggio: gia.id)
+            if let v = gia.mercatoClienti, StatoShell.stessoEsitoMercato(v, esito) {
+                if !aperta(.vera) { apri(.vera) }
+                return preparaBozzeMercatoClienti(messaggio: gia.id)
+            }
         }
         let m = rispondiMercatoClienti(esito, chiave: VeraPortafoglio.chiave)
         apri(.vera)
         preparaBozzeMercatoClienti(messaggio: m.id)
+    }
+
+    /// Due esiti con gli stessi clienti toccati e le stesse cifre (il momento del calcolo non conta). Un elenco senza
+    /// clienti toccati vale come assente.
+    nonisolated static func stessoEsitoMercato(_ a: EsitoMercatoVera, _ b: EsitoMercatoVera) -> Bool {
+        !a.toccati.isEmpty && a.toccati == b.toccati && a.oltre == b.oltre && a.evento == b.evento && a.sintesi == b.sintesi
     }
 
     /// Gli eventi della scena: prima quelli dei dati di Mercato, poi i tre esempi del template (tassi giù, inflazione su,

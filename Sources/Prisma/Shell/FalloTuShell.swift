@@ -147,8 +147,11 @@ extension StatoShell {
 
     /// «Sì», «conferma», «procedi» oppure «no», «lascia stare» subito dopo una scheda: la risposta va alla scheda.
     /// true se la frase era per la scheda.
+    /// In modalità cliente una scheda nascosta (il sussurro, il mercato, una routine o un piano su altri clienti) non
+    /// prende il «sì» né il «no» detto davanti al cliente: resta in attesa per il consulente.
     func rispostaAllaSchedaVera(_ testo: String, chiave: String) -> Bool {
-        guard let m = conversazione(chiave).last, m.autore == .vera, let s = m.conferma, s.stato == .daConfermare else { return false }
+        guard let m = conversazione(chiave).last, m.autore == .vera, let s = m.conferma, s.stato == .daConfermare,
+              schedaVisibileSulloSchermo(m) else { return false }
         let t = testo.lowercased().trimmingCharacters(in: .whitespacesAndNewlines.union(.punctuationCharacters))
         if DateItaliane.cerca(#"^(?:s[iì]|conferma|confermo|procedi|vai|fallo|fai pure|va bene(?: fallo)?|ok(?: fallo| procedi| conferma)?|d'accordo)$"#, t) != nil {
             aggiungiMessaggio(MessaggioVera(autore: .utente, testo: testo), cliente: chiave)
@@ -165,6 +168,22 @@ extension StatoShell {
             return true
         }
         return false
+    }
+
+    /// La scheda «Conferma» di un messaggio si mostra (e si conferma) sullo schermo? In modalità cliente no se è un
+    /// appunto del consulente (sussurro), se nasce dal mercato (bozze per altri clienti), se l'esito della routine o il
+    /// piano a passi parla di un altro cliente, o se una sua azione riguarda un cliente diverso da quello davanti a te.
+    func schedaVisibileSulloSchermo(_ m: MessaggioVera) -> Bool {
+        guard inModoCliente, let s = m.conferma else { return true }
+        if Self.riservatoAlConsulente(m) || s.origine == .mercato { return false }
+        // Il tagliando dei dati e lo spostamento in blocco riguardano tutto il portafoglio
+        if m.titolo == Self.titoloTagliando || m.agendaSpostamento != nil { return false }
+        if let e = m.esitoRoutine, !routineVisibile(e) { return false }
+        if let p = m.pianoPassi, !visibileAlCliente(p.richiesta.clienteId) { return false }
+        return !s.azioni.contains { a in
+            guard let id = a.argomenti["cliente"], !id.isEmpty else { return false }
+            return id != clienteAttivoId
+        }
     }
 
     // MARK: - La scheda
@@ -279,6 +298,8 @@ extension StatoShell {
             // Annullata in parte: la scheda resta eseguita, con le righe annullate segnate
             if tutte { s.stato = .annullata }
         }
+        // Il sussurro: le voci delle azioni annullate tornano nella vista (solo quelle, con la scheda già aggiornata)
+        if s.origine == .sussurro, let aggiornata = messaggioVera(messaggio)?.conferma { riapriSussurriAnnullati(aggiornata) }
         mostraAvviso(tutte ? "Annullato" : "Annullato in parte: alcune cose erano già cambiate")
     }
 
@@ -615,5 +636,52 @@ extension Cliente {
         case "indirizzo": return indirizzo
         default: return professione
         }
+    }
+}
+
+// MARK: - Prova
+
+extension StatoShell {
+    /// In modalità cliente la scheda «Conferma» nascosta (sussurro, azioni su un altro cliente) non si vede e non prende
+    /// il «sì» detto davanti al cliente: resta in attesa per il consulente; fuori dalla modalità cliente sì.
+    static func provaSchedaNascostaInModoCliente(_ controlla: (Bool, String) -> Void) {
+        let s = StatoShell(persistente: false)
+        s.rispostePreparate = true
+        s.veraPortafoglio = false
+        guard let davanti = s.dati.clienti.first?.id, let altro = s.dati.clienti.first(where: { $0.id != davanti })?.id else {
+            return controlla(false, "Scheda nascosta: servono due clienti nei dati di prova")
+        }
+        s.clienteAttivoId = davanti
+        let attivita = s.dati.attivita.count
+        func scheda(_ cliente: String, origine: SchedaConfermaVera.Origine, titolo: String?) -> String {
+            var m = MessaggioVera(autore: .vera, testo: "Una scheda da confermare.", titolo: titolo, motore: motoreAzioni)
+            let azione = AzioneConferma(strumento: RegistroStrumenti.attivitaNuova, app: .attivita, titolo: "Attività", dettaglio: "Da fare",
+                                        argomenti: ["cliente": cliente, "titolo": "Richiamare"])
+            m.conferma = SchedaConfermaVera(richiesta: "Prova", azioni: [azione], origine: origine)
+            s.aggiungiMessaggio(m, cliente: davanti, parla: false)
+            return m.id
+        }
+        // Il sussurro sul cliente davanti a te
+        let sussurro = scheda(davanti, origine: .sussurro, titolo: titoloSussurro)
+        s.entraModoCliente(avviso: false)
+        guard s.inModoCliente else { return controlla(false, "Scheda nascosta: la modalità cliente non si è accesa") }
+        let ultimo = s.conversazione(davanti).last
+        controlla(ultimo.map { !s.schedaVisibileSulloSchermo($0) } == true, "Scheda nascosta: in modalità cliente la scheda del sussurro non si vede")
+        controlla(!s.rispostaAllaSchedaVera("sì", chiave: davanti) && s.conversazione(davanti).last?.conferma?.stato == .daConfermare
+                  && s.dati.attivita.count == attivita,
+                  "Scheda nascosta: in modalità cliente un «sì» non conferma la scheda del sussurro")
+        controlla(!s.rispostaAllaSchedaVera("no", chiave: davanti) && s.conversazione(davanti).last?.conferma?.stato == .daConfermare,
+                  "Scheda nascosta: in modalità cliente un «no» non lascia stare la scheda del sussurro")
+        s.esciModoCliente()
+        // Una scheda di regole con un'azione su un altro cliente
+        _ = scheda(altro, origine: .regole, titolo: nil)
+        s.entraModoCliente(avviso: false)
+        controlla(s.conversazione(davanti).last.map { !s.schedaVisibileSulloSchermo($0) } == true
+                  && !s.rispostaAllaSchedaVera("sì", chiave: davanti),
+                  "Scheda nascosta: in modalità cliente una scheda con azioni su un altro cliente non si vede e non si conferma")
+        s.esciModoCliente()
+        controlla(s.conversazione(davanti).last.map { s.schedaVisibileSulloSchermo($0) } == true
+                  && s.conversazione(davanti).contains { $0.id == sussurro && s.schedaVisibileSulloSchermo($0) },
+                  "Scheda nascosta: fuori dalla modalità cliente le schede si vedono")
     }
 }

@@ -33,6 +33,56 @@ extension ProvaBackup {
         if let e = try verificaPassiVera(originale: originale, estratto: estratto) { return e }
         if let e = try verificaMessaggiFaseQuattro(originale: originale, estratto: estratto) { return e }
         if let e = try verificaSezioniNuoveFaseQuattro(originale: originale) { return e }
+        if let e = verificaAccogliFaseQuattro(originale: originale) { return e }
+        return nil
+    }
+
+    // MARK: - Prisma ovunque: ciò che il dispositivo tiene quando arriva un'istantanea
+
+    /// `SincroniaOvunque.accogli` (anche da `accogliGiroOvunque`): i lanci delle routine, il tagliando e le spiegazioni
+    /// in tre livelli restano quelli del dispositivo (l'istantanea non li porta); le voci chiuse del sussurro si uniscono
+    /// con `SpazioOvunque.unisciSussurriChiusi` (una per cliente e chiave, la chiusura più recente, solo i clienti che ci
+    /// sono, in ordine di chiusura). Senza cartella e senza chiave: solo l'unione dei dati.
+    static func verificaAccogliFaseQuattro(originale: DatiPrisma) -> String? {
+        guard originale.clienti.count > 1, !originale.routine.esiti.isEmpty, originale.tagliando != StatoTagliando(),
+              !originale.spiegazioniTreLivelli.isEmpty else {
+            return "l'archivio di prova non ha i dati della fase 4 per la prova di Prisma ovunque"
+        }
+        let a = originale.clienti[0].id, b = originale.clienti[1].id
+        let t = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        // L'unione delle voci chiuse, da sola
+        let mac = [SussurroChiuso(clienteId: a, chiave: "privacy", chiusoIl: t),
+                   SussurroChiuso(clienteId: b, chiave: "riesame", chiusoIl: t.addingTimeInterval(10))]
+        let tel = [SussurroChiuso(clienteId: a, chiave: "privacy", chiusoIl: t.addingTimeInterval(500)),
+                   SussurroChiuso(clienteId: b, chiave: "riesame", chiusoIl: t.addingTimeInterval(5)),
+                   SussurroChiuso(clienteId: "cliente-che-non-c-e", chiave: "privacy", chiusoIl: t.addingTimeInterval(20))]
+        let attese = [SussurroChiuso(clienteId: b, chiave: "riesame", chiusoIl: t.addingTimeInterval(10)),
+                      SussurroChiuso(clienteId: a, chiave: "privacy", chiusoIl: t.addingTimeInterval(500))]
+        guard SpazioOvunque.unisciSussurriChiusi(mac, tel, clienti: originale.clienti) == attese,
+              SpazioOvunque.unisciSussurriChiusi(tel, mac, clienti: originale.clienti) == attese else {
+            return "le voci chiuse del sussurro di Mac e dispositivo non si uniscono (la più recente per cliente e chiave, solo i clienti presenti, in ordine)"
+        }
+        // L'istantanea del Mac arriva sul dispositivo
+        var datiMac = originale
+        datiMac.sussurriChiusi = mac
+        let ist = IstantaneaOvunque(generazione: 7, mac: "mac-prova-fase4", nomeMac: "Mac di prova", scrittaIl: t, vistoFinoA: [:],
+                                    lamport: 3, modificheAmmesse: true, dati: SpazioOvunque.datiIstantanea(datiMac))
+        var locale = originale
+        locale.giornaleOvunque = []
+        locale.sussurriChiusi = tel
+        let accolta = SincroniaOvunque.accogli(ist, in: locale).dati
+        guard accolta.routine.esiti == locale.routine.esiti else {
+            return "con un'istantanea nuova il dispositivo perde i lanci delle routine fatti lì"
+        }
+        guard accolta.tagliando == locale.tagliando else {
+            return "con un'istantanea nuova il dispositivo perde il suo tagliando dei dati"
+        }
+        guard accolta.spiegazioniTreLivelli == locale.spiegazioniTreLivelli else {
+            return "con un'istantanea nuova il dispositivo perde le sue spiegazioni in tre livelli"
+        }
+        guard accolta.sussurriChiusi == attese else {
+            return "con un'istantanea nuova un «Non ora» del sussurro fatto sul dispositivo si perde o torna una voce di un cliente che non c'è"
+        }
         return nil
     }
 

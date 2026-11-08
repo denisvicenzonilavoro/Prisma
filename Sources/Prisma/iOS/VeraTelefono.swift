@@ -14,7 +14,8 @@ struct VeraTelefono: View {
     private typealias C = Tema.Apple.Vera.Campo
 
     private var chiave: String { stato.veraPortafoglio ? VeraPortafoglio.chiave : stato.clienteAttivoId }
-    private var messaggi: [MessaggioVera] { stato.conversazione(chiave) }
+    /// Come sul Mac: in modalità cliente senza gli appunti del consulente (il sussurro)
+    private var messaggi: [MessaggioVera] { stato.messaggiPerLoSchermo(stato.conversazione(chiave)) }
 
     var body: some View {
         let _ = ContaCorpi.segna()

@@ -424,14 +424,24 @@ extension StatoShell {
         let oggi = Date()
         let tono = StileVera.tono(profilo, cliente: c, oggi: oggi, richiesto: richiesto)
         let firma = StileVera.firma(profilo) ?? firmaMessaggio(o.canale, tono: tono)
-        return await ScritturaStileVera.scrivi(o, cliente: c, tono: tono, canale: canale, firma: firma, profilo: profilo,
-                                               clienteNuovo: clienteNuovoStile(c.id), oggi: oggi, motore: motore, vera: vera, aggiorna: aggiorna)
+        var scritto = await ScritturaStileVera.scrivi(o, cliente: c, tono: tono, canale: canale, firma: firma, profilo: profilo,
+                                                      clienteNuovo: clienteNuovoStile(c.id), oggi: oggi, motore: motore, vera: vera, aggiorna: aggiorna)
+        // Il messaggio salvato porta il tono con cui è scritto davvero (il profilo può aver cambiato quello chiesto)
+        if tono != richiesto { scritto.tono = tono }
+        return scritto
     }
 
     /// «Usa questa bozza»: la scheda «Conferma» con la bozza da preparare in Messaggi (mai un invio).
     @discardableResult
     func proponiBozzaStile(_ s: SchedaStileVera, chiave: String? = nil) -> MessaggioVera? {
-        guard let id = s.clienteId, let c = cliente(id), let testo = s.inStile, !testo.isEmpty, !s.grave else {
+        // La scheda della chat è quella di quando è stata scritta: il profilo può essere cambiato da allora (il Lei al posto
+        // del tu, una formula vietata). Si rifanno ritocchi e verifica con il profilo di adesso, e vale quel risultato.
+        guard let id = s.clienteId, let c = cliente(id), let scritta = s.inStile, !scritta.isEmpty else {
+            mostraAvviso("Sistema prima la bozza: non segue ancora il tuo stile")
+            return nil
+        }
+        let adesso = schedaBozzaStile(scritta, clienteId: c.id)
+        guard !adesso.grave, let testo = adesso.inStile, !testo.isEmpty else {
             mostraAvviso("Sistema prima la bozza: non segue ancora il tuo stile")
             return nil
         }
@@ -444,7 +454,9 @@ extension StatoShell {
         let k = chiave ?? (veraPortafoglio ? VeraPortafoglio.chiave : c.id)
         var m = MessaggioVera(autore: .vera, testo: "Ti preparo la bozza nel tuo stile: la trovi in Messaggi solo dopo «Conferma», e la spedisci tu.",
                               motore: Self.motoreAzioni)
-        m.conferma = SchedaConfermaVera(richiesta: "Usa la bozza nel mio stile per \(c.nome)", azioni: [a], origine: .regole)
+        // Come tutte le bozze `messaggi_prepara`: passa da `inStile` (una violazione rimasta diventa l'avviso della riga)
+        let scheda = SchedaConfermaVera(richiesta: "Usa la bozza nel mio stile per \(c.nome)", azioni: [a], origine: .regole)
+        m.conferma = inStile(scheda) ?? scheda
         aggiungiMessaggio(m, cliente: k)
         if chiave == nil {
             if !inModoCliente, !veraPortafoglio { clienteAttivoId = c.id }
@@ -590,7 +602,7 @@ extension StatoShell {
         compitoVera = Task { @MainActor in
             var finale = codice
             if let r = try? await motore.scrivi(messaggi, opzioni: o).testo.trimmingCharacters(in: .whitespacesAndNewlines), !r.isEmpty,
-               CommentoVera.numeriConservati(bozza: testo, testo: r), DateItaliane.cerca(MessaggiVera.promesse, r.lowercased()) == nil {
+               Self.fattiConservatiStile(bozza: testo, riscritto: r, cliente: c), DateItaliane.cerca(MessaggiVera.promesse, r.lowercased()) == nil {
                 let firma = StileVera.firma(p)
                 var s = self.schedaBozzaStile(MessaggiVera.pulisci(r, firma: firma), clienteId: clienteId, oggi: oggi)
                 // La versione di Qwen vale solo se non rompe più regole gravi di quella del codice
@@ -605,6 +617,35 @@ extension StatoShell {
             self.veraInCorso = false
             self.compitoVera = nil
         }
+    }
+
+    /// I mesi, i giorni della settimana e i giorni vicini che una riscrittura non deve perdere.
+    private static let paroleDateStile = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto",
+                                          "settembre", "ottobre", "novembre", "dicembre", "lunedi", "martedi", "mercoledi",
+                                          "giovedi", "venerdi", "sabato", "domenica", "oggi", "domani", "dopodomani", "stasera"]
+
+    /// La riscrittura di Qwen tiene gli stessi fatti della bozza (stile-riscrivi.md: «non aggiungere e non togliere»):
+    /// le stesse cifre nei due sensi (niente cifre nuove, nessuna ora, data o importo perso), gli stessi mesi e giorni
+    /// della settimana e il nome o il cognome del cliente, se la bozza lo diceva. `numeriConservati` resta com'è (per gli
+    /// altri chiamanti è un controllo di sottoinsieme sui fatti ammessi).
+    static func fattiConservatiStile(bozza: String, riscritto r: String, cliente: Cliente?) -> Bool {
+        guard CommentoVera.numeriConservati(bozza: bozza, testo: r),
+              CommentoVera.cifre(bozza).isSubset(of: CommentoVera.cifre(r)) else { return false }
+        let piana = { (s: String) in
+            s.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "it_IT")).replacingOccurrences(of: "’", with: "'")
+        }
+        let b = piana(bozza), t = piana(r)
+        for p in paroleDateStile {
+            let regola = "\\b\(p)\\b"
+            if DateItaliane.cerca(regola, b) != nil, DateItaliane.cerca(regola, t) == nil { return false }
+        }
+        if let cliente {
+            let (nome, cognome) = StileVera.nomeECognome(cliente)
+            let nomi = [nome, cognome].map { piana($0).trimmingCharacters(in: .whitespaces) }.filter { $0.count >= 2 }
+            // Il saluto può passare da «Ciao Giulia» a «Gentile Sig.ra Rossi»: basta uno dei due
+            if nomi.contains(where: { b.contains($0) }), !nomi.contains(where: { t.contains($0) }) { return false }
+        }
+        return true
     }
 
     /// Una richiesta di cambiare il profilo, già pronta per la scheda; nil se la frase non è per lo stile.
@@ -653,7 +694,24 @@ extension StatoShell {
             guard trovati.count == 1, let c = cliente(trovati[0].id) else {
                 return .domanda(trovati.isEmpty ? "A quale cliente dai del \(a.nome)?" : "Quale di questi clienti? " + trovati.map(\.nome).joined(separator: ", "))
             }
-            return .azione(azioneStile(.cortesia, titolo: "Del \(a.nome) a \(c.nome)", argomenti: ["allocuzione": a.rawValue, "cliente": c.id]))
+            // Solo l'eccezione per quel cliente. Se la regola «Tu o Lei» non c'è o è spenta, l'eccezione non varrebbe da
+            // sola: la scheda dice chiaramente che la regola nasce (del Lei agli altri) o si riaccende.
+            var argomenti = ["allocuzione": a.rawValue, "cliente": c.id]
+            var titolo = "Del \(a.nome) a \(c.nome)"
+            if let r = p.cortesia {
+                if !r.attiva {
+                    argomenti["riaccendi"] = "si"
+                    let altri = r.valore.sogliaEta.map { "del tu sotto i \($0) anni, del Lei agli altri" } ?? "agli altri del \(r.valore.predefinita.nome)"
+                    titolo += " · riaccendo la regola «\(ChiaveRegolaStile.cortesia.nome)» (\(altri))"
+                }
+            } else {
+                titolo += " · agli altri clienti del Lei"
+            }
+            var azione = azioneStile(.cortesia, titolo: titolo, argomenti: argomenti)
+            azione.dettaglio = p.cortesia == nil
+                ? "Nel tuo stile nasce la regola «\(ChiaveRegolaStile.cortesia.nome)», scritta da te: del \(a.nome) a \(c.nome), del Lei a tutti gli altri clienti"
+                : "Cambia solo l'eccezione per \(c.nome): il resto della regola resta com'è"
+            return .azione(azione)
         }
         // Le emoji: «niente emoji», «mai emoji con i clienti nuovi», «emoji quando servono»
         if s.count <= 80, DateItaliane.cerca("^(?:" + da + #")?(?:niente|mai|nessuna|zero|no)\s+emoji\b"#, s) != nil {
@@ -773,17 +831,67 @@ extension StatoShell {
             ScritturaStileVera.metti(kp, attiva: true, valore: elenco, in: &p)
         case .cortesia:
             guard let a = Allocuzione(rawValue: arg["allocuzione"] ?? "") else { return false }
-            var c = p.cortesia?.valore ?? CortesiaStile(predefinita: .lei)
             if let id = arg["cliente"], !id.isEmpty {
-                c.perCliente[id] = a
-            } else {
-                c.predefinita = a
-                if let s = arg["soglia"] {
-                    c.sogliaEta = Int(s).flatMap { (14...110).contains($0) ? $0 : nil }
+                // L'eccezione per un cliente: cambia solo `perCliente`, la regola tiene origine e stato. Si riaccende
+                // solo se la scheda lo diceva («riaccendi»); senza regola nasce scritta, del Lei agli altri (come dice
+                // la scheda).
+                if var r = p.cortesia {
+                    r.valore.perCliente[id] = a
+                    if arg["riaccendi"] == "si" { r.attiva = true }
+                    p.cortesia = r
+                } else {
+                    p.cortesia = .scritta(CortesiaStile(predefinita: .lei, perCliente: [id: a]))
                 }
+                return true
+            }
+            var c = p.cortesia?.valore ?? CortesiaStile(predefinita: .lei)
+            c.predefinita = a
+            if let s = arg["soglia"] {
+                c.sogliaEta = Int(s).flatMap { (14...110).contains($0) ? $0 : nil }
             }
             ScritturaStileVera.metti(\.cortesia, attiva: true, valore: c, in: &p)
         }
         return true
+    }
+}
+
+// MARK: - Prova delle correzioni del collegamento (da chiamare dentro `Prisma --prova-vera`)
+
+extension StatoShell {
+    /// L'eccezione «tu o Lei» per un cliente non cambia la regola degli altri; la riscrittura di Qwen non perde cifre,
+    /// date né il nome del cliente. Senza Qwen e senza disco.
+    static func provaCollegamentoStileCorrezioni(_ controlla: (Bool, String) -> Void) {
+        let giulia = "giulia-prova-stile"
+        // Regola accesa e imparata: cambia solo l'eccezione, origine e stato restano
+        var p = ProfiloStile()
+        p.cortesia = .imparata(CortesiaStile(predefinita: .tu), da: 12)
+        let ok = scriviRegolaStile(.cortesia, argomenti: ["regola": ChiaveRegolaStile.cortesia.rawValue, "allocuzione": Allocuzione.lei.rawValue,
+                                                          "cliente": giulia], in: &p)
+        controlla(ok && p.cortesia?.valore.perCliente[giulia] == .lei && p.cortesia?.valore.predefinita == .tu
+                  && p.cortesia?.origine == .imparata && p.cortesia?.attiva == true,
+                  "Stile nell'app: «dai del Lei a Giulia» cambia solo l'eccezione, la regola degli altri resta com'era")
+        // Regola spenta: resta spenta se la scheda non diceva di riaccenderla
+        var spenta = ProfiloStile()
+        spenta.cortesia = RegolaStile(valore: CortesiaStile(predefinita: .lei), origine: .imparata, messaggi: 5, attiva: false)
+        _ = scriviRegolaStile(.cortesia, argomenti: ["allocuzione": Allocuzione.tu.rawValue, "cliente": giulia], in: &spenta)
+        controlla(spenta.cortesia?.attiva == false && spenta.cortesia?.valore.perCliente[giulia] == .tu,
+                  "Stile nell'app: una regola «tu o Lei» spenta non si riaccende di nascosto")
+        _ = scriviRegolaStile(.cortesia, argomenti: ["allocuzione": Allocuzione.tu.rawValue, "cliente": giulia, "riaccendi": "si"], in: &spenta)
+        controlla(spenta.cortesia?.attiva == true && spenta.cortesia?.origine == .imparata,
+                  "Stile nell'app: si riaccende solo quando la scheda lo dice")
+        // La riscrittura: stesse cifre nei due sensi, stessi mesi e giorni, il nome del cliente
+        let c = Cliente(id: giulia, nome: "Giulia Rossi", iniziali: "GR", tinta: .rosa, tema: "", email: "", telefono: "",
+                        preferito: false, nota: "", creatoIl: Date(timeIntervalSinceReferenceDate: 800_000_000))
+        let bozza = "Ciao Giulia, ci vediamo giovedì 5 novembre alle ore 16:00 in studio."
+        controlla(fattiConservatiStile(bozza: bozza, riscritto: "Giulia, giovedì 5 novembre alle 16:00 ti aspetto in studio.", cliente: c),
+                  "Stile nell'app: una riscrittura con gli stessi fatti vale")
+        controlla(!fattiConservatiStile(bozza: bozza, riscritto: "Giulia, giovedì 5 novembre ti aspetto in studio.", cliente: c),
+                  "Stile nell'app: una riscrittura che perde l'ora non vale")
+        controlla(!fattiConservatiStile(bozza: bozza, riscritto: "Giulia, il 5 alle 16:00 ti aspetto in studio, giovedì.", cliente: c),
+                  "Stile nell'app: una riscrittura che perde il mese non vale")
+        controlla(!fattiConservatiStile(bozza: bozza, riscritto: "Ci vediamo giovedì 5 novembre alle 16:00 in studio.", cliente: c),
+                  "Stile nell'app: una riscrittura che perde il nome del cliente non vale")
+        controlla(fattiConservatiStile(bozza: bozza, riscritto: "Gentile Sig.ra Rossi, la aspetto giovedì 5 novembre alle 16:00 in studio.", cliente: c),
+                  "Stile nell'app: il cognome al posto del nome va bene (il saluto cambia con il Lei)")
     }
 }

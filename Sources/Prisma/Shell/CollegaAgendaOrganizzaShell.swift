@@ -48,15 +48,21 @@ extension StatoShell {
 
     /// «Trovami un'ora per il riesame di Federico entro giovedì, attaccata a un altro incontro in studio»,
     /// «Libera giovedì, sposta tutto a venerdì». true se la frase era per questa funzione.
-    func chiediAgendaOrganizza(_ testo: String, chiave: String, oggi: Date = Date()) -> Bool {
+    func chiediAgendaOrganizza(_ testo: String, chiave arrivo: String, oggi: Date = Date()) -> Bool {
         guard let intento = AgendaOrganizzaVera.riconosce(testo) else { return false }
-        aggiungiMessaggio(MessaggioVera(autore: .utente, testo: testo), cliente: chiave)
-        domandaVera = ""
         if intento == .spostaBlocco, inModoCliente {
+            aggiungiMessaggio(MessaggioVera(autore: .utente, testo: testo), cliente: arrivo)
+            domandaVera = ""
             rispostaAgendaOrganizza("In modalità cliente non tocco l'agenda di tutti: lo spostamento in blocco lo fai dopo, fuori dalla modalità cliente.",
-                                    titolo: "L'agenda che si organizza", chiave: chiave)
+                                    titolo: "L'agenda che si organizza", chiave: arrivo)
             return true
         }
+        // Lo spostamento in blocco riguarda gli impegni di tutti (titoli, bozze per gli altri clienti): si fa nella
+        // conversazione del portafoglio, mai in quella di un cliente, che si mostra anche in modalità cliente
+        let chiave = intento == .spostaBlocco ? VeraPortafoglio.chiave : arrivo
+        if chiave != arrivo { veraPortafoglio = true }
+        aggiungiMessaggio(MessaggioVera(autore: .utente, testo: testo), cliente: chiave)
+        domandaVera = ""
         let x = contestoAgendaOrganizza(oggi: oggi)
         let regole = AgendaOrganizzaVera.interpreta(testo, contesto: x)
         if let r = regole, AgendaOrganizzaVera.domanda(r, oggi: x.oggi, cal: x.calendario) == nil {
@@ -102,7 +108,19 @@ extension StatoShell {
         case .cerca:
             rispondiOrariAgenda(r, frase: frase, chiave: chiave, contesto: x)
         case .spostaBlocco:
-            rispondiSpostamentoAgenda(r, frase: frase, chiave: chiave, contesto: x)
+            guard !inModoCliente else {
+                rispostaAgendaOrganizza("In modalità cliente non tocco l'agenda di tutti: lo spostamento in blocco lo fai dopo, fuori dalla modalità cliente.",
+                                        titolo: "L'agenda che si organizza", chiave: chiave)
+                return
+            }
+            // Riconosciuto solo da Qwen (le regole avevano letto un'altra richiesta): la frase passa nel portafoglio
+            var k = chiave
+            if k != VeraPortafoglio.chiave {
+                veraPortafoglio = true
+                k = VeraPortafoglio.chiave
+                aggiungiMessaggio(MessaggioVera(autore: .utente, testo: frase), cliente: k)
+            }
+            rispondiSpostamentoAgenda(r, frase: frase, chiave: k, contesto: x)
         }
     }
 
@@ -191,7 +209,9 @@ extension StatoShell {
         aggiornaMessaggioVera(messaggio) { $0.agendaOrariScelto = p.id }
         let nome = Self.primoNome(c.nome)
         let quando = DateItaliane.descrivi(p.inizio, conOra: true, oggi: oggi, cal: x.calendario)
-        let dove = p.etichetta.isEmpty ? "" : ", \(p.etichetta)"
+        // In modalità cliente l'etichetta non nomina gli altri clienti, anche se gli orari sono stati cercati prima, fuori
+        let et = AgendaOrganizzaGriglia.etichetta(p, inModoCliente: inModoCliente)
+        let dove = et.isEmpty ? "" : ", \(et)"
         let cosa = r.daSpostare != nil && scelta.strumento == RegistroStrumenti.agendaSposta ? "sposto l'impegno" : "lo metto in agenda"
         return rispostaAgendaOrganizza("\(nome) ha scelto \(quando)\(dove). Con «Conferma» \(cosa) e preparo la conferma per \(nome): la spedisci tu.",
                                        chiave: chiave, motore: Self.motoreAzioni) { v in
@@ -245,7 +265,7 @@ extension StatoShell {
               let m = conversazione(chiave).suffix(8).last(where: { $0.autore == .vera && ($0.agendaOrari?.proposte.isEmpty == false) }),
               let ricerca = m.agendaOrari else { return false }
         // Un altro cliente nominato nella frase: non è la scelta di questi orari
-        let noti = dati.clienti.map { ClienteNoto(id: $0.id, nome: $0.nome) }
+        let noti = clientiAttivi.map { ClienteNoto(id: $0.id, nome: $0.nome) }
         let nominati = InterpreteComandi.clientiNominati(t, noti)
         if !nominati.isEmpty, !nominati.contains(where: { $0.id == ricerca.richiesta.clienteId }) { return false }
         let cal = MotorePianificazione.calendario
@@ -339,5 +359,32 @@ extension StatoShell {
         giornoAgenda = Calendar.current.startOfDay(for: giorno)
         vistaAgenda = .settimana
         apri(.agenda)
+    }
+}
+
+// MARK: - Prova
+
+extension StatoShell {
+    /// Lo spostamento in blocco chiesto dal dossier di un cliente va nella conversazione del portafoglio (titoli degli
+    /// impegni e bozze per gli altri clienti non restano nella conversazione che si mostra in modalità cliente); in
+    /// modalità cliente non si prepara. Da chiamare in `Prisma --prova-vera`.
+    static func provaAgendaOrganizzaPortafoglio(_ controlla: (Bool, String) -> Void) {
+        let s = StatoShell(persistente: false)
+        s.rispostePreparate = true
+        s.veraPortafoglio = false
+        s.clienteAttivoId = "sofia"
+        let prima = s.conversazione("sofia").count
+        let primaP = s.conversazione(VeraPortafoglio.chiave).count
+        controlla(s.chiediAgendaOrganizza("Libera giovedì, sposta tutto a venerdì", chiave: "sofia"),
+                  "Agenda che si organizza: «Libera giovedì, sposta tutto a venerdì» è per lo spostamento in blocco")
+        controlla(s.conversazione("sofia").count == prima && s.conversazione(VeraPortafoglio.chiave).count > primaP && s.veraPortafoglio,
+                  "Agenda che si organizza: lo spostamento chiesto nel dossier di Sofia va nella conversazione del portafoglio")
+        s.modoCliente = "sofia"
+        let n = s.conversazione(VeraPortafoglio.chiave).count
+        _ = s.chiediAgendaOrganizza("Libera giovedì, sposta tutto a venerdì", chiave: "sofia")
+        controlla(s.conversazione(VeraPortafoglio.chiave).count == n
+                  && !s.conversazione("sofia").contains { $0.agendaSpostamento != nil || $0.conferma != nil },
+                  "Agenda che si organizza: in modalità cliente lo spostamento in blocco non si prepara")
+        s.modoCliente = nil
     }
 }

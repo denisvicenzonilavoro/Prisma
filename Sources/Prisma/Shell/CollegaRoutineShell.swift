@@ -41,10 +41,18 @@ extension StatoShell {
         paginaRoutineVera = false
     }
 
+    /// Su un dispositivo con «Prisma ovunque» acceso le routine arrivano dal Mac con l'istantanea: lì non si salvano, non
+    /// si modificano e non partono da sole (una modifica sparirebbe alla prossima istantanea).
+    var routineSoloSulMac: Bool {
+        dati.impostazioni.ovunque.acceso && dati.impostazioni.ovunque.ruolo == .dispositivo
+    }
+    static let avvisoRoutineSoloSulMac = "Le routine si salvano e si modificano sul Mac."
+
     /// Accende o spegne una routine (anche una pronta: la copia salvata ne tiene lo stato). È il consulente che lo fa
     /// dall'interruttore della pagina, non Vera.
     func impostaRoutineAttiva(_ id: String, _ attiva: Bool) {
         guard !solaLettura, !inModoCliente, var r = routineVera(id), r.attiva != attiva else { return }
+        guard !routineSoloSulMac else { return mostraAvviso(Self.avvisoRoutineSoloSulMac) }
         r.attiva = attiva
         if let i = dati.routine.routine.firstIndex(where: { $0.id == id }) {
             dati.routine.routine[i] = r
@@ -56,6 +64,7 @@ extension StatoShell {
     /// Toglie una routine del consulente (le pronte non si tolgono: si spengono). I suoi lanci passati restano.
     func eliminaRoutine(_ id: String) {
         guard !solaLettura, !inModoCliente, let r = routineVera(id), !r.pronta else { return }
+        guard !routineSoloSulMac else { return mostraAvviso(Self.avvisoRoutineSoloSulMac) }
         dati.routine.routine.removeAll { $0.id == id }
         if routineSelezionataVera == id { routineSelezionataVera = RoutineVera.idPrepara }
         mostraAvviso("La routine «\(r.titolo)» è tolta")
@@ -109,13 +118,17 @@ extension StatoShell {
     func lanciaRoutine(_ r: RoutineVera, richiesta: String, clienteId: String?, posizioneId: String? = nil, file: String? = nil,
                        chiave: String, oggi: Date = Date(), parla: Bool = true) -> EsitoRoutine {
         var d = dati.istantanea
-        // In modalità cliente il motore vede solo il cliente davanti a te: clienti, agenda, attività, promesse,
-        // posizioni, documenti, messaggi e incontri (le routine con passi fuori dal cliente non partono, vedi
-        // `tuttaSulCliente`: il filtro è la seconda difesa)
+        // Un id arrivato da una scheda unita dal tagliando (o da un messaggio vecchio) porta alla scheda principale
+        let clienteId = clienteId.map { schedaPrincipaleTagliando($0) }
+        // In modalità cliente il motore vede solo il cliente davanti a te: clienti, attività, promesse, posizioni,
+        // documenti, messaggi e incontri (le routine con passi fuori dal cliente non partono, vedi `tuttaSulCliente`:
+        // il filtro è la seconda difesa). L'agenda resta intera ma anonima: gli impegni degli altri clienti diventano
+        // segnaposto con solo inizio, durata, stato e tipo, così il controllo di «Dopo la firma» non cade su un orario
+        // già occupato né su un giorno con i riesami già pieni, senza rivelare chi sono gli altri clienti.
         if inModoCliente {
             let id = clienteAttivoId
             d.clienti = d.clienti.filter { $0.id == id }
-            d.appuntamenti = d.appuntamenti.filter { $0.clienteId == id }
+            d.appuntamenti = d.appuntamenti.map { Self.impegnoPerModoCliente($0, cliente: id) }
             d.attivita = d.attivita.filter { $0.clienteId == id }
             d.promesse = d.promesse.filter { $0.clienteId == id }
             d.posizioni = d.posizioni.filter { $0.clienteId == id }
@@ -134,6 +147,15 @@ extension StatoShell {
         m.conferma = self.inStile(esito.schedaConferma)
         aggiungiMessaggio(m, cliente: chiave, parla: parla)
         return esito
+    }
+
+    /// In modalità cliente: l'impegno del cliente davanti a te resta com'è, quello di un altro cliente (o del consulente)
+    /// diventa un segnaposto anonimo che tiene solo l'orario occupato, lo stato e il tipo (le revisioni contano nel
+    /// limite dei riesami al giorno).
+    static func impegnoPerModoCliente(_ a: Appuntamento, cliente id: String) -> Appuntamento {
+        guard a.clienteId != id else { return a }
+        return Appuntamento(id: a.id, clienteId: "", titolo: "", inizio: a.inizio, durataMinuti: a.durataMinuti,
+                            luogo: "", note: "", stato: a.stato, tipo: a.tipo)
     }
 
     /// true se ogni passo lavora sul cliente: le sole routine che partono in modalità cliente (le altre guardano anche
@@ -188,24 +210,45 @@ extension StatoShell {
         // Un comando («fissa un incontro con Marco a fine mese») o un documento («preparami il fascicolo per
         // l'incontro») resta ai comandi di sempre
         guard DateItaliane.cerca(Self.esclusioniRoutine, t) == nil, DateItaliane.cerca(Self.comandiNonRoutine, t) == nil else { return false }
-        let clienti = inModoCliente ? dati.clienti.filter { $0.id == clienteAttivoId } : dati.clienti
-        let noti = clienti.map { ClienteNoto(id: $0.id, nome: $0.nome) }
+        let noti = clientiNotiRoutine
         let attivo: String? = inModoCliente ? clienteAttivoId : (chiave != VeraPortafoglio.chiave && cliente(chiave) != nil ? chiave : nil)
         // Le domande sulle promesse e sulle scadenze («quali promesse scadono a fine mese?») restano ai loro motori
         guard !Self.eUnaDomandaNonRoutine(t) else { return false }
         guard let l = RoutineVera.riconosci(testo, routine: routineTutte, clienti: noti, attivo: attivo) else { return false }
         // La firma si annuncia: «l'ha firmato?», «cosa ho promesso dopo la firma», «il contratto firmato con…» no
         if l.routine.programmazione?.tipo == .dopoFirma, Self.nonEUnAnnuncioDiFirma(testo, t) { return false }
-        aggiungiMessaggio(MessaggioVera(autore: .utente, testo: testo), cliente: chiave)
-        domandaVera = ""
         if inModoCliente && !Self.tuttaSulCliente(l.routine) {
+            aggiungiMessaggio(MessaggioVera(autore: .utente, testo: testo), cliente: chiave)
+            domandaVera = ""
             let perche = l.routine.serveCliente ? "guarda anche l'agenda o il portafoglio" : "guarda tutto il portafoglio"
             aggiungiMessaggio(MessaggioVera(autore: .vera, testo: "In modalità cliente lancio solo le routine sul cliente davanti a te: «\(l.routine.titolo)» \(perche).",
                                             motore: Self.motoreAzioni), cliente: chiave)
             return true
         }
-        lanciaRoutine(l.routine, richiesta: testo, clienteId: l.clienteId, chiave: chiave)
+        // Una routine di tutto il portafoglio (nessun cliente) va nella conversazione del portafoglio anche se il dossier
+        // di un cliente è aperto: nomi e impegni degli altri clienti non restano nella conversazione di quel cliente
+        // (si vedrebbero poi in modalità cliente)
+        let dove = chiaveRoutine(l.routine, clienteId: l.clienteId, chiave: chiave)
+        aggiungiMessaggio(MessaggioVera(autore: .utente, testo: testo), cliente: dove)
+        domandaVera = ""
+        lanciaRoutine(l.routine, richiesta: testo, clienteId: l.clienteId, chiave: dove)
         return true
+    }
+
+    /// La conversazione in cui va un lancio dalla chat: quella aperta, oppure il portafoglio per una routine di tutto il
+    /// portafoglio (nessun passo sul cliente, quindi nessun cliente), fuori dalla modalità cliente. Una routine che
+    /// aspetta il cliente («Per quale cliente?») resta dov'è: la risposta arriva lì.
+    func chiaveRoutine(_ r: RoutineVera, clienteId: String?, chiave: String) -> String {
+        guard clienteId == nil, !r.serveCliente, !inModoCliente, chiave != VeraPortafoglio.chiave else { return chiave }
+        veraPortafoglio = true
+        return VeraPortafoglio.chiave
+    }
+
+    /// I clienti che le frasi delle routine possono nominare: le schede attive (non quelle unite dal tagliando), e in
+    /// modalità cliente solo il cliente davanti a te.
+    var clientiNotiRoutine: [ClienteNoto] {
+        let clienti = inModoCliente ? clientiAttivi.filter { $0.id == clienteAttivoId } : clientiAttivi
+        return clienti.map { ClienteNoto(id: $0.id, nome: $0.nome) }
     }
 
     /// Dopo «Per quale cliente?»: una frase che nomina un solo cliente rilancia la stessa routine per lui.
@@ -220,8 +263,7 @@ extension StatoShell {
               !Self.eUnaRoutineNuova(testo, t), !Self.eUnElencoRoutine(t), !Self.eUnaDomandaNonRoutine(t),
               !routineTutte.contains(where: { $0.attiva && $0.id != r.id && $0.inneschi.contains { DateItaliane.cerca($0, t) != nil } })
         else { return false }
-        let clienti = inModoCliente ? dati.clienti.filter { $0.id == clienteAttivoId } : dati.clienti
-        let nominati = InterpreteComandi.clientiNominati(InterpreteComandi.pulisci(testo), clienti.map { ClienteNoto(id: $0.id, nome: $0.nome) })
+        let nominati = InterpreteComandi.clientiNominati(InterpreteComandi.pulisci(testo), clientiNotiRoutine)
         guard nominati.count == 1 else { return false }
         aggiungiMessaggio(MessaggioVera(autore: .utente, testo: testo), cliente: chiave)
         domandaVera = ""
@@ -233,7 +275,7 @@ extension StatoShell {
     static func eUnElencoRoutine(_ t: String) -> Bool {
         DateItaliane.cerca(#"\broutine\b"#, t) != nil
             && DateItaliane.cerca(creaRoutine, t) == nil
-            && (DateItaliane.cerca(#"^(?:mi )?(?:mostra(?:mi)?|apri(?:mi)?|vedi|fammi vedere|elenca(?:mi)?|quali|che)\b"#, t) != nil
+            && (DateItaliane.cerca(#"^(?:mi )?(?:mostra(?:mi)?|apri(?:mi)?|vedi|fammi vedere|voglio vedere|elenca(?:mi)?|quali|che)\b"#, t) != nil
                 || DateItaliane.cerca(#"^(?:le )?(?:mie )?routine$"#, t) != nil)
     }
 
@@ -269,13 +311,17 @@ extension StatoShell {
         return !primaPersona && DateItaliane.cerca(#"\b(?:contratt[oi]|modul[oi]|polizz[ae]|document[oi]) firmat[oaie]\b|\bfirmato con alleanza\b"#, t) != nil
     }
 
-    static let creaRoutine = #"\b(?:crea(?:mi)?|nuova|aggiungi|salva|fammi|imposta|registra|voglio)\b[^.?!]*\broutine\b"#
+    /// «Fammi vedere le routine» e «voglio vedere le mie routine» sono l'elenco, non una routine nuova.
+    static let creaRoutine = #"\b(?:crea(?:mi)?|nuova|aggiungi|salva|fammi(?! vedere\b)|imposta|registra|voglio(?! vedere\b))\b[^.?!]*\broutine\b"#
     /// I documenti hanno i loro comandi («preparami il fascicolo per l'incontro di giovedì»).
     /// Anche le bozze e il resoconto («prepara un messaggio per Federico per spostare l'appuntamento», «preparami il
     /// resoconto dell'incontro con Marco»): vanno a «Fallo tu» e al resoconto.
     static let esclusioniRoutine = #"\b(?:report|prospett[oi]|document[oi]|fascicol[oi]|presentazione|relazione|messaggi[oa]?|e-?mail|bozz[ae]|sms|whatsapp|resocont[oi])\b"#
-    /// I comandi d'azione di sempre («fissa…», «sposta…», «ricordami…»): non sono routine anche se dicono «fine mese».
-    static let comandiNonRoutine = #"^(?:mi )?(?:fiss|mett|prenot|organizz|programm|spost|anticip|posticip|rimand|scriv|mand|invi|avvis|ricordami|annot|prend\w* nota|blocc|liber|aggiorn|cambi)\w*\b"#
+    /// I comandi d'azione di sempre («fissa…», «sposta…», «ricordami…») e quelli di attività e note di
+    /// `InterpreteComandi` («segnati che Giulia ha firmato il PIP», «promemoria: chiamare Giulia dopo la firma», «da fare:
+    /// prepara l'incontro con Marco», «aggiungi alla nota…», «crea un'attività…»): non sono routine anche se dicono «fine
+    /// mese», «ha firmato» o «prepara l'incontro». «Crea una routine…» è già passata da `eUnaRoutineNuova`.
+    static let comandiNonRoutine = #"^(?:mi )?(?:fiss|mett|prenot|organizz|programm|spost|anticip|posticip|rimand|scriv|mand|invi|avvis|ricorda|promemoria|segna|annot|prend\w* nota|aggiungi|crea|da fare|blocc|liber|aggiorn|cambi)\w*\b"#
 
     // MARK: - Una routine nuova a parole
 
@@ -366,7 +412,7 @@ extension StatoShell {
     /// da sole (non saprebbero per chi). Non in modalità cliente, non durante la presentazione, mai in sola lettura.
     @discardableResult
     func controllaRoutineDovute(adesso: Date = Date()) -> [EsitoRoutine] {
-        guard !solaLettura, modoCliente == nil, presentazione == nil else { return [] }
+        guard !solaLettura, modoCliente == nil, presentazione == nil, !routineSoloSulMac else { return [] }
         let dovute = RoutineVera.dovute(dati.routine.tutte, adesso: adesso).filter { !$0.serveCliente }
         var esiti: [EsitoRoutine] = []
         for r in dovute {
@@ -404,12 +450,15 @@ extension StatoShell {
 
     /// Un documento trascinato su Vera subito dopo «Dopo la firma» (con il passo «Archivio il contratto» in attesa del
     /// PDF): diventa il contratto firmato del cliente, nella scheda «Conferma». Il file si copia prima nella cartella
-    /// temporanea (l'archiviazione toglie la cartella del file, mai quella dell'utente). true se l'ha preso.
+    /// temporanea (l'archiviazione toglie la cartella del file, mai quella dell'utente) e si legge come ogni documento
+    /// trascinato (`LetturaDocumenti.leggi`, fuori dal thread principale): il testo accanto alla copia, le pagine, la
+    /// categoria e i dati letti vanno nella scheda, così il contratto archiviato ha il suo testo e Vera lo ritrova per
+    /// coperture e domande. true se l'ha preso.
     func lasciaCadereRoutine(_ urls: [URL], oggi: Date = Date()) -> Bool {
         let chiave = chiaveConversazione
         guard let url = urls.first(where: { LetturaDocumenti.estensioniAccettate.contains($0.pathExtension.lowercased()) }),
               let m = conversazione(chiave).last(where: { $0.autore == .vera }), let e = m.esitoRoutine,
-              let clienteId = e.clienteId, let c = cliente(clienteId), visibileAlCliente(clienteId),
+              let clienteId = e.clienteId, cliente(clienteId) != nil, visibileAlCliente(clienteId),
               e.passi.contains(where: { $0.tipo == .archiviaContratto && $0.stato == .inAttesa }),
               oggi.timeIntervalSince(e.data) < Self.attesaContrattoRoutine else { return false }
         let fm = FileManager.default
@@ -422,20 +471,59 @@ extension StatoShell {
             mostraAvviso("Non riesco a leggere «\(url.lastPathComponent)»: \(error.localizedDescription)")
             return true
         }
+        aggiungiMessaggio(MessaggioVera(autore: .utente, testo: "📄 \(url.lastPathComponent)"), cliente: chiave, parla: false)
+        veraInCorso = true
+        Self.codaContrattoRoutine.async {
+            let lettura = LetturaDocumenti.leggi(copia)
+            DispatchQueue.main.async {
+                self.veraInCorso = false
+                self.rispondiContrattoRoutine(copia, pagine: lettura?.pagine ?? [], pagineOCR: lettura?.pagineOCR ?? 0, esito: e, chiave: chiave)
+            }
+        }
+        return true
+    }
+
+    private static let codaContrattoRoutine = DispatchQueue(label: "prisma.routine-contratto", qos: .userInitiated)
+
+    /// La scheda «Conferma» del contratto letto: il testo si scrive accanto alla copia temporanea (con «Conferma» va
+    /// accanto al documento), con pagine, pagine lette con l'OCR, categoria e dati letti negli argomenti, come per ogni
+    /// documento trascinato. Un PDF da cui non esce testo si archivia lo stesso, ma Vera lo dice.
+    @discardableResult
+    func rispondiContrattoRoutine(_ copia: URL, pagine: [String], pagineOCR: Int, esito e: EsitoRoutine, chiave: String) -> MessaggioVera? {
+        guard let clienteId = e.clienteId, let c = cliente(clienteId), visibileAlCliente(clienteId) else {
+            try? FileManager.default.removeItem(at: copia.deletingLastPathComponent())
+            return nil
+        }
         let posizione = RoutineVera.posizioneFirmata(cliente: c, posizioneId: e.posizioneId, posizioni: dati.posizioni)
         let nomePosizione = posizione.map { $0.nome.trimmingCharacters(in: .whitespaces).isEmpty ? $0.area.nome : $0.nome }
         let titolo = "Contratto firmato · \(nomePosizione ?? c.nome)"
+        var argomenti = ["cliente": c.id, "file": copia.path, "titolo": titolo, "tipo": Documento.Tipo.polizza.rawValue]
+        if let p = posizione { argomenti["posizione"] = p.id }
+        let letto = pagine.contains { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        var dettaglio = "Nella scheda di \(c.nome) · Documenti"
+        if letto {
+            let testo = copia.deletingPathExtension().appendingPathExtension("txt")
+            try? pagine.joined(separator: LetturaDocumenti.separatorePagine).write(to: testo, atomically: true, encoding: .utf8)
+            let l = LasciaCadereVera.leggi(nomeFile: copia.lastPathComponent, pagine: pagine, pagineOCR: pagineOCR, clienti: [c])
+            let campi = l.campi.filter { !$0.valore.isEmpty }
+            argomenti["testo"] = testo.path
+            argomenti["pagine"] = String(pagine.count)
+            argomenti["pagineOCR"] = String(pagineOCR)
+            argomenti["categoria"] = l.categoria.rawValue
+            argomenti["campi"] = (try? JSONEncoder().encode(campi)).flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
+            let letti = campi.prefix(4).map { "\($0.chiave.nome): \($0.valore) (pag. \($0.pagina))" }.joined(separator: " · ")
+            dettaglio += letti.isEmpty ? " · nessun dato letto" : " · \(letti) · i dati letti si confermano con «Conferma»"
+        }
         let a = AzioneConferma(strumento: RegistroStrumenti.documentiArchivia, app: .documenti, titolo: "Archivio «\(titolo)»",
-                               dettaglio: "Nella scheda di \(c.nome) · Documenti",
-                               argomenti: ["cliente": c.id, "file": copia.path, "titolo": titolo, "tipo": Documento.Tipo.polizza.rawValue]
-                                   .merging(posizione.map { ["posizione": $0.id] } ?? [:]) { a, _ in a })
-        aggiungiMessaggio(MessaggioVera(autore: .utente, testo: "📄 \(url.lastPathComponent)"), cliente: chiave, parla: false)
-        var r = MessaggioVera(autore: .vera, testo: "È il contratto firmato di \(c.nome): con «Conferma» lo archivio nella sua scheda, tra i Documenti.",
-                              titolo: e.titolo, motore: Self.motoreAzioni)
+                               dettaglio: dettaglio, argomenti: argomenti)
+        let testo = letto
+            ? "È il contratto firmato di \(c.nome): con «Conferma» lo archivio nella sua scheda, tra i Documenti."
+            : "È il contratto firmato di \(c.nome), ma non riesco a leggerne il testo (forse è protetto o è una scansione sfocata): con «Conferma» lo archivio lo stesso nella sua scheda, poi rileggilo da Documenti."
+        var r = MessaggioVera(autore: .vera, testo: testo, titolo: e.titolo, motore: Self.motoreAzioni)
         // Origine «documento»: lasciata stare, la scheda toglie anche la copia temporanea del file
         r.conferma = SchedaConfermaVera(richiesta: e.richiesta, azioni: [a], origine: .documento)
         aggiungiMessaggio(r, cliente: chiave)
-        return true
+        return r
     }
 
     /// Il PDF firmato si aggancia a «Dopo la firma» entro due ore dal lancio.
@@ -547,6 +635,7 @@ extension StatoShell {
 
     /// `routine_salva`: la routine nuova entra tra quelle del consulente.
     func eseguiSalvaRoutine(_ a: AzioneConferma) -> EsitoAzioneVera {
+        guard !routineSoloSulMac else { return EsitoAzioneVera(fatta: false, messaggio: Self.avvisoRoutineSoloSulMac) }
         guard var r = Self.decodificaRoutine(RoutineVera.self, a.argomenti["routine"]) else {
             return EsitoAzioneVera(fatta: false, messaggio: "Non riesco a leggere la routine da salvare.")
         }
@@ -567,5 +656,110 @@ extension StatoShell {
         guard let e = a.esito, e.fatta, let id = e.oggetto, dati.routine.routine.contains(where: { $0.id == id }) else { return false }
         dati.routine.routine.removeAll { $0.id == id }
         return true
+    }
+}
+
+/// Le correzioni del secondo giro sulle routine collegate: in modalità cliente il controllo di «Dopo la firma» evita gli
+/// impegni degli altri clienti (senza vederne i nomi) e il limite dei riesami al giorno; le note e le attività non
+/// lanciano routine; «fammi vedere le routine» apre l'elenco; una routine di portafoglio chiesta dal dossier va nella
+/// conversazione del portafoglio. Da chiamare in `Prisma --prova-vera` (accanto a `ProvaCollegaRoutineVera`).
+enum ProvaCorrezioniRoutineVera {
+    static func esegui(_ controlla: (Bool, String) -> Void) {
+        agendaInModoCliente(controlla)
+        frasi(controlla)
+        portafoglioDalDossier(controlla)
+    }
+
+    /// Giorno e ora del controllo proposto da «Dopo la firma» (nil se non c'è l'azione dell'agenda).
+    private static func controlloProposto(_ e: EsitoRoutine) -> String? {
+        // L'azione preparata porta l'inizio in ISO 8601 (`RegistroStrumenti.isoData`)
+        guard let a = e.azioni.first(where: { $0.strumento == RegistroStrumenti.agendaNuovo }),
+              let i = a.argomenti["inizio"], let d = ISO8601DateFormatter().date(from: i) else { return nil }
+        return giornoOra(d)
+    }
+
+    private static func giornoOra(_ d: Date) -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "HH:mm"
+        return RoutineVera.giornoIso(d) + " " + f.string(from: d)
+    }
+
+    private static func agendaInModoCliente(_ controlla: (Bool, String) -> Void) {
+        let oggi = Date()
+        let s = StatoShell(persistente: false)
+        s.rispostePreparate = true
+        guard let r = s.routineVera(RoutineVera.idDopoFirma), let altro = s.dati.clienti.first(where: { $0.id != "marco" })?.id,
+              s.cliente("marco") != nil,
+              let candidato = RoutineVera.orarioControllo(mesi: RoutineVera.mesiControllo, dati: s.dati.istantanea, oggi: oggi) else {
+            return controlla(false, "Routine, modalità cliente: mancano i dati di prova per il controllo di «Dopo la firma»")
+        }
+        s.clienteAttivoId = "marco"
+        s.veraPortafoglio = false
+        // Un impegno di un altro cliente proprio all'orario che il motore proporrebbe
+        s.dati.appuntamenti.append(Appuntamento(id: "prova-occupato", clienteId: altro, titolo: "Riservato", inizio: candidato,
+                                                durataMinuti: RoutineVera.minutiControllo, luogo: "Studio", note: "Nota riservata",
+                                                stato: .pianificato, tipo: .analisi))
+        s.modoCliente = "marco"
+        let e = s.lanciaRoutine(r, richiesta: "Firmato", clienteId: "marco", chiave: "marco", oggi: oggi, parla: false)
+        let proposto = controlloProposto(e)
+        controlla(proposto != nil && proposto != giornoOra(candidato),
+                  "Routine, modalità cliente: il controllo di «Dopo la firma» non cade sull'impegno di un altro cliente")
+        let testo = e.passi.map { $0.titolo + " " + $0.dettaglio }.joined(separator: " ")
+        controlla(!testo.contains("Riservato") && !testo.contains("Nota riservata"),
+                  "Routine, modalità cliente: degli impegni degli altri clienti il motore non vede titolo né note")
+        let anonimo = s.dati.appuntamenti.first { $0.id == "prova-occupato" }.map { StatoShell.impegnoPerModoCliente($0, cliente: "marco") }
+        controlla(anonimo.map { $0.clienteId.isEmpty && $0.titolo.isEmpty && $0.note.isEmpty && $0.luogo.isEmpty
+                                && $0.inizio == candidato && $0.tipo == .analisi } == true,
+                  "Routine, modalità cliente: l'impegno di un altro cliente resta solo un orario occupato, con il suo tipo")
+        s.modoCliente = nil
+
+        // Il limite dei riesami al giorno raggiunto con le revisioni di altri clienti
+        let u = StatoShell(persistente: false)
+        u.rispostePreparate = true
+        u.dati.impostazioni.orari.riesamiAlGiorno = 1
+        guard let c2 = RoutineVera.orarioControllo(mesi: RoutineVera.mesiControllo, dati: u.dati.istantanea, oggi: oggi),
+              let r2 = u.routineVera(RoutineVera.idDopoFirma) else {
+            return controlla(false, "Routine, modalità cliente: manca l'orario del controllo con un riesame al giorno")
+        }
+        let cal = Calendar.current
+        let alba = cal.date(bySettingHour: 5, minute: 0, second: 0, of: c2) ?? c2
+        u.dati.appuntamenti.append(Appuntamento(id: "prova-riesame", clienteId: altro, titolo: "Riesame", inizio: alba,
+                                                durataMinuti: 30, luogo: "", note: "", stato: .pianificato, tipo: .revisione))
+        u.clienteAttivoId = "marco"
+        u.veraPortafoglio = false
+        u.modoCliente = "marco"
+        let e2 = u.lanciaRoutine(r2, richiesta: "Firmato", clienteId: "marco", chiave: "marco", oggi: oggi, parla: false)
+        let giorno2 = controlloProposto(e2).map { String($0.prefix(while: { $0 != " " })) }
+        controlla(giorno2 != nil && giorno2 != RoutineVera.giornoIso(c2),
+                  "Routine, modalità cliente: il controllo non cade in un giorno con i riesami già pieni per gli altri clienti")
+        u.modoCliente = nil
+    }
+
+    private static func frasi(_ controlla: (Bool, String) -> Void) {
+        for frase in ["Segnati che Marco ha firmato il PIP", "Promemoria: chiamare Marco dopo la firma per il benvenuto",
+                      "Da fare: prepara l'incontro con Marco", "Aggiungi un'attività: chiedere i documenti a Marco dopo la firma"] {
+            let t = InterpreteComandi.pulisci(frase)
+            controlla(DateItaliane.cerca(StatoShell.comandiNonRoutine, t) != nil, "Routine, frasi: «\(frase)» resta una nota o un'attività")
+        }
+        for frase in ["Fammi vedere le routine", "Voglio vedere le mie routine"] {
+            let t = InterpreteComandi.pulisci(frase)
+            controlla(StatoShell.eUnElencoRoutine(t) && !StatoShell.eUnaRoutineNuova(frase, t), "Routine, frasi: «\(frase)» apre l'elenco")
+        }
+        let nuova = "Crea una routine: ogni volta che firmo, archivia il contratto"
+        controlla(StatoShell.eUnaRoutineNuova(nuova, InterpreteComandi.pulisci(nuova)), "Routine, frasi: «crea una routine…» resta una routine nuova")
+    }
+
+    private static func portafoglioDalDossier(_ controlla: (Bool, String) -> Void) {
+        let s = StatoShell(persistente: false)
+        s.rispostePreparate = true
+        s.clienteAttivoId = "sofia"
+        s.veraPortafoglio = false
+        let primaSofia = s.conversazione("sofia").count
+        _ = s.smistaVera("Vera, com'è la settimana?", chiave: "sofia")
+        let nelPortafoglio = s.conversazione(VeraPortafoglio.chiave).contains { $0.esitoRoutine?.routineId == RoutineVera.idLunedi }
+        let inSofia = s.conversazione("sofia").dropFirst(primaSofia).contains { $0.esitoRoutine != nil }
+        controlla(nelPortafoglio && !inSofia,
+                  "Routine, dossier: una routine di tutto il portafoglio va nella conversazione del portafoglio, non in quella del cliente")
     }
 }

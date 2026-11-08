@@ -831,6 +831,7 @@ struct NuvolaVera: View {
                     if let o = messaggio.agendaOrari, !o.proposte.isEmpty {
                         AgendaOrganizzaOrariVista(messaggio: messaggio.id, ricerca: o, scelto: messaggio.agendaOrariScelto)
                     }
+                    // Annullato, lasciato stare o sostituito: la griglia mostra solo gli impegni di adesso (pillola neutra)
                     if let s = messaggio.agendaSpostamento, !s.mosse.isEmpty {
                         AgendaOrganizzaSpostamentoVista(spostamento: s, eseguito: messaggio.conferma?.stato == .eseguita, scheda: messaggio.conferma)
                     }
@@ -838,8 +839,9 @@ struct NuvolaVera: View {
                         PianoPassiVeraVista(piano: p, messaggio: messaggio.id)
                     }
                     // «Fallo tu»: la scheda di conferma, niente si esegue prima di «Conferma»
-                    // In modalità cliente le bozze e le attività del mercato (fatte per altri clienti) non si vedono
-                    if let c = messaggio.conferma, !(stato.inModoCliente && c.origine == .mercato) {
+                    // In modalità cliente non si vedono le schede del sussurro e del mercato, né quelle di una routine,
+                    // di un piano o di azioni su altri clienti (`schedaVisibileSulloSchermo`)
+                    if let c = messaggio.conferma, stato.schedaVisibileSulloSchermo(messaggio) {
                         SchedaConfermaVeraVista(scheda: c, messaggio: messaggio.id)
                             .padding(.top, b.sopraScheda)
                     }

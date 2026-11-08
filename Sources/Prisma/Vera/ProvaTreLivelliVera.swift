@@ -66,6 +66,9 @@ enum ProvaTreLivelliVera {
         controlla(!TreLivelliVera.eUnaRichiesta("Perché Laura non risponde?"), "Tre livelli: un «perché» senza argomento non è una spiegazione")
         controlla(TreLivelliVera.primoNome("Marco Bianchi") == "Marco" && TreLivelliVera.primoNome("Marco ed Elena Bianchi") == "Marco ed Elena",
                   "Tre livelli: il nome per il tu del cliente")
+        for f in TreLivelliVera.scenariNonTreLivelli {
+            controlla(!TreLivelliVera.eUnaRichiesta(f), "Tre livelli: lo scenario «\(f)» va agli scenari, non ai tre livelli")
+        }
     }
 
     // MARK: - Previdenza di Marco (l'esempio del template)

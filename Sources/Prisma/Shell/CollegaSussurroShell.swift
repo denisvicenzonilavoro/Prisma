@@ -99,6 +99,43 @@ extension StatoShell {
             guard let chiave = a.argomenti[Self.argomentoSussurro], let id = a.argomenti["cliente"] else { continue }
             chiudiSussurro(clienteId: id, chiave: Self.chiaveSussurroArchivio(chiave), oggi: oggi)
         }
+        ritiraDoppioniSussurro(s)
+    }
+
+    /// Dopo «Conferma», le altre schede del sussurro ancora in attesa per le stesse voci (nate in un'altra conversazione:
+    /// dal portafoglio, dal dossier di un altro cliente o dal pulsante del dossier) perdono quelle azioni: confermarle
+    /// segnerebbe la stessa attività una seconda volta. Rimaste senza azioni, sono lasciate stare.
+    func ritiraDoppioniSussurro(_ s: SchedaConfermaVera) {
+        guard s.origine == .sussurro, !solaLettura else { return }
+        let fatte = Set(s.attive.filter { $0.esito?.fatta == true }.compactMap { a -> String? in
+            guard let chiave = a.argomenti[Self.argomentoSussurro], let id = a.argomenti["cliente"] else { return nil }
+            return id + "\u{1F}" + chiave
+        })
+        guard !fatte.isEmpty else { return }
+        for id in messaggiSussurroInAttesa() {
+            aggiornaSchedaVera(messaggio: id) { x in
+                guard x.id != s.id, x.origine == .sussurro, x.stato == .daConfermare else { return }
+                for i in x.azioni.indices where !x.azioni[i].tolta {
+                    guard let chiave = x.azioni[i].argomenti[Self.argomentoSussurro],
+                          let cliente = x.azioni[i].argomenti["cliente"],
+                          fatte.contains(cliente + "\u{1F}" + chiave) else { continue }
+                    x.azioni[i].tolta = true
+                }
+                if x.attive.isEmpty { x.stato = .rinunciata }
+            }
+        }
+    }
+
+    /// Dopo «Annulla» di una scheda del sussurro (da chiamare in `annullaSchedaVera` quando `origine == .sussurro`, con la
+    /// scheda già aggiornata): le voci delle azioni annullate davvero (`esito.annullata`) si riaprono e il pulsante torna
+    /// nel dossier. Quelle delle azioni rimaste fatte restano chiuse.
+    func riapriSussurriAnnullati(_ s: SchedaConfermaVera) {
+        guard s.origine == .sussurro, !solaLettura else { return }
+        for a in s.attive where a.esito?.annullata == true {
+            guard let chiave = a.argomenti[Self.argomentoSussurro], let id = a.argomenti["cliente"] else { continue }
+            let k = Self.chiaveSussurroArchivio(chiave)
+            dati.sussurriChiusi.removeAll { $0.clienteId == id && $0.chiave == k }
+        }
     }
 
     /// Riapre una voce chiusa (la riporta tra le voci del cliente).
@@ -132,6 +169,26 @@ extension StatoShell {
         return a
     }
 
+    /// Gli id dei messaggi di Vera con una scheda del sussurro ancora da confermare, in tutte le conversazioni (salvate e
+    /// temporanee): una scheda chiesta in chat dal portafoglio o dal dossier di un altro cliente non sta nella
+    /// conversazione del cliente della voce.
+    func messaggiSussurroInAttesa() -> [String] {
+        let tutte = (dati.impostazioni.vera.conservaConversazioni ? Array(dati.conversazioni.values) : []) + Array(conversazioniTemporanee.values)
+        return tutte.flatMap { elenco in
+            elenco.filter { m in m.conferma.map { $0.origine == .sussurro && $0.stato == .daConfermare } ?? false }.map(\.id)
+        }
+    }
+
+    /// L'id del messaggio con una scheda del sussurro in attesa che ha ancora (attiva) l'azione della voce, cercato in
+    /// tutte le conversazioni. nil se non ce n'è.
+    func schedaSussurroInAttesaOvunque(_ v: VoceSussurro) -> String? {
+        messaggiSussurroInAttesa().last { id in
+            messaggioVera(id)?.conferma?.attive.contains {
+                $0.argomenti[Self.argomentoSussurro] == v.chiave && $0.argomenti["cliente"] == v.clienteId
+            } ?? false
+        }
+    }
+
     /// Il riesame nel primo spazio libero degli orari di lavoro (come «Fissa» della striscia dei riesami in Agenda).
     /// nil se non c'è uno spazio libero: allora la voce apre l'Agenda e l'orario lo sceglie il consulente.
     func azioneRiesameSussurro(_ c: Cliente, oggi: Date = Date()) -> AzioneConferma? {
@@ -156,7 +213,7 @@ extension StatoShell {
         }
         if let a = azioneSussurro(v, cliente: c, oggi: oggi) {
             // Una scheda della stessa voce ancora da confermare: si riusa, niente doppioni
-            if let id = schedaSussurroAperta(v) { return id }
+            if let id = schedaSussurroAperta(v) ?? schedaSussurroInAttesaOvunque(v) { return id }
             guard !solaLettura else {
                 mostraAvviso("Prisma è in sola lettura: non posso segnare niente.")
                 return nil
@@ -184,8 +241,18 @@ extension StatoShell {
 
     /// La conversazione come si mostra sullo schermo: in modalità cliente senza i messaggi del sussurro (da usare in
     /// VeraScrivania, MiniVera e ogni vista che mostra la conversazione di un cliente).
+    /// Anche i messaggi salvati prima delle correzioni che in modalità cliente direbbero di altri clienti: l'esito di una
+    /// routine di portafoglio o di un altro cliente, uno spostamento in blocco (porta gli impegni di tutti), un piano a
+    /// passi su un altro cliente.
     func messaggiPerLoSchermo(_ elenco: [MessaggioVera]) -> [MessaggioVera] {
-        inModoCliente ? elenco.filter { !Self.riservatoAlConsulente($0) } : elenco
+        inModoCliente ? elenco.filter { !Self.riservatoAlConsulente($0) && !nascostoInModoCliente($0) } : elenco
+    }
+
+    private func nascostoInModoCliente(_ m: MessaggioVera) -> Bool {
+        if let e = m.esitoRoutine, !routineVisibile(e) { return true }
+        if m.agendaSpostamento != nil { return true }
+        if let p = m.pianoPassi, !visibileAlCliente(p.richiesta.clienteId) { return true }
+        return false
     }
 
     /// Lo stato della scheda «Conferma» di una voce (nil se il messaggio non c'è più).
@@ -321,7 +388,14 @@ extension StatoShell {
         let quante = voci.count == 1 ? "Una cosa da sapere" : "\(SchedaConfermaVera.numero(voci.count).prefix(1).uppercased() + SchedaConfermaVera.numero(voci.count).dropFirst()) cose da sapere"
         var righe = ["\(quante) su \(nome), adesso:"]
         righe += voci.map { "• \($0.testo) (\($0.fonte))" }
-        let azioni = voci.compactMap { azioneSussurro($0, cliente: c, oggi: oggi) }
+        // Le voci che hanno già una scheda in attesa (nata dal dossier o da un'altra domanda) non ne hanno una seconda
+        let inAttesa = voci.filter { schedaSussurroInAttesaOvunque($0) != nil }.map(\.chiave)
+        let azioni = voci.filter { !inAttesa.contains($0.chiave) }.compactMap { azioneSussurro($0, cliente: c, oggi: oggi) }
+        if !inAttesa.isEmpty {
+            righe.append(inAttesa.count == voci.count
+                         ? "Per queste voci c'è già una scheda «Conferma» che aspetta: non ne preparo una seconda."
+                         : "Per alcune voci c'è già una scheda «Conferma» che aspetta: non ne preparo una seconda.")
+        }
         if !azioni.isEmpty, !solaLettura {
             righe.append(azioni.count == 1 ? "L'attività la segno solo con «Conferma»." : "Le segno solo con «Conferma»: togli quelle che non ti servono.")
         }
@@ -389,5 +463,47 @@ extension StatoShell {
         s.modoCliente = nil
         controlla(s.messaggiPerLoSchermo(s.conversazione("sofia")).count == s.conversazione("sofia").count,
                   "Sussurro in chat: fuori dalla modalità cliente la conversazione è intera")
+        provaSussurroSchedeAltrove(oggi: oggi, controlla)
+    }
+
+    /// Le schede nate fuori dalla conversazione del cliente (dal portafoglio): il pulsante del dossier e una nuova domanda
+    /// le riusano, dopo «Conferma» un doppione in attesa perde l'azione (l'attività non si segna due volte), «Annulla»
+    /// riapre la voce.
+    private static func provaSussurroSchedeAltrove(oggi: Date, _ controlla: (Bool, String) -> Void) {
+        let t = StatoShell(persistente: false)
+        t.rispostePreparate = true
+        guard let j = t.dati.clienti.firstIndex(where: { $0.id == "sofia" }) else { return }
+        t.dati.clienti[j].consensi = Consensi()
+        t.veraPortafoglio = true
+        guard let w = t.vociSussurro(dati: t.dati.istantanea, clienteId: "sofia", oggi: oggi).first(where: { $0.azione.cambia }),
+              let c = t.cliente("sofia"), let a = t.azioneSussurro(w, cliente: c, oggi: oggi) else {
+            return controlla(false, "Sussurro altrove: per Sofia senza consenso manca una voce con un'attività")
+        }
+        controlla(t.chiediSussurro("Cosa devo sapere su Sofia?", chiave: VeraPortafoglio.chiave),
+                  "Sussurro altrove: la domanda su Sofia nel portafoglio ha risposta")
+        guard let mp = t.conversazione(VeraPortafoglio.chiave).last, mp.conferma?.stato == .daConfermare else {
+            return controlla(false, "Sussurro altrove: la risposta nel portafoglio non ha la scheda «Conferma»")
+        }
+        controlla(t.eseguiSussurro(w, oggi: oggi) == mp.id,
+                  "Sussurro altrove: il pulsante del dossier riusa la scheda nata nel portafoglio, niente seconda scheda")
+        _ = t.chiediSussurro("Cosa devo sapere su Sofia?", chiave: "sofia")
+        let seconda = t.conversazione("sofia").last?.conferma?.attive.contains { $0.argomenti[argomentoSussurro] == w.chiave } ?? false
+        controlla(!seconda, "Sussurro altrove: la domanda nel dossier non prepara una seconda scheda per la stessa voce")
+        // Un doppione già in attesa (schede salvate prima): dopo «Conferma» della prima perde l'azione
+        let doppione = t.schedaSussurro([a], voce: w, cliente: c)
+        let attivita = t.dati.attivita.count
+        _ = t.confermaSchedaVera(messaggio: mp.id)
+        controlla(t.messaggioVera(doppione)?.conferma?.stato == .rinunciata && t.confermaSchedaVera(messaggio: doppione) == nil
+                  && t.dati.attivita.count > attivita,
+                  "Sussurro altrove: confermata una scheda, il doppione in attesa è lasciato stare e l'attività non si segna due volte")
+        controlla(!t.vociSussurro(dati: t.dati.istantanea, clienteId: "sofia", oggi: oggi).contains { $0.chiave == w.chiave },
+                  "Sussurro altrove: dopo «Conferma» la voce è chiusa")
+        // «Annulla»: la voce torna (la chiamata a riapriSussurriAnnullati va in annullaSchedaVera; qui si ripete, è idempotente)
+        t.annullaSchedaVera(messaggio: mp.id)
+        if let annullata = t.messaggioVera(mp.id)?.conferma, annullata.attive.contains(where: { $0.esito?.annullata == true }) {
+            t.riapriSussurriAnnullati(annullata)
+            controlla(t.vociSussurro(dati: t.dati.istantanea, clienteId: "sofia", oggi: oggi).contains { $0.chiave == w.chiave },
+                      "Sussurro altrove: dopo «Annulla» la voce torna tra quelle di Sofia")
+        }
     }
 }

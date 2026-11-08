@@ -17,6 +17,7 @@ enum ProvaMercatoClientiVera {
         qwen(controlla)
         conferma(controlla)
         template(controlla)
+        MercatoClientiVera.provaIpotesiEDomande(controlla)
     }
 
     // MARK: - Dati di prova (date fisse)

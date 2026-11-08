@@ -413,6 +413,8 @@ struct FoglioStileVera: View {
             cortesia.sogliaEta = conSoglia ? soglia : nil
             // Le eccezioni tolte con ✕ si tolgono solo adesso, con «Salva»
             for id in tolte { cortesia.perCliente[id] = nil }
+            // …anche a regola spenta: `metti` con attiva false non scrive il valore, così l'eccezione tolta tornerebbe
+            if !tolte.isEmpty { p.cortesia?.valore.perCliente = cortesia.perCliente }
             ScritturaStileVera.metti(\.cortesia, attiva: conCortesia, valore: cortesia, in: &p)
             ScritturaStileVera.metti(\.lunghezzaFrasi, attiva: conLunghezza, valore: lunghezza, in: &p)
             ScritturaStileVera.metti(\.unaCosaPerRiga, attiva: unaCosaPerRiga, valore: true, in: &p)

@@ -76,11 +76,12 @@ import Observation
     var promesse: [PromessaCliente] { didSet(prima) { segnalaClienti(prima, promesse, \.clienteId) } }
     var confrontiDocumenti: [ConfrontoDocumenti] { didSet(prima) { segnalaClienti(prima, confrontiDocumenti, \.clienteId) } }
     var coperture: [CoperturaPolizza] { didSet(prima) { segnalaClienti(prima, coperture, \.clienteId) } }
-    // Vera, fase 4: routine, tagliando e spiegazioni in tre livelli non entrano in nessun calcolo (neutri, esclusi da
-    // `DatiPrisma.stessiCalcoli`); le voci chiuse del sussurro sono del cliente
+    // Vera, fase 4: routine, tagliando, voci chiuse del sussurro e spiegazioni in tre livelli non entrano in nessun
+    // calcolo (neutri, esclusi da `DatiPrisma.stessiCalcoli`): le voci chiuse sono una preferenza di vista, che
+    // `vociSussurro` rilegge dai dati vivi
     var routine: ArchivioRoutine { didSet { segnala(.neutro) } }
     var tagliando: StatoTagliando { didSet { segnala(.neutro) } }
-    var sussurriChiusi: [SussurroChiuso] { didSet(prima) { segnalaClienti(prima, sussurriChiusi, \.clienteId) } }
+    var sussurriChiusi: [SussurroChiuso] { didSet { segnala(.neutro) } }
     var spiegazioniTreLivelli: [SpiegazioneTreLivelli] { didSet { segnala(.neutro) } }
     var clienteAttivoId: String { didSet(prima) { segnala(.clienteAttivo(prima: prima)) } }
     var impostazioni: Impostazioni { didSet(prima) { segnala(.impostazioni(prima: prima)) } }

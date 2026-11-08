@@ -41,8 +41,22 @@ extension StatoShell {
     @discardableResult
     func esitoTagliandoAggiornato() -> EsitoTagliando? {
         guard !inModoCliente else { return nil }
-        if let e = esitoTagliando, versioneEsitoTagliando == versioneCalcoli { return e }
+        if let e = esitoTagliando, esitoTagliandoAttuale { return e }
         return aggiornaEsitoTagliando()
+    }
+
+    /// L'elenco in memoria vale ancora: fatto con i dati di adesso e oggi (al cambio di giorno un documento o un
+    /// consenso può scadere, e le attività proposte hanno la data di oggi, anche con il controllo notturno spento).
+    var esitoTagliandoAttuale: Bool {
+        guard let e = esitoTagliando else { return false }
+        return versioneEsitoTagliando == versioneCalcoli && Calendar.current.isDate(e.oggi, inSameDayAs: Date())
+    }
+
+    /// Al cambio di giorno (NSCalendarDayChanged): l'elenco in memoria, se c'è, si rifà con l'«oggi» nuovo, così pagina,
+    /// card della colonna e chat non mostrano le scadenze del giorno prima. Il registro salvato non si tocca.
+    func aggiornaEsitoTagliandoAlCambioGiorno() {
+        guard esitoTagliando != nil, !inModoCliente, !lavoriInPausa, !esitoTagliandoAttuale else { return }
+        aggiornaEsitoTagliando()
     }
 
     /// La scheda vera a cui portano le azioni su un cliente: se la scheda è stata unita a un'altra si segue `unitaIn`
@@ -251,6 +265,11 @@ extension StatoShell {
     /// rifà prima se i dati sono cambiati, così la scheda non propone correzioni su voci già sistemate.
     @discardableResult
     func sistemaTuttoTagliando(chiave: String = VeraPortafoglio.chiave, parla: Bool = false) -> String? {
+        if solaLettura {
+            let detto = "Prisma è in sola lettura: non posso preparare correzioni."
+            if parla { rispostaTagliando(detto, chiave: chiave) } else { mostraAvviso(detto) }
+            return nil
+        }
         guard let e = esitoTagliandoAggiornato() else { return nil }
         let azioni = e.voci.filter { !correzioneTagliandoInCorso($0) }.compactMap { $0.correzione?.azione }
         let scheda = azioni.isEmpty ? nil : SchedaConfermaVera(richiesta: "Sistema tutto (tagliando dei dati)", azioni: azioni, origine: .regole)
@@ -290,16 +309,22 @@ extension StatoShell {
         conversazione(chiave).last { $0.autore == .vera }?.titolo == Self.titoloTagliando
     }
 
-    /// Lo smistamento in chat (FalloTuShell.smistaVera). true se la frase era per il tagliando.
-    func chiediTagliando(_ testo: String, chiave: String) -> Bool {
+    /// Lo smistamento in chat (FalloTuShell.smistaVera). true se la frase era per il tagliando. Il tagliando è di tutto
+    /// l'archivio: domanda, riassunto e scheda «Sistema tutto» vanno nella conversazione del portafoglio, mai nel dossier
+    /// di un cliente (la scheda cita nomi e dati di altri clienti). In modalità cliente resta la sola risposta di rifiuto,
+    /// nella conversazione davanti al cliente.
+    func chiediTagliando(_ testo: String, chiave chiaveRicevuta: String) -> Bool {
+        let chiave = inModoCliente ? chiaveRicevuta : VeraPortafoglio.chiave
         let t = InterpreteComandi.pulisci(testo)
         let sistema = DateItaliane.cerca(Self.sistemaTuttoTagliando, t) != nil
-            && (ultimaRispostaTagliando(chiave) || DateItaliane.cerca(#"\btagliando\b"#, t) != nil)
+            // La conversazione in cui è stata scritta la frase (dopo la prima risposta del tagliando è quella del portafoglio)
+            && (ultimaRispostaTagliando(chiaveRicevuta) || DateItaliane.cerca(#"\btagliando\b"#, t) != nil)
         let richiesta = DateItaliane.cerca(Self.richiestaTagliando, t) != nil
             // «Scrivi a Marco…», «manda…» sono per «Fallo tu»; «tagliando dell'auto» non è l'archivio
             && DateItaliane.cerca(Self.verboAzione, t) == nil
             && DateItaliane.cerca(#"\btagliando (?:dell'|della |del )(?:auto|macchina|moto|caldaia|vettura)"#, t) == nil
         guard sistema || richiesta else { return false }
+        if !inModoCliente { veraPortafoglio = true }
         aggiungiMessaggio(MessaggioVera(autore: .utente, testo: testo), cliente: chiave)
         domandaVera = ""
         guard !inModoCliente else {
@@ -312,7 +337,8 @@ extension StatoShell {
             return true
         }
         // «Apri il tagliando»: la pagina, e in chat il riassunto
-        if t.hasPrefix("apri") || t.hasPrefix("mostra") || t.hasPrefix("fammi vedere") { paginaTagliandoAperta = true }
+        // (anche dalla Vera della scrivania: si apre la finestra di Vera, dove la pagina vive)
+        if t.hasPrefix("apri") || t.hasPrefix("mostra") || t.hasPrefix("fammi vedere") { apriPaginaTagliando() }
         let noti = clientiAttivi.map { ClienteNoto(id: $0.id, nome: $0.nome) }
         let nominati = InterpreteComandi.clientiNominati(t, noti)
         if nominati.count == 1, let c = cliente(nominati[0].id) {
@@ -350,6 +376,15 @@ extension StatoShell {
         case TagliandoVera.strumentoUnisci: return unisciSchedeTagliando(a)
         case TagliandoVera.strumentoCompleta: return completaDatoTagliando(a)
         case TagliandoVera.strumentoDocumento: return registraDocumentoTagliando(a, oggi: oggi)
+        case RegistroStrumenti.attivitaNuova, RegistroStrumenti.notaNuova, RegistroStrumenti.agendaNuovo:
+            // Una scheda unita nel frattempo (in «Sistema tutto» l'unione viene prima delle voci del consenso
+            // commerciale della doppia): l'attività, la nota o l'impegno vanno sulla principale. Si riesegue l'azione con
+            // l'id della principale, che qui non ha più niente da cambiare e passa al caso normale di `eseguiAzioneVera`.
+            guard let chiesto = a.argomenti["cliente"], case let id = schedaPrincipaleTagliando(chiesto), id != chiesto,
+                  dati.clienti.contains(where: { $0.id == id && $0.unitaIn == nil }) else { return nil }
+            var b = a
+            b.argomenti["cliente"] = id
+            return eseguiAzioneVera(b)
         default: return nil
         }
     }
@@ -502,6 +537,55 @@ extension StatoShell {
                 nuovo.conformita = unita
             }
         }
+        // Il resto dell'anagrafica: famiglia, profilo investitore, bisogni, dati per la fattura, consenso al copilota,
+        // portafoglio modello del radar, stato civile, aziende e professione. Passa ciò che alla principale manca (vuoto
+        // o mai compilato); se le due schede hanno valori diversi resta quello della principale e la riga delle note dice
+        // cosa è rimasto sulla scheda unita.
+        var anag = AnagraficaUnione()
+        var restanoLa: [String] = []
+        if !doppia.famiglia.isEmpty {
+            if nuovo.famiglia.isEmpty { nuovo.famiglia = doppia.famiglia; anag.famiglia = doppia.famiglia }
+            else if nuovo.famiglia != doppia.famiglia { restanoLa.append("famiglia") }
+        }
+        if doppia.profilo != ProfiloInvestitore() {
+            if nuovo.profilo == ProfiloInvestitore() { nuovo.profilo = doppia.profilo; anag.profilo = doppia.profilo }
+            else if nuovo.profilo != doppia.profilo { restanoLa.append("profilo investitore") }
+        }
+        if doppia.bisogni != ProfiloBisogni() {
+            if nuovo.bisogni == ProfiloBisogni() { nuovo.bisogni = doppia.bisogni; anag.bisogni = doppia.bisogni }
+            else if nuovo.bisogni != doppia.bisogni { restanoLa.append("bisogni") }
+        }
+        if let f = doppia.fiscale {
+            if nuovo.fiscale == nil { nuovo.fiscale = f; anag.fiscale = f }
+            else if nuovo.fiscale != f { restanoLa.append("dati per la fattura") }
+        }
+        if let k = doppia.consensoCopilota {
+            if nuovo.consensoCopilota == nil { nuovo.consensoCopilota = k; anag.consensoCopilota = k }
+            else if nuovo.consensoCopilota != k { restanoLa.append("consenso al copilota") }
+        }
+        if let m = doppia.modelloId {
+            if nuovo.modelloId == nil { nuovo.modelloId = m; anag.modelloId = m }
+            else if nuovo.modelloId != m { restanoLa.append("portafoglio modello") }
+        }
+        if let s = doppia.statoCivile {
+            if nuovo.statoCivile == nil { nuovo.statoCivile = s; anag.statoCivile = s }
+            else if nuovo.statoCivile != s { restanoLa.append("stato civile") }
+        }
+        if let az = doppia.aziende, !az.isEmpty {
+            if nuovo.aziende?.isEmpty ?? true { anag.aziendePrima = nuovo.aziende; nuovo.aziende = az; anag.aziende = az }
+            else if nuovo.aziende != az { restanoLa.append("aziende") }
+        }
+        let professioneD = doppia.professione.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !professioneD.isEmpty {
+            if nuovo.professione.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                anag.professionePrima = nuovo.professione
+                nuovo.professione = doppia.professione
+                anag.professione = doppia.professione
+            } else if nuovo.professione.trimmingCharacters(in: .whitespacesAndNewlines) != professioneD {
+                restanoLa.append("professione")
+            }
+        }
+        if anag != AnagraficaUnione() { u.anagrafica = anag }
         var diversi: [String] = []
         if !doppia.telefono.isEmpty, !principale.telefono.isEmpty, TagliandoVera.telefono(doppia.telefono) != TagliandoVera.telefono(principale.telefono) {
             diversi.append("telefono \(doppia.telefono)")
@@ -509,8 +593,11 @@ extension StatoShell {
         if !doppia.email.isEmpty, !principale.email.isEmpty, TagliandoVera.email(doppia.email) != TagliandoVera.email(principale.email) {
             diversi.append("email \(doppia.email)")
         }
+        if !restanoLa.isEmpty {
+            diversi.append("diversi da questa scheda e rimasti là: \(restanoLa.joined(separator: ", "))")
+        }
         if !diversi.isEmpty {
-            let riga = "Dalla scheda unita «\(doppia.nome)»: \(diversi.joined(separator: ", "))"
+            let riga = "Dalla scheda unita «\(doppia.nome)»: \(diversi.joined(separator: "; "))"
             nuovo.nota = (nuovo.nota.isEmpty ? "" : nuovo.nota + "\n") + riga
             u.rigaNota = riga
         }
@@ -526,6 +613,9 @@ extension StatoShell {
         if dati.analisi[dId] != nil || dati.confrontiTFR[dId] != nil {
             resta += " La principale aveva già la sua analisi 360 o il suo confronto TFR: quelli della doppia restano sulla scheda unita."
         }
+        if !restanoLa.isEmpty {
+            resta += " Diversi da quelli della principale, restano sulla scheda unita (e nelle note): \(restanoLa.joined(separator: ", "))."
+        }
         let raccomandazioni = dati.raccomandazioni.filter { $0.clienteId == dId }.count
         if raccomandazioni > 0 {
             resta += raccomandazioni == 1 ? " La raccomandazione registrata resta sulla scheda unita (il registro non si cambia)."
@@ -539,6 +629,9 @@ extension StatoShell {
         guard let e = a.esito, e.fatta, let u = Self.daJSONTagliando(UnioneTagliando.self, e.prima),
               let ip = dati.clienti.firstIndex(where: { $0.id == u.principale }), let id = dati.clienti.firstIndex(where: { $0.id == u.doppione }),
               dati.clienti[id].unitaIn == u.principale else { return false }
+        // La principale è stata unita a sua volta a un'altra scheda (un tagliando dopo): i suoi elementi, anche quelli
+        // arrivati da questa unione, sono ormai là. Prima si annulla l'unione più recente, poi questa.
+        guard dati.clienti[ip].unitaIn == nil else { return false }
         let (p, d) = (u.principale, u.doppione)
         _ = spostaTagliando(\DatiVivi.posizioni, id: \.id, cliente: \.clienteId, da: p, a: d, soli: Set(u.posizioni))
         _ = spostaTagliando(\DatiVivi.documenti, id: \.id, cliente: \.clienteId, da: p, a: d, soli: Set(u.documenti))
@@ -599,6 +692,18 @@ extension StatoShell {
             case "dataNascita": if let n = c.dataNascita, RegistroStrumenti.isoData(n) == valore { c.dataNascita = nil }
             default: break
             }
+        }
+        // Il resto dell'anagrafica arrivato dalla doppia, anche qui solo se ancora uguale a com'è arrivato
+        if let an = u.anagrafica {
+            if let v = an.famiglia, c.famiglia == v { c.famiglia = [] }
+            if let v = an.profilo, c.profilo == v { c.profilo = ProfiloInvestitore() }
+            if let v = an.bisogni, c.bisogni == v { c.bisogni = ProfiloBisogni() }
+            if let v = an.fiscale, c.fiscale == v { c.fiscale = nil }
+            if let v = an.consensoCopilota, c.consensoCopilota == v { c.consensoCopilota = nil }
+            if let v = an.modelloId, c.modelloId == v { c.modelloId = nil }
+            if let v = an.statoCivile, c.statoCivile == v { c.statoCivile = nil }
+            if let v = an.aziende, c.aziende == v { c.aziende = an.aziendePrima }
+            if let v = an.professione, c.professione == v { c.professione = an.professionePrima ?? "" }
         }
         c.canali.removeAll { u.canaliAggiunti.contains($0) }
         // Consensi e «In regola» tornano com'erano solo se nessuno li ha toccati dopo l'unione
@@ -781,6 +886,8 @@ private struct UnioneTagliando: Codable {
     var conformitaPrima: ConformitaCliente?
     var conformitaDopo: ConformitaCliente?
     var rigaNota: String?
+    /// Il resto dell'anagrafica messo nella principale dalla doppia (i campi della principale erano vuoti).
+    var anagrafica: AnagraficaUnione?
 
     init(principale: String, doppione: String) {
         self.principale = principale
@@ -799,7 +906,8 @@ private struct UnioneTagliando: Codable {
         case principale, doppione, posizioni, documenti, appuntamenti, attivita, note, messaggi, incontri, obiettivi, simulazioni,
              valutazioni, commenti, fotografie, schedeAdeguatezza, parcelle, eventiVita, sessioniCopilota, partiteRischio, promesse,
              confrontiDocumenti, coperture, sussurriChiusi, spiegazioniTreLivelli, esitiRoutine, analisiSpostata, confrontoTFRSpostato,
-             messaggiVera, riempiti, canaliAggiunti, consensiPrima, consensiDopo, conformitaUnita, conformitaPrima, conformitaDopo, rigaNota
+             messaggiVera, riempiti, canaliAggiunti, consensiPrima, consensiDopo, conformitaUnita, conformitaPrima, conformitaDopo, rigaNota,
+             anagrafica
     }
 
     init(from decoder: Decoder) throws {
@@ -841,12 +949,31 @@ private struct UnioneTagliando: Codable {
         conformitaPrima = (try? c.decodeIfPresent(ConformitaCliente.self, forKey: .conformitaPrima)) ?? nil
         conformitaDopo = (try? c.decodeIfPresent(ConformitaCliente.self, forKey: .conformitaDopo)) ?? nil
         rigaNota = (try? c.decodeIfPresent(String.self, forKey: .rigaNota)) ?? nil
+        anagrafica = (try? c.decodeIfPresent(AnagraficaUnione.self, forKey: .anagrafica)) ?? nil
     }
 }
 
-/// Un nome stabile per una voce chiusa del sussurro (non ha un id suo): la chiave e il momento della chiusura.
+/// I campi dell'anagrafica che «Unisci le schede» ha preso dalla doppia (nil = non toccato), per «Annulla». Prima
+/// dell'unione quei campi della principale erano vuoti: famiglia vuota, profilo e bisogni mai compilati, gli altri
+/// nil; per aziende e professione si tiene anche il valore di prima (nil o vuoto, spazi).
+private struct AnagraficaUnione: Codable, Equatable {
+    var famiglia: [Familiare]?
+    var profilo: ProfiloInvestitore?
+    var bisogni: ProfiloBisogni?
+    var fiscale: DatiFiscaliCliente?
+    var consensoCopilota: ConsensoCopilota?
+    var modelloId: String?
+    var statoCivile: StatoCivile?
+    var aziende: [AziendaCliente]?
+    var aziendePrima: [AziendaCliente]?
+    var professione: String?
+    var professionePrima: String?
+}
+
+/// Un nome stabile per una voce chiusa del sussurro (non ha un id suo): la chiave e il momento della chiusura, al
+/// secondo come lo salva l'archivio (.iso8601, senza frazioni), così «Annulla» la ritrova anche dopo un riavvio.
 fileprivate extension SussurroChiuso {
-    var idTagliando: String { "\(chiave)|\(chiusoIl.timeIntervalSinceReferenceDate)" }
+    var idTagliando: String { "\(chiave)|\(Int(chiusoIl.timeIntervalSinceReferenceDate.rounded(.down)))" }
 }
 
 // MARK: - Prova del collegamento (dentro `Prisma --prova-vera`)
@@ -868,6 +995,11 @@ extension StatoShell {
         var doppia = Cliente(id: "m-bianchi-prova", nome: "M. Bianchi", iniziali: "MB", tinta: .blu, tema: "", email: "",
                              telefono: "+39 333 4445566", preferito: false, nota: "", creatoIl: Date(timeIntervalSinceReferenceDate: 800_000_000))
         doppia.codiceFiscale = "BNCMRC80A01H501U"
+        // Il resto dell'anagrafica: il modello del radar e la professione ci sono solo sulla doppia
+        doppia.modelloId = "modello-prova-tagliando"
+        doppia.professione = "Architetto"
+        s.dati.clienti[im].modelloId = nil
+        s.dati.clienti[im].professione = ""
         s.dati.clienti.append(doppia)
         var pos = Posizione(clienteId: doppia.id, canale: .alleanza, stato: .inEssere, area: .investimento, nome: "Piano della scheda doppia")
         pos.id = "pos-doppia-prova"
@@ -878,7 +1010,7 @@ extension StatoShell {
         if let id = s.dati.clienti.firstIndex(where: { $0.id == doppia.id }) {
             s.dati.clienti[id].consensi = Consensi(privacy: true, dataPrivacy: Date(timeIntervalSinceReferenceDate: 790_000_000))
         }
-        let sussurroDoppia = SussurroChiuso(clienteId: doppia.id, chiave: "prova-tagliando", chiusoIl: Date(timeIntervalSinceReferenceDate: 800_000_100))
+        let sussurroDoppia = SussurroChiuso(clienteId: doppia.id, chiave: "prova-tagliando", chiusoIl: Date(timeIntervalSinceReferenceDate: 800_000_100.75))
         s.dati.sussurriChiusi.append(sussurroDoppia)
         let messaggioDoppia = MessaggioVera(autore: .utente, testo: "Domanda sulla scheda doppia")
         s.dati.conversazioni[doppia.id] = [messaggioDoppia]
@@ -915,6 +1047,30 @@ extension StatoShell {
                   && s.dati.conversazioni[principale]?.contains { $0.id == messaggioDoppia.id } == true
                   && (dop == principale || s.dati.conversazioni[dop] == nil),
                   "Tagliando nell'app: anche sussurro chiuso e conversazione di Vera passano sulla principale")
+        if dop == doppia.id {
+            controlla(s.cliente(principale)?.modelloId == "modello-prova-tagliando" && s.cliente(principale)?.professione == "Architetto",
+                      "Tagliando nell'app: il resto dell'anagrafica che manca alla principale (modello del radar, professione) arriva dalla doppia")
+        }
+        // Un'attività per la doppia che arriva dopo l'unione (le voci del consenso commerciale in «Sistema tutto») va
+        // sulla principale, non fallisce
+        let attivitaDoppia = AzioneConferma(strumento: RegistroStrumenti.attivitaNuova, app: .attivita, titolo: "Segno un'attività",
+                                            dettaglio: "", argomenti: ["cliente": dop, "titolo": "Rinnovare il consenso commerciale (prova)"])
+        if dop != principale {
+            let r = s.eseguiAzioneTagliando(attivitaDoppia)
+            controlla(r?.fatta == true && s.dati.attivita.contains { $0.clienteId == principale && $0.titolo == "Rinnovare il consenso commerciale (prova)" },
+                      "Tagliando nell'app: un'attività per la scheda appena unita va sulla principale: \(r?.messaggio ?? "nessun esito")")
+            s.dati.attivita.removeAll { $0.titolo == "Rinnovare il consenso commerciale (prova)" }
+        }
+        // Dopo un riavvio le date tornano dall'archivio al secondo (.iso8601): «Annulla» ritrova lo stesso le voci chiuse
+        do {
+            let cod = JSONEncoder()
+            cod.dateEncodingStrategy = .iso8601
+            let dec = JSONDecoder()
+            dec.dateDecodingStrategy = .iso8601
+            if let riletti = try? dec.decode([SussurroChiuso].self, from: cod.encode(s.dati.sussurriChiusi)) {
+                s.dati.sussurriChiusi = riletti
+            }
+        }
         // «Sistema tutto» mette l'unione prima di «Completa»: l'azione rimasta sulla doppia scrive sulla principale
         let completaDoppia = AzioneConferma(strumento: TagliandoVera.strumentoCompleta, app: .clienti, titolo: "Completo l'email",
                                             dettaglio: "", argomenti: ["cliente": dop, "campo": TagliandoVera.Campo.email.rawValue,
@@ -932,10 +1088,18 @@ extension StatoShell {
         }
         var conEsito = unisci
         conEsito.esito = fatto
+        // Una principale unita a sua volta a un'altra scheda: «Annulla» di questa unione non dice di esserci riuscito
+        if let ip = s.dati.clienti.firstIndex(where: { $0.id == principale }) {
+            s.dati.clienti[ip].unitaIn = "laura"
+            controlla(s.disfaAzioneTagliando(conEsito) == false && s.dati.clienti.contains { $0.id == dop && $0.unitaIn == principale },
+                      "Tagliando nell'app: l'unione di una principale poi unita altrove non si annulla prima dell'altra")
+            s.dati.clienti[ip].unitaIn = nil
+        }
         controlla(s.disfaAzioneTagliando(conEsito) == true && s.dati.clienti.allSatisfy { $0.unitaIn == nil }
                   && s.dati.posizioni.first { $0.id == pos.id }?.clienteId == doppia.id
                   && s.cliente("marco")?.codiceFiscale.isEmpty == true
                   && s.cliente("marco")?.consensi.privacy == false
+                  && (principale != "marco" || (s.cliente("marco")?.modelloId == nil && s.cliente("marco")?.professione.isEmpty == true))
                   && s.dati.sussurriChiusi.contains { $0.chiave == sussurroDoppia.chiave && $0.clienteId == doppia.id }
                   && s.dati.conversazioni[doppia.id]?.contains { $0.id == messaggioDoppia.id } == true
                   && s.dati.conversazioni["marco"]?.contains { $0.id == messaggioDoppia.id } != true,

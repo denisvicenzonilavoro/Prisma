@@ -1012,7 +1012,11 @@ enum ProvaVera {
         ProvaRoutineVera.esegui(controlla)
         // Le routine nell'app: la frase in chat, niente prima di «Conferma», «Dopo la firma» con «Annulla» (ProvaCollegaRoutineVera.swift)
         ProvaCollegaRoutineVera.esegui(controlla)
+        // Secondo giro di revisione: agenda in modalità cliente, frasi che non sono routine, routine di portafoglio dal dossier
+        ProvaCorrezioniRoutineVera.esegui(controlla)
         ProvaAgendaOrganizzaVera.esegui(controlla)
+        // Lo spostamento in blocco va nella conversazione del portafoglio
+        StatoShell.provaAgendaOrganizzaPortafoglio(controlla)
         ProvaTagliandoVera.esegui(controlla)
         // Il tagliando nell'app: registro, «Va bene così», chat, «Sistema tutto», unione/completa/documento con «Annulla» (CollegaTagliandoShell.swift)
         StatoShell.provaCollegamentoTagliando(controlla)
@@ -1022,11 +1026,17 @@ enum ProvaVera {
         // La scheda del sussurro ritrovata dalla conversazione, la chat e la chiusura dopo «Conferma»
         ProvaSchedaSussurroAperta.esegui(controlla)
         StatoShell.provaSussurroChatEChiusura(controlla)
+        // Secondo giro: storia per Qwen senza appunti in modalità cliente, cliente eliminato, messaggio dell'esito, scenari
+        StatoShell.provaFaseQuattroSecondoGiro(controlla)
         ProvaMercatoClientiVera.esegui(controlla)
         // In modalità cliente l'elenco del mercato mostra solo il cliente presente
         ProvaMercatoModoCliente.esegui(controlla)
         ProvaStileVera.esegui(controlla)
+        // Lo stile nell'app: eccezione tu/Lei di un cliente, regola spenta, riscrittura che conserva i fatti
+        StatoShell.provaCollegamentoStileCorrezioni(controlla)
         ProvaTreLivelliVera.esegui(controlla)
+        // Tre livelli: le bozze restano a «Fallo tu», «Apri il PDF» apre il PDF di quella spiegazione
+        ProvaCorrezioniTreLivelliVera.esegui(controlla)
         ProvaPassiVera.esegui(controlla)
         // «Ragiona a passi» collegato all'app: smistamento, messaggio con il piano, scheda «Conferma» (ProvaCollegaPassi.swift)
         ProvaCollegaPassi.esegui(controlla)

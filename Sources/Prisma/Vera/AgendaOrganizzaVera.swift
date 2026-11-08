@@ -568,12 +568,31 @@ enum AgendaOrganizzaVera {
             return .spostaBlocco
         }
         // Solo le forme di una ricerca d'orario: «ora» da sola è spesso l'avverbio («trovami i clienti che ora…»),
-        // «momento» e «posto» da soli sono nomi qualsiasi
-        if trova(#"\b(trova|trovami|cerca|cercami|proponi|proponimi|dammi|vedi se c'è)\b.*(\bun'ora\b|\bmezz'ora\b|\bun orario\b|\b(due |gli |degli )?orari\b|\b(uno |lo )?spazio (per|libero|in agenda)\b|\bun buco\b|\bun momento (per|libero)\b|\bun posto in agenda\b)"#, t)
+        // «momento» e «posto» da soli sono nomi qualsiasi, «gli orari» da soli sono quelli dell'agenda («dammi gli orari
+        // degli appuntamenti di domani» la legge, non cerca)
+        if trova(#"\b(trova|trovami|cerca|cercami|proponi|proponimi|dammi|vedi se c'è)\b.*(\bun'ora\b|\bmezz'ora\b|\bun orario\b|\bdue orari\b|\borari liberi\b|\b(uno |lo )?spazio (per|libero|in agenda)\b|\bun buco\b|\bun momento (per|libero)\b|\bun posto in agenda\b)"#, t)
             || trova(#"\b(un'ora|un orario|due orari|mezz'ora)\b.*\b(per|con)\b"#, t) && trova(#"\b(entro|attaccat|libero|liber[ao]|trova|cerca)"#, t) {
+            if leggeOrariAgenda(frase, t) { return nil }
             return .cerca
         }
         return nil
+    }
+
+    /// «Gli orari degli appuntamenti», «gli orari di domani» senza un cliente nominato: si legge la giornata
+    /// (il comando agenda), non si cerca un orario.
+    private static func leggeOrariAgenda(_ frase: String, _ t: String) -> Bool {
+        let giorno = #"(oggi|domani|dopodomani|luned[iì]|marted[iì]|mercoled[iì]|gioved[iì]|venerd[iì]|sabato|domenica)"#
+        guard trova(#"\borari (degli|dei|delle) (appuntamenti|impegni|incontri)\b"#, t)
+                || trova(#"\b(gli|degli) orari (di|del|della|per) "# + giorno + #"\b"#, t) else { return false }
+        // Con «per/con» e un nome (la maiuscola conta) resta una ricerca per quel cliente
+        guard let re = try? NSRegularExpression(pattern: #"\b(?:per|con)\s+[A-ZÀ-Ý][a-zà-ÿ]{2,}"#) else { return true }
+        let ns = frase as NSString
+        let esclusi: Set<String> = ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica", "Oggi", "Domani", "Dopodomani"]
+        let conNome = re.matches(in: frase, range: NSRange(location: 0, length: ns.length)).contains { m in
+            let parole = ns.substring(with: m.range).split(separator: " ", omittingEmptySubsequences: true)
+            return parole.last.map { !esclusi.contains(String($0)) } ?? false
+        }
+        return !conNome
     }
 
     private static let schemaGiorni = #"\b(?:(?:il |la )?prossim[oa] )?(?:luned[iì]|marted[iì]|mercoled[iì]|gioved[iì]|venerd[iì]|sabato|domenica)(?: prossim[oa])?|\bdopodomani\b|\bdomani\b|\boggi\b|\b\d{1,2}(?: |/)(?:\d{1,2}|"# + DateItaliane.mesi.joined(separator: "|") + #")(?:(?: |/)\d{4})?"#
@@ -715,13 +734,19 @@ enum AgendaOrganizzaVera {
         }
     }
 
-    /// Spostamento in blocco: il cliente solo se la frase lo nomina («sposta tutti gli appuntamenti di Marco…»), mai
-    /// quello aperto: «sposta tutto» senza nome resta l'intera giornata.
+    /// Spostamento in blocco: il cliente solo se la frase lo lega agli impegni da spostare («sposta tutti gli
+    /// appuntamenti di Marco…»), mai quello aperto né uno nominato di passaggio («…sposta tutto a venerdì e avvisa
+    /// Marco» resta l'intera giornata).
     private static func clienteDelBlocco(_ r: inout RichiestaOrari, frase: String, contesto x: ContestoStrumenti) {
-        switch RegistroStrumenti.cliente(frase, x) {
+        let testo = frase.replacingOccurrences(of: "’", with: "'")
+        guard case let (_, g)? = DateItaliane.cerca(#"\b(?:appuntamenti|impegni|incontri|tutto|tutti|tutte|quelli)\s+(?:di|con|del|della)\s+(.+?)(?=\s*[,.;!?]|\s+(?:da|dal|dalla|a|ad|al|alla|e|ed|per|su|sul|sulla|entro)\b|$)"#, testo),
+              g.count > 1 else { return }
+        let nome = g[1].trimmingCharacters(in: .whitespaces)
+        guard !nome.isEmpty else { return }
+        switch RegistroStrumenti.cliente(nome, x) {
         case .trovato(let c): r.clienteId = c.id
         case .ambiguo(let cs): r.ambigui = cs.map(\.nome)
-        default: r.nomeDetto = nomeDetto(frase)
+        default: r.nomeDetto = nomeDetto(g[0])
         }
     }
 

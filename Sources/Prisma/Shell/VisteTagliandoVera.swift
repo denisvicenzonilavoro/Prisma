@@ -116,7 +116,7 @@ struct PaginaTagliandoVista: View {
         .superficieApple(G.superficiePagina, raggio: G.raggioPagina)
         .onAppear { if stato.esitoTagliando == nil { stato.aggiornaEsitoTagliando() } }
         // Dopo una correzione confermata (o qualsiasi cambio dei dati dei calcoli) l'elenco si rifà
-        .onChange(of: stato.versioneCalcoli) { _ in stato.aggiornaEsitoTagliando() }
+        .onChange(of: stato.versioneCalcoli) { _ in stato.esitoTagliandoAggiornato() }
     }
 
     private var intestazione: some View {
@@ -431,8 +431,6 @@ enum RinvioEsitoTagliando {
     private nonisolated(unsafe) static var lavoro: DispatchWorkItem?
     /// true se almeno una richiesta in attesa vuole rifare l'esito anche se c'è già.
     private nonisolated(unsafe) static var forza = false
-    /// La versione dei dati dei calcoli dell'ultimo esito rifatto qui (per non rifarlo senza motivo).
-    private nonisolated(unsafe) static var versioneFatta: Int?
 
     /// `istantanea`: nelle istantanee si disegna lo stato preparato, niente lavori rinviati.
     static func rifai(_ stato: StatoShell, soloSeManca: Bool, istantanea: Bool = false) {
@@ -446,10 +444,11 @@ enum RinvioEsitoTagliando {
             lavoro = nil
             guard let stato, !stato.inModoCliente else { return }
             if stato.esitoTagliando != nil {
-                guard tutto, versioneFatta != stato.versioneCalcoli else { return }
+                // La versione dell'esito la scrive `aggiornaEsitoTagliando`, chiunque lo rifaccia (la pagina aperta,
+                // «Controlla adesso», le azioni): se è già quella dei dati di adesso e di oggi non si rifà due volte
+                guard tutto, !stato.esitoTagliandoAttuale else { return }
             }
             stato.aggiornaEsitoTagliando()
-            versioneFatta = stato.versioneCalcoli
         }
         lavoro = w
         DispatchQueue.main.asyncAfter(deadline: .now() + attesa, execute: w)

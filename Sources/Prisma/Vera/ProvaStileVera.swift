@@ -145,6 +145,7 @@ enum ProvaStileVera {
         controlla(!StileVera.istruzioni(rifatto, cliente: elisa, oggi: oggi, clienteNuovo: true).contains("Niente emoji"), "Stile: una regola spenta non va a Qwen")
         let ridotto = StileVera.aggiorna(mio, messaggi: Array(messaggi.prefix(2)), clienti: clienti, oggi: oggi)
         controlla(ridotto.cortesia == nil && ridotto.firma?.valore == "Denis V.", "Stile: senza prove le regole imparate escono, quelle scritte restano")
+        controlla(mio.emoji == nil || ridotto.emoji?.attiva == false, "Stile: una regola imparata spenta resta spenta anche senza più prove")
 
         // MARK: Archivio
         let dati = try? JSONEncoder().encode(rifatto)

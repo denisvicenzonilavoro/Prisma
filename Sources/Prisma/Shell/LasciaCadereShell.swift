@@ -86,7 +86,7 @@ extension StatoShell {
             return rispondi("Non riesco a leggere «\(nome)»: forse è protetto o è un'immagine troppo sfocata.")
         }
         // Si riconosce su tutti i clienti; in modalità cliente un documento di un altro cliente non si archivia (senza nomi)
-        let l = LasciaCadereVera.leggi(nomeFile: nome, pagine: pagine, pagineOCR: pagineOCR, clienti: dati.clienti)
+        let l = LasciaCadereVera.leggi(nomeFile: nome, pagine: pagine, pagineOCR: pagineOCR, clienti: clientiAttivi)
         if inModoCliente, (l.clienteId.map { $0 != clienteAttivoId } ?? false) || (l.clienteId == nil && !l.possibili.isEmpty && !l.possibili.contains(clienteAttivoId)) {
             if temporanea { try? FileManager.default.removeItem(at: cartellaCopia) }
             return rispondi("Ho letto «\(nome)», ma non è di questo cliente: non lo archivio qui.")
@@ -170,12 +170,15 @@ extension StatoShell {
         let arg = a.argomenti
         d.pagine = Int(arg["pagine"] ?? "") ?? 0
         d.pagineOCR = Int(arg["pagineOCR"] ?? "") ?? 0
-        d.lettura = .letto
+        // Senza testo letto (un contratto da cui non esce testo, una scheda di prima) il documento si rilegge dopo
+        let senzaTesto = arg["testo"] == nil
+        d.lettura = senzaTesto ? .daLeggere : .letto
         d.categoria = CategoriaDocumento(rawValue: arg["categoria"] ?? "")
         // I dati letti erano nella scheda: con «Conferma» sono confermati
         let campi = (arg["campi"]?.data(using: .utf8)).flatMap { try? JSONDecoder().decode([CampoEstratto].self, from: $0) } ?? []
         d.campi = campi.map { var x = $0; x.confermato = true; return x }
         dati.documenti.append(d)
+        if senzaTesto { leggiDocumento(d.id) }
         return EsitoAzioneVera(fatta: true, messaggio: "«\(d.titolo)» è nei documenti di \(c.nome).", oggetto: d.id)
     }
 }
