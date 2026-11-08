@@ -166,6 +166,9 @@ struct DatiPrisma: Codable, Equatable {
     ///     (`sussurriChiusi`, `ImpostazioniVera.sussurroNelDossier`), le spiegazioni in tre livelli
     ///     (`spiegazioniTreLivelli`), il profilo di stile (`Impostazioni.stileVera`) e il ragionamento a passi
     ///     (`ImpostazioniVera.passi`), tutti letti con tolleranza.
+    ///     Vera, fase 5: le versioni di «Vera su misura» con l'esame (`ImpostazioniVera.suMisura`), il tipo di motore
+    ///     esterno (`ImpostazioniVera.motoreEsterno`, non collegato) e, nella memoria cifrata, id, modalità ed esclusione
+    ///     degli esempi approvati; tutti letti con tolleranza.
     static let versioneAttuale = 27
 
     init(clienti: [Cliente], appuntamenti: [Appuntamento], attivita: [Attivita], posizioni: [Posizione],
@@ -748,6 +751,11 @@ struct ImpostazioniVera: Codable, Equatable {
     var sussurroNelDossier = true
     /// «Ragiona a passi» (fase 4, funzione 20): acceso o spento e l'interruttore «Mostra il ragionamento».
     var passi = ImpostazioniPassiVera()
+    /// «Vera su misura» (fase 5, funzione 22): le versioni addestrate con il loro esame, il modello di prima e gli esempi
+    /// tenuti per l'esame.
+    var suMisura = ImpostazioniSuMisura()
+    /// «Il cervello grande» (fase 5, funzione 25): solo il tipo di motore esterno scelto (resta non collegato).
+    var motoreEsterno = ImpostazioniMotoreEsterno()
 
     /// Il modello del fornitore scelto.
     var modello: String {
@@ -768,6 +776,7 @@ struct ImpostazioniVera: Codable, Equatable {
         case fornitore, indirizzoCompatibile, modelloCompatibile, ragionamento, prontaAllAvvio, restaInMemoria, modelliConfronto, ponte
         case memoriaAttiva, imparaDalleCorrezioni, finestra, modelloRicerca
         case sussurroNelDossier, passi
+        case suMisura, motoreEsterno
     }
 
     init(from decoder: Decoder) throws {
@@ -801,6 +810,9 @@ struct ImpostazioniVera: Codable, Equatable {
         // Fase 4 (versione 27): il sussurro acceso e il ragionamento a passi di base se mancano o sono illeggibili
         sussurroNelDossier = (try? c.decodeIfPresent(Bool.self, forKey: .sussurroNelDossier)) ?? true
         passi = ((try? c.decodeIfPresent(ImpostazioniPassiVera.self, forKey: .passi)) ?? nil) ?? ImpostazioniPassiVera()
+        // Fase 5 (versione 27): su misura e motore esterno di base se mancano o sono illeggibili
+        suMisura = ((try? c.decodeIfPresent(ImpostazioniSuMisura.self, forKey: .suMisura)) ?? nil) ?? ImpostazioniSuMisura()
+        motoreEsterno = ((try? c.decodeIfPresent(ImpostazioniMotoreEsterno.self, forKey: .motoreEsterno)) ?? nil) ?? ImpostazioniMotoreEsterno()
     }
 }
 

@@ -90,7 +90,7 @@ extension StatoShell {
             guard let i = elenco.firstIndex(where: { $0.id == messaggio }), i > 0 else { return nil }
             return elenco[..<i].last(where: { $0.autore == .utente })?.testo
         } ?? ""
-        memoriaVera.approva(domanda: domanda, risposta: m.testo)
+        memoriaVera.approva(domanda: domanda, risposta: m.testo, modalita: m.modalita)
         mostraAvviso("Segnata come buona: Vera la usa come esempio")
     }
 
