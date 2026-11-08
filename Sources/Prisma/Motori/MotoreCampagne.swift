@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 
 // Le campagne di Messaggi › Campagne («Luce» giro 12, Design/template-luce-specifica.md §9.4): i gruppi di clienti con lo

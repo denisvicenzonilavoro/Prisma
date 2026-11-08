@@ -112,7 +112,6 @@ struct MappaCampagne: View {
     @Environment(\.prismaCalmo) private var calmo
     @State private var radunati = false
     @State private var sotto: String?
-    @FocusState private var fuoco: Bool
 
     private typealias C = Tema.Apple.Campagne
 
@@ -154,7 +153,6 @@ struct MappaCampagne: View {
         .superficieApple(Tema.Apple.Superficie.cardPiatta)
         .clipShape(RoundedRectangle(cornerRadius: Tema.Apple.Superficie.cardPiatta.raggio, style: .continuous))
         .focusable()
-        .focused($fuoco)
         .focusEffectDisabled()
         .onKeyPress(.downArrow) { passa(1, disposti: disposti) }
         .onKeyPress(.upArrow) { passa(-1, disposti: disposti) }
