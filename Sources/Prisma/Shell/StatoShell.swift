@@ -100,6 +100,8 @@ enum VoceConfronto: Hashable {
     private(set) var avviso: String?
     /// L'avviso è il commiato di Vera (con la sfera): dopo un pulsante della mini finestra.
     private(set) var avvisoDiVera = false
+    /// Il pulsante dell'avviso («Annulla» dopo una creazione rapida): vale finché l'avviso resta in vista.
+    private(set) var azioneAvviso: AzioneAvviso?
     var schermoIntero = false
     var schedaImpostazioni: SchedaImpostazioni = .panoramica
     var schedaCliente: SchedaCliente = .panoramica
@@ -3582,15 +3584,26 @@ enum VoceConfronto: Hashable {
 
     // MARK: - Avvisi
 
-    func mostraAvviso(_ testo: String, daVera: Bool = false) {
+    func mostraAvviso(_ testo: String, daVera: Bool = false, azione: AzioneAvviso? = nil) {
         lavoroAvviso?.cancel()
         avvisoDiVera = daVera
+        azioneAvviso = azione
         withAnimation(Animazioni.avviso) { avviso = testo }
         let lavoro = DispatchWorkItem { [weak self] in
+            self?.azioneAvviso = nil
             withAnimation(Animazioni.avviso) { self?.avviso = nil }
         }
         lavoroAvviso = lavoro
         DispatchQueue.main.asyncAfter(deadline: .now() + Animazioni.durataAvviso, execute: lavoro)
+    }
+
+    /// Il pulsante dell'avviso: esegue l'azione una volta e chiude l'avviso.
+    func eseguiAzioneAvviso() {
+        guard let a = azioneAvviso else { return }
+        azioneAvviso = nil
+        lavoroAvviso?.cancel()
+        withAnimation(Animazioni.avviso) { avviso = nil }
+        a.esegui()
     }
 
     func alternaSchermoIntero() {
@@ -3699,4 +3712,11 @@ enum SchedaCliente: String, CaseIterable, Hashable {
         case .azienda: return "L'azienda"
         }
     }
+}
+
+
+/// Il pulsante di un avviso: «Annulla» dopo una creazione rapida (Pratiche › Proposta, §7.1.4).
+struct AzioneAvviso {
+    let titolo: String
+    let esegui: () -> Void
 }

@@ -5,9 +5,14 @@ import Foundation
 // dai bisogni rilevati e confermati del profilo) costruisce le cinque tappe della proposta: il prodotto (solo dal
 // catalogo dell'utente, canale sempre quello del prodotto), l'importo (solo dai motori esistenti: protezione della
 // famiglia, previdenza, obiettivi, liquidità), il prospetto (CompositoreProspetti, contando le pagine senza fare il PDF),
-// l'adeguatezza (MotoreAdeguatezza su una bozza in memoria: il rosso ferma tutto) e i moduli (arrivano con «Compila da
-// solo», giro 10: tappa neutra, mai un elenco o un conteggio inventato). Nessun premio inventato: per le coperture
-// «premio: da chiedere alla compagnia», finché il consulente non lo scrive nella posizione.
+// l'adeguatezza (MotoreAdeguatezza su una bozza in memoria: il rosso ferma tutto) e i moduli («Compila da solo»:
+// `CompilatoreModuli.anteprima` sui modelli del canale e del prodotto, con «N campi compilati · M da chiedere»; senza
+// modelli, o per i moduli Alleanza che Prisma non compila, la tappa resta neutra e non ferma la proposta). Nessun premio
+// inventato: per le coperture «premio: da chiedere alla compagnia», finché il consulente non lo scrive nella posizione.
+// Oltre ai bisogni delle analisi: la sostituzione «costi più bassi» (una posizione in essere con un prodotto del catalogo
+// meno costoso, `MotoreCosti.alternativa` e `MotoreSostituzione`; o quella chiesta dallo Smontaggio) e i bisogni
+// dell'azienda del cliente imprenditore (persona chiave con il capitale che manca da `MotoreAzienda`; welfare per i
+// dipendenti solo su richiesta dal dossier, senza cifra: l'importo lo scrive il consulente).
 
 /// Un bisogno della barra laterale «Bisogni scoperti dall'analisi»: una proposta dei motori per un cliente.
 struct BisognoScoperto: Identifiable, Hashable {
@@ -34,12 +39,48 @@ struct BisognoScoperto: Identifiable, Hashable {
     /// L'Analisi 360 del cliente non è salvata: le ipotesi sono quelle predefinite, il bisogno è «da confermare».
     let daConfermare: Bool
     /// La bozza aperta che risponde già a questo bisogno (stesso cliente, area e rischio), se c'è.
-    let propostaId: String?
+    var propostaId: String?
+    /// La sostituzione «costi più bassi»: la posizione in essere da sostituire (nil per gli altri bisogni o per un
+    /// documento dello Smontaggio mai registrato, che porta la sua posizione provvisoria in `attualeProvvisoria`).
+    var posizioneSostituitaId: String? = nil
+    /// La posizione provvisoria dello Smontaggio (in memoria, mai salvata): l'estratto di un'altra banca.
+    var attualeProvvisoria: Posizione? = nil
+    /// Il prodotto già scelto (l'alternativa dei costi, la proposta scelta nello Smontaggio).
+    var prodottoSuggerito: String? = nil
+    /// L'azienda del cliente imprenditore da cui nasce il bisogno (persona chiave, welfare).
+    var aziendaId: String? = nil
+
+    /// Il bisogno di sostituzione «costi più bassi».
+    var sostituzione: Bool { origine.hasPrefix(MotoreProposta.prefissoSostituzione) }
+    /// L'area dell'azienda da cui nasce il bisogno (nil per gli altri).
+    var areaAzienda: AreaAzienda? {
+        if origine.hasPrefix(MotoreProposta.prefissoPersonaChiave) { return .personaChiave }
+        if origine.hasPrefix(MotoreProposta.prefissoWelfare) { return .welfare }
+        return nil
+    }
+}
+
+/// Un modulo della proposta: quante caselle Prisma compila e quante restano da chiedere al cliente.
+struct ModuloProposta: Hashable, Identifiable {
+    let modelloId: String
+    let titolo: String
+    let compilati: Int
+    let daChiedere: Int
+    let firme: Int
+    var id: String { modelloId }
+
+    /// «18 campi compilati · 1 da chiedere».
+    var riga: String {
+        let c = "\(compilati) \(compilati == 1 ? "campo compilato" : "campi compilati")"
+        return daChiedere > 0 ? "\(c) · \(daChiedere) da chiedere" : c
+    }
 }
 
 /// Dove porta «Rimedia» quando una tappa si ferma.
 enum RimedioPasso: Hashable {
     case prodotti, analisi360, posizione
+    /// I dati dell'azienda nel dossier (fatturato, mesi a rischio).
+    case azienda
 }
 
 /// L'esito di una tappa della proposta.
@@ -81,6 +122,8 @@ struct ImportoProposta: Hashable {
 /// Il prospetto della proposta: quante pagine fa (impaginato, senza generare il PDF).
 struct ProspettoProposta: Hashable {
     let pagine: Int
+    /// La sostituzione: la posizione in essere che la proposta sostituisce (il prospetto è quello di sostituzione).
+    var attualeId: String? = nil
 }
 
 /// L'esito dell'adeguatezza per il riquadro: colore, frase e dettaglio.
@@ -98,7 +141,7 @@ struct PropostaCostruita {
     let importo: EsitoPasso<ImportoProposta>?
     let prospetto: EsitoPasso<ProspettoProposta>?
     let adeguatezza: EsitoPasso<AdeguatezzaProposta>?
-    let moduli: EsitoPasso<Void>?
+    let moduli: EsitoPasso<[ModuloProposta]>?
     /// La bozza (Posizione proposta, esito bozza) con prodotto, canale del prodotto e importi dei motori: c'è quando
     /// prodotto e importo sono fatti.
     let bozza: Posizione?
@@ -122,18 +165,34 @@ struct PropostaCostruita {
 }
 
 enum MotoreProposta {
-    /// La frase della tappa 5 finché «Compila da solo» (giro 10) non c'è.
-    static let moduliInArrivo = "I moduli si compileranno da soli con «Compila da solo», in arrivo."
+    /// La tappa 5 senza modelli caricati per il canale o il prodotto: neutra, non ferma la proposta.
+    static let moduliSenzaModelli = "Nessun modulo per questo canale: caricali in Pratiche › Moduli e si compileranno da soli."
+    /// I moduli Alleanza non si compilano in Prisma (decisione 60): si fanno con gli strumenti della compagnia.
+    static let moduliAlleanza = "I moduli Alleanza si compilano con gli strumenti della compagnia."
     static let premioDaChiedere = "premio: da chiedere alla compagnia"
     static let riepilogoPronta = "prodotto, importo, prospetto e adeguatezza pronti. Controlla e firma."
+    static let prefissoSostituzione = "sostituzione-"
+    static let prefissoPersonaChiave = "azienda-persona-chiave-"
+    static let prefissoWelfare = "azienda-welfare-"
+
+    /// La frase del riquadro finale: con i moduli compilati, quanti.
+    static func riepilogo(_ r: PropostaCostruita) -> String {
+        guard case .fatto(let elenco)? = r.moduli, !elenco.isEmpty else { return riepilogoPronta }
+        let n = elenco.count
+        return "prodotto, importo, prospetto, adeguatezza e \(n) \(n == 1 ? "modulo compilato" : "moduli compilati"). Controlla e firma."
+    }
 
     // MARK: - Bisogni
 
     /// I bisogni scoperti di un cliente. `fonte` porta le posizioni del cliente SENZA le bozze aperte (così il bisogno
     /// già costruito resta visibile), `bozze` le bozze aperte del cliente, per ritrovare quella che risponde al bisogno.
     /// Le proposte senza area (solo attività, come i capitali in scadenza) non sono bisogni di proposta.
-    static func bisogni(fonte: FonteVera, bozze: [Posizione] = []) -> [BisognoScoperto] {
+    /// `schede`: le schede di adeguatezza delle bozze, per ritrovare la bozza di una sostituzione.
+    static func bisogni(fonte: FonteVera, bozze: [Posizione] = [], schede: [SchedaAdeguatezza] = []) -> [BisognoScoperto] {
         let c = fonte.cliente
+        // Le bozze di una sostituzione o di un bisogno dell'azienda non rispondono ai bisogni delle analisi
+        let sostituzioni = Set(schede.filter { $0.posizioneSostituitaId != nil }.map(\.posizioneId))
+        let bozzeAnalisi = bozze.filter { b in !sostituzioni.contains(b.id) && !b.note.contains(notaAzienda) }
         let rilevati = MotoreBisogni.rileva(cliente: c, posizioni: fonte.posizioni, analisi: fonte.analisi, oggi: fonte.oggi)
         let confermati = Set(MotoreBisogni.confermati(rilevati, profilo: c.bisogni).map(\.id))
         let scartati = Set(rilevati.filter { c.bisogni.esiti[$0.id] == false }.map(\.id))
@@ -144,7 +203,7 @@ enum MotoreProposta {
             let obiettivoId = p.id.hasPrefix("obiettivo-") ? String(p.id.dropFirst("obiettivo-".count)) : nil
             let obiettivo = obiettivoId.flatMap { id in fonte.obiettivi.first { $0.id == id } }
             let candidati = rilevatiPer(p.id).filter { id in rilevati.contains { $0.id == id } }
-            let bozza = bozze.first { b in
+            let bozza = bozzeAnalisi.first { b in
                 b.stato == .proposta && b.esito == .bozza && b.area == area && (p.rischio == nil || b.rischio == p.rischio)
             }
             // Un bisogno scartato dal consulente nel profilo non torna fra quelli da proporre (se la proposta è già
@@ -163,10 +222,143 @@ enum MotoreProposta {
                 confermato: rilevato.map { confermati.contains($0) } ?? false,
                 daConfermare: !fonte.analisiSalvata, propostaId: bozza?.id))
         }
+        elenco += bisogniSostituzione(fonte: fonte, bozze: bozze, schede: schede)
+        elenco += bisogniAzienda(fonte: fonte, bozze: bozze)
         // I bisogni confermati dal consulente vengono prima (a parità, l'ordine di urgenza dei motori)
         return elenco.enumerated().sorted { a, b in
             a.element.confermato != b.element.confermato ? a.element.confermato : a.offset < b.offset
         }.map(\.element)
+    }
+
+    // MARK: - Sostituzione «costi più bassi»
+
+    /// Le posizioni in essere (investimento e risparmio) per cui il catalogo ha un prodotto dello stesso rischio con costi
+    /// più bassi che lascia di più, uscita compresa (`MotoreCosti.alternativa`, solo nei canali del cliente). Salta le
+    /// aree con una proposta già presentata, come i bisogni delle analisi.
+    static func bisogniSostituzione(fonte f: FonteVera, bozze: [Posizione], schede: [SchedaAdeguatezza]) -> [BisognoScoperto] {
+        let c = f.cliente
+        let catalogo = f.prodotti.filter { c.canali.isEmpty || c.canali.contains($0.canale) }
+        let aperte = Set(f.posizioni.filter { $0.stato == .proposta && $0.esito != .rifiutata && $0.esito != .accettata }.map(\.area))
+        var elenco: [BisognoScoperto] = []
+        for p in f.posizioni where p.stato == .inEssere && (p.area == .investimento || p.area == .risparmio) {
+            let bozza = bozze.first { b in schede.contains { $0.posizioneId == b.id && $0.posizioneSostituitaId == p.id } }
+            if bozza == nil && aperte.contains(p.area) { continue }
+            let alternativa = MotoreCosti.alternativa(p, prodotti: catalogo, cliente: c.id)
+            guard bozza != nil || alternativa != nil else { continue }
+            var motivo = "Una proposta di sostituzione è già in bozza."
+            if let a = alternativa {
+                let da = p.costoComplessivo.map { CifreDoc.percento($0) } ?? "—"
+                motivo = "Costi dal \(da) al \(CifreDoc.percento(a.costoAnnuo)) l'anno con «\(a.prodotto.nome)»: in \(a.anni) anni "
+                    + "circa \(CifreDoc.euro(a.guadagno)) in più, uscita compresa."
+            }
+            elenco.append(bisognoSostituzione(attuale: p, cliente: c, motivo: motivo,
+                                              prodotto: bozza?.prodottoId ?? alternativa?.prodotto.id,
+                                              propostaId: bozza?.id, daConfermare: !f.analisiSalvata))
+        }
+        return elenco
+    }
+
+    /// Il bisogno di sostituzione di una posizione (in essere o provvisoria dello Smontaggio), con il prodotto scelto.
+    static func bisognoSostituzione(attuale p: Posizione, cliente c: Cliente, motivo: String, prodotto: String?,
+                                    propostaId: String? = nil, provvisoria: Bool = false, daConfermare: Bool = false) -> BisognoScoperto {
+        var b = BisognoScoperto(
+            id: "\(c.id)·\(prefissoSostituzione)\(p.id)", clienteId: c.id, origine: prefissoSostituzione + p.id,
+            titolo: "«\(p.nome)» di \(primoNome(c.nome)), con costi più bassi", motivo: motivo, area: p.area, rischio: nil,
+            capitale: p.valore > 0 ? p.valore : nil, versamentoMensile: nil, importo: p.valore > 0 ? p.valore : nil,
+            obiettivoId: nil, bisognoRilevatoId: nil, areaBisogno: areaBisogno(p.area, rischio: nil), confermato: false,
+            daConfermare: daConfermare, propostaId: propostaId)
+        b.posizioneSostituitaId = provvisoria ? nil : p.id
+        b.attualeProvvisoria = provvisoria ? p : nil
+        b.prodottoSuggerito = prodotto
+        return b
+    }
+
+    // MARK: - L'azienda del cliente imprenditore
+
+    /// Il segno nella nota della bozza nata da un bisogno dell'azienda (la bozza si ritrova anche dopo la riapertura).
+    static let notaAzienda = "· azienda del cliente ·"
+
+    /// La persona chiave delle aziende del cliente quando il fabbisogno (fatturato × mesi a rischio scritti dall'utente)
+    /// supera il capitale delle coperture collegate. Il welfare non ha cifre: nasce solo dal dossier.
+    static func bisogniAzienda(fonte f: FonteVera, bozze: [Posizione]) -> [BisognoScoperto] {
+        (f.cliente.aziende ?? []).compactMap { a in
+            guard let b = bisognoAzienda(a, area: .personaChiave, fonte: f, bozze: bozze),
+                  b.capitale != nil || b.propostaId != nil else { return nil }
+            return b
+        }
+    }
+
+    /// Il bisogno di un'area dell'azienda (persona chiave o welfare); nil se l'area è segnata «non pertinente» o non è
+    /// un bisogno di proposta. Per la persona chiave il capitale è quello che manca al fabbisogno (nil se non manca nulla
+    /// o se mancano fatturato e mesi a rischio).
+    static func bisognoAzienda(_ a: AziendaCliente, area: AreaAzienda, fonte f: FonteVera, bozze: [Posizione] = []) -> BisognoScoperto? {
+        let c = f.cliente
+        guard (c.datiNonPertinenti ?? [:])[MotoreAzienda.chiaveNonPertinente(azienda: a.id, area: area)] == nil else { return nil }
+        let titolo: String
+        let motivo: String
+        var capitale: Double?
+        let areaPosizione: AreaPosizione
+        let rischio: RischioCoperto?
+        let prefisso: String
+        switch area {
+        case .personaChiave:
+            prefisso = prefissoPersonaChiave
+            areaPosizione = .protezione
+            rischio = .vita
+            titolo = "La persona chiave di \(a.ragioneSociale)"
+            let mesi = a.personaChiave?.mesiARischio
+            let fabbisogno = MotoreAzienda.fabbisognoPersonaChiave(fatturato: a.fatturato, mesi: mesi)
+            let coperto = MotoreAzienda.capitalePersonaChiave(a, posizioni: f.posizioni)
+            if let fabbisogno, let mesi {
+                let manca = fabbisogno - coperto
+                capitale = manca > 0 ? manca : nil
+                motivo = "Con \(TestiAzienda.mesi(mesi)) di fatturato a rischio servono \(CifreDoc.euro(fabbisogno)); "
+                    + (coperto > 0 ? "le coperture key man ne coprono \(CifreDoc.euro(coperto))." : "nessuna copertura key man.")
+            } else {
+                motivo = fraseServonoDatiAzienda
+            }
+        case .welfare:
+            prefisso = prefissoWelfare
+            areaPosizione = .previdenza
+            rischio = nil
+            titolo = "Il welfare per i dipendenti di \(a.ragioneSociale)"
+            let v = MotoreAzienda.valuta(a, cliente: c, posizioni: f.posizioni, oggi: f.oggi).first { $0.area == .welfare }
+            motivo = v?.frase ?? "Il piano di welfare per i dipendenti: l'importo lo decidi con l'azienda."
+        case .tfm, .passaggio:
+            return nil
+        }
+        let bozza = bozze.first { $0.note.contains("«\(titolo)»") }
+        var b = BisognoScoperto(
+            id: "\(c.id)·\(prefisso)\(a.id)", clienteId: c.id, origine: prefisso + a.id, titolo: titolo, motivo: motivo,
+            area: areaPosizione, rischio: rischio, capitale: capitale, versamentoMensile: nil, importo: nil, obiettivoId: nil,
+            bisognoRilevatoId: nil, areaBisogno: areaBisogno(areaPosizione, rischio: rischio), confermato: false,
+            daConfermare: false, propostaId: bozza?.id)
+        b.aziendaId = a.id
+        return b
+    }
+
+    static let fraseServonoDatiAzienda = "Servono il fatturato e i mesi a rischio dell'azienda per la cifra."
+
+    /// I prodotti del catalogo per un bisogno dell'azienda (decisione 74): per la persona chiave prima quelli che dicono
+    /// «key man» o «persona chiave», poi le temporanee caso morte; per il welfare solo quelli che dicono welfare o
+    /// previdenza collettiva. Sempre nei canali del cliente, mai fuori catalogo.
+    static func prodottiAzienda(area: AreaAzienda, catalogo: [Prodotto], canaliCliente: [Canale]) -> [Prodotto] {
+        func nomina(_ p: Prodotto, _ parole: [String]) -> Bool {
+            let t = (p.nome + " " + p.tipologia).lowercased()
+            return parole.contains { t.contains($0) }
+        }
+        let nei = catalogo.filter { canaliCliente.isEmpty || canaliCliente.contains($0.canale) }
+        switch area {
+        case .personaChiave:
+            let parole = ["key man", "keyman", "key-man", "persona chiave", "uomo chiave"]
+            let nominati = nei.filter { nomina($0, parole) }
+            let temporanee = nei.filter { $0.area == .protezione && rischioNominato($0) == .vita && !nomina($0, parole) }
+            return nominati + temporanee
+        case .welfare:
+            return nei.filter { nomina($0, ["welfare", "collettiv", "aziendal", "dipendenti"]) }
+        case .tfm, .passaggio:
+            return []
+        }
     }
 
     /// Gli identificativi dei bisogni rilevati (MotoreBisogni) a cui risponde una proposta dei motori.
@@ -248,6 +440,11 @@ enum MotoreProposta {
 
     /// «di protezione caso morte», «di previdenza»: per la frase del catalogo vuoto.
     static func descrizione(_ b: BisognoScoperto) -> String {
+        switch b.areaAzienda {
+        case .personaChiave?: return "key man (persona chiave)"
+        case .welfare?: return "per il welfare aziendale"
+        default: break
+        }
         if b.area == .protezione, let r = b.rischio { return "di protezione \(r.nome.lowercased())" }
         return "di \(b.area.nome.lowercased())"
     }
@@ -262,10 +459,23 @@ enum MotoreProposta {
     /// Costruisce le cinque tappe. `fonte` come per `bisogni` (posizioni senza le bozze aperte); `bozzaEsistente` è la
     /// bozza già collegata al bisogno (si aggiorna, con il suo premio scritto a mano); `prodottoScelto` la scelta del
     /// consulente fra più prodotti adatti. `contaPagine` impagina il prospetto (le prove possono passarne una finta).
+    /// `modelli`: i modelli di Pratiche › Moduli (per la tappa 5). `contaSostituzione` impagina il prospetto di
+    /// sostituzione (nil: si conta quello della posizione).
     static func costruisci(_ b: BisognoScoperto, fonte: FonteVera, dati: DatiPrisma, bozzaEsistente: Posizione? = nil,
-                           prodottoScelto: String? = nil, ultimo: String? = nil,
-                           contaPagine: (ContenutoProspetto) -> Int) -> PropostaCostruita {
-        let adatti = prodottiAdatti(b, catalogo: fonte.prodotti, canaliCliente: fonte.cliente.canali, ultimo: ultimo)
+                           prodottoScelto: String? = nil, ultimo: String? = nil, modelli: [ModelloModulo] = [],
+                           contaPagine: (ContenutoProspetto) -> Int,
+                           contaSostituzione: ((EsitoSostituzione, Cliente) -> Int)? = nil) -> PropostaCostruita {
+        let adatti: [Prodotto] = {
+            if let area = b.areaAzienda {
+                return prodottiAzienda(area: area, catalogo: fonte.prodotti, canaliCliente: fonte.cliente.canali)
+            }
+            var elenco = prodottiAdatti(b, catalogo: fonte.prodotti, canaliCliente: fonte.cliente.canali, ultimo: ultimo)
+            // La sostituzione non propone il prodotto che il cliente ha già
+            if b.sostituzione, let attuale = attuale(b, fonte: fonte) {
+                elenco.removeAll { $0.id == attuale.prodottoId || $0.nome == attuale.nome }
+            }
+            return elenco
+        }()
         func ferma(_ prodotto: EsitoPasso<Prodotto>) -> PropostaCostruita {
             PropostaCostruita(bisogno: b, prodotto: prodotto, importo: nil, prospetto: nil, adeguatezza: nil, moduli: nil,
                               bozza: nil, scheda: nil)
@@ -275,6 +485,8 @@ enum MotoreProposta {
         if let id = bozzaEsistente?.prodottoId, let p = fonte.prodotti.first(where: { $0.id == id }) {
             scelto = p
         } else if let id = prodottoScelto, let p = adatti.first(where: { $0.id == id }) {
+            scelto = p
+        } else if let id = b.prodottoSuggerito, let p = fonte.prodotti.first(where: { $0.id == id }) {
             scelto = p
         } else if adatti.count == 1 {
             scelto = adatti[0]
@@ -296,13 +508,9 @@ enum MotoreProposta {
         ImportaPosizioni.applica(scelto, a: &bozza)
         if bozza.emittente.isEmpty && scelto.canale == .alleanza { bozza.emittente = "Alleanza Assicurazioni" }
         bozza.periodoRaccomandato = bozza.periodoRaccomandato ?? scelto.periodoConsigliato
-        guard let importo = importo(b, prodotto: scelto, fonte: fonte, bozza: &bozza) else {
-            return PropostaCostruita(bisogno: b, prodotto: .fatto(scelto),
-                                     importo: .manca("L'analisi non dà ancora una cifra per questo bisogno.", rimedio: .analisi360),
-                                     prospetto: nil, adeguatezza: nil, moduli: nil, bozza: nil, scheda: nil)
-        }
         if bozza.note.isEmpty {
             bozza.note = "Costruita in Pratiche › Proposta dal bisogno «\(b.titolo)»: \(b.motivo)"
+                + (b.aziendaId != nil ? " \(notaAzienda)" : "")
         }
         var scheda = SchedaAdeguatezza(posizioneId: bozza.id, clienteId: b.clienteId, creataIl: fonte.oggi)
         if let o = b.obiettivoId {
@@ -312,19 +520,50 @@ enum MotoreProposta {
         } else if let a = b.areaBisogno {
             scheda.collegamento = .area(a)
         }
+        scheda.posizioneSostituitaId = b.posizioneSostituitaId
+        guard let importo = importo(b, prodotto: scelto, fonte: fonte, bozza: &bozza) else {
+            // Il welfare non ha una cifra dei motori: la bozza si salva perché il consulente scriva l'importo
+            if b.areaAzienda == .welfare {
+                return PropostaCostruita(bisogno: b, prodotto: .fatto(scelto),
+                                         importo: .manca(fraseImportoWelfare, rimedio: .posizione),
+                                         prospetto: nil, adeguatezza: nil, moduli: nil, bozza: bozza, scheda: scheda)
+            }
+            let frase: String
+            let rimedio: RimedioPasso
+            switch b.areaAzienda {
+            case .personaChiave?:
+                frase = b.motivo == fraseServonoDatiAzienda ? "Servono il fatturato e i mesi a rischio dell'azienda."
+                    : "Le coperture key man arrivano già al fabbisogno."
+                rimedio = .azienda
+            default:
+                frase = b.sostituzione ? "Manca il valore della posizione da sostituire." : "L'analisi non dà ancora una cifra per questo bisogno."
+                rimedio = b.sostituzione ? .posizione : .analisi360
+            }
+            return PropostaCostruita(bisogno: b, prodotto: .fatto(scelto), importo: .manca(frase, rimedio: rimedio),
+                                     prospetto: nil, adeguatezza: nil, moduli: nil, bozza: nil, scheda: nil)
+        }
 
-        // 3. Il prospetto
-        let pagine = contaPagine(CompositoreProspetti.posizione(bozza, dati: dati))
-        let prospetto: EsitoPasso<ProspettoProposta> = pagine > 0
-            ? .fatto(ProspettoProposta(pagine: pagine))
-            : .manca("Il prospetto non si è potuto impaginare.", rimedio: .posizione)
+        // 3. Il prospetto: quello di sostituzione per «costi più bassi» (se la posizione è in Prisma), altrimenti quello
+        // della posizione
+        let prospetto: EsitoPasso<ProspettoProposta>
+        if b.sostituzione, b.posizioneSostituitaId != nil, let a = attuale(b, fonte: fonte), let conta = contaSostituzione {
+            let pagine = conta(esitoSostituzione(attuale: a, bozza: bozza, fonte: fonte), fonte.cliente)
+            prospetto = pagine > 0 ? .fatto(ProspettoProposta(pagine: pagine, attualeId: a.id))
+                : .manca("Il prospetto non si è potuto impaginare.", rimedio: .posizione)
+        } else {
+            let pagine = contaPagine(CompositoreProspetti.posizione(bozza, dati: dati))
+            prospetto = pagine > 0
+                ? .fatto(ProspettoProposta(pagine: pagine))
+                : .manca("Il prospetto non si è potuto impaginare.", rimedio: .posizione)
+        }
 
         // 4. L'adeguatezza, su una bozza in memoria
         let adeguatezza: EsitoPasso<AdeguatezzaProposta>? = prospetto.prosegue
             ? self.adeguatezza(bozza, scheda: scheda, fonte: fonte, voci: dati.impostazioni.consegna.voci) : nil
 
-        // 5. I moduli: arrivano con «Compila da solo» (giro 10)
-        let moduli: EsitoPasso<Void>? = (adeguatezza?.prosegue ?? false) ? .inArrivo(moduliInArrivo) : nil
+        // 5. I moduli: «Compila da solo» sui modelli del canale e del prodotto
+        let moduli: EsitoPasso<[ModuloProposta]>? = (adeguatezza?.prosegue ?? false)
+            ? self.moduli(bozza, prodotto: scelto, cliente: fonte.cliente, modelli: modelli, dati: dati, oggi: fonte.oggi) : nil
 
         return PropostaCostruita(bisogno: b, prodotto: .fatto(scelto), importo: .fatto(importo), prospetto: prospetto,
                                  adeguatezza: adeguatezza, moduli: moduli, bozza: bozza, scheda: scheda)
@@ -335,6 +574,31 @@ enum MotoreProposta {
     static func importo(_ b: BisognoScoperto, prodotto: Prodotto, fonte: FonteVera,
                         bozza: inout Posizione) -> ImportoProposta? {
         let f = fonte
+        if b.sostituzione {
+            guard let a = attuale(b, fonte: f), a.valore > 0 else { return nil }
+            if bozza.versamentoIniziale <= 0 { bozza.versamentoIniziale = a.valore }
+            let e = esitoSostituzione(attuale: a, bozza: bozza, fonte: f)
+            return ImportoProposta(cifra: bozza.versamentoIniziale, spiegazione: "trasferiti da «\(a.nome)»",
+                                   riga: "costi da \(CifreDoc.euro(e.resto.costiPrimoAnno)) a \(CifreDoc.euro(e.cambio.costiPrimoAnno)) l'anno")
+        }
+        switch b.areaAzienda {
+        case .personaChiave?:
+            guard let capitale = b.capitale, capitale > 0 else { return nil }
+            if (bozza.capitaleAssicurato ?? 0) <= 0 { bozza.capitaleAssicurato = capitale }
+            let premio = bozza.premio > 0
+                ? "premio: \(CifreDoc.euro(bozza.premio)) \(bozza.frequenza.nome.lowercased())"
+                : premioDaChiedere
+            return ImportoProposta(cifra: bozza.capitaleAssicurato ?? capitale, spiegazione: "capitale che manca alla copertura key man",
+                                   riga: premio)
+        case .welfare?:
+            // Nessuna cifra dei motori (decisione 67): vale solo l'importo scritto dal consulente nella proposta
+            let scritto = bozza.premio > 0 ? bozza.premio : bozza.versamentoIniziale
+            guard scritto > 0 else { return nil }
+            let quando = bozza.premio > 0 ? (CompilatoreModuli.perFrequenza(bozza.frequenza) ?? "una volta") : "una volta"
+            return ImportoProposta(cifra: scritto, spiegazione: "\(quando), scritto da te", riga: rigaCosti(prodotto))
+        default:
+            break
+        }
         switch b.area {
         case .protezione:
             let prot = MotoreProtezioneFamiglia.calcola(f.posizioni, cliente: f.cliente, analisi: f.analisi.protezione, data: f.oggi)
@@ -426,6 +690,50 @@ enum MotoreProposta {
             return .manca("Da completare: " + (primo(.grigio).map { minuscola($0.esito) } ?? "mancano dati per l'adeguatezza"),
                           rimedio: .posizione)
         }
+    }
+
+    // MARK: - Sostituzione e moduli
+
+    static let fraseImportoWelfare = "L'importo del piano lo decidi con l'azienda: scrivilo nella proposta."
+
+    /// La posizione da sostituire: quella in Prisma o la provvisoria dello Smontaggio.
+    static func attuale(_ b: BisognoScoperto, fonte: FonteVera) -> Posizione? {
+        if let id = b.posizioneSostituitaId { return fonte.posizioni.first { $0.id == id } ?? b.attualeProvvisoria }
+        return b.attualeProvvisoria
+    }
+
+    /// Restare o cambiare, con le ipotesi di Prisma (penale, ingresso, tasse).
+    static func esitoSostituzione(attuale a: Posizione, bozza: Posizione, fonte f: FonteVera) -> EsitoSostituzione {
+        MotoreSostituzione.calcola(attuale: a, alternativa: bozza, prodotti: f.prodotti,
+                                   orizzonteCliente: f.cliente.profilo.orizzonteAnni, data: f.oggi)
+    }
+
+    /// I modelli di Pratiche › Moduli della proposta: stesso canale (o nessuno) e, se il modello ne nomina, stesso
+    /// prodotto; solo quelli con la mappa confermata.
+    static func modelli(per bozza: Posizione, prodotto: Prodotto?, tra modelli: [ModelloModulo]) -> [ModelloModulo] {
+        modelli.filter { m in
+            m.mappaConfermata && (m.canale == nil || m.canale == bozza.canale)
+                && (m.prodottoIds.isEmpty || prodotto.map { m.prodottoIds.contains($0.id) } == true)
+        }
+    }
+
+    /// La tappa 5: per ogni modello l'anteprima di `CompilatoreModuli` (caselle compilate e da chiedere). Neutra per i
+    /// moduli Alleanza (decisione 60) e senza modelli: non ferma la proposta e non inventa un elenco.
+    static func moduli(_ bozza: Posizione, prodotto: Prodotto, cliente: Cliente, modelli elenco: [ModelloModulo],
+                       dati: DatiPrisma, oggi: Date) -> EsitoPasso<[ModuloProposta]> {
+        guard bozza.canale != .alleanza else { return .inArrivo(moduliAlleanza) }
+        let scelti = modelli(per: bozza, prodotto: prodotto, tra: elenco).filter(\.compilabile)
+        guard !scelti.isEmpty else { return .inArrivo(moduliSenzaModelli) }
+        let f = dati.impostazioni.studio.fatturazione
+        let consulente = [f.nome, f.cognome].map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }.joined(separator: " ")
+        let fonte = FonteCompilazione(cliente: cliente, posizione: bozza, prodotto: prodotto, consulente: consulente,
+                                      comuneConsulente: f.sede.comune, oggi: oggi,
+                                      conservaIban: dati.impostazioni.pratiche.ibanConservato)
+        return .fatto(scelti.map { m in
+            let a = CompilatoreModuli.anteprima(m, fonte: fonte)
+            return ModuloProposta(modelloId: m.id, titolo: m.titolo, compilati: a.compilati, daChiedere: a.datiMancanti.count,
+                                  firme: a.firme.count)
+        })
     }
 
     private static func minuscola(_ s: String) -> String {

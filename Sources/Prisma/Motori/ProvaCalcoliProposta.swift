@@ -5,7 +5,11 @@ import Foundation
 /// verso Prodotti; il rischio letto dalla tipologia filtra la protezione; l'importo è quello di MotoreProtezioneFamiglia
 /// (arrotondato come le proposte dei motori); il premio delle coperture non si inventa; la bozza ha il canale del
 /// prodotto; un bisogno con una proposta già presentata non compare, con una bozza aperta compare già collegato;
-/// adeguatezza rossa → niente moduli né «Proposta pronta»; i moduli sono in arrivo e non bloccano. Chiamata da
+/// adeguatezza rossa → niente moduli né «Proposta pronta»; senza modelli la tappa dei moduli è neutra e non blocca, con
+/// un modello del canale dice quante caselle compila e quante restano da chiedere (CompilatoreModuli), i moduli Alleanza
+/// restano neutri; la sostituzione «costi più bassi» trasferisce il valore della posizione, collega la scheda alla
+/// posizione sostituita e conta il prospetto di sostituzione; la persona chiave dell'azienda chiede il capitale che manca
+/// (fatturato × mesi ÷ 12 − coperture collegate), il welfare non ha cifra e salva la bozza da completare. Chiamata da
 /// `ProvaCalcoli.esegui()`.
 enum ProvaCalcoliProposta {
     static func esegui(_ verifica: VerificaCalcoli) {
@@ -13,6 +17,9 @@ enum ProvaCalcoliProposta {
         prodotti(verifica)
         costruzione(verifica)
         adeguatezzaRossa(verifica)
+        moduli(verifica)
+        sostituzione(verifica)
+        azienda(verifica)
         demo(verifica)
     }
 
@@ -193,10 +200,10 @@ enum ProvaCalcoliProposta {
         verifica.vero("Proposta: riga del premio scritto a mano", rMano.importo?.valore?.riga.hasPrefix("premio: ") == true
                       && rMano.importo?.valore?.riga != MotoreProposta.premioDaChiedere)
 
-        // I moduli: in arrivo, non bloccano; il passo 5 c'è solo se l'adeguatezza prosegue
+        // I moduli: senza modelli la tappa è neutra e non blocca; il passo 5 c'è solo se l'adeguatezza prosegue
         if let a = r.adeguatezza, a.prosegue {
-            verifica.vero("Proposta: moduli in arrivo dopo un'adeguatezza che prosegue", {
-                if case .inArrivo(let frase)? = r.moduli { return frase == MotoreProposta.moduliInArrivo }
+            verifica.vero("Proposta: senza modelli la tappa dei moduli è neutra", {
+                if case .inArrivo(let frase)? = r.moduli { return frase == MotoreProposta.moduliSenzaModelli }
                 return false
             }())
             verifica.vero("Proposta: cinque passi e «Proposta pronta»", r.raggiunti == 5 && r.pronta)
@@ -231,6 +238,153 @@ enum ProvaCalcoliProposta {
         }
         verifica.vero("Proposta: adeguatezza rossa → moduli non costruiti", r.moduli == nil)
         verifica.vero("Proposta: adeguatezza rossa → niente «Proposta pronta»", !r.pronta && r.raggiunti == 4)
+    }
+
+    // MARK: - Moduli
+
+    /// Un modello del canale indipendente con cognome, codice fiscale (che manca al cliente di prova), capitale e una firma.
+    private static func modello(canale: Canale?, prodotti: [String] = [], confermato: Bool = true) -> ModelloModulo {
+        let r = CGRect(x: 40, y: 600, width: 180, height: 18)
+        var m = ModelloModulo(id: "modulo-prova-proposta", titolo: "Proposta di polizza", tipo: .propostaPolizza, canale: canale,
+                              file: "prova.pdf", pagine: 1,
+                              campi: [ModelloModulo.Campo(pagina: 0, riquadro: r, etichetta: "Cognome", dato: .cognome, origine: .regole),
+                                      ModelloModulo.Campo(pagina: 0, riquadro: r, etichetta: "Codice fiscale", dato: .codiceFiscale, origine: .regole),
+                                      ModelloModulo.Campo(pagina: 0, riquadro: r, etichetta: "Capitale", dato: .capitale, origine: .regole),
+                                      ModelloModulo.Campo(pagina: 0, riquadro: r, etichetta: "Firma", tipo: .firma, origine: .regole)],
+                              mappaConfermata: confermato)
+        m.prodottoIds = prodotti
+        return m
+    }
+
+    private static func moduli(_ verifica: VerificaCalcoli) {
+        var c = cliente()
+        c.fiscale = DatiFiscaliCliente()
+        c.fiscale?.cognome = "Prova"
+        let catalogo = [tcmAlleanza, tcmIndipendente]
+        let f = fonte(c, posizioni: [conto(c.id)], prodotti: catalogo)
+        guard let vita = MotoreProposta.bisogni(fonte: f).first(where: { $0.origine == "protezione-vita" }) else {
+            verifica.vero("Proposta: bisogno caso morte per i moduli", false)
+            return
+        }
+        let d = dati(c, prodotti: catalogo)
+        let conModello = MotoreProposta.costruisci(vita, fonte: f, dati: d, prodottoScelto: tcmIndipendente.id,
+                                                   modelli: [modello(canale: .indipendente)], contaPagine: unaPagina)
+        if conModello.adeguatezza?.prosegue == true {
+            if case .fatto(let elenco)? = conModello.moduli, let m = elenco.first {
+                verifica.vero("Proposta: un modulo del canale nella tappa 5", elenco.count == 1 && m.titolo == "Proposta di polizza")
+                verifica("Proposta: caselle compilate dal dossier (cognome e capitale)", Double(m.compilati), 2)
+                verifica("Proposta: caselle da chiedere (codice fiscale)", Double(m.daChiedere), 1)
+                verifica.vero("Proposta: «2 campi compilati · 1 da chiedere»", m.riga == "2 campi compilati · 1 da chiedere")
+                verifica.vero("Proposta: con i moduli il riquadro finale li conta",
+                              MotoreProposta.riepilogo(conModello).contains("1 modulo compilato"))
+            } else {
+                verifica.vero("Proposta: con un modello la tappa 5 elenca i moduli", false)
+            }
+            verifica.vero("Proposta: con i moduli la proposta è pronta", conModello.pronta)
+        }
+        // Un modello di un altro prodotto o con la mappa da controllare non entra
+        let altri = MotoreProposta.modelli(per: conModello.bozza ?? conto(c.id), prodotto: tcmIndipendente,
+                                           tra: [modello(canale: .indipendente, prodotti: ["altro"]),
+                                                 modello(canale: .indipendente, confermato: false),
+                                                 modello(canale: .alleanza)])
+        verifica.vero("Proposta: modelli di altri prodotti, canali o con la mappa da controllare esclusi", altri.isEmpty)
+        // Alleanza: Prisma non compila i moduli (decisione 60), la tappa resta neutra
+        let alleanza = MotoreProposta.costruisci(vita, fonte: f, dati: d, prodottoScelto: tcmAlleanza.id,
+                                                 modelli: [modello(canale: nil)], contaPagine: unaPagina)
+        if alleanza.adeguatezza?.prosegue == true {
+            verifica.vero("Proposta: i moduli Alleanza restano neutri", {
+                if case .inArrivo(let frase)? = alleanza.moduli { return frase == MotoreProposta.moduliAlleanza }
+                return false
+            }())
+        }
+    }
+
+    // MARK: - Sostituzione «costi più bassi»
+
+    private static func sostituzione(_ verifica: VerificaCalcoli) {
+        let c = cliente(canali: [.indipendente])
+        let fondo = AiutiProva.posizione("Fondo Esempio Globale", .investimento, 87_350) {
+            $0.clienteId = c.id
+            $0.canale = .indipendente
+            $0.costoAnnuo = 2.1
+            $0.totaleVersato = 78_400
+        }
+        var efficiente = prodotto("p-fondo-eff", "Fondo efficiente", .indipendente, .investimento, tipologia: "Fondo azionario")
+        efficiente.costoAnnuo = 0.65
+        let f = fonte(c, posizioni: [conto(c.id), fondo], prodotti: [efficiente])
+        // Il bisogno automatico c'è se e solo se i motori dei costi trovano l'alternativa
+        let automatico = MotoreProposta.bisogni(fonte: f).contains { $0.posizioneSostituitaId == fondo.id }
+        let alternativa = MotoreCosti.alternativa(fondo, prodotti: [efficiente], cliente: c.id) != nil
+        verifica.vero("Proposta: la sostituzione automatica segue MotoreCosti.alternativa", automatico == alternativa)
+
+        let b = MotoreProposta.bisognoSostituzione(attuale: fondo, cliente: c, motivo: "prova", prodotto: efficiente.id)
+        verifica.vero("Proposta: bisogno di sostituzione riconosciuto", b.sostituzione && b.posizioneSostituitaId == fondo.id)
+        let r = MotoreProposta.costruisci(b, fonte: f, dati: dati(c, prodotti: [efficiente]), contaPagine: unaPagina,
+                                          contaSostituzione: { _, _ in 3 })
+        verifica.vero("Proposta: la sostituzione sceglie il prodotto dello Smontaggio", r.prodotto.valore?.id == efficiente.id)
+        verifica("Proposta: la sostituzione trasferisce il valore della posizione", r.importo?.valore?.cifra ?? -1, 87_350)
+        verifica.vero("Proposta: riga «costi da … a … l'anno»", r.importo?.valore?.riga.hasPrefix("costi da ") == true)
+        verifica.vero("Proposta: la scheda di adeguatezza dice la posizione sostituita", r.scheda?.posizioneSostituitaId == fondo.id)
+        verifica.vero("Proposta: il prospetto è quello di sostituzione", r.prospetto?.valore?.attualeId == fondo.id)
+        // Una posizione provvisoria dello Smontaggio: niente posizione sostituita, prospetto della posizione
+        let provvisoria = MotoreProposta.bisognoSostituzione(attuale: fondo, cliente: c, motivo: "prova", prodotto: efficiente.id,
+                                                             provvisoria: true)
+        let rp = MotoreProposta.costruisci(provvisoria, fonte: fonte(c, posizioni: [conto(c.id)], prodotti: [efficiente]),
+                                           dati: dati(c, prodotti: [efficiente]), contaPagine: unaPagina, contaSostituzione: { _, _ in 3 })
+        verifica.vero("Proposta: dallo Smontaggio provvisorio niente posizione sostituita né prospetto di sostituzione",
+                      rp.scheda?.posizioneSostituitaId == nil && rp.prospetto?.valore?.attualeId == nil
+                      && rp.importo?.valore?.cifra == 87_350)
+    }
+
+    // MARK: - Azienda
+
+    private static func azienda(_ verifica: VerificaCalcoli) {
+        var c = cliente(canali: [.indipendente])
+        var a = AziendaCliente(id: "az-prova", ragioneSociale: "Serramenti Prova S.r.l.")
+        a.fatturato = 1_284_500
+        a.personaChiave = PersonaChiave(mesiARischio: 5, posizioniCollegate: ["km-prova"])
+        a.welfare = ListaAzienda()
+        c.aziende = [a]
+        let keyman = AiutiProva.posizione("Key man", .protezione, 0) {
+            $0.id = "km-prova"
+            $0.clienteId = c.id
+            $0.capitaleAssicurato = 137_500
+        }
+        let km = prodotto("p-km", "Key man impresa", .indipendente, .protezione, tipologia: "Temporanea key man")
+        let welfare = prodotto("p-wf", "Piano welfare dipendenti", .indipendente, .previdenza, tipologia: "Previdenza collettiva")
+        let f = fonte(c, posizioni: [conto(c.id), keyman], prodotti: [tcmIndipendente, km, welfare])
+        guard let b = MotoreProposta.bisogni(fonte: f).first(where: { $0.areaAzienda == .personaChiave }) else {
+            verifica.vero("Proposta: bisogno della persona chiave dell'azienda", false)
+            return
+        }
+        let atteso = 1_284_500.0 * 5 / 12 - 137_500
+        verifica("Proposta: capitale della persona chiave = fabbisogno − coperture", b.capitale ?? -1, atteso)
+        let adatti = MotoreProposta.prodottiAzienda(area: .personaChiave, catalogo: [tcmIndipendente, km, welfare], canaliCliente: c.canali)
+        verifica.vero("Proposta: prima i prodotti key man, poi le temporanee", adatti.map(\.id) == [km.id, tcmIndipendente.id])
+        let r = MotoreProposta.costruisci(b, fonte: f, dati: dati(c, prodotti: [tcmIndipendente, km, welfare]), prodottoScelto: km.id,
+                                          contaPagine: unaPagina)
+        verifica("Proposta: la bozza key man ha il capitale che manca", r.bozza?.capitaleAssicurato ?? -1, atteso)
+        verifica.vero("Proposta: la bozza key man si ritrova dalla nota", r.bozza?.note.contains(MotoreProposta.notaAzienda) == true)
+        // Il welfare: solo dal dossier, senza cifra; la bozza si salva per scrivere l'importo
+        guard let w = MotoreProposta.bisognoAzienda(a, area: .welfare, fonte: f) else {
+            verifica.vero("Proposta: bisogno del welfare dell'azienda", false)
+            return
+        }
+        verifica.vero("Proposta: il welfare non nasce da solo",
+                      !MotoreProposta.bisogni(fonte: f).contains { $0.areaAzienda == .welfare })
+        let rw = MotoreProposta.costruisci(w, fonte: f, dati: dati(c, prodotti: [km, welfare]), contaPagine: unaPagina)
+        verifica.vero("Proposta: il welfare usa solo i prodotti welfare", rw.prodotto.valore?.id == welfare.id)
+        verifica.vero("Proposta: il welfare senza importo si ferma con la bozza da completare", {
+            if case .manca(let frase, let rimedio)? = rw.importo { return frase == MotoreProposta.fraseImportoWelfare && rimedio == .posizione }
+            return false
+        }() && rw.bozza != nil)
+        // Senza prodotti welfare: «nessun prodotto» con Rimedia verso Prodotti
+        let senza = MotoreProposta.costruisci(w, fonte: fonte(c, posizioni: [conto(c.id)], prodotti: [km]), dati: dati(c, prodotti: [km]),
+                                              contaPagine: unaPagina)
+        verifica.vero("Proposta: welfare senza prodotti adatti → Rimedia verso Prodotti", {
+            if case .manca(_, let rimedio) = senza.prodotto { return rimedio == .prodotti }
+            return false
+        }())
     }
 
     // MARK: - Dati di prova

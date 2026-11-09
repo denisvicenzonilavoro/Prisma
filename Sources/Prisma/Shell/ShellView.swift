@@ -167,12 +167,14 @@ struct CorpoShell: View {
 
                 if let testo = stato.avviso {
                     let posto = postoAvviso(misura: geo.size, area: area)
-                    VistaAvviso(testo: testo, sfera: stato.avvisoDiVera)
+                    VistaAvviso(testo: testo, sfera: stato.avvisoDiVera, azione: stato.azioneAvviso?.titolo,
+                                esegui: { stato.eseguiAzioneAvviso() })
                         .padding(.horizontal, Misure.Avvisi.margineLato)
                         .frame(width: posto.width, height: posto.height, alignment: .bottom)
                         .offset(x: posto.minX, y: posto.minY)
                         .transition(transizioneAvviso)
-                        .allowsHitTesting(false)
+                        // Con il pulsante («Annulla») l'avviso riceve i clic; senza, lascia passare tutto
+                        .allowsHitTesting(stato.azioneAvviso != nil)
                 }
             }
             .coordinateSpace(name: ShellView.spazioShell)

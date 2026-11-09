@@ -22,6 +22,9 @@ import SwiftUI
     fileprivate(set) var costruite: [String: String] = [:]
     /// L'ultimo prodotto usato per area e rischio (va in testa alla scelta), finché Prisma è aperta.
     fileprivate(set) var ultimoProdotto: [String: String] = [:]
+    /// I bisogni chiesti da fuori, finché Prisma è aperta: la sostituzione dello Smontaggio («Crea la proposta di
+    /// sostituzione»), la persona chiave e il welfare dal dossier dell'azienda. Stanno in cima alla barra.
+    fileprivate(set) var richieste: [BisognoScoperto] = []
 
     @ObservationIgnored fileprivate var sequenza: Task<Void, Never>?
     @ObservationIgnored fileprivate var cacheBisogni: (versione: Int, valore: [BisognoScoperto])?
@@ -53,6 +56,12 @@ import SwiftUI
         if let prodotto { ultimoProdotto[chiaveProdotto] = prodotto }
     }
 
+    fileprivate func dimentica(bisogno: String) {
+        costruite[bisogno] = nil
+        // Una richiesta collegata alla bozza tolta torna da costruire
+        if let i = richieste.firstIndex(where: { $0.id == bisogno }) { richieste[i].propostaId = nil }
+    }
+
     static func chiaveProdotto(_ b: BisognoScoperto) -> String {
         b.area.rawValue + (b.rischio.map { "·" + $0.rawValue } ?? "")
     }
@@ -72,6 +81,16 @@ struct VistaProposta {
 
 extension StatoShell {
     // MARK: - Bisogni
+
+    /// Un bisogno chiesto da fuori (Smontaggio, dossier dell'azienda) diventa il bisogno scelto della scheda.
+    func richiediBisognoProposta(_ b: BisognoScoperto) {
+        let p = praticheProposta
+        p.richieste.removeAll { $0.id == b.id }
+        p.richieste.insert(b, at: 0)
+        p.cacheBisogni = nil
+        p.azzera()
+        p.scelto = b.id
+    }
 
     /// Le bozze aperte di un cliente (proposte con esito bozza).
     func bozzeAperteProposta(_ clienteId: String) -> [Posizione] {
@@ -95,20 +114,24 @@ extension StatoShell {
         if let c = p.cacheBisogni, c.versione == versioneDati { return c.valore }
         let oggi = Date()
         var perCliente: [[BisognoScoperto]] = []
+        let schede = Dictionary(grouping: dati.schedeAdeguatezza, by: \.clienteId)
+        // La proposta costruita in questa sessione, se il motore non la ritrova da solo
+        func collega(_ b: BisognoScoperto) -> BisognoScoperto {
+            guard b.propostaId == nil, let id = p.costruite[b.id], dati.posizioni.contains(where: { $0.id == id }) else { return b }
+            var c = b
+            c.propostaId = id
+            return c
+        }
+        let richieste = p.richieste.filter { r in dati.clienti.contains { $0.id == r.clienteId } }.map(collega)
+        let chieste = Set(richieste.map(\.id))
         for c in dati.clienti {
             guard let fonte = fonteProposta(c.id, oggi: oggi) else { continue }
-            let elenco = MotoreProposta.bisogni(fonte: fonte, bozze: bozzeAperteProposta(c.id)).map { b -> BisognoScoperto in
-                // La proposta costruita in questa sessione, se il motore non la ritrova da solo
-                guard b.propostaId == nil, let id = p.costruite[b.id], dati.posizioni.contains(where: { $0.id == id }) else { return b }
-                return BisognoScoperto(id: b.id, clienteId: b.clienteId, origine: b.origine, titolo: b.titolo, motivo: b.motivo,
-                                       area: b.area, rischio: b.rischio, capitale: b.capitale,
-                                       versamentoMensile: b.versamentoMensile, importo: b.importo, obiettivoId: b.obiettivoId,
-                                       bisognoRilevatoId: b.bisognoRilevatoId, areaBisogno: b.areaBisogno,
-                                       confermato: b.confermato, daConfermare: b.daConfermare, propostaId: id)
-            }
+            let elenco = MotoreProposta.bisogni(fonte: fonte, bozze: bozzeAperteProposta(c.id), schede: schede[c.id] ?? [])
+                .filter { !chieste.contains($0.id) }
+                .map(collega)
             if !elenco.isEmpty { perCliente.append(elenco) }
         }
-        var tutti: [BisognoScoperto] = []
+        var tutti: [BisognoScoperto] = richieste
         var rango = 0
         while true {
             let giro = perCliente.compactMap { rango < $0.count ? $0[rango] : nil }
@@ -125,7 +148,10 @@ extension StatoShell {
     func propostaCostruita(_ b: BisognoScoperto) -> PropostaCostruita? {
         let p = praticheProposta
         if p.cacheCostruite.versione != versioneDati { p.cacheCostruite = (versioneDati, [:]) }
-        let chiave = b.id + "|" + (p.sceltaProdotto[b.id] ?? "")
+        // I modelli di Pratiche › Moduli (letti con `moduli.carica()` all'apertura della scheda): cambiati, si ricostruisce
+        let modelli = moduli.tutti
+        let chiave = b.id + "|" + (b.propostaId ?? "") + "|" + (p.sceltaProdotto[b.id] ?? "") + "|"
+            + modelli.map { $0.id + ($0.mappaConfermata ? "+" : "-") }.joined(separator: ",")
         if let r = p.cacheCostruite.valore[chiave] { return r }
         guard let fonte = fonteProposta(b.clienteId) else { return nil }
         let bozza = b.propostaId.flatMap { id in dati.posizioni.first { $0.id == id } }
@@ -134,7 +160,11 @@ extension StatoShell {
         let r = MotoreProposta.costruisci(b, fonte: fonte, dati: dati.istantaneaNonOsservata, bozzaEsistente: bozza,
                                           prodottoScelto: p.sceltaProdotto[b.id],
                                           ultimo: p.ultimoProdotto[StatoPraticheProposta.chiaveProdotto(b)],
-                                          contaPagine: { ImpaginatoreProspetto.pagine($0).count })
+                                          modelli: modelli,
+                                          contaPagine: { ImpaginatoreProspetto.pagine($0).count },
+                                          contaSostituzione: { e, c in
+                                              DocumentoStampabile(TestiSostituzione(e, cliente: c), report: false).pagine.count
+                                          })
         p.cacheCostruite.valore[chiave] = r
         return r
     }
@@ -175,14 +205,13 @@ extension StatoShell {
     func costruisciProposta(_ b: BisognoScoperto, animato: Bool, da inizio: Int = 0) {
         let p = praticheProposta
         p.fermaSequenza()
+        moduli.carica()
         guard let r = propostaCostruita(b) else { return }
         if let bozza = salvaBozzaProposta(r) {
             // Ora la bozza c'è: la colonna la ritrova anche dopo il ricalcolo dei bisogni
-            let ricostruita = propostaCostruita(BisognoScoperto(
-                id: b.id, clienteId: b.clienteId, origine: b.origine, titolo: b.titolo, motivo: b.motivo, area: b.area,
-                rischio: b.rischio, capitale: b.capitale, versamentoMensile: b.versamentoMensile, importo: b.importo,
-                obiettivoId: b.obiettivoId, bisognoRilevatoId: b.bisognoRilevatoId, areaBisogno: b.areaBisogno,
-                confermato: b.confermato, daConfermare: b.daConfermare, propostaId: bozza.id)) ?? r
+            var collegato = b
+            collegato.propostaId = bozza.id
+            let ricostruita = propostaCostruita(collegato) ?? r
             accendi(b.id, da: inizio, a: ricostruita.raggiunti, pronta: ricostruita.pronta, animato: animato)
         } else {
             accendi(b.id, da: inizio, a: r.raggiunti, pronta: r.pronta, animato: animato)
@@ -200,7 +229,8 @@ extension StatoShell {
     @discardableResult
     func salvaBozzaProposta(_ r: PropostaCostruita) -> Posizione? {
         guard let bozza = r.bozza, let scheda = r.scheda else { return nil }
-        let nuova = !dati.posizioni.contains { $0.id == bozza.id }
+        let primaPosizione = dati.posizioni.first { $0.id == bozza.id }
+        let primaScheda = schedaAdeguatezza(bozza.id)
         salvaPosizione(bozza)
         modificaScheda(bozza) { s in
             s.collegamento = scheda.collegamento
@@ -209,9 +239,31 @@ extension StatoShell {
         praticheProposta.ricorda(bisogno: r.bisogno.id, posizione: bozza.id,
                                  chiaveProdotto: StatoPraticheProposta.chiaveProdotto(r.bisogno), prodotto: bozza.prodottoId)
         let chi = cliente(bozza.clienteId)?.nome ?? "il cliente"
-        mostraAvviso(nuova ? "Bozza «\(bozza.nome)» salvata in Posizioni, tra le proposte di \(chi)."
-                           : "Bozza «\(bozza.nome)» aggiornata in Posizioni, tra le proposte di \(chi).")
+        // «Annulla»: toglie la bozza nuova e la sua scheda, o rimette com'erano quella aggiornata e la sua scheda
+        let annulla = AzioneAvviso(titolo: "Annulla") { [weak self] in
+            self?.annullaBozzaProposta(bozza.id, bisogno: r.bisogno.id, prima: primaPosizione, schedaPrima: primaScheda)
+        }
+        mostraAvviso(primaPosizione == nil ? "Bozza «\(bozza.nome)» salvata in Posizioni, tra le proposte di \(chi)."
+                                           : "Bozza «\(bozza.nome)» aggiornata in Posizioni, tra le proposte di \(chi).",
+                     azione: solaLettura ? nil : annulla)
         return bozza
+    }
+
+    /// «Annulla» del toast della bozza: la creazione rapida torna indietro (bozza e scheda di adeguatezza).
+    func annullaBozzaProposta(_ id: String, bisogno: String, prima: Posizione?, schedaPrima: SchedaAdeguatezza?) {
+        guard !solaLettura else { return }
+        let p = praticheProposta
+        p.fermaSequenza()
+        if let prima, let i = dati.posizioni.firstIndex(where: { $0.id == id }) {
+            dati.posizioni[i] = prima
+            dati.schedeAdeguatezza.removeAll { $0.posizioneId == id }
+            if let schedaPrima { dati.schedeAdeguatezza.append(schedaPrima) }
+        } else {
+            eliminaPosizione(id)
+            p.dimentica(bisogno: bisogno)
+        }
+        if p.accesiDi == bisogno { p.azzera() }
+        mostraAvviso("Bozza tolta: la proposta torna da costruire.")
     }
 
     /// Accende le tappe da `inizio` a `fine` una alla volta (Tema.Apple.Pratiche.Moto), poi il riquadro finale.
@@ -252,6 +304,81 @@ extension StatoShell {
             apri(.analisi360)
         case .posizione:
             if let bozza { apriPosizione(bozza) } else { clienteAttivoId = b.clienteId; apri(.posizioni) }
+        case .azienda:
+            clienteAttivoId = b.clienteId
+            schedaCliente = .azienda
+            apri(.clienti)
+        }
+    }
+
+    // MARK: - I riquadri a costruzione finita
+
+    /// Riquadro 4: la scheda di adeguatezza della proposta, nel dettaglio della posizione.
+    func apriAdeguatezzaProposta(_ bozza: Posizione) {
+        apriPosizione(bozza)
+        DispatchQueue.main.async { self.ancoraPosizioni = "dettaglio-adeguatezza" }
+    }
+
+    /// Riquadro 3: il prospetto della proposta (quello di sostituzione per «costi più bassi»).
+    func apriProspettoProposta(_ bozza: Posizione, prospetto: ProspettoProposta?) {
+        clienteAttivoId = bozza.clienteId
+        if let a = prospetto?.attualeId {
+            apriProspetto(.sostituzione(a, bozza.id, report: false))
+        } else {
+            apriProspetto(.posizione(bozza.id))
+        }
+    }
+
+    /// Riquadro 5: Pratiche › Moduli sul primo modulo della proposta, per il cliente e la proposta giusti.
+    func apriModuliProposta(_ bozza: Posizione, modulo: String?) {
+        moduli.carica()
+        moduli.clienteId = bozza.clienteId
+        moduli.posizioneId = bozza.id
+        if let modulo, moduli.modello(modulo) != nil {
+            moduli.scelto = modulo
+            moduli.pagina = 0
+        }
+        moduli.azzeraCompilazione()
+        apriPratiche(.moduli)
+    }
+
+    // MARK: - «Presenta a …»
+
+    /// Il documento della proposta: il prospetto di sostituzione o quello della posizione.
+    func documentoProposta(_ bozza: Posizione, prospetto: ProspettoProposta?) -> DocumentoStampabile? {
+        if let a = prospetto?.attualeId { return testiSostituzione(a, bozza.id).map { DocumentoStampabile($0, report: false) } }
+        return DocumentoStampabile(CompositoreProspetti.posizione(bozza, dati: dati.istantanea))
+    }
+
+    /// «Presenta a …»: con l'iPad collegato al tavolo il prospetto va sull'iPad, altrimenti si apre la presentazione in
+    /// sala sul Mac (decisione D1.7). Presentare segna la proposta «presentata»: `salvaPosizione` scrive la data
+    /// (`SeguitoProposta.presentataIl`) e registra la raccomandazione del track record, come per ogni proposta presentata.
+    @MainActor
+    func presentaProposta(_ bozza: Posizione, prospetto: ProspettoProposta?) {
+        guard !solaLettura else {
+            mostraAvviso(TestiSeguito.solaLettura)
+            return
+        }
+        guard let attuale = dati.posizioni.first(where: { $0.id == bozza.id }) else { return }
+        clienteAttivoId = attuale.clienteId
+        let documento = documentoProposta(attuale, prospetto: prospetto)
+        var presentata = attuale
+        if presentata.esito == nil || presentata.esito == .bozza { presentata.esito = .presentata }
+        salvaPosizione(presentata)
+        praticheProposta.azzera()
+        let nome = cliente(attuale.clienteId).map { MotoreProposta.primoNome($0.nome) } ?? "il cliente"
+        #if os(macOS)
+        if tavolo.collegato, let d = documento {
+            tavolo.mandaDocumento(ContestoTavolo(documento: d, pagina: 0, clienteId: attuale.clienteId))
+            mostraAvviso("Proposta sul tavolo con l'iPad: \(nome) la sfoglia lì.")
+            return
+        }
+        #endif
+        if let d = documento {
+            presenta(d)
+        } else {
+            apriPosizione(presentata)
+            mostraAvviso("Proposta segnata come presentata a \(nome).")
         }
     }
 }

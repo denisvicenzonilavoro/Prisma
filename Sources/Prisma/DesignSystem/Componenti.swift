@@ -890,6 +890,9 @@ struct VistaAvviso: View {
     let testo: String
     /// Il commiato di Vera (.toast di Design/vera-mini.html): la sfera prima del testo.
     var sfera = false
+    /// Il pulsante dopo il testo («Annulla»), se l'avviso ne ha uno.
+    var azione: String? = nil
+    var esegui: () -> Void = {}
 
     var body: some View {
         HStack(spacing: Tema.Misura.Componenti.spazioSferaAvviso) {
@@ -900,6 +903,10 @@ struct VistaAvviso: View {
                 .font(Tema.Testo.Componenti.avviso)
                 .foregroundColor(Tema.Colore.inchiostro)
                 .multilineTextAlignment(.center)
+            if let azione {
+                Button(azione, action: esegui)
+                    .buttonStyle(.apple)
+            }
         }
         .padding(Tema.Misura.Componenti.avviso)
         .vetro(.pannello, forma: .capsula, riempimento: Tema.Colore.PannelliShell.coprente)

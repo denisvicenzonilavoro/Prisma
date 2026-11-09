@@ -60,6 +60,16 @@ enum IstantaneeMobile {
         ]
         if iPad {
             elenco += [
+                // «Luce» giro 3: la proposta che si costruisce da sola sull'iPad come sul Mac (§7.1.4), costruita fino in
+                // fondo sul primo bisogno dei clienti di prova che arriva a «Proposta pronta»
+                Scena(nome: "808-pratiche-proposta-ipad", orizzontale: true) { m in
+                    m.stato.schedaPratiche = .proposta
+                    m.apri(.pratiche)
+                    m.stato.moduli.carica()
+                    guard let b = m.stato.bisogniProposta().first(where: { m.stato.propostaCostruita($0)?.pronta == true }) else { return }
+                    m.stato.scegliBisognoProposta(b.id)
+                    m.stato.costruisciProposta(b, animato: false)
+                },
                 Scena(nome: "8-simulazioni") { m in m.apri(.simulazioni) },
                 Scena(nome: "9-vera", attesaInPiu: IstantaneeMobile.attesaScrivania) { m in m.apri(.vera) },
                 Scena(nome: "10-impostazioni-archivio") { m in
