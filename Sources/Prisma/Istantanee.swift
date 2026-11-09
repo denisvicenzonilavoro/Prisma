@@ -1714,6 +1714,13 @@ enum Istantanee {
         // (Shell/IstantaneeNotaVocale.swift)
         tutteLeScene += sceneNuovoCliente
         tutteLeScene += sceneNotaVocale
+        // «Luce», giro 15: le cose date al cliente. Sala › Il Prisma del cliente, il film del piano, la capsula del tempo
+        // e Pratiche › Sinistri (Shell/IstantaneeSalaPrismaCliente.swift, IstantaneeSalaFilm.swift,
+        // IstantaneeSalaCapsula.swift, IstantaneePraticheSinistri.swift)
+        tutteLeScene += sceneSalaPrismaCliente
+        tutteLeScene += sceneSalaFilm
+        tutteLeScene += sceneSalaCapsula
+        tutteLeScene += scenePraticheSinistri
         for scena in tutteLeScene where solo?.contains(scena.nome) ?? true {
             // Un pool per scena: senza il ciclo degli eventi (si esce in PrismaApp.init) niente lo svuoterebbe,
             // e stato, finestra e bitmap di ogni scena resterebbero in memoria fino all'ultima istantanea

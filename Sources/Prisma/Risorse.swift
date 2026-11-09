@@ -120,6 +120,15 @@ enum Risorse {
             print("ERRORE: fac-simile della Biblioteca non leggibili dal bundle")
             return 1
         }
+        // Le cose date al cliente (Luce, giro 15): le parole della password e le risorse del lettore del file del cliente
+        if let errore = GeneratorePassword.verificaRisorse() {
+            print("ERRORE: \(errore)")
+            return 1
+        }
+        if let errore = FilePrismaCliente.verificaRisorse() {
+            print("ERRORE: \(errore)")
+            return 1
+        }
         if immagineNitida("Loghi/Alleanza_simbolo.png", in: CGSize(width: CGFloat.infinity, height: 15), scala: 2) == nil {
             print("ERRORE: logo Alleanza non ridotto")
             return 1

@@ -145,6 +145,11 @@ enum VistaTerritorio: String, CaseIterable, Identifiable, Hashable {
     @ObservationIgnored var stesureLettera: [String: [VersioneLettera: TestoLettera]] = [:]
     /// La scheda della lettera ricordata per cliente, versione dei dati e giorno (`StatoShell.schedaLettera`).
     @ObservationIgnored var memoScheda: (chiave: String, scheda: SchedaLettera?)?
+    /// Solo istantanee (giro 15): lo stato da disegnare del Prisma del cliente, del film e della capsula. Non pubblicato.
+    @ObservationIgnored var provaUscite = ProvaUsciteSala()
+    /// La capsula da aprire entrando nel palco della capsula (giro 15: «Apri la capsula» dai traguardi); la azzera
+    /// `CapsulaDelTempo` appena apre la consegna. Non pubblicato.
+    @ObservationIgnored var capsulaDaAprire: String?
 }
 
 /// Solo istantanee: una partita di Lancia l'anno già giocata (seme fisso, anni, carte a mano per anno).
