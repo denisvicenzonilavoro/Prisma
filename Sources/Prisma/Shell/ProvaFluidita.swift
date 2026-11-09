@@ -394,7 +394,11 @@ enum ProvaFluidita {
                 }, verifica: { stato.provaFuoco.vista == vista && stato.portafoglio == portafoglio }),
             ])
         }
-        if stato.appConsentita(.biblioteca) {
+        if MetalPrisma.spento {
+            // Sul runner di GitHub (PRISMA_SENZA_METAL=1) l'apertura della Biblioteca fermava il processo con
+            // un'asserzione di Metal della GPU virtuale: il passo si salta lì e resta sul Mac dell'utente
+            print("PASSO fluidità · Luce · Biblioteca saltata (senza Metal sul runner)")
+        } else if stato.appConsentita(.biblioteca) {
             s.misura(banco, [
                 PassoFluidita(nome: "Luce · apri la Biblioteca", azione: { stato.apri(.biblioteca) },
                               verifica: { stato.appAttiva == .biblioteca }),
