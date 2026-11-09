@@ -47,23 +47,27 @@ struct DocumentiCliente: View {
     var body: some View {
         let _ = ContaCorpi.segna()
         let voci = stato.vociDocumenti(cliente.id)
-        Group {
-            if voci.isEmpty {
-                VuotoDocumenti(nome: cliente.nome, importa: importa)
-            } else {
-                let gruppi = raggruppa(voci)
-                let mostrate = gruppi.flatMap { $0.voci.map(\.voce) }
-                // Il documento scelto se è tra quelli mostrati, altrimenti il primo: documentoSelezionato non si riscrive
-                let scelta = mostrate.first { $0.id == stato.documentoSelezionato } ?? mostrate.first
-                VStack(spacing: 0) {
-                    fascia(voci)
-                        .entrataCascata(0, base: Tema.Apple.Moto.Cascata.baseDentroApp)
-                    colonne(gruppi: gruppi, scelta: scelta, totale: voci.count)
-                        .entrataCascata(1, base: Tema.Apple.Moto.Cascata.baseDentroApp, sfocatura: false)
+        VStack(spacing: 0) {
+            // «Dato al cliente» («Luce» giro 15): le ultime cose date al cliente, solo se ce ne sono
+            UsciteDelCliente(clienteId: cliente.id)
+            Group {
+                if voci.isEmpty {
+                    VuotoDocumenti(nome: cliente.nome, importa: importa)
+                } else {
+                    let gruppi = raggruppa(voci)
+                    let mostrate = gruppi.flatMap { $0.voci.map(\.voce) }
+                    // Il documento scelto se è tra quelli mostrati, altrimenti il primo: documentoSelezionato non si riscrive
+                    let scelta = mostrate.first { $0.id == stato.documentoSelezionato } ?? mostrate.first
+                    VStack(spacing: 0) {
+                        fascia(voci)
+                            .entrataCascata(0, base: Tema.Apple.Moto.Cascata.baseDentroApp)
+                        colonne(gruppi: gruppi, scelta: scelta, totale: voci.count)
+                            .entrataCascata(1, base: Tema.Apple.Moto.Cascata.baseDentroApp, sfocatura: false)
+                    }
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         // Tema Apple: tessere, pulsanti, tendine, elenco ed etichette del canale come nel resto del dossier
         .altreAppApple()
         .gestioneDocumenti(nome: cliente.nome, scelta: $sceltaFile, daEliminare: $daEliminare, allinea: allinea)
