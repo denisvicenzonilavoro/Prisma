@@ -222,7 +222,7 @@ extension StatoShell {
         guard let s = sinistro(id), s.mostraAlCliente == true, let c = cliente(s.clienteId) else { return }
         let o = MotoreSinistri.occasione(s, cliente: c, consulente: nomeConsulenteSinistri, oggi: Date(), polizza: polizzaSinistro(s))
         preparaMessaggio(clienteId: c.id, occasione: o)
-        let nelFile = c.prismaCliente?.contenuti.contains("sinistri") == true
+        let nelFile = c.prismaCliente?.contenuti.contains(VoceFilePrisma.sinistro.rawValue) == true
         mostraAvviso(TestiSinistri.aggiornamentoPronto(ModelliMessaggi.primoNome(c.nome), nelFile: nelFile))
     }
 
