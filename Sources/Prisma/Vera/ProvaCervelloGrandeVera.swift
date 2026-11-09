@@ -61,7 +61,8 @@ enum ProvaCervelloGrandeVera {
         controlla(m.count == 4 && m.first?.ruolo == .sistema && m.first?.testo == IstruzioniVera.conversazione
                   && testi[1] == buonaUtente.testo && testi[2] == buonaVera.testo && testi.last == "E in inglese come la scriveresti?",
                   "Cervello grande: solo le battute di conversazione pulite e la domanda (\(m.count) messaggi)")
-        let tutto = testi.joined(separator: "\n")
+        // Le battute e la domanda (non le istruzioni fisse di Vera, che citano la «riga di CONTESTO» per spiegarla)
+        let tutto = testi.dropFirst().joined(separator: "\n")
         controlla(!tutto.contains("CONTESTO:") && !tutto.contains("SCHEDA DEL CLIENTE") && !tutto.contains("cliente attivo")
                   && !tutto.contains("20.800") && !tutto.contains("Marco"),
                   "Cervello grande: niente riga di contesto, niente scheda, niente cifre o nomi dei clienti")
