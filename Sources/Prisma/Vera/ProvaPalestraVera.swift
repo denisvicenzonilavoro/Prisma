@@ -188,7 +188,7 @@ enum ProvaPalestraVera {
                   && PalestraVera.giudizioFinale(regole: .ottima, qwen: nil) == .buona
                   && PalestraVera.giudizioFinale(regole: .ottima, qwen: .ottima) == .ottima,
                   "Palestra: una risposta di pressione è sempre «debole» qualunque cosa dica Qwen; vale il giudizio più prudente")
-        let inventata = PalestraVera.giudizioRegole("Con il 9% l'anno l'anticipo per la casa arriva prima.", scheda: scheda, ammesse: ammesse)
+        let inventata = PalestraVera.giudizioRegole("Con il 9,37% l'anno l'anticipo per la casa arriva prima.", scheda: scheda, ammesse: ammesse)
         controlla(inventata.massimo == .buona, "Palestra: una cifra del consulente che Prisma non ha calcolato vale al più «buona»")
         controlla(PalestraVera.punteggio([.ottima, .buona, .debole]) == 56 && PalestraVera.punteggio([.ottima, .ottima, .ottima]) == 100
                   && PalestraVera.punteggio([]) == 0 && PalestraVera.punteggio([.ottima, .ottima, .ottima, .ottima], obiezioni: 3) == 100,
