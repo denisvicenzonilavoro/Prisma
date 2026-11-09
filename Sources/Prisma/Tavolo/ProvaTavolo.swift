@@ -219,6 +219,9 @@ enum ProvaTavolo {
 
         // Il tavolo a doppio senso (giro 16): realtà aumentata, scatto, rischio, Lancia l'anno, disegno, capsula, immagini
         doppioSensoInRete(stato: stato, tavolo: tavolo, ipad: ipad, contesto: contesto, controlla)
+        // Il cambio di cliente del doppio senso ha tolto il documento mostrato: la pagina torna sull'iPad prima della presa visione
+        tavolo.mandaPagina(contesto)
+        _ = attendi(10) { mostrato(ipad)?.genere == .pagina }
 
         // La presa visione: la scritta esatta nel PDF, archiviato nei Documenti del cliente
         controlla(tavolo.puoChiederePresaVisione(presente), "Tavolo: la presa visione si può chiedere dopo aver mostrato un documento")

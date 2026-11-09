@@ -114,6 +114,8 @@ private struct CorpoDisegno: View {
                     ingressoTavolo = ingresso
                 }
                 .onChange(of: assi) { _, a in assiTavolo = a }
+                // I dati del cliente cambiano col palco aperto: il tratto dall'iPad si confronta con il piano nuovo
+                .onChange(of: ingresso) { _, i in ingressoTavolo = i }
             } else {
                 manca
                     .frame(width: g.size.width, height: g.size.height)
