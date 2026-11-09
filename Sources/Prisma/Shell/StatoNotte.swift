@@ -29,6 +29,8 @@ struct RigaRegistroNotte: Identifiable, Equatable {
     var previste = 0
     /// Solo istantanee: lo spostamento fisso della carta davanti (761: 90).
     @ObservationIgnored var trascinamentoIstantanea: Double?
+    /// Solo istantanee: la disposizione stretta (766: registro sotto i comandi) alla finestra minima di 1100.
+    @ObservationIgnored var strettaIstantanea = false
     /// Le parti del lavoro che non si osservano.
     @ObservationIgnored let lavoro = LavoroNotte()
 

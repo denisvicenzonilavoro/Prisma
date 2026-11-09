@@ -28,7 +28,9 @@ struct CarteNotte: View {
 
     var body: some View {
         GeometryReader { geo in
-            let stretta = geo.size.width < N.larghezzaStretta
+            // Sotto 1100 il registro va sotto i comandi; l'istantanea 766 lo mostra alla finestra minima (1100) con
+            // `strettaIstantanea`, perché la finestra di Prisma non scende sotto 1100 (ShellView)
+            let stretta = geo.size.width < N.larghezzaStretta || (istantanea && notte.strettaIstantanea)
             ZStack(alignment: .top) {
                 sfondo(geo.size)
                 VStack(spacing: 0) {

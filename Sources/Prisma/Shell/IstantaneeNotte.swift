@@ -6,7 +6,8 @@ import Foundation
 /// - 760: le otto carte, la prima davanti, registro vuoto (chiara e scura); 761: la prima carta trascinata a destra di 90
 ///   con il timbro «APPROVA»; 762: un sì e un più tardi, «3 di 8» (chiara e scura); 763: tutte decise, «Tutto fatto.»
 ///   (chiara e scura); 764: nessuna notte di oggi, «Stanotte il Mac dormiva.» con «Prepara adesso»; 765: due carte e
-///   «Da finire» terza; 766: la finestra stretta, registro sotto i comandi; 767: la scrivania con «☾ Stanotte» e il pallino.
+///   «Da finire» terza; 766: la finestra stretta (1100, alta 1000), registro sotto i comandi; 767: la scrivania con
+///   «☾ Stanotte» e il pallino.
 ///
 /// DATI DI PROVA DICHIARATI: le carte di `NotteDiProva` (id «notte-prova-»), solo dentro queste scene. Le decisioni sono
 /// scritte nel registro senza effetti (niente PDF nelle istantanee).
@@ -35,7 +36,10 @@ extension Istantanee {
         una("765-notte-da-finire") { s in
             notteScena(s, notte: NotteDiProva.conDaFinire(s.dati.istantanea, oggi: Date(), cal: Calendar.current))
         }
-        una("766-notte-stretta") { s in notteScena(s) }
+        una("766-notte-stretta") { s in
+            s.notte.strettaIstantanea = true
+            notteScena(s)
+        }
         una("767-scrivania-stanotte") { s in
             s.dati.notti = [NotteDiProva.notte(s.dati.istantanea, oggi: Date(), cal: Calendar.current)]
         }
