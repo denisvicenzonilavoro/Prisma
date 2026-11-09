@@ -582,6 +582,9 @@ private final class BancoFluidita {
 
     /// Disegno completo nel bitmap riusato (nil se il server di build non disegna).
     func disegna() -> Double? {
+        // Sul runner di GitHub (PRISMA_SENZA_METAL=1) il disegno completo passa dagli shader che SwiftUI crea al momento
+        // e la GPU virtuale ferma il processo («Target device architecture is nil»): lì si misura solo l'aggiornamento
+        if MetalPrisma.spento { return nil }
         if !bitmapProvato {
             bitmapProvato = true
             bitmap = host.bitmapImageRepForCachingDisplay(in: host.bounds)
