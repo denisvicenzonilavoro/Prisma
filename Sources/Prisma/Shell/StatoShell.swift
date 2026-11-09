@@ -436,6 +436,8 @@ enum VoceConfronto: Hashable {
     @ObservationIgnored var compitoSuMisura: Task<Void, Never>?
     /// Fase 5, «I motori di Vera» (CollegaMotoriShell.swift): la pagina con «Due velocità» e «Il cervello grande».
     var paginaMotoriAperta = false
+    /// «Le 25 novità di Vera» (NovitaVera.swift): il pannello del template sopra la chat.
+    var paginaNovitaVeraAperta = false
     var schedaMotori = SchedaMotoriVera.dueVelocita
     /// Le richieste smistate di oggi con il loro tempo (solo in memoria).
     let dueVelocita = StatoDueVelocita()

@@ -57,6 +57,8 @@ struct AppVera: View {
         // Fase 5: «Vera su misura» e «I motori di Vera» (VisteSuMisuraVera.swift, VisteMotoriVera.swift)
         .paginaSuMisuraVera()
         .paginaMotoriVera()
+        // «Le 25 novità di Vera» (NovitaVera.swift)
+        .paginaNovitaVera()
         // Parte sia alla nascita della vista (Vera era chiusa o ridotta) sia a ogni nuova richiesta
         .task(id: stato.richiestaDettatura) { await accendiDettatura() }
         // Il FocusState resta in pari con makeFirstResponder(nil), altrimenti il prossimo «true» non cambia niente
@@ -631,6 +633,8 @@ struct AzioniVera: View {
                                            : "Lavoro: i numeri solo da Prisma · Conversazione: domande di ogni tipo")
             // «Le routine» (fase 4): apre la pagina delle routine
             PulsanteRoutineVera()
+            // «Le 25 novità di Vera» (NovitaVera.swift), non in modalità cliente
+            PulsanteNovitaVera()
             Button { stato.nuovaConversazione() } label: {
                 Label("Nuova conversazione", systemImage: "square.and.pencil")
             }

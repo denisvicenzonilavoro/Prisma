@@ -36,6 +36,9 @@ extension Istantanee {
             ("637-vera-pollici-correzione-scuro", { s in preparaPollici(s) }),
             ("638-vera-filo-lungo", { s in preparaFiloLungo(s) }),
             ("638-vera-filo-lungo-scuro", { s in preparaFiloLungo(s) }),
+            // «Le 25 novità di Vera», il pannello del template sopra la finestra di Vera (NovitaVera.swift)
+            ("640-vera-novita", { s in preparaNovitaVera(s) }),
+            ("640-vera-novita-scuro", { s in preparaNovitaVera(s) }),
             ("491-biblioteca", { s in preparaNorme(s); s.apri(.biblioteca) }),
             ("491-biblioteca-scuro", { s in preparaNorme(s); s.apri(.biblioteca) }),
         ]
@@ -190,6 +193,14 @@ extension Istantanee {
             s.aggiungiMessaggio(MessaggioVera(autore: .vera, testo: String(repeating: risposta, count: 5), motore: s.qwen.nome), cliente: "laura", parla: false)
         }
         s.apri(.vera)
+    }
+
+    nonisolated static func preparaNovitaVera(_ s: StatoShell) {
+        s.rispostePreparate = true
+        s.disponibilitaLocale = .pronto
+        s.clienteAttivoId = "marco"
+        s.veraPortafoglio = false
+        s.apriNovitaVera()
     }
 
     nonisolated static let pagineNormeDiProva = [
