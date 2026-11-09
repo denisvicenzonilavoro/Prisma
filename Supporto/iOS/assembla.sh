@@ -78,8 +78,8 @@ if [ -d "$RADICE/Vera/Istruzioni" ]; then
     mkdir -p "$APP/Vera"
     ditto "$RADICE/Vera/Istruzioni" "$APP/Vera/Istruzioni"
 fi
-# Schemi (scenari «E se…?») ed esempi per --prova-vera, accanto alle istruzioni
-for cartella in Schemi Esempi; do
+# Schemi (scenari «E se…?»), esempi e casi di valutazione per --prova-vera, accanto alle istruzioni
+for cartella in Schemi Esempi Valutazione; do
     if [ -d "$RADICE/Vera/$cartella" ]; then
         mkdir -p "$APP/Vera"
         ditto "$RADICE/Vera/$cartella" "$APP/Vera/$cartella"

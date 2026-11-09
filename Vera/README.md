@@ -126,7 +126,7 @@ Le funzioni che combinano strumenti, memoria e ricerca. Valgono le stesse regole
 - `Schemi/` — schemi dei dati da estrarre (es. polizza, KID, estratto conto, proposta); `scenario.json` è lo schema degli scenari «E se…?».
 - `Esempi/` — esempi per verticalizzare Vera, con documenti anonimizzati: mai dati veri di clienti; `scenari.json` sono le frasi di prova degli scenari, sui clienti di prova.
 - `Addestramento/` — il notebook e lo script di «Vera su misura» per l'addestramento fuori dal Mac (Unsloth, LoRA, GGUF), con il README passo per passo: nessun dato.
-- `Valutazione/` — casi di prova con il risultato atteso, per misurare la qualità dell'estrazione e confrontare i motori.
+- `Valutazione/` — casi di prova con il risultato atteso, per misurare la qualità e confrontare i motori: `palestra.json` sono i dieci casi della valutazione manuale della palestra della trattativa (la parte delle regole la controlla `--prova-vera`), con il README per compilarla.
 
 ## Build
 - Il framework FoundationModels si compila solo con l'SDK di macOS 26.

@@ -1,0 +1,94 @@
+{
+  "nota": "Valutazione manuale della palestra della trattativa (Design/template-luce-specifica.md §5.3.5): 10 casi con il risultato atteso. TESTI DI PROVA, da far approvare o riscrivere all'utente: profilo inventato, mai dati veri di clienti. «regoleMassimo» è il giudizio più alto che le regole di Prisma concedono (lo controlla da sola la prova --prova-vera); il resto si compila a mano dopo aver giocato il caso in Studio › Palestra con Qwen sul Mac.",
+  "testiDiProva": true,
+  "profilo": { "eta": "52", "lavoro": "Impiegato", "timori": "i soldi bloccati e il rischio dei mercati" },
+  "comeSiCompila": {
+    "giudizioQwen": "il giudizio che Qwen ha dato alla risposta: ottima, buona o debole",
+    "giudizioMostrato": "il giudizio finale mostrato da Prisma (il più prudente fra regole e Qwen)",
+    "replicaInRuolo": "true se la replica è del cliente, in prima persona, breve, senza consigli",
+    "cifreInventate": "true se nella replica o nelle suggerite c'è una cifra che non è nella scheda né nella risposta (dovrebbe essere scartata)",
+    "nota": "cosa non va, in parole"
+  },
+  "casi": [
+    {
+      "id": 1, "difficolta": "realistica",
+      "obiezione": "Mi piace l'idea, ma se tra qualche anno mi servono i soldi? Restano bloccati?",
+      "risposta": "Questa condizione vale solo fino a venerdì, poi non si torna indietro.",
+      "regoleMassimo": "debole",
+      "atteso": "Pressione: «debole» qualunque cosa dica Qwen; la convinzione non sale; la replica del cliente è diffidente.",
+      "esito": { "giudizioQwen": null, "giudizioMostrato": null, "replicaInRuolo": null, "cifreInventate": null, "nota": "" }
+    },
+    {
+      "id": 2, "difficolta": "facile",
+      "obiezione": "E se i mercati scendono proprio adesso?",
+      "risposta": "Stia tranquillo, il capitale è garantito e non può perdere niente.",
+      "regoleMassimo": "debole",
+      "atteso": "Promessa di rendimento: «debole» con il motivo «Promette un rendimento o l'assenza di rischi»; anche a Facile la convinzione non sale molto.",
+      "esito": { "giudizioQwen": null, "giudizioMostrato": null, "replicaInRuolo": null, "cifreInventate": null, "nota": "" }
+    },
+    {
+      "id": 3, "difficolta": "realistica",
+      "obiezione": "Ho già la banca che mi segue da anni.",
+      "risposta": "Le banche pensano solo a loro, io invece no.",
+      "regoleMassimo": "debole",
+      "atteso": "Critica agli altri: «debole»; la prossima obiezione resta sulla fiducia.",
+      "esito": { "giudizioQwen": null, "giudizioMostrato": null, "replicaInRuolo": null, "cifreInventate": null, "nota": "" }
+    },
+    {
+      "id": 4, "difficolta": "difficile",
+      "obiezione": "Ci devo pensare. Ne parlo a casa stasera.",
+      "risposta": "È un ottimo prodotto, si fidi.",
+      "regoleMassimo": "debole",
+      "atteso": "Generica e corta: «debole» («Generica: non risponde al suo timore»); a Difficile il cliente può chiudere con un no gentile.",
+      "esito": { "giudizioQwen": null, "giudizioMostrato": null, "replicaInRuolo": null, "cifreInventate": null, "nota": "" }
+    },
+    {
+      "id": 5, "difficolta": "realistica",
+      "obiezione": "Ci devo pensare. Ne parlo a casa stasera.",
+      "risposta": "Capisco il dubbio: possiamo parlarne con calma e decidere insieme quando si sente pronto.",
+      "regoleMassimo": "buona",
+      "atteso": "Chiara e senza pressione ma senza numeri né il suo timore: al più «buona».",
+      "esito": { "giudizioQwen": null, "giudizioMostrato": null, "replicaInRuolo": null, "cifreInventate": null, "nota": "" }
+    },
+    {
+      "id": 6, "difficolta": "facile",
+      "obiezione": "Mi piace l'idea, ma se tra qualche anno mi servono i soldi? Restano bloccati?",
+      "risposta": "Capisco la paura di avere i soldi bloccati: il piano prevede riscatti parziali, come dicono le condizioni del prodotto.",
+      "regoleMassimo": "ottima",
+      "atteso": "Riprende il timore del cliente: le regole concedono «ottima»; se Qwen dice «buona» resta «buona» (vale il più prudente).",
+      "esito": { "giudizioQwen": null, "giudizioMostrato": null, "replicaInRuolo": null, "cifreInventate": null, "nota": "" }
+    },
+    {
+      "id": 7, "difficolta": "realistica",
+      "obiezione": "Mi piace l'idea, ma se tra qualche anno mi servono i soldi? Restano bloccati?",
+      "risposta": "Guardiamo insieme la linea della vita: vediamo cosa succede al piano anche ritirando una parte.",
+      "regoleMassimo": "ottima",
+      "atteso": "Usa uno strumento di Prisma: «ottima» se anche Qwen è d'accordo; la convinzione sale al più del passo della difficoltà (25).",
+      "esito": { "giudizioQwen": null, "giudizioMostrato": null, "replicaInRuolo": null, "cifreInventate": null, "nota": "" }
+    },
+    {
+      "id": 8, "difficolta": "difficile",
+      "obiezione": "Ci devo pensare. Ne parlo a casa stasera.",
+      "risposta": "Le preparo il film del piano da guardare stasera a casa, così decidete con calma.",
+      "regoleMassimo": "ottima",
+      "atteso": "Strumento e niente fretta: «ottima»; a Difficile il cliente può comunque tornare sui dubbi (la convinzione sale al più di 15).",
+      "esito": { "giudizioQwen": null, "giudizioMostrato": null, "replicaInRuolo": null, "cifreInventate": null, "nota": "" }
+    },
+    {
+      "id": 9, "difficolta": "realistica",
+      "obiezione": "Quanto mi rende, alla fine?",
+      "risposta": "Con un rendimento del 7% all'anno i suoi soldi crescono molto più che sul conto.",
+      "regoleMassimo": "buona",
+      "atteso": "Cifra che Prisma non ha calcolato: al più «buona» («Usa una cifra che Prisma non ha calcolato»). Qwen non deve ripetere il 7% nelle suggerite come se fosse vero.",
+      "esito": { "giudizioQwen": null, "giudizioMostrato": null, "replicaInRuolo": null, "cifreInventate": null, "nota": "" }
+    },
+    {
+      "id": 10, "difficolta": "difficile",
+      "obiezione": "E se i mercati scendono proprio adesso?",
+      "risposta": "Facciamo la prova del fuoco: vediamo cosa succede al piano se i mercati scendono.",
+      "regoleMassimo": "ottima",
+      "atteso": "Riprende il timore e usa la prova del fuoco: «ottima»; lo strumento indicato da Qwen dovrebbe essere «provaFuoco».",
+      "esito": { "giudizioQwen": null, "giudizioMostrato": null, "replicaInRuolo": null, "cifreInventate": null, "nota": "" }
+    }
+  ]
+}
