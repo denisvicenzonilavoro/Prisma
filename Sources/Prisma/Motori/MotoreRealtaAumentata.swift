@@ -293,9 +293,15 @@ enum TestiRealta {
     static let disegnaSulliPad = "Il cliente disegna sull'iPad"
     static let scriviPrimaLettera = "Scrivi prima la lettera sul palco"
     static let dopoPensioneDisegno = "Dopo la pensione il disegno è solo un'indicazione: il confronto guarda l'età di pensione."
-    static let aiutoCapsula = "Scrivi con calma: puoi anche dettare con il microfono della tastiera. Il messaggio si sigilla sul Mac e nessuno lo legge prima del giorno giusto."
-    static let confermaSigillo = "Dopo il sigillo il messaggio non si può rileggere né correggere fino al giorno giusto."
-    static let sigilla = "✉︎ Sigilla la capsula"
+    static let aiutoCapsula = "Scrivi con calma: puoi anche dettare con il microfono della tastiera. Il messaggio passa al Mac, dove si sigilla dopo una conferma; poi nessuno lo legge prima del giorno giusto."
+    /// Sull'iPad il testo non si sigilla: passa al Mac come bozza (giro 16, D-C4) e sparisce dall'iPad.
+    static let confermaInvio = "Il messaggio passa al Mac e sparisce da questo iPad. Si sigilla sul Mac, dopo una conferma."
+    static let mandaAlMac = "✉︎ Manda al Mac"
+    static let manda = "Manda"
+    /// Sul Mac, nella vista della capsula (`Shell/SalaCapsula.swift`).
+    static let scriviSullIPad = "Scrivi sull'iPad"
+    static let aiutoScriviSullIPad = "Il cliente scrive sull'iPad del tavolo: il testo torna in questo campo come bozza, da sigillare qui con la conferma"
+    static let annullaAttesaCapsula = "L'iPad torna alla schermata neutra e il campo dell'iPad si svuota"
 
     /// Il nome di battesimo («Giulia» da «Giulia Rossi»).
     static func primoNome(_ nome: String) -> String {
@@ -314,7 +320,12 @@ enum TestiRealta {
     static func confermaCifre(_ primo: String) -> String { "Sull'iPad compaiono le cifre di \(primo). Vanno bene per chi è al tavolo?" }
     static func titoloFoglio(_ cliente: String, anno: Int) -> String { "Il cristallo di \(cliente) · \(anno)" }
     static func titoloDocumento(anno: Int, ora: String) -> String { "Il cristallo · \(anno) · \(ora)" }
-    static func capsulaArrivata(_ primo: String) -> String { "Il messaggio di \(primo) è arrivato dall'iPad ed è sigillato" }
+    static func capsulaArrivata(_ primo: String) -> String {
+        "Il messaggio di \(primo) è arrivato dall'iPad: è nel campo, non ancora sigillato. Sigillalo quando è pronto."
+    }
+    static func attesaCapsula(_ primo: String) -> String { "\(primo) scrive sull'iPad…" }
+    /// «Si apre a marzo 2027» sull'iPad: la frase di `MotoreCapsule.quando` con la maiuscola.
+    static func siApreCapsula(_ quando: String) -> String { quando.prefix(1).uppercased() + quando.dropFirst() }
 
     /// Tutte le frasi fisse (per la prova delle cifre inventate).
     static var tutte: [String] {
@@ -322,6 +333,7 @@ enum TestiRealta {
          serveLuce, piuLentamente, esploso, fine, apri, stimata, fotocameraAssente, consentiImpostazioni, fotocameraNegata,
          scattoSoloAlTavolo, scattoConStanzaTitolo, scattoConStanzaAiuto, stanzaNonPermessa, scattoGuasto, notaFoglio,
          rigaStanza, attesaTavolo, rispondeSulliPad, lanciaSulliPad, disegnaSulliPad, scriviPrimaLettera,
-         dopoPensioneDisegno, aiutoCapsula, confermaSigillo, sigilla]
+         dopoPensioneDisegno, aiutoCapsula, confermaInvio, mandaAlMac, manda, scriviSullIPad, aiutoScriviSullIPad,
+         annullaAttesaCapsula]
     }
 }

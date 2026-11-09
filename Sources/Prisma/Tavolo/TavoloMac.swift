@@ -222,7 +222,11 @@ final class TavoloMac: ObservableObject {
     /// I clienti per cui il consulente ha confermato le cifre sull'iPad in questa sessione (decisione 49). Non salvato.
     private(set) var cifreConfermate: Set<String> = []
     /// La capsula aspetta il testo dall'iPad: chi lo riceve (la vista della capsula del giro 15).
-    private var testoCapsulaArrivato: ((String) -> Void)?
+    private var testoCapsulaArrivato: ((String) -> Void)? {
+        didSet { if capsulaInAttesa != (testoCapsulaArrivato != nil) { capsulaInAttesa = testoCapsulaArrivato != nil } }
+    }
+    /// «Scrivi sull'iPad»: la capsula aspetta il testo del cliente (la vista mostra l'attesa e «Annulla»).
+    @Published private(set) var capsulaInAttesa = false
 
     private weak var stato: StatoShell?
     private var ascolto: AscoltoTavolo?
@@ -587,7 +591,8 @@ final class TavoloMac: ObservableObject {
     }
 
     /// La capsula del tempo scritta sull'iPad (D-C4): il testo arriva una volta sola a `riceve` e l'iPad torna neutro.
-    /// Il giro 15 lo collega dalla vista della capsula con un pulsante «Scrivi sull'iPad»: il testo non si mostra sul Mac.
+    /// La vista della capsula (`Shell/SalaCapsula.swift`, «Scrivi sull'iPad») lo mette nel suo campo come bozza: si
+    /// sigilla solo sul Mac, con la conferma di sempre; mai da solo all'arrivo.
     func chiediTestoCapsula(_ c: ContestoTavolo, capsula: CapsulaTavolo, riceve: @escaping (String) -> Void) {
         guard collegato, let s = stato, let id = clientePresente(c), let cliente = s.cliente(id) else { return }
         var m = MostraTavolo(id: idMostra(.capsula, cliente: id), genere: .capsula, titolo: EsperienzaSala.capsula.titolo,
@@ -595,6 +600,14 @@ final class TavoloMac: ObservableObject {
         m.capsula = capsula
         mostraAttiva(m, cliente: id, descrizione: EsperienzaSala.capsula.titolo)
         testoCapsulaArrivato = riceve
+    }
+
+    /// «Annulla» dell'attesa della capsula (o la vista che si chiude): non aspetta più il testo e, se l'iPad mostra
+    /// ancora la capsula, torna alla schermata neutra (il campo dell'iPad si svuota). Un testo che arriva dopo si ignora.
+    func annullaTestoCapsula() {
+        guard testoCapsulaArrivato != nil else { return }
+        testoCapsulaArrivato = nil
+        if mostraAttivo?.genere == .capsula { schermataNeutra() }
     }
 
     /// Lo scatto arrivato dall'iPad: il foglio nei Documenti del cliente mostrato, poi l'avviso sull'iPad.
@@ -683,7 +696,7 @@ final class TavoloMac: ObservableObject {
             dallIPad.send(c)
         case .testoCapsula(let x):
             guard let m = mostraAttivo, m.id == x.id, m.genere == .capsula, let riceve = testoCapsulaArrivato else { return }
-            // Una volta sola; il testo non resta né sul Mac (oltre a chi lo sigilla) né sull'iPad
+            // Una volta sola; sul Mac va solo a chi lo aspetta (il campo della capsula, come bozza), sull'iPad non resta
             testoCapsulaArrivato = nil
             riceve(String(x.testo.prefix(ProtocolloTavolo.massimoTestoCapsula)))
             schermataNeutra()

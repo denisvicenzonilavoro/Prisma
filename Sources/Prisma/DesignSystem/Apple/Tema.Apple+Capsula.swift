@@ -68,6 +68,16 @@ extension Tema.Apple.SalaRacconti {
         static let nota = Tema.Apple.Carattere.secondario
         static let coloreNota = Tema.Apple.Colore.inchiostro2
 
+        // MARK: «Scrivi sull'iPad» (giro 16, tavolo a doppio senso)
+
+        /// Fra «Sigilla», «Scrivi sull'iPad» e la riga dell'attesa (indicatore, «Giulia scrive sull'iPad…», «Annulla»).
+        static let spazioTavolo: CGFloat = 12
+        static let spazioAttesa: CGFloat = 8
+        static let attesa = Tema.Apple.Carattere.secondario
+        static let coloreAttesa = Tema.Apple.Colore.inchiostro2
+        /// La nota sotto il campo quando la bozza è arrivata dall'iPad (non ancora sigillata).
+        static let coloreBozzaArrivata = colore
+
         // MARK: Elenco
 
         static let sottoEtichettaElenco: CGFloat = 10

@@ -95,7 +95,12 @@ enum MotoreCapsule {
     /// «si apre quando «Anticipo casa» è raggiunto», «si apre a settembre 2036», «si apre nel 2037»; con l'obiettivo
     /// sparito, la frase che chiede di scegliere.
     static func quando(_ c: CapsulaTempo, obiettivo: Obiettivo?, cal: Calendar = .current) -> String {
-        switch c.apertura {
+        quando(c.apertura, obiettivo: obiettivo, cal: cal)
+    }
+
+    /// La stessa frase per un'apertura non ancora sigillata (la scelta di «Si apre quando», per l'iPad del tavolo).
+    static func quando(_ apertura: CapsulaTempo.Apertura, obiettivo: Obiettivo?, cal: Calendar = .current) -> String {
+        switch apertura {
         case .data(let d):
             let parti = cal.dateComponents([.year, .month, .day], from: d)
             if parti.month == 1, parti.day == 1, let anno = parti.year { return "si apre nel \(anno)" }
@@ -104,5 +109,14 @@ enum MotoreCapsule {
             guard let obiettivo else { return TestiCapsule.obiettivoSparito }
             return "si apre quando «\(obiettivo.titolo)» è raggiunto"
         }
+    }
+
+    /// Il testo scritto sull'iPad del tavolo entra nel campo come bozza (giro 16, D-C4): con il campo vuoto lo prende
+    /// com'è, altrimenti si aggiunge sotto, dopo una riga vuota. Mai sigillato qui: lo sigilla il consulente, con la conferma.
+    static func unisciBozza(_ campo: String, arrivato: String) -> String {
+        let nuovo = arrivato.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !nuovo.isEmpty else { return campo }
+        let esistente = campo.trimmingCharacters(in: .whitespacesAndNewlines)
+        return esistente.isEmpty ? nuovo : esistente + "\n\n" + nuovo
     }
 }
