@@ -36,14 +36,10 @@ import Observation
     /// Vero mentre `carica` assegna i campi: i cambi dei singoli campi non si segnalano, si segnala tutto alla fine.
     @ObservationIgnored private var inCarica = false
 
-    // Ogni `didSet` legge il valore di prima (`didSet(prima)`): con il solo `didSet`, nel codice ottimizzato di Xcode 26.3
-    // una modifica sul posto (`note[0].testo += …`, il `_modify` di @Observable) non chiamava il didSet e il salvataggio
-    // non partiva (`--prova-backup`, «dati a pezzi: una nota: 0 segnali»).
-
     /// Numero dei campi di `DatiPrisma` copiati qui (la prova lo confronta con Mirror).
     static let numeroCampi = 41
 
-    var versione: Int { didSet(prima) { _ = prima; segnala(.calcoli) } }
+    var versione: Int { didSet { segnala(.calcoli) } }
     var clienti: [Cliente] { didSet(prima) { segnalaClienti(prima, clienti, \.id) } }
     var appuntamenti: [Appuntamento] { didSet(prima) { segnalaClienti(prima, appuntamenti, \.clienteId) } }
     var attivita: [Attivita] { didSet(prima) { segnalaClienti(prima, attivita, \.clienteId) } }
@@ -51,31 +47,31 @@ import Observation
     var simulazioni: [Simulazione] { didSet(prima) { segnalaClienti(prima, simulazioni, \.clienteId) } }
     var analisi: [String: Analisi360] { didSet(prima) { segnalaAnalisi(prima) } }
     var incontri: [Incontro] { didSet(prima) { segnalaClienti(prima, incontri, \.clienteId) } }
-    var prodotti: [Prodotto] { didSet(prima) { _ = prima; segnala(.calcoli) } }
+    var prodotti: [Prodotto] { didSet { segnala(.calcoli) } }
     var obiettivi: [Obiettivo] { didSet(prima) { segnalaClienti(prima, obiettivi, \.clienteId) } }
     var documenti: [Documento] { didSet(prima) { segnalaClienti(prima, documenti, \.clienteId) } }
     var valutazioni: [ValutazioneInvestimento] { didSet(prima) { segnalaClienti(prima, valutazioni, \.clienteId) } }
-    var conversazioni: [String: [MessaggioVera]] { didSet(prima) { _ = prima; segnala(.neutro) } }
+    var conversazioni: [String: [MessaggioVera]] { didSet { segnala(.neutro) } }
     var commenti: [CommentoReport] { didSet(prima) { segnalaClienti(prima, commenti, \.clienteId) } }
-    var note: [Nota] { didSet(prima) { _ = prima; segnala(.note) } }
-    var spazi: [SpazioLavoro] { didSet(prima) { _ = prima; segnala(.neutro) } }
+    var note: [Nota] { didSet { segnala(.note) } }
+    var spazi: [SpazioLavoro] { didSet { segnala(.neutro) } }
     var fotografie: [FotografiaRiesame] { didSet(prima) { segnalaClienti(prima, fotografie, \.clienteId) } }
-    var schedeAdeguatezza: [SchedaAdeguatezza] { didSet(prima) { _ = prima; segnala(.neutro) } }
-    var confrontiTFR: [String: IpotesiTFR] { didSet(prima) { _ = prima; segnala(.neutro) } }
+    var schedeAdeguatezza: [SchedaAdeguatezza] { didSet { segnala(.neutro) } }
+    var confrontiTFR: [String: IpotesiTFR] { didSet { segnala(.neutro) } }
     var parcelle: [Parcella] { didSet(prima) { segnalaClienti(prima, parcelle, \.clienteId) } }
     var raccomandazioni: [Raccomandazione] { didSet(prima) { segnalaClienti(prima, raccomandazioni, \.clienteId) } }
     var messaggi: [MessaggioCliente] { didSet(prima) { segnalaClienti(prima, messaggi, \.clienteId) } }
     var eventiVita: [EventoLineaVita] { didSet(prima) { segnalaClienti(prima, eventiVita, \.clienteId) } }
     var sessioniCopilota: [SessioneCopilota] { didSet(prima) { segnalaClienti(prima, sessioniCopilota, \.clienteId) } }
-    var giornaleOvunque: [OperazioneOvunque] { didSet(prima) { _ = prima; segnala(.calcoli) } }
-    var conflittiOvunque: [ConflittoOvunque] { didSet(prima) { _ = prima; segnala(.calcoli) } }
-    var arriviOvunque: [ArrivoOvunque] { didSet(prima) { _ = prima; segnala(.calcoli) } }
-    var inquadratureDaConfermare: [InquadraturaPonte] { didSet(prima) { _ = prima; segnala(.calcoli) } }
-    var mercato: ArchivioMercato { didSet(prima) { _ = prima; segnala(.calcoli) } }
-    var famiglie: FamiglieCaricate? { didSet(prima) { _ = prima; segnala(.calcoli) } }
-    var ocf: ArchivioOCF { didSet(prima) { _ = prima; segnala(.neutro) } }
-    var portafogliModello: [PortafoglioModello] { didSet(prima) { _ = prima; segnala(.calcoli) } }
-    var pratiche: [Pratica] { didSet(prima) { _ = prima; segnala(.neutro) } }
+    var giornaleOvunque: [OperazioneOvunque] { didSet { segnala(.calcoli) } }
+    var conflittiOvunque: [ConflittoOvunque] { didSet { segnala(.calcoli) } }
+    var arriviOvunque: [ArrivoOvunque] { didSet { segnala(.calcoli) } }
+    var inquadratureDaConfermare: [InquadraturaPonte] { didSet { segnala(.calcoli) } }
+    var mercato: ArchivioMercato { didSet { segnala(.calcoli) } }
+    var famiglie: FamiglieCaricate? { didSet { segnala(.calcoli) } }
+    var ocf: ArchivioOCF { didSet { segnala(.neutro) } }
+    var portafogliModello: [PortafoglioModello] { didSet { segnala(.calcoli) } }
+    var pratiche: [Pratica] { didSet { segnala(.neutro) } }
     var partiteRischio: [PartitaRischio] { didSet(prima) { segnalaClienti(prima, partiteRischio, \.clienteId) } }
     var promesse: [PromessaCliente] { didSet(prima) { segnalaClienti(prima, promesse, \.clienteId) } }
     var confrontiDocumenti: [ConfrontoDocumenti] { didSet(prima) { segnalaClienti(prima, confrontiDocumenti, \.clienteId) } }
