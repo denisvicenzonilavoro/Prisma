@@ -370,10 +370,13 @@ extension AppImpostazioni {
                 }
                 .cascataImpostazioni(4)
             }
-            // «Luce» giro 14: Stanotte, il lavoro della notte (ImpostazioniNotteVista.swift)
+            // «Luce» giro 14: Stanotte, il lavoro della notte (ImpostazioniNotteVista.swift, solo sul Mac: questo file
+            // compila anche per iPhone e iPad, dove le carte della notte non ci sono)
+            #if os(macOS)
             GruppoImpostazioniNotte()
                 .id(TestiNotte.ancoraImpostazioni)
                 .cascataImpostazioni(5)
+            #endif
             GruppoImpostazioni(titolo: "Come lavora") {
                 RigaImpostazione(titolo: "Modello", sottotitolo: "Il nome in Ollama.") {
                     TextField(vera.fornitore == .ollama ? MotoreLocale.modelloPredefinito : "nome del modello", text: Bindable(stato.dati).impostazioni.vera.modello)
