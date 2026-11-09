@@ -62,15 +62,11 @@ struct MappaTerritorio: View {
     var body: some View {
         let _ = ContaCorpi.segna()
         let meta = quadroMeta()
-        Group {
-            if quadroDa != nil && !fermo {
-                // Il passaggio fra le inquadrature (0,6 s): un fotogramma per volta solo finché dura
-                TimelineView(.animation(minimumInterval: 1 / 60, paused: false)) { ctx in
-                    strati(quadro(meta, adesso: ctx.date))
-                }
-            } else {
-                strati(quadro(meta, adesso: nil))
-            }
+        let inPassaggio = quadroDa != nil && !fermo
+        // Il passaggio fra le inquadrature (0,6 s): un fotogramma per volta solo finché dura, poi la linea del tempo è
+        // ferma. Sempre la stessa vista (niente `if`): gli strati non rinascono, e il percorso del giro non riparte.
+        TimelineView(.animation(minimumInterval: 1 / 60, paused: !inPassaggio)) { ctx in
+            strati(quadro(meta, adesso: inPassaggio ? ctx.date : nil))
         }
         .background(M.terra)
         .accessibilityElement(children: .ignore)
