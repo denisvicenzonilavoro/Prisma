@@ -35,7 +35,12 @@ struct DisegnaIlFuturo: View {
         CorpoDisegno(cliente: attuale, preparazione: prep, prova: stato.sala.provaDisegno,
                      obiettivi: stato.obiettiviCliente(id),
                      salva: { stato.salvaObiettivo($0) },
-                     completaAnagrafica: { stato.apriCliente(id) })
+                     completaAnagrafica: { stato.apriCliente(id) },
+                     alTavolo: stato.sala.tavoloEsperienza == .disegna,
+                     mandaAlTavolo: { assi, ingresso, risultato, frase in
+                         stato.disegnoAlTavolo(cliente: id, assi: assi, ingresso: ingresso, risultato: risultato, frase: frase)
+                     })
+            .onDisappear { stato.lasciaTavolo(.disegna) }
     }
 }
 
@@ -48,6 +53,9 @@ private struct CorpoDisegno: View {
     let obiettivi: [Obiettivo]
     let salva: (Obiettivo) -> Void
     let completaAnagrafica: () -> Void
+    /// Il tavolo a doppio senso (giro 16, decisione 113): il cliente disegna sull'iPad, il Mac calcola e rimanda.
+    var alTavolo = false
+    var mandaAlTavolo: (AssiDisegno, IngressoLineaVita, PaginaTavolo?, String?) -> Void = { _, _, _, _ in }
 
     @Environment(\.prismaCalmo) private var calmo
     @Environment(\.modoIstantanea) private var istantanea
@@ -63,6 +71,9 @@ private struct CorpoDisegno: View {
     @State private var modulo = false
     @State private var toast: String?
     @State private var preparato = false
+    /// Gli assi e l'ingresso della tela mostrata (per convertire i punti che arrivano dall'iPad).
+    @State private var assiTavolo: AssiDisegno?
+    @State private var ingressoTavolo: IngressoLineaVita?
 
     private typealias D = Tema.Apple.SalaRacconti.Disegno
 
@@ -97,13 +108,66 @@ private struct CorpoDisegno: View {
                             .frame(width: g.size.width, height: g.size.height)
                     }
                 }
-                .onAppear { prepara(assi: assi, ingresso: ingresso) }
+                .onAppear {
+                    prepara(assi: assi, ingresso: ingresso)
+                    assiTavolo = assi
+                    ingressoTavolo = ingresso
+                }
+                .onChange(of: assi) { _, a in assiTavolo = a }
             } else {
                 manca
                     .frame(width: g.size.width, height: g.size.height)
             }
         }
         .avvisoToast($toast)
+        .dalTavolo { c in if case .tratto(let t) = c { disegnoDalTavolo(t) } }
+        .onChange(of: alTavolo) { _, acceso in
+            guard acceso, let a = assiTavolo, let i = ingressoTavolo else { return }
+            mandaAlTavolo(a, i, nil, nil)
+        }
+    }
+
+    // MARK: Il tavolo a doppio senso
+
+    /// Il tratto dall'iPad (punti 0…1, y = 0 in basso): convertito come `prepara(assi:ingresso:)`, poi la stessa strada
+    /// del rilascio sul Mac; il risultato disegnato torna all'iPad con la frase.
+    private func disegnoDalTavolo(_ t: TrattoTavolo) {
+        guard alTavolo, !modulo, t.valido(), let assi = assiTavolo, let ingresso = ingressoTavolo else { return }
+        generazione += 1
+        tratto = TrattoDisegno(punti: t.punti.map {
+            CGPoint(x: Double(assi.etaOggi) + $0.x * assi.anni, y: $0.y * assi.massimo)
+        })
+        guard tratto.punti.count >= MotoreDisegno.puntiMinimi else { return ricomincia() }
+        fase = .disegno
+        trasforma(assi: assi, ingresso: ingresso)
+        guard let e = esito else { return }
+        mandaAlTavolo(assi, ingresso, paginaRisultato(e, assi: assi), fraseRisultato(e))
+    }
+
+    /// Il risultato per l'iPad: il disegno (tratteggiato) e la curva del piano, su carta bianca.
+    private func paginaRisultato(_ e: EsitoDisegno, assi: AssiDisegno) -> PaginaTavolo? {
+        let misura = CGSize(width: assi.area.maxX + assi.area.minX, height: assi.area.maxY + assi.area.minY)
+        let vista = ZStack {
+            D.fondoTela
+            CurvaTrasformata(da: e.disegno, a: e.disegno, assi: assi, avanzamento: 1)
+                .stroke(D.coloreDisegno.opacity(D.opacitaFantasma),
+                        style: StrokeStyle(lineWidth: D.spessoreFantasma, lineCap: .round, dash: D.tratteggioFantasma))
+            CurvaTrasformata(da: e.disegno, a: e.possibile, assi: assi, avanzamento: 1)
+                .stroke(D.colorePossibile, style: StrokeStyle(lineWidth: D.curvaPossibile, lineCap: .round, lineJoin: .round))
+        }
+        .frame(width: misura.width, height: misura.height)
+        .environment(\.colorScheme, .light)
+        let r = ImageRenderer(content: vista)
+        r.proposedSize = ProposedViewSize(misura)
+        r.scale = Tema.Apple.Tavolo.scalaPagina
+        guard let immagine = r.cgImage, let png = ProtocolloTavolo.png(immagine) else { return nil }
+        return PaginaTavolo(numero: 1, totale: 1, larghezza: Double(misura.width), altezza: Double(misura.height), png: png)
+    }
+
+    private func fraseRisultato(_ e: EsitoDisegno) -> String {
+        var f = "Il tuo disegno a \(e.etaPensione) anni: \(Formati.euro(e.alDisegno)). Il piano di oggi: \(Formati.euro(e.alPiano))."
+        if let v = e.versamentoInPiu { f += " Per arrivarci servono circa \(Formati.euro(v)) in più al mese." }
+        return f
     }
 
     // MARK: Misure
@@ -176,6 +240,13 @@ private struct CorpoDisegno: View {
                 .fill(D.colorePartenza)
                 .frame(width: D.raggioPunto * 2, height: D.raggioPunto * 2)
                 .position(partenza)
+            if alTavolo {
+                Text(TestiRealta.disegnaSulliPad)
+                    .carattereApple(D.invito)
+                    .foregroundColor(D.coloreAssi)
+                    .padding(D.invitoDestra)
+                    .allowsHitTesting(false)
+            }
             if fase == .vuota {
                 Text("Disegna qui, partendo dal punto viola →")
                     .carattereApple(D.invito)

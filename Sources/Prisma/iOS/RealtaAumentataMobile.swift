@@ -567,6 +567,14 @@ final class CoordinatoreARRealta: NSObject, ARSessionDelegate {
 
 // MARK: - Il tavolo lato Mac non c'è su iOS
 
+extension StatoShell {
+    /// Gemelli vuoti del Mac (Shell/SalaRealta.swift): su iPhone e iPad il tavolo lato Mac non c'è.
+    func rischioAlTavolo(_ g: RischioTavolo, cliente id: String) {}
+    func lanciaAlTavolo(_ p: PartitaLanciaAnno, cliente id: String) {}
+    func disegnoAlTavolo(cliente id: String, assi: AssiDisegno, ingresso: IngressoLineaVita, risultato: PaginaTavolo?, frase: String?) {}
+    func lasciaTavolo(_ e: EsperienzaSala) {}
+}
+
 extension View {
     /// Gemello vuoto del modificatore del Mac (Tavolo/TavoloMac.swift): su iPhone e iPad il tavolo lato Mac non c'è.
     func dalTavolo(_ azione: @escaping (ContenutoTavolo) -> Void) -> some View { self }

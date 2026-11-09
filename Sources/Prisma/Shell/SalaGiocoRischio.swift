@@ -102,6 +102,41 @@ struct GiocoRischioVista: View {
         }
         .padding(R.padding)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        // Il tavolo a doppio senso (giro 16, decisione 48): lo scenario va sull'iPad a ogni passo, la risposta torna
+        // con i secondi misurati sull'iPad. Le risposte restano toccabili anche qui (ripiego del consulente)
+        .dalTavolo { c in if case .rispostaRischio(let r) = c { rispondiDalTavolo(r) } }
+        .onChange(of: fase) { _, _ in mandaAlTavolo() }
+        .onChange(of: stato.sala.tavoloEsperienza) { _, _ in mandaAlTavolo() }
+        .onDisappear { stato.lasciaTavolo(.giocoRischio) }
+    }
+
+    /// Lo scenario in corso o il risultato all'iPad (solo se il tavolo è per il gioco). Niente nomi né cifre del cliente.
+    private func mandaAlTavolo() {
+        guard stato.sala.tavoloEsperienza == .giocoRischio, let s = scenari else { return }
+        let n = s.scenari.count
+        switch fase {
+        case .ultimaVolta:
+            rifai()
+        case .scenario(let i) where i < n:
+            stato.rischioAlTavolo(RischioTavolo(indice: i, totale: n, scenario: s.scenari[i], avvertenza: s.avvertenza,
+                                                testiDiProva: s.testiDiProva, emerso: nil, punteggio: nil, massimo: nil),
+                                  cliente: cliente.id)
+        default:
+            let partita = PartitaRischio(clienteId: cliente.id, data: dataPartita, versioneScenari: s.versione, risposte: risposte)
+            let profilo = MotoreGiocoRischio.profilo(partita, scenari: s)
+            stato.rischioAlTavolo(RischioTavolo(indice: n, totale: n, scenario: nil, avvertenza: s.notaFinale,
+                                                testiDiProva: s.testiDiProva, emerso: profilo?.rawValue,
+                                                punteggio: partita.punteggio, massimo: s.massimo),
+                                  cliente: cliente.id)
+        }
+    }
+
+    /// La risposta toccata sull'iPad: la stessa strada della risposta sul Mac, con i secondi dell'iPad.
+    private func rispondiDalTavolo(_ r: RispostaRischioTavolo) {
+        guard let s = scenari, case .scenario(let n) = fase, n < s.scenari.count, s.scenari[n].id == r.scenario,
+              (0..<s.scenari[n].risposte.count).contains(r.scelta) else { return }
+        visibili = true
+        registra(s.scenari[n], scelta: r.scelta, secondi: max(0, r.secondi))
     }
 
     // MARK: L'ultima volta
@@ -161,6 +196,12 @@ struct GiocoRischioVista: View {
                     .minimumScaleFactor(0.8)
             }
             .entrataCascata(0, base: Tema.Apple.Moto.Cascata.baseDentroApp)
+            if stato.sala.tavoloEsperienza == .giocoRischio {
+                Text(TestiRealta.rispondeSulliPad)
+                    .carattereApple(R.etichetta)
+                    .foregroundColor(R.coloreEtichetta)
+                    .padding(.top, R.sopraDomanda)
+            }
             Text(sc.domanda)
                 .carattereApple(R.domanda)
                 .foregroundColor(R.coloreDomanda)
@@ -220,10 +261,15 @@ struct GiocoRischioVista: View {
     }
 
     private func rispondi(_ sc: ScenarioRischio, _ i: Int) {
+        registra(sc, scelta: i, secondi: Date().timeIntervalSince(compaiono))
+    }
+
+    /// La parte comune della risposta (dal Mac o dall'iPad del tavolo).
+    private func registra(_ sc: ScenarioRischio, scelta i: Int, secondi: Double) {
         guard scelta == nil, visibili, case .scenario(let n) = fase else { return }
         scelta = i
         risposte.removeAll { $0.scenario == sc.id }
-        risposte.append(RispostaRischio(scenario: sc.id, scelta: i, secondi: Date().timeIntervalSince(compaiono)))
+        risposte.append(RispostaRischio(scenario: sc.id, scelta: i, secondi: secondi))
         DispatchQueue.main.asyncAfter(deadline: .now() + M.pausaDopoScelta) {
             guard case .scenario(let ora) = fase, ora == n else { return }
             passa(a: .scenario(n + 1))

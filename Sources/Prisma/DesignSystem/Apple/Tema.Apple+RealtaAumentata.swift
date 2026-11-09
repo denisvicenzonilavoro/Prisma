@@ -201,6 +201,13 @@ extension Tema.Apple {
             static let larghezza: CGFloat = 640
         }
 
+        /// L'immagine ferma di un palco mandata all'iPad (decisione 111): misura del palco, fondo e densità.
+        enum ImmaginePalco {
+            static let misura = CGSize(width: 1_280, height: 800)
+            static let fondo = Color(r: 6, g: 14, b: 20, a: 1)
+            static let scala: CGFloat = 1.5
+        }
+
         /// I colori degli strati: quelli delle classi del prisma di luce (decisione 119).
         enum Strati {
             static let azionario = Tema.Apple.Luce.Raggi.azionario

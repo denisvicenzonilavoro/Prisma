@@ -311,6 +311,13 @@ private struct PalcoSala: View {
                 .entrataCascata(0, base: Tema.Apple.Moto.Cascata.baseDentroApp)
             ContenutoPalco(esperienza: esperienza, cliente: cliente)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .overlay(alignment: .top) {
+                    #if os(macOS)
+                    // La conferma delle cifre sull'iPad (decisione 49), in testa al palco
+                    ConfermaCifreTavolo(esperienza: esperienza, cliente: cliente)
+                        .padding(.top, Tema.Apple.RealtaAumentata.CorniceiPad.origine.y)
+                    #endif
+                }
                 .matchedGeometryEffect(id: esperienza.id, in: spazio, isSource: false)
                 .superficieApple(Tema.Apple.SalaEsperienze.Scheda.superficie, raggio: Tema.Apple.SalaEsperienze.Scheda.raggio)
                 .clipShape(RoundedRectangle(cornerRadius: Tema.Apple.SalaEsperienze.Scheda.raggio, style: .continuous))
@@ -335,14 +342,13 @@ private struct PalcoSala: View {
             .lineLimit(1)
             Spacer(minLength: P.spazioTestata)
             HStack(spacing: P.spazioPulsanti) {
-                // Il tavolo e il Prisma del cliente non sono ancora pronti per nessuna esperienza (decisioni 7 e 111):
-                // i pulsanti restano spenti anche dove l'esperienza c'è già
+                // «▣ Mostra sul tavolo» (giro 16, decisioni 48 e 111): sul Mac osserva il tavolo; su iPhone e iPad il
+                // tavolo lato Mac non c'è. Il Prisma del cliente non è ancora pronto (decisione 7)
+                #if os(macOS)
                 if esperienza.mostraSulTavolo {
-                    Button { } label: { Text("▣ Mostra sul tavolo") }
-                        .buttonStyle(.apple)
-                        .disabled(!esperienza.disponibile || !EsperienzaSala.tavoloPronto)
-                        .help("Sull'iPad del tavolo: arriva con un prossimo aggiornamento")
+                    PulsanteMostraSulTavolo(tavolo: stato.tavolo, esperienza: esperienza, cliente: cliente)
                 }
+                #endif
                 if esperienza.aggiungeAlPrisma {
                     Button { } label: { Text("✦ Aggiungi al Prisma di \(nome)") }
                         .buttonStyle(.apple)

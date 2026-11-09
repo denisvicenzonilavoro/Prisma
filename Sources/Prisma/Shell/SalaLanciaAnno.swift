@@ -81,8 +81,23 @@ struct LanciaAnnoVista: View {
             }
         }
         .onAppear { if partitaAperta == nil { partitaAperta = iniziale() } }
-        .onDisappear { corsa?.cancel() }
+        .onDisappear {
+            corsa?.cancel()
+            stato.lasciaTavolo(.lanciaAnno)
+        }
         .onChange(of: versione) { _, _ in datiCambiatiOra() }
+        // Il tavolo a doppio senso (giro 16): un tocco sull'iPad = un anno (ignorato mentre corrono i dieci anni del Mac);
+        // dopo ogni lancio le due vite tornano all'iPad
+        .dalTavolo { c in
+            if case .lancioAnno = c, corsa == nil, modificabile { lancia(nil, animato: true) }
+        }
+        .onChange(of: partitaAperta) { _, _ in mandaAlTavolo() }
+        .onChange(of: stato.sala.tavoloEsperienza) { _, _ in mandaAlTavolo() }
+    }
+
+    private func mandaAlTavolo() {
+        guard stato.sala.tavoloEsperienza == .lanciaAnno, case .success(let p) = esito else { return }
+        stato.lanciaAlTavolo(p, cliente: cliente.id)
     }
 
     /// I dati sono cambiati (profilo, posizioni, eventi di Impostazioni › Sala): senza anni lanciati la partita si rifà
@@ -107,6 +122,11 @@ struct LanciaAnnoVista: View {
 
     private func partita(_ p: PartitaLanciaAnno, nome: String) -> some View {
         VStack(alignment: .leading, spacing: 0) {
+            if stato.sala.tavoloEsperienza == .lanciaAnno {
+                Text(TestiRealta.lanciaSulliPad)
+                    .carattereApple(Tema.Apple.Carattere.etichetta)
+                    .foregroundColor(Tema.Apple.Colore.inchiostro2)
+            }
             testa(p)
                 .entrataCascata(1, base: Tema.Apple.Moto.Cascata.baseDentroApp)
             HStack(alignment: .top, spacing: L.spazioRiquadri) {

@@ -62,8 +62,12 @@ enum EsperienzaSala: String, CaseIterable, Identifiable {
     /// L'esperienza è già in Prisma (il palco la mostra); le altre dicono «Arriva con un prossimo aggiornamento».
     var disponibile: Bool { novita.disponibile }
 
-    /// «▣ Mostra sul tavolo» per le esperienze: arriva con l'immagine del palco sull'iPad (decisione 111).
-    static let tavoloPronto = false
+    /// «▣ Mostra sul tavolo» già pronto («Luce» giro 16): il doppio senso per realtà aumentata, rischio, Lancia l'anno e
+    /// disegno; l'immagine del palco (decisione 111) per prisma di luce e giornata; il foglio per la lettera. Il film
+    /// resta fuori finché non c'è.
+    var tavoloPronto: Bool {
+        [.realtaAumentata, .giocoRischio, .lanciaAnno, .disegna, .prismaLuce, .lettera, .giornataPensione].contains(self)
+    }
 
     /// Le dieci schede piccole della griglia (la prima, grande, è il Prisma del cliente).
     static var piccole: [EsperienzaSala] { allCases.filter { $0 != .prismaCliente } }

@@ -70,9 +70,6 @@ struct PalcoRealtaAumentata: View {
                 }
                 .padding(.leading, I.origine.x)
                 .padding(.top, I.origine.y)
-                ConfermaCifreTavolo(esperienza: .realtaAumentata, cliente: cliente)
-                    .frame(maxWidth: .infinity, alignment: .top)
-                    .padding(.top, I.origine.y)
             }
         }
         .environment(\.colorScheme, .light)
@@ -90,6 +87,7 @@ struct PalcoRealtaAumentata: View {
         }
         .onChange(of: anno) { _, v in controllo.anno = v }
         .onChange(of: esploso) { _, v in controllo.esploso = v }
+        .onDisappear { stato.lasciaTavolo(.realtaAumentata) }
     }
 
     /// Lo schermo dell'iPad: la scena (o il fermo-immagine) e le sovrapposizioni comuni.
@@ -229,6 +227,179 @@ extension StatoShell {
         }
         return archiviaPDF(pdf, titolo: titolo, tipo: .report, cliente: id,
                            scattoRealta: ScattoRealta(anno: anno, esploso: esploso, conStanza: conStanza, origine: origine))
+    }
+}
+
+// MARK: - «▣ Mostra sul tavolo» dal palco (decisioni 48, 49, 111)
+
+extension EsperienzaSala {
+    /// Il genere a doppio senso dell'esperienza sull'iPad (nil = immagine del palco o pagina).
+    var genereTavolo: MostraTavolo.Genere? {
+        switch self {
+        case .realtaAumentata: return .realtaAumentata
+        case .giocoRischio: return .rischio
+        case .lanciaAnno: return .lanciaAnno
+        case .disegna: return .disegno
+        case .capsula: return .capsula
+        default: return nil
+        }
+    }
+
+    /// L'esperienza porta cifre personali del cliente sull'iPad (tutte tranne il gioco del rischio, che è neutro).
+    var cifreSulTavolo: Bool { self != .giocoRischio }
+}
+
+extension StatoShell {
+    /// «▣ Mostra sul tavolo» dal palco: genere vivo per realtà aumentata, rischio, Lancia l'anno e disegno; il foglio
+    /// già visto per la lettera; l'immagine ferma del palco per il prisma di luce e la giornata. Prima la conferma delle
+    /// cifre (una volta per cliente e per tavolo), tranne per il gioco del rischio.
+    @MainActor
+    func mostraEsperienzaSulTavolo(_ e: EsperienzaSala, cliente id: String) {
+        guard tavolo.collegato, let c = cliente(id) else { return }
+        if e.cifreSulTavolo && tavolo.cifreDaConfermare(id) {
+            sala.confermaCifreTavolo = e
+            return
+        }
+        sala.confermaCifreTavolo = nil
+        let contesto = ContestoTavolo(documento: nil, pagina: 0, clienteId: id)
+        switch e {
+        case .realtaAumentata:
+            tavolo.mandaRealta(contesto)
+        case .giocoRischio, .lanciaAnno, .disegna:
+            // La vista del gioco manda il suo stato a ogni passo (e subito, al cambio)
+            sala.tavoloEsperienza = e
+        case .lettera:
+            guard let stesura = sala.stesureLettera[id]?[sala.versioneLettera] else { return }
+            let avvertenza = ImpostazioniSala.avvertenza(dati.impostazioni.sala.avvertenzaLettera).testo
+            let d = PaginaLettera.documento(testo: stesura.testo, avvertenza: avvertenza, cliente: c.nome)
+            tavolo.mandaPagina(ContestoTavolo(documento: d, pagina: 0, clienteId: id, dallaSala: false))
+        default:
+            mandaImmaginePalco(e, cliente: c)
+        }
+    }
+
+    /// Conferma della riga in testa al palco: le cifre del cliente vanno sull'iPad, poi l'esperienza.
+    @MainActor
+    func confermaCifreSulTavolo(_ e: EsperienzaSala, cliente id: String) {
+        tavolo.confermaCifre(id)
+        sala.confermaCifreTavolo = nil
+        mostraEsperienzaSulTavolo(e, cliente: id)
+    }
+
+    /// L'immagine ferma del palco (decisione 111): il palco disegnato nello stato finale, come una pagina.
+    @MainActor
+    private func mandaImmaginePalco(_ e: EsperienzaSala, cliente c: Cliente) {
+        let misura = Tema.Apple.RealtaAumentata.ImmaginePalco.misura
+        let vista = ContenutoPalco(esperienza: e, cliente: c, inSala: true)
+            .environment(self)
+            .environment(\.modoIstantanea, true)
+            .environment(\.colorScheme, .dark)
+            .frame(width: misura.width, height: misura.height)
+            .background(Tema.Apple.RealtaAumentata.ImmaginePalco.fondo)
+        let r = ImageRenderer(content: vista)
+        r.proposedSize = ProposedViewSize(misura)
+        r.scale = Tema.Apple.RealtaAumentata.ImmaginePalco.scala
+        guard let immagine = r.cgImage, let png = ProtocolloTavolo.png(immagine) else {
+            mostraAvviso("Non riesco a preparare l'immagine del palco per l'iPad.")
+            return
+        }
+        tavolo.mandaImmagine(ContestoTavolo(documento: nil, pagina: 0, clienteId: c.id), titolo: e.titolo, png: png, misura: misura)
+    }
+
+    /// Il gioco del rischio al tavolo: lo scenario o il risultato, se il tavolo è per il gioco.
+    func rischioAlTavolo(_ g: RischioTavolo, cliente id: String) {
+        guard sala.tavoloEsperienza == .giocoRischio else { return }
+        tavolo.mandaRischio(ContestoTavolo(documento: nil, pagina: 0, clienteId: id), stato: g)
+    }
+
+    /// Lancia l'anno al tavolo dopo ogni lancio.
+    func lanciaAlTavolo(_ p: PartitaLanciaAnno, cliente id: String) {
+        guard sala.tavoloEsperienza == .lanciaAnno else { return }
+        let avvertenza = ImpostazioniSala.avvertenza(dati.impostazioni.sala.avvertenzaLancia).testo
+        tavolo.mandaLancia(ContestoTavolo(documento: nil, pagina: 0, clienteId: id), partita: p, avvertenza: avvertenza)
+    }
+
+    /// Il disegno al tavolo: la tela vuota o il risultato disegnato dal Mac.
+    func disegnoAlTavolo(cliente id: String, assi: AssiDisegno, ingresso: IngressoLineaVita, risultato: PaginaTavolo?, frase: String?) {
+        guard sala.tavoloEsperienza == .disegna else { return }
+        tavolo.mandaDisegno(ContestoTavolo(documento: nil, pagina: 0, clienteId: id), assi: assi, ingresso: ingresso,
+                            risultato: risultato, frase: frase)
+    }
+
+    /// Il palco dell'esperienza si chiude: l'iPad torna neutro se mostrava quella esperienza.
+    func lasciaTavolo(_ e: EsperienzaSala) {
+        if sala.tavoloEsperienza == e { sala.tavoloEsperienza = nil }
+        if sala.confermaCifreTavolo == e { sala.confermaCifreTavolo = nil }
+        if let g = e.genereTavolo, tavolo.mostraAttivo?.genere == g { tavolo.schermataNeutra() }
+    }
+}
+
+/// «▣ Mostra sul tavolo» nella testata del palco: osserva il tavolo (si accende quando l'iPad si collega). A tavolo
+/// chiuso o senza iPad apre il pannello del tavolo con l'avviso.
+struct PulsanteMostraSulTavolo: View {
+    @Environment(StatoShell.self) var stato
+    @ObservedObject var tavolo: TavoloMac
+    let esperienza: EsperienzaSala
+    let cliente: Cliente
+    @State private var pannello = false
+
+    var body: some View {
+        let senzaLettera = esperienza == .lettera && stato.sala.stesureLettera[cliente.id]?[stato.sala.versioneLettera] == nil
+        Button {
+            if tavolo.collegato { stato.mostraEsperienzaSulTavolo(esperienza, cliente: cliente.id) } else { pannello = true }
+        } label: { Text("▣ Mostra sul tavolo") }
+            .buttonStyle(.apple)
+            .disabled(!esperienza.disponibile || !esperienza.tavoloPronto || senzaLettera)
+            .help(aiuto(senzaLettera: senzaLettera))
+            .popover(isPresented: $pannello, arrowEdge: .bottom) {
+                VStack(alignment: .leading, spacing: Tema.Apple.Tavolo.spazioPannello) {
+                    Text(TestiRealta.attesaTavolo)
+                        .carattereApple(Tema.Apple.Carattere.secondario)
+                        .foregroundColor(Tema.Apple.Colore.inchiostro2)
+                    PannelloAlTavolo(tavolo: tavolo, contesto: ContestoTavolo(documento: nil, pagina: 0, clienteId: cliente.id))
+                }
+                .environment(stato)
+            }
+    }
+
+    private func aiuto(senzaLettera: Bool) -> String {
+        if senzaLettera { return TestiRealta.scriviPrimaLettera }
+        if !tavolo.collegato { return TestiRealta.attesaTavolo }
+        return esperienza.genereTavolo == nil
+            ? "Sull'iPad del tavolo: l'immagine di questo palco"
+            : "Sull'iPad del tavolo: il cliente guarda e risponde da lì"
+    }
+}
+
+/// La riga di conferma delle cifre in testa al palco (decisione 49): «Sull'iPad compaiono le cifre di Giulia. Vanno
+/// bene per chi è al tavolo?» Mostra / Annulla. Una riga nel palco (le istantanee la disegnano), non un dialogo.
+struct ConfermaCifreTavolo: View {
+    @Environment(StatoShell.self) var stato
+    let esperienza: EsperienzaSala
+    let cliente: Cliente
+
+    private typealias K = Tema.Apple.RealtaAumentata.Conferma
+
+    var body: some View {
+        if stato.sala.confermaCifreTavolo == esperienza {
+            HStack(spacing: K.spazio) {
+                Text(TestiRealta.confermaCifre(TestiRealta.primoNome(cliente.nome)))
+                    .carattereApple(K.testo)
+                    .foregroundColor(K.inchiostro)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: K.spazio)
+                Button("Annulla") { stato.sala.confermaCifreTavolo = nil }
+                    .buttonStyle(.apple)
+                Button("Mostra") { stato.confermaCifreSulTavolo(esperienza, cliente: cliente.id) }
+                    .buttonStyle(.applePrimario)
+            }
+            .padding(K.padding)
+            .frame(maxWidth: K.larghezza)
+            .background(RoundedRectangle(cornerRadius: K.raggio, style: .continuous).fill(K.fondo))
+            .overlay(RoundedRectangle(cornerRadius: K.raggio, style: .continuous).strokeBorder(K.bordo, lineWidth: 1))
+            .environment(\.colorScheme, .light)
+            .transition(.opacity)
+        }
     }
 }
 #endif
