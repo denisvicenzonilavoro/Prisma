@@ -75,6 +75,19 @@ struct PaginaImpostazioniSala: View {
             .cascataImpostazioni(3)
             NotaImpostazioni("Le avvertenze e il titolo sono comunicazioni al cliente: scrivile o approvale tu (OCF per "
                              + "l’indipendente, Alleanza per l’agenzia). Finché restano vuote si vede il segnaposto dichiarato.")
+            GruppoImpostazioni(titolo: "La realtà aumentata") {
+                RigaImpostazione(titolo: TestiRealta.scattoConStanzaTitolo,
+                                 sottotitolo: "Di base lo scatto è solo il cristallo su fondo neutro",
+                                 aiuto: TestiRealta.scattoConStanzaAiuto, ultima: true) {
+                    Toggle(isOn: Binding(get: { sala.scattoConStanza },
+                                         set: { v in modifica { $0.scattoConStanza = v } })) { EmptyView() }
+                        .toggleStyle(.appleSenzaEtichetta)
+                        .disabled(stato.solaLettura)
+                }
+            }
+            .cascataImpostazioni(4)
+            NotaImpostazioni("Le immagini della fotocamera restano sull’iPhone e sull’iPad, in memoria: mai nel Rullino. Lo "
+                             + "scatto arriva nel dossier del cliente solo dal tavolo con il Mac, mai da Prisma ovunque.")
         }
     }
 

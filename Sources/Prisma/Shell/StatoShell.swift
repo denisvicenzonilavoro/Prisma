@@ -1560,7 +1560,7 @@ enum VoceConfronto: Hashable {
     /// Lo stesso documento archiviato di nuovo nello stesso giorno sostituisce la copia di prima.
     @discardableResult
     func archiviaPDF(_ pdf: Data, titolo: String, tipo: Documento.Tipo, cliente: String, posizioneId: String? = nil,
-                     modulo: CompilazioneModulo? = nil) -> String? {
+                     modulo: CompilazioneModulo? = nil, scattoRealta: ScattoRealta? = nil) -> String? {
         // Solo lo stesso documento: stesso cliente, stesso titolo, stessa proposta (un modulo per un'altra proposta resta)
         if let vecchio = dati.documenti.first(where: { $0.clienteId == cliente && $0.titolo == titolo && $0.posizioneId == posizioneId
             && Calendar.current.isDateInToday($0.importatoIl) }) {
@@ -1569,6 +1569,7 @@ enum VoceConfronto: Hashable {
         var d = Documento(clienteId: cliente, titolo: titolo, tipo: tipo)
         d.posizioneId = posizioneId
         d.modulo = modulo
+        d.scattoRealta = scattoRealta
         d.importatoIl = Appuntamento.alMinuto(Date())
         d.lettura = .letto
         let pagine = StampaCarta.testo(pdf)

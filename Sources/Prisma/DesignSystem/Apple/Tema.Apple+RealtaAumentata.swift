@@ -91,6 +91,7 @@ extension Tema.Apple {
             static let coloreAsta = Color(hex: "#FFFFFF")
             /// Distanza minima dal bordo alto dello schermo.
             static let distanzaAlto: CGFloat = 96
+            static let spazio: CGFloat = 1
         }
 
         /// Le pillole degli strati con «Esploso».
@@ -107,6 +108,8 @@ extension Tema.Apple {
             static let scostamento = CGSize(width: 18, height: -12)
             /// Lo strato scelto con un tocco: gli altri più trasparenti.
             static let opacitaAltri: Double = 0.35
+            /// La pillola si posiziona dal centro: mezza larghezza tipica, così parte accanto allo strato.
+            static let mezzaLarghezza: CGFloat = 70
         }
 
         /// La barra in basso al centro.
@@ -162,6 +165,8 @@ extension Tema.Apple {
         enum Colonna {
             static let inizio: CGFloat = 1000
             static let margineDestro: CGFloat = 30
+            /// Sotto questa larghezza la cornice dell'iPad si rimpicciolisce (palco stretto): scelta di Prisma.
+            static let larghezzaMinima: CGFloat = 300
             static let alto: CGFloat = 40
             static let etichetta = C(dimensione: 12, peso: .semibold, tracking: 0.6, maiuscolo: true)
             static let titolo = C(dimensione: 28, peso: .bold, tracking: -0.6, interlinea: 1.15)
@@ -173,6 +178,7 @@ extension Tema.Apple {
             static let tile = Color(r: 255, g: 255, b: 255, a: 0.72)
             static let raggioTile: CGFloat = 16
             static let paddingTile: CGFloat = 14
+            static let spazioTile: CGFloat = 2
             static let cifraTile = C(dimensione: 30, peso: .bold, tracking: -0.6, tabellare: true)
             static let etichettaTile = C(dimensione: 12.5, peso: .regular)
             static let riga = C(dimensione: 13.5, peso: .regular)

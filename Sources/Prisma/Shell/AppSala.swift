@@ -399,6 +399,10 @@ struct ContenutoPalco: View {
             // Giro 8: Quanto vale avermi accanto (Shell/SalaValoreConsulente.swift)
             ValoreConsulenteVista(cliente: cliente, modificabile: !inSala)
                 .id(cliente.id)
+        case .realtaAumentata:
+            // Giro 16: la realtà aumentata (Mac: Shell/SalaRealta.swift; iPhone e iPad: iOS/RealtaAumentataMobile.swift)
+            PalcoRealtaAumentata(cliente: cliente, inSala: inSala)
+                .id(cliente.id)
         default:
             InArrivoEsperienza(esperienza: esperienza, inSala: inSala)
         }

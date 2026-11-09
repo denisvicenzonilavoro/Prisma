@@ -145,6 +145,23 @@ enum VistaTerritorio: String, CaseIterable, Identifiable, Hashable {
     @ObservationIgnored var stesureLettera: [String: [VersioneLettera: TestoLettera]] = [:]
     /// La scheda della lettera ricordata per cliente, versione dei dati e giorno (`StatoShell.schedaLettera`).
     @ObservationIgnored var memoScheda: (chiave: String, scheda: SchedaLettera?)?
+    /// «▣ Mostra sul tavolo» con il doppio senso («Luce» giro 16, decisione 48): l'esperienza che manda all'iPad il suo
+    /// stato a ogni passo (gioco del rischio, Lancia l'anno, disegno). nil = nessuna. Osservato: la vista del gioco lo legge.
+    var tavoloEsperienza: EsperienzaSala?
+    /// La riga di conferma delle cifre sull'iPad (decisione 49) in testa al palco di questa esperienza. nil = nessuna.
+    var confermaCifreTavolo: EsperienzaSala?
+    /// Solo istantanee: lo stato di prova della realtà aumentata (anno, esploso, strato scelto, tavolo collegato).
+    @ObservationIgnored var realtaIstantanea: ScenaRealtaDiProva?
+}
+
+/// Solo istantanee: lo stato della realtà aumentata da disegnare («Luce» giro 16).
+struct ScenaRealtaDiProva {
+    /// nil = oggi; `allaPensione` = l'ultimo anno del cursore.
+    var anno: Int?
+    var allaPensione = false
+    var esploso = false
+    var scelto: String?
+    var tavoloCollegato = false
 }
 
 /// Solo istantanee: una partita di Lancia l'anno già giocata (seme fisso, anni, carte a mano per anno).

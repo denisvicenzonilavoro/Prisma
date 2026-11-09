@@ -57,6 +57,23 @@ final class EtichetteRealta: ObservableObject {
     @Published var strati: [String: CGPoint] = [:]
 }
 
+/// Ciò che la vista chiede alla scena e la scena legge a ogni fotogramma (non pubblicato: niente ridisegni).
+@MainActor
+final class ControlloScenaRealta: ObservableObject {
+    /// RealityKit non è riuscito: la vista passa al fermo-immagine.
+    @Published var guasto = false
+    var anno: Int?
+    var esploso = false
+    var scelto: String?
+    /// Il trascinamento della camera (radianti) e il tempo dell'ultimo gesto.
+    var azimutTrascinato: Float = 0
+    var elevazione = Tema.Apple.RealtaAumentata.Camera.elevazione
+    var ultimoGesto: Double = 0
+    var tempo: Double = 0
+    var calmo = false
+    let etichette = EtichetteRealta()
+}
+
 #if canImport(RealityKit)
 #if os(macOS)
 typealias ColoreRealta = NSColor
@@ -391,6 +408,112 @@ final class ScenaVirtualeRealta {
 
     func rimuovi(da arView: ARView) {
         arView.scene.removeAnchor(ancora)
+    }
+}
+
+/// Chi tiene la scena virtuale (Mac e ripiego di iPhone e iPad): il cristallo, la camera che orbita e le etichette,
+/// tutto guidato da `SceneEvents.Update` (il tempo del fotogramma), mai da un Timer.
+@MainActor
+final class CoordinatoreScenaRealta {
+    private typealias K = Tema.Apple.RealtaAumentata.Camera
+    private typealias M = Tema.Apple.Moto.RealtaAumentata
+
+    private(set) var esito: EsitoRealta?
+    private var cristallo: CristalloRealta?
+    private var scena: ScenaVirtualeRealta?
+    private var aggiornamento: Cancellable?
+    private weak var controllo: ControlloScenaRealta?
+    private weak var vista: ARView?
+    private var t: Double = 0
+    private var esploso: Double = 0
+    private var azimut = Tema.Apple.RealtaAumentata.Camera.azimutIniziale
+    private var elevazione = Tema.Apple.RealtaAumentata.Camera.elevazione
+    private var orbita: Float = 0
+
+    func avvia(_ v: ARView, esito e: EsitoRealta, controllo c: ControlloScenaRealta) {
+        ferma(v)
+        esito = e
+        controllo = c
+        vista = v
+        guard !e.vuota, let cr = try? CristalloRealta(esito: e, scala: 1) else {
+            c.guasto = !e.vuota
+            return
+        }
+        let s = ScenaVirtualeRealta()
+        s.prepara(v, cristallo: cr)
+        cristallo = cr
+        scena = s
+        t = 0
+        aggiornamento = v.scene.subscribe(to: SceneEvents.Update.self) { [weak self] evento in
+            let dt = evento.deltaTime
+            MainActor.assumeIsolated { self?.fotogramma(dt) }
+        }
+    }
+
+    func ferma(_ v: ARView) {
+        aggiornamento?.cancel()
+        aggiornamento = nil
+        scena?.rimuovi(da: v)
+        scena = nil
+        cristallo = nil
+    }
+
+    private func fotogramma(_ dt: Double) {
+        guard let c = controllo, let cr = cristallo, let s = scena, let e = esito else { return }
+        t += dt
+        c.tempo = t
+        let calmo = c.calmo
+        esploso = calmo ? (c.esploso ? 1 : 0)
+            : MotoreRealtaAumentata.insegui(esploso, verso: c.esploso ? 1 : 0, velocita: M.inseguimentoForma, dt: dt)
+        let posa = t - M.puntiniInizio
+        let crescita = calmo ? 1 : MotoreRealtaAumentata.crescita(posa)
+        try? cr.aggiorna(anno: c.anno, esploso: esploso, crescita: max(0.001, crescita), scelto: c.scelto)
+        // I puntini del piano trovato e l'anello della posa (solo senza «Riduci movimento»)
+        if calmo {
+            cr.puntiniVisibili(0)
+            cr.anelloPosa(1)
+        } else {
+            let entrata = min(1, max(0, (t - M.puntiniInizio) / M.puntiniEntrata))
+            let uscita = min(1, max(0, (t - M.puntiniFine) / M.puntiniUscita))
+            cr.puntiniVisibili(Float(entrata * (1 - uscita)))
+            cr.anelloPosa(Float(max(0, posa) / M.anelloPosa))
+        }
+        // La camera: la panoramica dell'apertura, poi il trascinamento e l'orbita lenta dopo 4 s fermi
+        var bersaglio: Float
+        if !calmo && t < M.panoramica {
+            let f = Float(Tema.Apple.Moto.Luce.dentroFuoriCubica(t / M.panoramica))
+            bersaglio = K.azimutIniziale + (K.azimutFinale - K.azimutIniziale) * f
+        } else {
+            bersaglio = K.azimutFinale
+        }
+        if !calmo && t - c.ultimoGesto > M.orbitaDopo && t > M.panoramica { orbita += Float(M.orbita * dt) }
+        bersaglio += c.azimutTrascinato + orbita
+        azimut = Float(MotoreRealtaAumentata.insegui(Double(azimut), verso: Double(bersaglio), velocita: M.inseguimentoCamera, dt: dt))
+        elevazione = Float(MotoreRealtaAumentata.insegui(Double(elevazione), verso: Double(c.elevazione), velocita: M.inseguimentoCamera, dt: dt))
+        s.orbita(azimut: azimut, elevazione: elevazione, altezza: Float(e.altezza(anno: c.anno)), esploso: Float(esploso))
+        etichette(cr, c.etichette)
+    }
+
+    /// Le posizioni sullo schermo della targhetta e delle pillole (solo se si spostano di più di mezzo punto).
+    private func etichette(_ cr: CristalloRealta, _ et: EtichetteRealta) {
+        guard let v = vista else { return }
+        func schermo(_ p: SIMD3<Float>) -> CGPoint? {
+            guard let q = v.project(p) else { return nil }
+            #if os(macOS)
+            return v.isFlipped ? q : CGPoint(x: q.x, y: v.bounds.height - q.y)
+            #else
+            return q
+            #endif
+        }
+        let targhetta = schermo(cr.puntoTarghetta())
+        if let a = targhetta, let b = et.targhetta, abs(a.x - b.x) < 0.5, abs(a.y - b.y) < 0.5 {} else { et.targhetta = targhetta }
+        var punti: [String: CGPoint] = [:]
+        for (id, p) in cr.puntiStrati() { if let q = schermo(p) { punti[id] = q } }
+        let cambiati = punti.contains { id, q in
+            guard let vecchio = et.strati[id] else { return true }
+            return abs(vecchio.x - q.x) >= 0.5 || abs(vecchio.y - q.y) >= 0.5
+        }
+        if cambiati || punti.count != et.strati.count { et.strati = punti }
     }
 }
 #endif
