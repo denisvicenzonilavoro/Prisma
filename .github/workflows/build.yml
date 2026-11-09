@@ -171,6 +171,10 @@ jobs:
           fi
 
       - name: Verifica Prisma.app
+        # Tutte le prove senza Metal (fermo-immagine): sulla GPU virtuale del runner Metal ferma il processo con
+        # un'asserzione interna («Target device architecture is nil»). Sul Mac dell'utente la variabile non c'è.
+        env:
+          PRISMA_SENZA_METAL: "1"
         run: |
           APP=Prisma.app
           set -e
