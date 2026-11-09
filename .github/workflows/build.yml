@@ -323,9 +323,25 @@ jobs:
         run: |
           for metodo in finestra livello renderer; do
             rm -rf anteprime && mkdir anteprime
-            if "Prisma.app/Contents/MacOS/Prisma" --istantanee "$PWD/anteprime" --metodo "$metodo"; then
+            # Ripresa: se il processo si ferma su una scena (asserzione di Metal della GPU virtuale), quella scena si
+            # salta e si riparte dalle altre; le scene già scritte non si rifanno (Istantanee.swift, PRISMA_ISTANTANEE_RIPRESA)
+            for giro in $(seq 1 30); do
+              if PRISMA_ISTANTANEE_RIPRESA=1 "Prisma.app/Contents/MacOS/Prisma" --istantanee "$PWD/anteprime" --metodo "$metodo"; then
+                break
+              fi
+              if [ -s anteprime/.in-corso ]; then
+                scena="$(cat anteprime/.in-corso)"
+                echo "::warning::Istantanea $scena saltata (metodo $metodo): il processo si è fermato sul runner"
+                echo "$scena" >> anteprime/.saltate
+                rm -f anteprime/.in-corso
+              else
+                break
+              fi
+            done
+            if [ -n "$(find anteprime -name '*.png' -print -quit)" ]; then
               echo "Anteprime create con il metodo $metodo"
               echo "ok=1" >> "$GITHUB_OUTPUT"
+              [ -f anteprime/.saltate ] && cp anteprime/.saltate anteprime/SALTATE.txt
               # La tabella della fluidità accanto alle schermate: si confrontano due commit senza leggere i log
               cp fluidita.md anteprime/fluidita.md 2>/dev/null || true
               "Prisma.app/Contents/MacOS/Prisma" --prova-prospetti "$PWD/anteprime/prospetti" > /dev/null || true
