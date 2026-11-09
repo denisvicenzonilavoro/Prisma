@@ -540,6 +540,23 @@ extension StatoShell {
         }
     }
 
+    /// «Manda una sintesi a …» (template «Il resoconto dell'incontro»): la sintesi per il cliente (decisioni e prossimi
+    /// passi del resoconto) come bozza in Messaggi, nello stile del consulente, dalla scheda «Conferma». Niente parte da
+    /// sola; mai in modalità cliente.
+    @discardableResult
+    func mandaSintesiResoconto(_ incontroId: String, chiave: String) -> MessaggioVera? {
+        guard !inModoCliente, let i = incontro(incontroId), let r = i.resoconto, let c = cliente(i.clienteId),
+              let testo = ResocontoVera.sintesiCliente(r, incontro: i, nome: c.nome) else { return nil }
+        let canale: CanaleMessaggio = c.email.isEmpty ? .messaggi : .mail
+        let a = AzioneConferma(strumento: RegistroStrumenti.messaggiPrepara, app: .messaggi, titolo: "Preparo la sintesi per \(c.nome)",
+                               dettaglio: RegistroStrumenti.dettaglioMessaggio(testo, canale: canale),
+                               argomenti: ["cliente": c.id, "scopo": "resoconto", "testo": testo, "canale": canale.rawValue])
+        return rispostaFaseTre("Ecco la sintesi di «\(i.titolo)» per \(c.nome), con le decisioni e i prossimi passi del resoconto: con «Conferma» diventa una bozza in Messaggi, nel tuo stile.",
+                               chiave: chiave, motore: Self.motoreAzioni) {
+            $0.conferma = self.inStile(SchedaConfermaVera(richiesta: "Manda a \(c.nome) una sintesi dell'incontro", azioni: [a], origine: .regole))
+        }
+    }
+
     /// «Firma»: nome e data, il PDF nei Documenti del cliente, le promesse raccolte. La trascrizione non resta.
     @discardableResult
     func firmaResoconto(_ incontroId: String, oggi: Date = Date()) -> String? {
