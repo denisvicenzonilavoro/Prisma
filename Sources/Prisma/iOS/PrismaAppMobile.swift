@@ -37,6 +37,10 @@ struct PrismaAppMobile: App {
         if argomenti.contains("--prova-ovunque") {
             EsitoProva.esci("prova-ovunque", codice: ProvaOvunque.esegui())
         }
+        if argomenti.contains("--prova-realta") {
+            // La prova di fattibilità della realtà aumentata (Shell/ProvaRealta.swift): nel simulatore la vista virtuale
+            EsitoProva.esci("prova-realta", codice: ProvaRealta.esegui())
+        }
         // «--prova-ruby» e «--prova-eve» sono i sinonimi di prima dei cambi di nome (l'esito porta il nome usato nel lancio)
         if argomenti.contains("--prova-vera") || argomenti.contains("--prova-ruby") || argomenti.contains("--prova-eve") {
             EsitoProva.esci(argomenti.contains("--prova-vera") ? "prova-vera" : argomenti.contains("--prova-ruby") ? "prova-ruby" : "prova-eve", codice: ProvaVera.esegui())

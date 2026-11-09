@@ -3,7 +3,8 @@
 #
 # Uso: Supporto/iOS/prove.sh <udid> [prova …]
 #   Senza elenco esegue tutte le prove del giro 1:
-#     verifica-risorse prova-calcoli prova-prospetti prova-carico prova-backup prova-vera prova-dock backup-ditto prova-ovunque
+#     verifica-risorse prova-calcoli prova-prospetti prova-carico prova-backup prova-vera prova-dock backup-ditto prova-ovunque prova-realta
+#   «prova-realta» («Luce» giro 16): la prova di fattibilità della realtà aumentata (il cristallo in RealityKit, vista virtuale).
 #   «prova-dock» (giro 3): il lato delle icone del dock di iPhone e iPad (fitDock del tema) e le app del dock.
 #   «backup-ditto» è una sequenza: l'app prepara un archivio di prova (--prepara-campione-backup),
 #   lo script lo comprime con ditto sul runner (gli stessi argomenti di Backup.swift) e l'app lo
@@ -27,7 +28,7 @@ LIMITE="${PRISMA_LIMITE_PROVA:-600}"   # secondi per prova
 if [ $# -gt 0 ]; then
     PROVE=("$@")
 else
-    PROVE=(verifica-risorse prova-calcoli prova-prospetti prova-carico prova-backup prova-vera prova-dock backup-ditto prova-ovunque)
+    PROVE=(verifica-risorse prova-calcoli prova-prospetti prova-carico prova-backup prova-vera prova-dock backup-ditto prova-ovunque prova-realta)
 fi
 
 # macOS non ha `timeout`: un'app bloccata non deve bloccare il job fino al limite di GitHub

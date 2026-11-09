@@ -33,6 +33,10 @@ struct PrismaApp: App {
             // Il tavolo con l'iPad a circuito chiuso su 127.0.0.1 (Tavolo/ProvaTavolo.swift)
             exit(ProvaTavolo.esegui())
         }
+        if argomenti.contains("--prova-realta") {
+            // La prova di fattibilità della realtà aumentata: il cristallo in RealityKit senza fotocamera (Shell/ProvaRealta.swift)
+            exit(ProvaRealta.esegui())
+        }
         if argomenti.contains("--controlla-mercato") {
             // Solo per il passo informativo del workflow: scarica una volta le serie pubbliche configurate (BCE,
             // Eurostat) e le legge. Non apre l'archivio: nessun dato dei clienti (Dati/ClienteMercato.swift)

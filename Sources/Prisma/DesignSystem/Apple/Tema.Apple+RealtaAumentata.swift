@@ -263,6 +263,7 @@ extension Tema.Apple {
             static let legnoScuro = Color(hex: "#9C6B43")
             static let venatura = Color(r: 90, g: 55, b: 30, a: 0.18)
             static let lato: Int = 512
+            static let ruvidita: Float = 0.55
         }
 
         /// L'ombra colorata dipinta sul tavolo.
@@ -272,6 +273,10 @@ extension Tema.Apple {
             /// Spostata verso la luce (unità).
             static let spostamento = SIMD2<Float>(0.22, 0.12)
             static let allargamento: Float = 1.45
+            /// L'immagine dell'ombra è più grande della pianta allargata (sfumatura), a passi di 0,12.
+            static let margine: Float = 1.4
+            static let passi = 10
+            static let alfaPasso: CGFloat = 0.12
         }
 
         /// I puntini del piano trovato e l'anello della posa.
@@ -280,6 +285,8 @@ extension Tema.Apple {
             static let passo: Float = 0.22
             static let quanti = 9
             static let anello: Float = 1.3
+            /// La targhetta guarda 0,12 unità sopra la faccia alta.
+            static let sopraTarghetta: Float = 0.12
         }
 
         /// Il fermo-immagine in SwiftUI (`CristalloFermo`): assonometria del prisma triangolare.
