@@ -38,6 +38,16 @@ enum TestiCapsule {
     /// Impostazioni › Archivio, con capsule e backup in chiaro (decisione 42).
     static let avvisoBackup = "Le capsule del tempo si riaprono solo da questo Mac: proteggi i backup con una password."
     static let condividi = "Condividi…"
+    /// Solo istantanee: la password di prova dichiarata (mai una password vera).
+    static let passwordDiProvaIstantanee = "Lago-Vela-Pino-27"
+
+    /// Sotto i pulsanti della consegna: la password del PDF condiviso (nuova a ogni apertura, mai conservata) e, alla
+    /// prima uscita per il cliente, l'avviso.
+    static func notaPassword(password: String, primaVolta: Bool, nome: String) -> String {
+        var t = "«Condividi…» manda il PDF protetto con la password \(password): dilla a voce, Prisma non la conserva."
+        if primaVolta { t += " Il PDF contiene il messaggio di \(nome). Esce dal Mac con l’app che scegli: lo mandi tu." }
+        return t
+    }
 
     static func stampa(nome: String) -> String { "Stampala su carta per \(nome)" }
     static func nessuna(nome: String) -> String { "Nessuna capsula sigillata per \(nome)." }
