@@ -78,8 +78,8 @@ struct PulsanteCondividi: View {
         picker.show(relativeTo: vista.bounds, of: vista, preferredEdge: .minY)
         #else
         // iPhone e iPad: il foglio di UIKit non dà l'esito; la copia resta fino al blocco o alla chiusura (il foglio la
-        // sta ancora leggendo)
-        if let primo = urls.first { StampaCarta.condividi(primo) }
+        // sta ancora leggendo). Senza consenso, WhatsApp non compare
+        StampaCarta.condividiAlCliente(urls, consensoWhatsApp: consensoWhatsApp)
         esito(.condiviso(via: ""))
         #endif
     }
