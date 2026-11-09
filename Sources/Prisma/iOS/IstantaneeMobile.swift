@@ -295,6 +295,9 @@ enum IstantaneeMobile {
                 },
                 // «Luce» giro 15: i sinistri in sola lettura (i tre sinistri di prova, ridotti come nell'istantanea di
                 // «Prisma ovunque»: niente descrizione, numeri, stime né importi)
+                // «Luce» §7.3.4: «Dopo la firma» sull'iPhone con le quattro pratiche di prova (una ferma in alto, poi le
+                // aperte), in sola lettura: senza «Prisma ovunque» acceso i passi si segnano dal Mac
+                Scena(nome: "824-pratiche-iphone") { m in m.apri(.pratiche) },
                 Scena(nome: "836-sinistri-iphone") { m in
                     m.stato.dati.sinistri = m.stato.dati.sinistri.map(SpazioOvunque.sinistroPerOvunque)
                     m.apri(.clienti)

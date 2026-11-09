@@ -220,7 +220,11 @@ extension StatoShell {
     /// Le fonti della compilazione: anagrafica, scheda fiscale, documento, la proposta, i dati del consulente.
     func fonteModulo(_ c: Cliente, _ m: ModelloModulo, oggi: Date = Date()) -> FonteCompilazione {
         let proposte = proposteModulo(c, m)
-        let p = proposte.first { $0.id == moduli.posizioneId } ?? proposte.first
+        // La posizione scelta (anche una firmata, da «Apri i moduli» della pratica), se è del cliente e del canale
+        let scelta = moduli.posizioneId.flatMap { id in
+            dati.posizioni.first { $0.id == id && $0.clienteId == c.id && (m.canale == nil || $0.canale == m.canale) }
+        }
+        let p = scelta ?? proposte.first
         let f = dati.impostazioni.studio.fatturazione
         let consulente = [f.nome, f.cognome].map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }.joined(separator: " ")
         return FonteCompilazione(cliente: c, posizione: p, prodotto: p?.prodottoId.flatMap { id in dati.prodotti.first { $0.id == id } },

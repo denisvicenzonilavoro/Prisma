@@ -27,6 +27,7 @@ enum TestiOvunque {
             case .eventoVita: return "un evento della linea della vita"
             case .sessioneCopilota: return "una scheda del copilota"
             case .inquadratura: return "una posizione inquadrata"
+            case .pratica: return "un passo di una pratica"
             }
         }
         let numero = n >= 0 && n < numeri.count ? numeri[n] : "\(n)"
@@ -38,6 +39,7 @@ enum TestiOvunque {
         case .eventoVita: return "\(numero) eventi della linea della vita"
         case .sessioneCopilota: return "\(numero) schede del copilota"
         case .inquadratura: return "\(numero) posizioni inquadrate"
+        case .pratica: return "\(numero) passi delle pratiche"
         }
     }
 
@@ -209,6 +211,7 @@ enum TestiOvunque {
         case .eventoVita: return ("Evento della linea della vita", false)
         case .sessioneCopilota: return ("Scheda del copilota", true)
         case .inquadratura: return ("Posizione inquadrata", true)
+        case .pratica: return ("Pratica", true)
         }
     }
 
@@ -233,6 +236,8 @@ enum TestiOvunque {
         case "anno": return "anno"
         case "verbale": return "verbale"
         case "schede": return "schede"
+        case "passi": return "passi della pratica"
+        case "conclusaIl": return "conclusione"
         default: return campo
         }
     }

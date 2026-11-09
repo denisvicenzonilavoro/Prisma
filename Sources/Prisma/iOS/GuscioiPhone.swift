@@ -141,6 +141,8 @@ struct AppTelefono: View {
         case .mercato: MercatoTelefono()
         // Incontri sull'iPhone («Luce» giro 13): «Nota veloce» in alto e le note in partenza (NotaVocaleTelefono.swift)
         case .incontri: IncontriTelefono().navigationTitle(app.titolo)
+        // Pratiche sull'iPhone («Luce» §7.3.4): «Dopo la firma» in sola lettura più «segna il passo» (PraticheTelefono.swift)
+        case .pratiche: PraticheTelefono()
         default:
             InArrivoMobile(app: app, titolo: "\(app.titolo) è sul Mac", testo: StatoShell.soloSulMacPerOra)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
