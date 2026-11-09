@@ -34,6 +34,8 @@ extension Tema.Apple.Misura {
         /// Il punto della barra del film nella vetrina (5 secondi su 20).
         static let tempoFilm: Double = 5
         static let durataFilm: Double = 20
+        /// «Luce» giro 16: l'iPad disegnato della realtà aumentata in piccolo.
+        static let scalaiPad: CGFloat = 0.2
     }
 }
 
@@ -315,6 +317,19 @@ extension VetrinaApple {
                            height: Tema.Apple.Notte.Pila.altezza * Tema.Apple.Notte.scalaVetrina, alignment: .topLeading)
             }
             #endif
+            RiquadroVetrinaApple(titolo: "Realtà aumentata") {
+                // «Luce» giro 16: la cornice dell'iPad con il cristallo fermo, la pillola e la barra (dati di prova)
+                VStack(alignment: .leading, spacing: M.spazioInterno) {
+                    CorniceiPad {
+                        CristalloFermo(esito: ProvaRealta.esitoVetrina, anno: nil, fondo: .tavoloLegno)
+                    }
+                    .scaleEffect(M.scalaiPad)
+                    .frame(width: Tema.Apple.RealtaAumentata.CorniceiPad.dimensione.width * M.scalaiPad,
+                           height: Tema.Apple.RealtaAumentata.CorniceiPad.dimensione.height * M.scalaiPad)
+                    PillolaRealta(testo: TestiRealta.tavoloTrovato, verde: true)
+                    BarraRealta(anni: [], anno: .constant(nil), esploso: .constant(true), scattoAcceso: true, scatta: {})
+                }
+            }
             RiquadroVetrinaApple(titolo: "Tela animata e shader (fermi)") {
                 HStack(spacing: M.spazioInterno) {
                     TelaAnimata(tempoFinale: 1) { c, misura, t in

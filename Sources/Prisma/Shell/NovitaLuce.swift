@@ -232,6 +232,7 @@ enum NovitaLuce: String, CaseIterable, Identifiable {
         case .stanotte: return true              // giro 14: la scrivania, «Stanotte»
         case .prismaCliente, .film, .capsula: return true   // giro 15: Sala › Il Prisma del cliente, il film del piano, la capsula del tempo
         case .sinistro: return true              // giro 15: Pratiche › Sinistri
+        case .realtaAumentata: return true       // giro 16: Sala › La realtà aumentata, il tavolo a doppio senso
         default: return false
         }
     }

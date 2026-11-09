@@ -183,6 +183,21 @@ enum IstantaneeMobile {
                 Scena(nome: "51-tavolo-cursore", attesaInPiu: IstantaneeMobile.attesaScrivania) { m in IstantaneeTavoloiPad.cursore(m) },
                 Scena(nome: "52-tavolo-presa-visione") { m in IstantaneeTavoloiPad.presaVisione(m) },
                 Scena(nome: "53-tavolo-neutro") { m in IstantaneeTavoloiPad.neutra(m) },
+                // «Luce» giro 16: il tavolo a doppio senso (rischio, Lancia l'anno, disegno, capsula, realtà aumentata)
+                Scena(nome: "56-tavolo-rischio") { m in IstantaneeTavoloiPad.rischio(m) },
+                Scena(nome: "57-tavolo-lancia-anno") { m in IstantaneeTavoloiPad.lancia(m) },
+                Scena(nome: "58-tavolo-disegno") { m in IstantaneeTavoloiPad.disegno(m) },
+                Scena(nome: "59-tavolo-capsula") { m in IstantaneeTavoloiPad.capsula(m) },
+                Scena(nome: "74-ar-tavolo") { m in IstantaneeTavoloiPad.realta(m) },
+                // «Luce» giro 16: Sala › La realtà aumentata a tutto schermo, con il ripiego disegnato (nel simulatore
+                // non c'è la fotocamera): il cristallo sul tavolo virtuale, l'esploso, la fotocamera negata
+                Scena(nome: "70-ar-ipad", orizzontale: true) { m in IstantaneeMobile.realta(m, ScenaRealtaDiProva()) },
+                Scena(nome: "71-ar-ipad-esploso", orizzontale: true) { m in
+                    IstantaneeMobile.realta(m, ScenaRealtaDiProva(allaPensione: true, esploso: true))
+                },
+                Scena(nome: "73-ar-non-disponibile", orizzontale: true) { m in
+                    IstantaneeMobile.realta(m, ScenaRealtaDiProva(fotocameraNegata: true))
+                },
                 // «Luce», giro 1: il dock dell'iPad in verticale con le app del Mac fino a Prospetti, più Sala e Vera
                 // (13 elementi, decisione 121); Biblioteca, Mercato, Studio e Impostazioni in «Tutte le app»
                 Scena(nome: "55-dock-ipad-luce", attesaInPiu: IstantaneeMobile.attesaScrivania) { m in m.mostraHome() },
@@ -261,6 +276,8 @@ enum IstantaneeMobile {
                 // Messaggi (giro 3 di «Orizzonte»): il messaggio dell'occasione in alto, tono, canale e testo, le altre
                 // occasioni a un tocco nel menu «Occasioni»
                 Scena(nome: "497-messaggi") { m in IstantaneeMobile.messaggi(m) },
+                // «Luce» giro 16: la realtà aumentata sull'iPhone, in verticale: «Fine» e lo scatto spento con l'aiuto
+                Scena(nome: "72-ar-iphone") { m in IstantaneeMobile.realta(m, ScenaRealtaDiProva()) },
                 // «Luce» giro 12: i potenziali clienti in sola lettura (una cosa grande in alto, poi l'elenco per fase)
                 Scena(nome: "76-potenziali-iphone") { m in
                     m.apri(.clienti)
@@ -349,6 +366,15 @@ enum IstantaneeMobile {
     static func mercato(_ m: StatoMobile) {
         MercatoDiProva.prepara(m.stato)
         m.apri(.mercato)
+    }
+
+    /// Sala › La realtà aumentata a tutto schermo («Luce» giro 16): il ripiego disegnato con lo stato di prova.
+    static func realta(_ m: StatoMobile, _ prova: ScenaRealtaDiProva) {
+        m.stato.clienteAttivoId = "giulia"
+        m.stato.sala.realtaIstantanea = prova
+        m.stato.sala.esperienza = .realtaAumentata
+        m.apri(.sala)
+        m.stato.sala.realtaAperta = true
     }
 
     /// Inquadra e capisci sull'iPhone: il foglio di prova (FoglioInquadraDiProva, dati dichiarati di prova) letto e

@@ -62,8 +62,12 @@ enum EsperienzaSala: String, CaseIterable, Identifiable {
     /// L'esperienza è già in Prisma (il palco la mostra); le altre dicono «Arriva con un prossimo aggiornamento».
     var disponibile: Bool { novita.disponibile }
 
-    /// «▣ Mostra sul tavolo» per le esperienze: arriva con l'immagine del palco sull'iPad (decisione 111).
-    static let tavoloPronto = false
+    /// «▣ Mostra sul tavolo» già pronto («Luce» giro 16): il doppio senso per realtà aumentata, rischio, Lancia l'anno e
+    /// disegno; l'immagine del palco (decisione 111) per prisma di luce e giornata; il foglio per la lettera. Il film
+    /// resta fuori finché non c'è.
+    var tavoloPronto: Bool {
+        [.realtaAumentata, .giocoRischio, .lanciaAnno, .disegna, .prismaLuce, .lettera, .giornataPensione].contains(self)
+    }
 
     /// Le dieci schede piccole della griglia (la prima, grande, è il Prisma del cliente).
     static var piccole: [EsperienzaSala] { allCases.filter { $0 != .prismaCliente } }
@@ -150,6 +154,27 @@ enum VistaTerritorio: String, CaseIterable, Identifiable, Hashable {
     /// La capsula da aprire entrando nel palco della capsula (giro 15: «Apri la capsula» dai traguardi); la azzera
     /// `CapsulaDelTempo` appena apre la consegna. Non pubblicato.
     @ObservationIgnored var capsulaDaAprire: String?
+    /// «▣ Mostra sul tavolo» con il doppio senso («Luce» giro 16, decisione 48): l'esperienza che manda all'iPad il suo
+    /// stato a ogni passo (gioco del rischio, Lancia l'anno, disegno). nil = nessuna. Osservato: la vista del gioco lo legge.
+    var tavoloEsperienza: EsperienzaSala?
+    /// La riga di conferma delle cifre sull'iPad (decisione 49) in testa al palco di questa esperienza. nil = nessuna.
+    var confermaCifreTavolo: EsperienzaSala?
+    /// Solo istantanee: lo stato di prova della realtà aumentata (anno, esploso, strato scelto, tavolo collegato).
+    @ObservationIgnored var realtaIstantanea: ScenaRealtaDiProva?
+    /// iPhone e iPad: la realtà aumentata a tutto schermo è aperta («Apri in realtà aumentata»).
+    var realtaAperta = false
+}
+
+/// Solo istantanee: lo stato della realtà aumentata da disegnare («Luce» giro 16).
+struct ScenaRealtaDiProva {
+    /// nil = oggi; `allaPensione` = l'ultimo anno del cursore.
+    var anno: Int?
+    var allaPensione = false
+    var esploso = false
+    var scelto: String?
+    var tavoloCollegato = false
+    /// iPhone e iPad: il ripiego con «Consenti in Impostazioni» (73).
+    var fotocameraNegata = false
 }
 
 /// Solo istantanee: una partita di Lancia l'anno già giocata (seme fisso, anni, carte a mano per anno).

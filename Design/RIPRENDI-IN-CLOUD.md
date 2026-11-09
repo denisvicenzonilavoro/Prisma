@@ -53,6 +53,7 @@ locale sul Mac del 7-8 novembre 2026. Le regole vincolanti restano in `CLAUDE.md
 | `luce/giro-13-iphone` | Luce giro 13 «Dall'iPhone al Mac»: nuovo cliente in 10 secondi (carta d'identità letta sull'iPhone o trascinata sul Mac, codice fiscale «coerente (comune non controllato)», solo in memoria fino a «Crea il dossier») e la nota vocale (dettata sull'iPhone, coda cifrata, proposte confermate sul Mac); ponte versione 3 | scritto nel cloud, solo controllo della sintassi: manca la build con tutte le prove e lo sguardo alle istantanee 840-847, 770-774 e iOS 75, 775-777; aperto da `luce/unione-8-10` (senza i giri 11 e 12) |
 | `luce/giro-14-stanotte` | Luce giro 14 «Stanotte Prisma ha lavorato»: il lavoro della notte (finestra serale, solo alla corrente e con Prisma aperto e non in uso, `NSBackgroundActivityScheduler`; prima i lavori senza Qwen, poi al più 10 bozze di Vera una alla volta), le carte del mattino da approvare con un gesto (approva, più tardi, annulla), pulsante «☾ Stanotte» con il pallino, Impostazioni › Vera › Stanotte (spento di base) | scritto nel cloud, solo controllo della sintassi: manca la build con tutte le prove (`--prova-calcoli`, `--prova-vera`, `--prova-backup`, `--prova-ovunque`) e lo sguardo alle istantanee 760-767 (e 400, 410, 500, 616, 719 che cambiano per il pulsante e la vetrina); aperto da `main` con i giri 8-13 |
 | `luce/giro-15-cliente` | Luce giro 15 «Cose date al cliente»: il Prisma del cliente (PDF protetto da password, copia leggibile nei Documenti; il file HTML cifrato con il lettore JavaScript è costruito e provato con Node ma resta spento, «sperimentale»), il film del piano (MP4 di 20 secondi, foglio di condivisione), la capsula del tempo (sigillata, chiave nel Portachiavi e nei soli backup protetti), il biglietto dei traguardi condivisibile («Mostra la cifra» spento di base) e Pratiche › Sinistri (la spedizione, «Così lo vede …», aggiornamento in Messaggi, sollecito in Mail, iPhone in sola lettura); Novità accese, `CLAUDE.md` con l'eccezione delle uscite e l'elenco del backup, vetrina 400 | scritto nel cloud, solo controllo della sintassi: manca la build con tutte le prove (anche il passo Node del lettore e `--prova-film`) e lo sguardo alle istantanee 620-623, 644-648, 653-657, 730, 735, 830-835, iOS 836, `anteprime/file-cliente`, `anteprime/film` e 400 |
+| `luce/giro-16-realta` | Luce giro 16 «Realtà aumentata e tavolo a doppio senso»: Sala › La realtà aumentata (cristallo in RealityKit sul Mac in anteprima, ARKit su iPhone e iPad, ripiego sul tavolo virtuale, scatto su fondo neutro nel dossier), prova di fattibilità `--prova-realta`, protocollo del tavolo versione 2 (rischio, Lancia l'anno, disegno, capsula, scatto dall'iPad; conferma delle cifre), «▣ Mostra sul tavolo» acceso | scritto nel cloud sopra i giri 8-13 (senza 14 e 15), solo controllo della sintassi: manca la build con tutte le prove (prima `--prova-realta` su Mac, simulatore e `iphoneos`) e lo sguardo alle istantanee 630-636, 695 e iOS 56-59, 70-74; la capsula sull'iPad (`TavoloMac.chiediTestoCapsula`) resta da collegare alla vista della capsula del giro 15 con «Scrivi sull'iPad». Unito in `luce/integrazione-11-16` con i giri 14 e 15: `ProvaRealta` usa `MetalPrisma.device()` (`ShaderTela` lo usava già) e nel workflow `--prova-realta` gira con `PRISMA_SENZA_METAL=1` |
 | `vera/fase-4` | Vera, fase 4: funzioni 3, 4, 5, 7, 14, 15, 17, 20, collegate a chat, viste e archivio | due giri di revisione con correzioni, prove verdi in debug sul Mac (db982bc); contiene già `main` con il giro 0; si unisce in main solo con build verde e il via dell'utente |
 
 
@@ -221,6 +222,33 @@ inventa):
   aggiunto solo nella prova e nelle istantanee (nei dati di prova non ne ha, e la scena «Ogni mese» si salterebbe);
   le capsule di Giulia, Marco, Laura e Sofia cifrate con la chiave di prova pubblica (non apre capsule vere); i
   sinistri di Marco («Infortunio di Pietro»), Sofia (pagato 3.400 €) e Giulia (senza polizza collegata).
+
+- **Giro 16, realtà aumentata e tavolo a doppio senso** (domande aperte, con la proposta seguita fra parentesi):
+  1. Scala: 1 unità = 16 cm (cristallo di circa 13 cm di lato, alto 14-35 cm) va bene su un tavolo vero? (Seguita:
+     16 cm, da provare con l'iPad.)
+  2. Scatto con la stanza: lo si vuole mai? (Seguita: interruttore in Impostazioni › Sala spento e conferma a ogni
+     scatto.)
+  3. Scatto sull'iPhone o sull'iPad da soli: va bene che non salvi nulla finché non si è al tavolo? (Seguita: sì;
+     l'alternativa sarebbe una coda cifrata come la nota vocale, decisione a parte.)
+  4. Testo del permesso della fotocamera in `Supporto/iOS/Info.plist` (unito a quello del giro 13): «Prisma usa la
+     fotocamera per inquadrare polizze e documenti, per leggere la carta d'identità di un cliente nuovo e per mostrare
+     il patrimonio sul tavolo in realtà aumentata… Le immagini restano sul dispositivo e non si salvano, tranne lo
+     scatto del cristallo che fai tu.» Va bene?
+  5. Conferma delle cifre sul tavolo (decisione 49): una volta per cliente per sessione del tavolo basta, o a ogni
+     invio? (Seguita: una volta.)
+  6. Risultato del gioco del rischio sull'iPad: il cliente vede il profilo emerso ma non il confronto con il
+     dichiarato. Va bene? (Seguita: sì, il confronto resta al consulente sul Mac.)
+  7. Capsula sull'iPad (D-C4): appena c'è il giro 15, il cliente scrive sull'iPad, conferma il sigillo sull'iPad e il
+     Mac sigilla subito senza mostrare il testo. (Seguita: così; il genere e i messaggi sono pronti e provati, il
+     pulsante «Scrivi sull'iPad» si aggiunge con il giro 15.)
+  8. Occlusione delle persone: resta spenta? (Seguita: spenta.)
+  9. «Mostra sul tavolo» per prisma di luce, lettera e giornata come immagine ferma del palco (decisione 111): basta,
+     o servono scene vive anche lì? (Seguita: immagine; per la lettera il foglio impaginato già visto sul palco.)
+  10. Conferma delle cifre e pannello «Al tavolo»: i comandi che esistono già nel pannello (macchina del tempo, linea
+      della vita, famiglia, pagine) restano senza conferma perché il consulente li sceglie uno per uno; la conferma
+      vale per le esperienze della Sala. Va bene? (Seguita: sì.)
+  11. Testi nuovi rivolti al cliente sull'iPad (avvisi della realtà aumentata, «Lancia l'anno», la frase dopo la
+      pensione del disegno, l'aiuto della capsula, in `TestiRealta`): sono testi di prova da rileggere.
 
 ## Regole da non dimenticare
 

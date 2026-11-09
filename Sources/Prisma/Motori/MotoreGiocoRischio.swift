@@ -9,13 +9,13 @@ import Foundation
 // (0-1 prudente, 2-3 moderata, 4-5 dinamica, 6 aggressiva). Motore puro: niente viste, niente archivio.
 
 /// Una delle due strade dello scenario «sicurezza o rendimento»: il nome e i rendimenti anno per anno (in %).
-struct StradaRischio: Codable, Equatable {
+struct StradaRischio: Codable, Equatable, Sendable {
     let nome: String
     let rendimenti: [Double]
 }
 
 /// Uno scenario del gioco.
-struct ScenarioRischio: Codable, Identifiable, Equatable {
+struct ScenarioRischio: Codable, Identifiable, Equatable, Sendable {
     let id: String
     let domanda: String
     /// «Davanti al calo», «Quando è risalito», … (la riga del risultato).

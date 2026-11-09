@@ -311,6 +311,13 @@ private struct PalcoSala: View {
                 .entrataCascata(0, base: Tema.Apple.Moto.Cascata.baseDentroApp)
             ContenutoPalco(esperienza: esperienza, cliente: cliente)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .overlay(alignment: .top) {
+                    #if os(macOS)
+                    // La conferma delle cifre sull'iPad (decisione 49), in testa al palco
+                    ConfermaCifreTavolo(esperienza: esperienza, cliente: cliente)
+                        .padding(.top, Tema.Apple.RealtaAumentata.CorniceiPad.origine.y)
+                    #endif
+                }
                 .matchedGeometryEffect(id: esperienza.id, in: spazio, isSource: false)
                 .superficieApple(Tema.Apple.SalaEsperienze.Scheda.superficie, raggio: Tema.Apple.SalaEsperienze.Scheda.raggio)
                 .clipShape(RoundedRectangle(cornerRadius: Tema.Apple.SalaEsperienze.Scheda.raggio, style: .continuous))
@@ -335,14 +342,13 @@ private struct PalcoSala: View {
             .lineLimit(1)
             Spacer(minLength: P.spazioTestata)
             HStack(spacing: P.spazioPulsanti) {
-                // Il tavolo non è ancora pronto per nessuna esperienza (decisione 111): il pulsante resta spento anche
-                // dove l'esperienza c'è già. «✦ Aggiungi al Prisma» si accende con il giro 15 (decisione 7)
+                // «▣ Mostra sul tavolo» (giro 16, decisioni 48 e 111): sul Mac osserva il tavolo; su iPhone e iPad il
+                // tavolo lato Mac non c'è. «✦ Aggiungi al Prisma» si accende con il giro 15 (decisione 7)
+                #if os(macOS)
                 if esperienza.mostraSulTavolo {
-                    Button { } label: { Text("▣ Mostra sul tavolo") }
-                        .buttonStyle(.apple)
-                        .disabled(!esperienza.disponibile || !EsperienzaSala.tavoloPronto)
-                        .help("Sull'iPad del tavolo: arriva con un prossimo aggiornamento")
+                    PulsanteMostraSulTavolo(tavolo: stato.tavolo, esperienza: esperienza, cliente: cliente)
                 }
+                #endif
                 if esperienza.aggiungeAlPrisma {
                     // Giro 15: accende la voce nel file del cliente (Shell/StatoPrismaCliente.swift); il disegno entra
                     // nel file solo come obiettivo salvato (decisione 7)
@@ -417,6 +423,10 @@ struct ContenutoPalco: View {
         case .capsula:
             // Giro 15: la capsula del tempo (Shell/SalaCapsula.swift)
             CapsulaDelTempo(cliente: cliente, modificabile: !inSala)
+                .id(cliente.id)
+        case .realtaAumentata:
+            // Giro 16: la realtà aumentata (Mac: Shell/SalaRealta.swift; iPhone e iPad: iOS/RealtaAumentataMobile.swift)
+            PalcoRealtaAumentata(cliente: cliente, inSala: inSala)
                 .id(cliente.id)
         default:
             InArrivoEsperienza(esperienza: esperienza, inSala: inSala)

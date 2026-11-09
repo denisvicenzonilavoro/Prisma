@@ -889,4 +889,282 @@ enum TrattoTavoloiPad {
         return [punti]
     }()
 }
+
+// MARK: - Il doppio senso («Luce» giro 16, decisioni 48 e 113)
+
+/// Il gioco del rischio sull'iPad: lo scenario con il grafico e le tre risposte (i secondi si misurano da quando le
+/// risposte compaiono), poi il risultato con il profilo emerso. Niente confronto con il dichiarato: resta sul Mac.
+struct RischioTavoloiPad: View {
+    let mostra: MostraTavolo
+    let dati: RischioTavolo
+    let risponde: (_ scenario: String, _ scelta: Int, _ secondi: Double) -> Void
+
+    @State private var scelta: Int?
+    @State private var comparsa = Date()
+
+    private typealias R = Tema.Apple.Tavolo.iPad.Rischio
+
+    var body: some View {
+        FinestraTavoloiPad {
+            if let sc = dati.scenario {
+                TestataTavoloiPad(sopratitolo: "\(mostra.titolo) · \(dati.indice + 1) di \(dati.totale)", titolo: sc.domanda,
+                                  sottotitolo: dati.testiDiProva ? "Testi di prova" : nil)
+                GraficoScenarioRischio(scenario: sc)
+                    .frame(height: R.altezzaGrafico)
+                    .entrataCascata(1, base: Tema.Apple.Moto.Cascata.baseDentroApp)
+                VStack(spacing: R.spazioOpzioni) {
+                    ForEach(Array(sc.risposte.enumerated()), id: \.offset) { i, testo in
+                        OpzioneLettera(lettera: ["A", "B", "C"][min(i, 2)], testo: testo, esito: esito(i), larghezza: R.larghezzaOpzioni) {
+                            guard scelta == nil else { return }
+                            scelta = i
+                            risponde(sc.id, i, max(0, Date().timeIntervalSince(comparsa)))
+                        }
+                        .disabled(scelta != nil)
+                    }
+                }
+                .entrataCascata(2, base: Tema.Apple.Moto.Cascata.baseDentroApp)
+            } else {
+                TestataTavoloiPad(sopratitolo: mostra.titolo, titolo: "Il profilo emerso",
+                                  sottotitolo: dati.testiDiProva ? "Testi di prova" : nil)
+                HStack(spacing: Tema.Apple.Tavolo.iPad.spazioBlocchi) {
+                    Anello(frazione: Double(dati.punteggio ?? 0) / Double(max(1, dati.massimo ?? 1)), colore: R.coloreAnello,
+                           misura: R.anello) {
+                        Text("\(dati.punteggio ?? 0)/\(dati.massimo ?? 0)")
+                            .carattereApple(Tema.Apple.Tavolo.iPad.valoreRiga)
+                    }
+                    Text(dati.emerso.flatMap(ProfiloInvestitore.Propensione.init(rawValue:))?.nome ?? "—")
+                        .carattereApple(R.profilo)
+                        .foregroundColor(Tema.Apple.Tavolo.iPad.coloreTitolo)
+                }
+                .entrataCascata(1, base: Tema.Apple.Moto.Cascata.baseDentroApp)
+            }
+            Text(dati.avvertenza)
+                .carattereApple(Tema.Apple.Tavolo.iPad.nota)
+                .foregroundColor(Tema.Apple.Tavolo.iPad.coloreNota)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .onAppear { comparsa = Date() }
+        .onChange(of: dati.indice) { _, _ in
+            scelta = nil
+            comparsa = Date()
+        }
+    }
+
+    private func esito(_ i: Int) -> OpzioneLettera.Esito {
+        guard let scelta else { return .aperta }
+        return scelta == i ? .scelta : .attenuata
+    }
+}
+
+/// Lancia l'anno sull'iPad: le due vite affiancate, l'ultima carta e «Lancia l'anno» (un tocco = un anno, spento finché
+/// il Mac non risponde e a partita finita).
+struct LanciaAnnoTavoloiPad: View {
+    let mostra: MostraTavolo
+    let dati: LanciaAnnoTavolo
+    let lancia: () -> Void
+
+    @State private var inAttesa = false
+
+    private typealias L = Tema.Apple.Tavolo.iPad.Lancia
+
+    var body: some View {
+        FinestraTavoloiPad {
+            TestataTavoloiPad(sopratitolo: "\(mostra.titolo) · \(dati.anniLanciati) di \(dati.anniMassimi)", titolo: dati.nome,
+                              sottotitolo: "Due vite affiancate, con e senza piano · \(dati.annoCorrente)")
+            HStack(spacing: L.spazioVite) {
+                vita("Con il piano", dati.valoreCon, colore: L.con)
+                vita("Senza piano", dati.valoreSenza, colore: L.senza)
+            }
+            .entrataCascata(1, base: Tema.Apple.Moto.Cascata.baseDentroApp)
+            if let carta = dati.ultimaCarta {
+                VStack(alignment: .leading, spacing: Tema.Apple.Tavolo.iPad.spazioRighe) {
+                    Text("\(String(carta.anno)) · \(carta.titolo)")
+                        .carattereApple(L.titoloCarta)
+                        .foregroundColor(L.toni[carta.tono] ?? Tema.Apple.Tavolo.iPad.coloreTitolo)
+                    Text(carta.fraseCon).carattereApple(L.fraseCarta).foregroundColor(L.con)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(carta.fraseSenza).carattereApple(L.fraseCarta).foregroundColor(L.senza)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(L.paddingVita)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(RoundedRectangle(cornerRadius: L.raggioVita, style: .continuous).fill(L.fondoVita))
+                .id("carta-\(carta.anno)")
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
+            Button {
+                inAttesa = true
+                lancia()
+            } label: {
+                Text(dati.finita ? "La partita è finita" : "Lancia l’anno").frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.applePrimario)
+            .disabled(dati.finita || inAttesa)
+            Text(dati.avvertenza)
+                .carattereApple(Tema.Apple.Tavolo.iPad.nota)
+                .foregroundColor(Tema.Apple.Tavolo.iPad.coloreNota)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .onChange(of: dati.anniLanciati) { _, _ in inAttesa = false }
+    }
+
+    private func vita(_ titolo: String, _ valore: Double, colore: Color) -> some View {
+        VStack(alignment: .leading, spacing: Tema.Apple.Tavolo.iPad.spazioTestata) {
+            Text(titolo).carattereApple(L.etichettaVita).foregroundColor(colore)
+            NumeroCheConta(valore, da: nil)
+                .carattereApple(L.cifraVita)
+                .foregroundColor(Tema.Apple.Tavolo.iPad.coloreCifra)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+        }
+        .padding(L.paddingVita)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: L.raggioVita, style: .continuous).fill(L.fondoVita))
+    }
+}
+
+/// Disegna il tuo futuro sull'iPad: la tela con gli assi già scritti; il cliente disegna con il dito, i punti
+/// normalizzati (0…1, y = 0 in basso) vanno al Mac al rilascio; il risultato torna come immagine disegnata dal Mac.
+struct DisegnoTavoloiPad: View {
+    let mostra: MostraTavolo
+    let dati: DisegnoTavolo
+    var trattoIniziale: [CGPoint] = []
+    let manda: ([PuntoTavolo]) -> Void
+
+    @State private var tratto: [CGPoint] = []
+    /// Un tratto in corso: il primo tocco di un tratto nuovo cancella il precedente (il Mac può averlo scartato).
+    @State private var inCorso = false
+
+    private typealias D = Tema.Apple.Tavolo.iPad.Disegno
+
+    var body: some View {
+        FinestraTavoloiPad {
+            TestataTavoloiPad(sopratitolo: mostra.titolo, titolo: dati.risultato == nil ? "Disegna come vorresti il tuo patrimonio" : mostra.cliente,
+                              sottotitolo: "Da \(dati.etaOggi) a \(dati.etaFine) anni · pensione a \(dati.etaPensione)")
+            if let r = dati.risultato, let immagine = ProtocolloTavolo.immagine(r.png) {
+                Image(decorative: immagine, scale: 1)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(maxHeight: D.altezzaRisultato)
+            } else {
+                tela
+            }
+            if let frase = dati.frase {
+                Text(frase)
+                    .carattereApple(Tema.Apple.Tavolo.iPad.nota)
+                    .foregroundColor(Tema.Apple.Tavolo.iPad.coloreNota)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .onAppear { if tratto.isEmpty { tratto = trattoIniziale } }
+    }
+
+    private var tela: some View {
+        GeometryReader { g in
+            let area = CGRect(x: D.margineAsse, y: 0, width: max(1, g.size.width - D.margineAsse), height: g.size.height)
+            ZStack(alignment: .topLeading) {
+                RoundedRectangle(cornerRadius: Tema.Apple.Raggio.voce, style: .continuous).fill(D.fondo)
+                ForEach(Array(dati.etichetteAsse.enumerated()), id: \.offset) { i, e in
+                    let f = dati.etichetteAsse.count > 1 ? CGFloat(i) / CGFloat(dati.etichetteAsse.count - 1) : 0
+                    Path { p in
+                        p.move(to: CGPoint(x: area.minX, y: area.maxY - f * area.height))
+                        p.addLine(to: CGPoint(x: area.maxX, y: area.maxY - f * area.height))
+                    }
+                    .stroke(D.griglia, lineWidth: D.spessoreGriglia)
+                    Text(e)
+                        .carattereApple(D.asse)
+                        .foregroundColor(D.coloreAsse)
+                        .position(x: D.margineAsse / 2, y: min(area.maxY - D.margineEtichetta, max(D.margineEtichetta, area.maxY - f * area.height)))
+                }
+                let anni = Double(max(1, dati.etaFine - dati.etaOggi))
+                let xp = area.minX + CGFloat(Double(dati.etaPensione - dati.etaOggi) / anni) * area.width
+                Path { p in
+                    p.move(to: CGPoint(x: xp, y: 0))
+                    p.addLine(to: CGPoint(x: xp, y: area.maxY))
+                }
+                .stroke(D.pensione, style: StrokeStyle(lineWidth: D.spessorePensione, dash: D.tratteggioPensione))
+                TrattoTavoloiPad.percorso(tratto, in: area.size)
+                    .offsetBy(dx: area.minX, dy: 0)
+                    .stroke(D.inchiostro, style: StrokeStyle(lineWidth: D.spessore, lineCap: .round, lineJoin: .round))
+                RoundedRectangle(cornerRadius: Tema.Apple.Raggio.voce, style: .continuous).strokeBorder(D.bordo, lineWidth: D.spessoreGriglia)
+            }
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0, coordinateSpace: .local)
+                    .onChanged { v in
+                        let x = min(max((v.location.x - area.minX) / area.width, 0), 1)
+                        let y = min(max(v.location.y / area.height, 0), 1)
+                        if !inCorso {
+                            inCorso = true
+                            tratto = []
+                        }
+                        // Si disegna da sinistra a destra: un punto più indietro dell'ultimo si salta
+                        if let ultimo = tratto.last, x < ultimo.x { return }
+                        tratto.append(CGPoint(x: x, y: y))
+                    }
+                    .onEnded { _ in
+                        inCorso = false
+                        guard tratto.count >= MotoreDisegno.puntiMinimi else {
+                            tratto = []
+                            return
+                        }
+                        let punti = tratto.suffix(ProtocolloTavolo.massimiPuntiTratto).map { PuntoTavolo(x: Double($0.x), y: Double(1 - $0.y)) }
+                        manda(Array(punti))
+                    }
+            )
+        }
+        .aspectRatio(D.rapporto, contentMode: .fit)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("La tela del disegno"))
+        .accessibilityValue(Text(tratto.isEmpty ? "Vuota" : "Tratto presente"))
+    }
+}
+
+/// La capsula del tempo sull'iPad (D-C4): il cliente scrive (anche dettando con la tastiera), conferma il sigillo e il
+/// testo va al Mac, che sigilla subito senza mostrarlo. Il testo vive solo in questa vista e si svuota all'uscita.
+struct CapsulaTavoloiPad: View {
+    let mostra: MostraTavolo
+    let dati: CapsulaTavolo
+    var testoIniziale = ""
+    let sigilla: (String) -> Void
+
+    @State private var testo = ""
+    @State private var conferma = false
+
+    private typealias K = Tema.Apple.Tavolo.iPad.Capsula
+
+    var body: some View {
+        FinestraTavoloiPad {
+            TestataTavoloiPad(sopratitolo: mostra.titolo, titolo: dati.nome, sottotitolo: dati.siApre)
+            TextEditor(text: $testo)
+                .carattereApple(K.testo)
+                .foregroundColor(K.inchiostro)
+                .scrollContentBackground(.hidden)
+                .padding(Tema.Apple.Tavolo.iPad.spazioRighe)
+                .frame(height: K.altezzaCampo)
+                .background(RoundedRectangle(cornerRadius: K.raggioCampo, style: .continuous).fill(K.fondoCampo))
+                .overlay(RoundedRectangle(cornerRadius: K.raggioCampo, style: .continuous).strokeBorder(K.bordoCampo, lineWidth: 1))
+                .onChange(of: testo) { _, t in
+                    if t.count > ProtocolloTavolo.massimoTestoCapsula { testo = String(t.prefix(ProtocolloTavolo.massimoTestoCapsula)) }
+                }
+            Text(dati.aiuto)
+                .carattereApple(Tema.Apple.Tavolo.iPad.nota)
+                .foregroundColor(Tema.Apple.Tavolo.iPad.coloreNota)
+                .fixedSize(horizontal: false, vertical: true)
+            Button { conferma = true } label: { Text(TestiRealta.sigilla).frame(maxWidth: .infinity) }
+                .buttonStyle(.applePrimario)
+                .disabled(testo.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        }
+        .confirmationDialog(TestiRealta.confermaSigillo, isPresented: $conferma, titleVisibility: .visible) {
+            Button("Sigilla") {
+                let t = testo
+                testo = ""
+                sigilla(t)
+            }
+            Button("Annulla", role: .cancel) {}
+        }
+        .onAppear { if testo.isEmpty { testo = testoIniziale } }
+        .onDisappear { testo = "" }
+    }
+}
 #endif

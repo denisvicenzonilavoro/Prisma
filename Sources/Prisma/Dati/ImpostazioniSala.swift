@@ -119,6 +119,9 @@ struct ImpostazioniSala: Codable, Equatable {
     /// «Prepara anche il file per il browser» (giro 15, decisione 3): l'HTML cifrato resta spento finché la prova su
     /// iPhone e Android veri non passa. nil = spento.
     var htmlSperimentale: Bool?
+    /// «Lo scatto può comprendere la stanza» (Impostazioni › Sala, «Luce» giro 16, decisione 27): spento di base; acceso,
+    /// sull'iPad del tavolo si può mandare anche la foto con la stanza, con la conferma a ogni scatto.
+    var scattoConStanza = false
 
     init() {}
 
@@ -136,6 +139,7 @@ struct ImpostazioniSala: Codable, Equatable {
     private enum CodingKeys: String, CodingKey {
         case eventiAnno, anniPartita, avvertenzaLettera, avvertenzaLancia, avvertenzaValore, titoloValore
         case avvertenzaFile, avvertenzaFilm, htmlSperimentale
+        case scattoConStanza
     }
 
     init(from decoder: Decoder) throws {
@@ -154,6 +158,7 @@ struct ImpostazioniSala: Codable, Equatable {
         avvertenzaFile = testo(.avvertenzaFile)
         avvertenzaFilm = testo(.avvertenzaFilm)
         htmlSperimentale = (try? c.decodeIfPresent(Bool.self, forKey: .htmlSperimentale)) ?? nil
+        scattoConStanza = ((try? c.decodeIfPresent(Bool.self, forKey: .scattoConStanza)) ?? nil) ?? false
     }
 
     /// Un testo dell'utente o il segnaposto, con il segno se è il segnaposto.

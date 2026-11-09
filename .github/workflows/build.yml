@@ -151,6 +151,25 @@ jobs:
           "Prisma.app/Contents/MacOS/Prisma" --prova-file-cliente "$PWD/file-cliente"
           node Supporto/prova-file-cliente.mjs "$PWD/file-cliente"
 
+      - name: Privacy della realtà aumentata
+        run: |
+          # «Luce» giro 16 (decisioni 26 e 27): niente Rullino, niente mappe del mondo salvate, niente rete propria
+          if grep -nE 'UIImageWriteToSavedPhotosAlbum|PHPhotoLibrary|import Photos|ARWorldMap|getCurrentWorldMap|URLSession|URLRequest' \
+              Sources/Prisma/Motori/MotoreRealtaAumentata.swift Sources/Prisma/Shell/*Realta*.swift \
+              Sources/Prisma/iOS/RealtaAumentataMobile.swift Sources/Prisma/DesignSystem/CristalloFermo.swift; then
+            echo "::error::La realtà aumentata non deve salvare nel Rullino, salvare mappe del mondo o usare la rete"
+            exit 1
+          fi
+          # In tutto Sources: nessun file, nemmeno futuro, salva nel Rullino
+          if grep -rnE 'UIImageWriteToSavedPhotosAlbum|PHPhotoLibrary|import Photos|PHAssetChangeRequest' Sources/Prisma; then
+            echo "::error::Prisma non salva nel Rullino"
+            exit 1
+          fi
+          if grep -n 'NSPhotoLibraryAddUsageDescription\|NSPhotoLibraryUsageDescription' Supporto/iOS/Info.plist; then
+            echo "::error::Prisma non chiede l'accesso al Rullino"
+            exit 1
+          fi
+
       - name: Verifica Prisma.app
         run: |
           APP=Prisma.app
@@ -200,6 +219,11 @@ jobs:
           # Prova del tavolo con l'iPad: Mac e iPad nello stesso processo su 127.0.0.1 (abbinamento, pagine, cursore,
           # presa visione nel PDF, caduta della connessione con la schermata neutra)
           "$APP/Contents/MacOS/Prisma" --prova-tavolo
+          # Prova di fattibilità della realtà aumentata: il cristallo in RealityKit (MeshDescriptor, materiali, vista virtuale)
+          # senza fotocamera; senza Metal (PRISMA_SENZA_METAL=1, come per la fluidità: sulla GPU virtuale del runner Metal
+          # può fermare il processo con un'asserzione) la parte RealityKit si salta e resta il fermo-immagine; RealityKit
+          # e la vista virtuale restano provati sul Mac dell'utente e nel simulatore
+          PRISMA_SENZA_METAL=1 "$APP/Contents/MacOS/Prisma" --prova-realta
           # Prova dei prospetti: cifre, impaginazione A4 e PDF
           "$APP/Contents/MacOS/Prisma" --prova-prospetti
           # Prova di carico: 200 clienti, velocità e memoria (il Mac dell'utente ha 8 GB)
@@ -480,7 +504,7 @@ jobs:
       - name: iPad · prove
         if: always() && steps.avvio-ipad.outcome == 'success'
         timeout-minutes: 10
-        run: bash Supporto/iOS/prove.sh "$PAD" verifica-risorse
+        run: bash Supporto/iOS/prove.sh "$PAD" verifica-risorse prova-realta
 
       # Più scene che sull'iPhone (tutte le app, in verticale e in orizzontale): 92 istantanee, fino a 35 min sui runner Intel lenti
       - name: iPad · istantanee
