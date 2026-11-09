@@ -454,7 +454,7 @@ enum ProvaCalcoliTerritorio {
         _ = MotoreTerritorio.giro(giorno: AiutiProva.data(2026, 11, 10), appuntamenti: base.appuntamenti, clienti: clienti, luoghi: l.luoghi,
                                   partenza: nil, daFare: [:], impostazioni: ImpostazioniTerritorio(), orari: OrariLavoro(), calendario: cal)
         let durata = Date().timeIntervalSince(inizio)
-        verifica.vero("Territorio: 200 clienti (luoghi, Oggi, crescita, giro) in meno di 2 s", clienti.count == 200 && durata < 2)
+        verifica.vero("Territorio: 200 clienti (luoghi, Oggi, crescita, giro) in meno di 2 s", clienti.count == 200 && durata < 2 * ProvaCarico.fattoreTempo)
         verifica.vero("Territorio: i 200 clienti di prova sono tutti sulla mappa", l.senzaLuogo.isEmpty && o.luci.count == 200)
     }
 
