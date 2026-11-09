@@ -5,6 +5,9 @@ import UIKit
 
 // Il tavolo con il Mac, lato iPad: una modalità a tutto schermo davanti al cliente, senza dock né altre app, che mostra
 // solo ciò che il Mac sceglie (Tavolo/ProtocolloTavolo.swift, `ClienteTavolo` e `OsservatoreTavolo`).
+// - Dal «Luce» giro 16 il tavolo va nei due sensi: per ciò che il Mac mostra (stesso id) l'iPad rimanda la risposta al
+//   gioco del rischio, il lancio di Lancia l'anno, il tratto del disegno, il testo della capsula e lo scatto della
+//   realtà aumentata. Niente resta sull'iPad: questi dati vivono solo nello stato delle viste.
 // - Si entra da Impostazioni › Vera («Tavolo con il Mac») o dalla schermata d'apertura, con il codice del ponte di Vera.
 //   La modalità comincia solo quando il Mac ha dato il benvenuto: finché cerca, l'ingresso si può annullare.
 // - Al tavolo si esce SOLO dal Mac: nessun gesto né pulsante dell'iPad la chiude; esce con «fine» del Mac.
@@ -32,6 +35,8 @@ final class TavoloiPad: ObservableObject {
     @Published private(set) var esito: String?
     /// Solo istantanee: il tratto già disegnato nell'area della presa visione (punti da 0 a 1).
     private(set) var trattoDiProva: [[CGPoint]] = []
+    /// Solo istantanee: il testo di prova dichiarato della capsula.
+    private(set) var testoDiProva = ""
 
     /// Dopo una caduta, quanto aspettare prima di cercare di nuovo il Mac.
     nonisolated static let attesaRiprova: UInt64 = 2_000_000_000
@@ -97,10 +102,38 @@ final class TavoloiPad: ObservableObject {
         cliente?.mandaPresaVisione(richiesta: id, tratto: tratto)
     }
 
+    // MARK: Il doppio senso (giro 16)
+
+    func mandaRispostaRischio(_ r: RispostaRischioTavolo) {
+        guard fase == .alTavolo else { return }
+        cliente?.mandaRispostaRischio(r)
+    }
+
+    func mandaLancio(mostra id: String) {
+        guard fase == .alTavolo else { return }
+        cliente?.mandaLancio(mostra: id)
+    }
+
+    func mandaTratto(_ t: TrattoTavolo) {
+        guard fase == .alTavolo else { return }
+        cliente?.mandaTratto(t)
+    }
+
+    func mandaTestoCapsula(_ testo: String, mostra id: String) {
+        guard fase == .alTavolo else { return }
+        cliente?.mandaTestoCapsula(testo, mostra: id)
+    }
+
+    func mandaFotoRealta(_ f: FotoRealtaTavolo) {
+        guard fase == .alTavolo else { return }
+        cliente?.mandaFotoRealta(f)
+    }
+
     /// Le istantanee: il tavolo finto, senza rete, con lo schermo dato.
     func mostraPerIstantanea(_ s: ClienteTavolo.Schermo, collegamento c: ClienteTavolo.Collegamento,
-                             tratto: [[CGPoint]] = []) {
+                             tratto: [[CGPoint]] = [], testo: String = "") {
         trattoDiProva = tratto
+        testoDiProva = testo
         collegamento = c
         schermo = s
         fase = .alTavolo
@@ -176,6 +209,7 @@ final class TavoloiPad: ObservableObject {
         cliente = nil
         osservatore = nil
         trattoDiProva = []
+        testoDiProva = ""
         schermo = .neutra
         collegamento = .scollegato
         fase = .spento
@@ -261,6 +295,43 @@ struct ModalitaTavoloiPad: View {
         case .lineaVita:
             if let v = m.lineaVita {
                 LineaVitaTavoloiPad(mostra: m, dati: v)
+            } else {
+                NeutraTavoloiPad(collegamento: tavolo.collegamento)
+            }
+        case .realtaAumentata:
+            if let r = m.realta {
+                RealtaAumentataMobile(esito: MotoreRealtaAumentata.daTavolo(r), nome: r.nome, scattoConStanza: r.scattoConStanza,
+                                      modo: .tavolo(id: m.id, mandaFoto: { tavolo.mandaFotoRealta($0) }), ultimoScatto: r.ultimoScatto)
+            } else {
+                NeutraTavoloiPad(collegamento: tavolo.collegamento)
+            }
+        case .rischio:
+            if let g = m.rischio {
+                RischioTavoloiPad(mostra: m, dati: g) { scenario, scelta, secondi in
+                    tavolo.mandaRispostaRischio(RispostaRischioTavolo(id: m.id, scenario: scenario, scelta: scelta, secondi: secondi))
+                }
+            } else {
+                NeutraTavoloiPad(collegamento: tavolo.collegamento)
+            }
+        case .lanciaAnno:
+            if let l = m.lancia {
+                LanciaAnnoTavoloiPad(mostra: m, dati: l) { tavolo.mandaLancio(mostra: m.id) }
+            } else {
+                NeutraTavoloiPad(collegamento: tavolo.collegamento)
+            }
+        case .disegno:
+            if let d = m.disegno {
+                DisegnoTavoloiPad(mostra: m, dati: d, trattoIniziale: tavolo.trattoDiProva.first ?? []) { punti in
+                    tavolo.mandaTratto(TrattoTavolo(id: m.id, punti: punti))
+                }
+            } else {
+                NeutraTavoloiPad(collegamento: tavolo.collegamento)
+            }
+        case .capsula:
+            if let k = m.capsula {
+                CapsulaTavoloiPad(mostra: m, dati: k, testoIniziale: tavolo.testoDiProva) { testo in
+                    tavolo.mandaTestoCapsula(testo, mostra: m.id)
+                }
             } else {
                 NeutraTavoloiPad(collegamento: tavolo.collegamento)
             }

@@ -382,7 +382,8 @@ struct GiocoRischioVista: View {
 
 /// Il grafico di uno scenario: la linea con l'area e il riferimento tratteggiato al valore iniziale (scenari 1-2), o
 /// le due strade su dieci anni con il nome in fondo a destra (scenario 3).
-private struct GraficoScenarioRischio: View {
+/// Il grafico di uno scenario (interno dal giro 16: lo usa anche l'iPad del tavolo).
+struct GraficoScenarioRischio: View {
     let scenario: ScenarioRischio
 
     private typealias R = Tema.Apple.SalaEsperienze.Rischio

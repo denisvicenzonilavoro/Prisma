@@ -116,5 +116,54 @@ extension Tema.Apple.Tavolo {
         static let spazioIngresso: CGFloat = 10
         static let esito = Carattere.secondario
         static let coloreEsito = Colore.arancio
+
+        // MARK: Il doppio senso («Luce» giro 16): rischio, Lancia l'anno, disegno, capsula
+
+        enum Rischio {
+            static let altezzaGrafico: CGFloat = 220
+            static let spazioOpzioni: CGFloat = 10
+            static let larghezzaOpzioni: CGFloat = 720
+            static let anello: CGFloat = 150
+            static let coloreAnello = Colore.accento
+            static let profilo = Carattere.titoloDettaglio(30)
+        }
+
+        enum Lancia {
+            static let spazioVite: CGFloat = 14
+            static let raggioVita: CGFloat = 18
+            static let fondoVita = Colore.card
+            static let paddingVita: CGFloat = 18
+            static let cifraVita = Carattere(dimensione: 34, peso: .bold, tracking: -1, tabellare: true)
+            static let etichettaVita = Carattere.etichetta
+            static let titoloCarta = Carattere(dimensione: 19, peso: .bold)
+            static let fraseCarta = Carattere(dimensione: 15, peso: .regular, interlinea: 1.4)
+            static let con = Colore.canaleAlleanza
+            static let senza = Colore.inchiostro2
+            static let toni: [String: Color] = ["rosso": Colore.rosso, "arancio": Colore.arancio, "verde": Colore.verde]
+        }
+
+        enum Disegno {
+            /// La tela: carta bianca anche in scuro, come l'area della presa visione.
+            static let rapporto: CGFloat = 1.7
+            static let fondo = Tema.Apple.Carta.fondo
+            static let bordo = Tema.Apple.Carta.linea
+            static let griglia = Tema.Apple.Carta.filetto
+            static let asse = Carattere.asse
+            static let coloreAsse = Tema.Apple.Carta.etichetta
+            static let inchiostro = Color(r: 37, g: 99, b: 235, a: 1)
+            static let spessore: CGFloat = 3.5
+            static let pensione = Color(r: 176, g: 110, b: 18, a: 0.5)
+            static let margineAsse: CGFloat = 64
+            static let altezzaRisultato: CGFloat = 320
+        }
+
+        enum Capsula {
+            static let altezzaCampo: CGFloat = 300
+            static let fondoCampo = Tema.Apple.Carta.fondo
+            static let raggioCampo: CGFloat = Tema.Apple.Raggio.voce
+            static let bordoCampo = Tema.Apple.Carta.linea
+            static let testo = Carattere(dimensione: 17, peso: .regular, interlinea: 1.45)
+            static let inchiostro = Tema.Apple.Carta.testo
+        }
     }
 }
