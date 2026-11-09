@@ -81,6 +81,8 @@ extension StatoShell {
                            stato: canale == .mail ? .apertoInMail : .apertoInMessaggi, id: id)
             // «Le promesse» (fase 3 di Vera): gli impegni scritti nel messaggio aperto entrano nell'elenco
             raccogliPromesse(cliente: o.clienteId)
+            // «Luce» giro 15: l'aggiornamento del sinistro segna il giorno nel sinistro e la traccia nel dossier
+            if o.tipo == .sinistro { segnaAggiornamentoSinistro(o, canale: canale) }
         }
         return esito
     }
