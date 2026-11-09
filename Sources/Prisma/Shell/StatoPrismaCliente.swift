@@ -153,7 +153,7 @@ extension StatoShell {
     /// segue il lavoro vero (0…1). Aggiorna `Cliente.prismaCliente` (data, scadenza, voci; mai la password).
     @MainActor
     func preparaPrismaCliente(_ c: Cliente, voci: Set<VoceFilePrisma>, password: String, validoFinoAl: Date,
-                              avanzamento: @escaping (Double) -> Void) async -> EsitoPrismaCliente {
+                              avanzamento: @escaping @MainActor (Double) -> Void) async -> EsitoPrismaCliente {
         if let motivo = GeneratorePassword.motivoNonValida(password, cliente: c) { return .nonRiuscito(motivo) }
         let accese = voci.subtracting(Set(disponibilitaPrismaCliente(c).keys))
         guard !accese.isEmpty else { return .nonRiuscito(TestiPrismaCliente.accendiUnaVoce) }
