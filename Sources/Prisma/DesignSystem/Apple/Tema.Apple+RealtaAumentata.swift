@@ -302,6 +302,14 @@ extension Tema.Apple {
             static let sopraTarghetta: Float = 0.12
         }
 
+        /// La texture dell'anello bianco della posa (px): lato, spessore del filo, margine e opacità del bianco.
+        enum AnelloPosa {
+            static let lato: Int = 128
+            static let spessore: CGFloat = 5
+            static let margine: CGFloat = 6
+            static let opacita: CGFloat = 0.9
+        }
+
         /// Il fermo-immagine in SwiftUI (`CristalloFermo`): assonometria del prisma triangolare.
         enum Fermo {
             /// Punti per unità del cristallo nel fermo-immagine (rispetto al lato corto dell'area).

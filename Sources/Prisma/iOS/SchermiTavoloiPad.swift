@@ -1032,6 +1032,8 @@ struct DisegnoTavoloiPad: View {
     let manda: ([PuntoTavolo]) -> Void
 
     @State private var tratto: [CGPoint] = []
+    /// Un tratto in corso: il primo tocco di un tratto nuovo cancella il precedente (il Mac può averlo scartato).
+    @State private var inCorso = false
 
     private typealias D = Tema.Apple.Tavolo.iPad.Disegno
 
@@ -1068,11 +1070,11 @@ struct DisegnoTavoloiPad: View {
                         p.move(to: CGPoint(x: area.minX, y: area.maxY - f * area.height))
                         p.addLine(to: CGPoint(x: area.maxX, y: area.maxY - f * area.height))
                     }
-                    .stroke(D.griglia, lineWidth: 1)
+                    .stroke(D.griglia, lineWidth: D.spessoreGriglia)
                     Text(e)
                         .carattereApple(D.asse)
                         .foregroundColor(D.coloreAsse)
-                        .position(x: D.margineAsse / 2, y: min(area.maxY - 8, max(8, area.maxY - f * area.height)))
+                        .position(x: D.margineAsse / 2, y: min(area.maxY - D.margineEtichetta, max(D.margineEtichetta, area.maxY - f * area.height)))
                 }
                 let anni = Double(max(1, dati.etaFine - dati.etaOggi))
                 let xp = area.minX + CGFloat(Double(dati.etaPensione - dati.etaOggi) / anni) * area.width
@@ -1080,11 +1082,11 @@ struct DisegnoTavoloiPad: View {
                     p.move(to: CGPoint(x: xp, y: 0))
                     p.addLine(to: CGPoint(x: xp, y: area.maxY))
                 }
-                .stroke(D.pensione, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
+                .stroke(D.pensione, style: StrokeStyle(lineWidth: D.spessorePensione, dash: D.tratteggioPensione))
                 TrattoTavoloiPad.percorso(tratto, in: area.size)
                     .offsetBy(dx: area.minX, dy: 0)
                     .stroke(D.inchiostro, style: StrokeStyle(lineWidth: D.spessore, lineCap: .round, lineJoin: .round))
-                RoundedRectangle(cornerRadius: Tema.Apple.Raggio.voce, style: .continuous).strokeBorder(D.bordo, lineWidth: 1)
+                RoundedRectangle(cornerRadius: Tema.Apple.Raggio.voce, style: .continuous).strokeBorder(D.bordo, lineWidth: D.spessoreGriglia)
             }
             .contentShape(Rectangle())
             .gesture(
@@ -1092,11 +1094,16 @@ struct DisegnoTavoloiPad: View {
                     .onChanged { v in
                         let x = min(max((v.location.x - area.minX) / area.width, 0), 1)
                         let y = min(max(v.location.y / area.height, 0), 1)
+                        if !inCorso {
+                            inCorso = true
+                            tratto = []
+                        }
                         // Si disegna da sinistra a destra: un punto più indietro dell'ultimo si salta
                         if let ultimo = tratto.last, x < ultimo.x { return }
                         tratto.append(CGPoint(x: x, y: y))
                     }
                     .onEnded { _ in
+                        inCorso = false
                         guard tratto.count >= MotoreDisegno.puntiMinimi else {
                             tratto = []
                             return

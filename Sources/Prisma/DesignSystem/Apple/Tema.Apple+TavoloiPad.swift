@@ -155,6 +155,13 @@ extension Tema.Apple.Tavolo {
             static let pensione = Color(r: 176, g: 110, b: 18, a: 0.5)
             static let margineAsse: CGFloat = 64
             static let altezzaRisultato: CGFloat = 320
+            /// Le righe della griglia e il bordo della tela.
+            static let spessoreGriglia: CGFloat = 1
+            /// La linea tratteggiata dell'età di pensione.
+            static let spessorePensione: CGFloat = 1.5
+            static let tratteggioPensione: [CGFloat] = [5, 4]
+            /// Le etichette dell'asse non escono dalla tela (metà altezza della riga).
+            static let margineEtichetta: CGFloat = 8
         }
 
         enum Capsula {

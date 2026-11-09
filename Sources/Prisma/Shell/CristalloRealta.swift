@@ -331,10 +331,12 @@ final class CristalloRealta {
 
     /// L'anello bianco della posa.
     static func immagineAnello() -> CGImage? {
-        immagine(lato: 128) { c in
-            c.setStrokeColor(CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 0.9))
-            c.setLineWidth(5)
-            c.strokeEllipse(in: CGRect(x: 6, y: 6, width: 116, height: 116))
+        let k = T.AnelloPosa.self
+        let lato = CGFloat(k.lato)
+        return immagine(lato: k.lato) { c in
+            c.setStrokeColor(CGColor(srgbRed: 1, green: 1, blue: 1, alpha: k.opacita))
+            c.setLineWidth(k.spessore)
+            c.strokeEllipse(in: CGRect(x: k.margine, y: k.margine, width: lato - k.margine * 2, height: lato - k.margine * 2))
         }
     }
 

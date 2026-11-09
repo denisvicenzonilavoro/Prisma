@@ -276,9 +276,9 @@ enum IstantaneeMobile {
                 // Messaggi (giro 3 di «Orizzonte»): il messaggio dell'occasione in alto, tono, canale e testo, le altre
                 // occasioni a un tocco nel menu «Occasioni»
                 Scena(nome: "497-messaggi") { m in IstantaneeMobile.messaggi(m) },
-                // «Luce» giro 12: i potenziali clienti in sola lettura (una cosa grande in alto, poi l'elenco per fase)
                 // «Luce» giro 16: la realtà aumentata sull'iPhone, in verticale: «Fine» e lo scatto spento con l'aiuto
                 Scena(nome: "72-ar-iphone") { m in IstantaneeMobile.realta(m, ScenaRealtaDiProva()) },
+                // «Luce» giro 12: i potenziali clienti in sola lettura (una cosa grande in alto, poi l'elenco per fase)
                 Scena(nome: "76-potenziali-iphone") { m in
                     m.apri(.clienti)
                     m.percorsoClienti = [.potenziali]
