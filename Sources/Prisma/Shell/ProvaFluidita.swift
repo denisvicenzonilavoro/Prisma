@@ -394,6 +394,21 @@ enum ProvaFluidita {
                 }, verifica: { stato.provaFuoco.vista == vista && stato.portafoglio == portafoglio }),
             ])
         }
+        if stato.appConsentita(.territorio) {
+            // Territorio (giro 11): la mappa di Oggi, il passaggio al giro di domani e la chiusura (la tabella dei comuni
+            // si carica all'apertura e si libera alla chiusura)
+            let vistaTerritorio = stato.vistaTerritorio
+            s.misura(banco, [
+                PassoFluidita(nome: "Luce · apri Territorio", azione: { stato.apriTerritorio(.oggi) },
+                              verifica: { stato.appAttiva == .territorio && stato.vistaTerritorio == .oggi }),
+                PassoFluidita(nome: "Luce · il giro di domani", azione: { stato.vistaTerritorio = .giro },
+                              verifica: { stato.appAttiva == .territorio && stato.vistaTerritorio == .giro }),
+                PassoFluidita(nome: "Luce · chiudi Territorio", azione: {
+                    stato.chiudi(.territorio)
+                    stato.vistaTerritorio = vistaTerritorio
+                }, verifica: { !stato.aperta(.territorio) }),
+            ])
+        }
         if stato.appConsentita(.biblioteca) {
             s.misura(banco, [
                 PassoFluidita(nome: "Luce · apri la Biblioteca", azione: { stato.apri(.biblioteca) },
