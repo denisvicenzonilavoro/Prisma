@@ -370,6 +370,10 @@ extension AppImpostazioni {
                 }
                 .cascataImpostazioni(4)
             }
+            // «Luce» giro 14: Stanotte, il lavoro della notte (ImpostazioniNotteVista.swift)
+            GruppoImpostazioniNotte()
+                .id(TestiNotte.ancoraImpostazioni)
+                .cascataImpostazioni(5)
             GruppoImpostazioni(titolo: "Come lavora") {
                 RigaImpostazione(titolo: "Modello", sottotitolo: "Il nome in Ollama.") {
                     TextField(vera.fornitore == .ollama ? MotoreLocale.modelloPredefinito : "nome del modello", text: Bindable(stato.dati).impostazioni.vera.modello)

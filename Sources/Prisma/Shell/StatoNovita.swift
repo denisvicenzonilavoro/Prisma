@@ -224,6 +224,12 @@ extension StatoShell {
             apriStoria(.settimana)
             return
         }
+        if voce == .stanotte {
+            // Le carte della notte sopra la scrivania (giro 14, CarteNotte.swift); in modalità cliente dice perché no
+            mostraScrivania()
+            apriNotte()
+            return
+        }
         guard let app = voce.app else {
             mostraScrivania()
             if let avviso = voce.avvisoInArrivo { mostraAvviso(avviso) }

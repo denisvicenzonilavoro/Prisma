@@ -188,6 +188,7 @@ struct AppImpostazioni: View {
         case TestiParcelle.ancoraImpostazioni: return .studio
         case TestiSpese.ancoraImpostazioni: return .studio
         case TestiFamiglie.ancoraImpostazioni: return .rendimenti
+        case TestiNotte.ancoraImpostazioni: return .vera
         default: return nil
         }
     }
