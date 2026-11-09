@@ -23,6 +23,7 @@ enum ProvaFaseDueVera {
         trenta(controlla)
         norme(controlla)
         lasciaCadere(controlla)
+        lasciaCadereDove(controlla)
         archivio(controlla)
     }
 
@@ -255,6 +256,69 @@ enum ProvaFaseDueVera {
                   "Trenta secondi: una cifra inventata da Qwen non passa, il resto sì")
         controlla(s.chiediTrentaSecondi("Raccontami Marco", chiave: "giulia") && s.conversazione("giulia").last?.trenta?.clienteId == "marco",
                   "Trenta secondi: nella conversazione arriva la scheda")
+        trentaMessaggi(s, fonte, controlla)
+        trentaVoce(s, controlla)
+    }
+
+    /// I messaggi del cliente alimentano le sezioni: il canale dei messaggi usciti davvero in «Cosa preferisce», la bozza
+    /// mai mandata in «In sospeso», ognuno con la fonte.
+    private static func trentaMessaggi(_ s: StatoShell, _ fonte: FonteVera, _ controlla: (Bool, String) -> Void) {
+        let oggi = fonte.oggi
+        func messaggio(_ canale: CanaleMessaggio, _ stato: StatoMessaggio, giorni: Int, oggetto: String?) -> MessaggioCliente {
+            let g = Calendar.current.date(byAdding: .day, value: -giorni, to: oggi) ?? oggi
+            var m = MessaggioCliente(clienteId: "marco", occasioneId: "prova-trenta-\(giorni)", origine: OrigineMessaggio(tipo: .richiestaVera, riferimento: "prova"),
+                                     canaleLavoro: .alleanza, tono: .cordiale, canale: canale, oggetto: oggetto, testo: "Testo di prova",
+                                     cifre: [], autore: .vera, modello: nil, creatoIl: g)
+            m.stato = stato
+            if stato != .bozza { m.apertoIl = g }
+            return m
+        }
+        let usciti = [messaggio(.mail, .apertoInMail, giorni: 40, oggetto: "Il confronto per gli studi"),
+                      messaggio(.mail, .apertoInMail, giorni: 20, oggetto: "Il rinnovo"),
+                      messaggio(.messaggi, .apertoInMessaggi, giorni: 10, oggetto: nil)]
+        let bozza = messaggio(.mail, .bozza, giorni: 3, oggetto: "La pensione di Elena")
+        let vecchia = messaggio(.mail, .bozza, giorni: 200, oggetto: "Vecchia bozza")
+        let scheda = TrentaSecondiVera.scheda(fonte, messaggi: usciti + [bozza, vecchia], ricordi: [])
+        controlla(scheda.sezioni[3].testo.contains("via mail") && scheda.sezioni[3].fonte.lowercased().contains("messaggi"),
+                  "Trenta secondi: «Cosa preferisce» dal canale dei messaggi usciti davvero, con la fonte (\(scheda.sezioni[3].testo))")
+        controlla(scheda.sezioni[4].testo.lowercased().contains("un messaggio ancora da mandare («la pensione di elena»)") && !scheda.sezioni[4].testo.contains("Vecchia")
+                  && scheda.sezioni[4].fonte.contains("messaggi"),
+                  "Trenta secondi: la bozza mai mandata degli ultimi due mesi è «in sospeso», con la fonte (\(scheda.sezioni[4].testo))")
+        let pari = [messaggio(.mail, .apertoInMail, giorni: 5, oggetto: nil), messaggio(.messaggi, .apertoInMessaggi, giorni: 6, oggetto: nil)]
+        controlla(TrentaSecondiVera.canalePreferito(pari) == nil && TrentaSecondiVera.canalePreferito([usciti[0]]) == nil
+                  && TrentaSecondiVera.canalePreferito(usciti) == .mail && TrentaSecondiVera.canalePreferito([bozza, bozza]) == nil,
+                  "Trenta secondi: il canale preferito vale con almeno due messaggi usciti e due terzi sullo stesso canale")
+        let senza = TrentaSecondiVera.scheda(fonte, messaggi: [], ricordi: [])
+        controlla(!senza.sezioni[3].fonte.contains("messaggi") && senza.sezioni[4].fonte == "Agenda e posizioni",
+                  "Trenta secondi: senza messaggi le fonti restano quelle di prima")
+    }
+
+    /// La lettura a voce in 30 secondi: una sezione alla volta, «Ascolta di nuovo» riparte, «Ferma» chiude; dalla scheda
+    /// del cliente un tocco apre Vera con il racconto.
+    private static func trentaVoce(_ s: StatoShell, _ controlla: (Bool, String) -> Void) {
+        guard let m = s.conversazione("giulia").last(where: { $0.trenta != nil }), let t = m.trenta else {
+            return controlla(false, "Trenta secondi: manca la scheda da leggere")
+        }
+        controlla(TrentaSecondiVera.parlato(t, sezione: 0).hasPrefix(t.nome + " in trenta secondi. Chi è.")
+                  && TrentaSecondiVera.parlato(t, sezione: 1).hasPrefix("La famiglia.") && TrentaSecondiVera.parlato(t, sezione: 9).isEmpty,
+                  "Trenta secondi: a voce il nome, poi ogni sezione con il suo titolo")
+        let v = TrentaSecondiVera.velocita(t, preferita: 1)
+        controlla(v >= 1 && v <= TrentaSecondiVera.velocitaMassima && TrentaSecondiVera.velocita(t, preferita: 2) == TrentaSecondiVera.velocitaMassima,
+                  "Trenta secondi: la voce accelera solo quanto serve per stare nei 30 secondi, mai oltre il limite")
+        s.ascoltaTrentaSecondi(messaggio: m.id)
+        controlla(s.letturaTrenta == LetturaTrentaSecondi(messaggioId: m.id, sezione: 0, sezioni: 5, avvio: 1),
+                  "Trenta secondi: «Ascolta» parte dalla prima sezione, l'anello da 30")
+        s.avanzaLetturaTrenta("altro-messaggio")
+        controlla(s.letturaTrenta?.sezione == 0, "Trenta secondi: la fine di un'altra frase non fa avanzare la lettura")
+        for _ in 0..<5 { s.avanzaLetturaTrenta(m.id) }
+        controlla(s.letturaTrenta?.finita == true && s.letturaTrenta?.sezione == 5, "Trenta secondi: dopo la quinta sezione la lettura è finita")
+        s.ascoltaTrentaSecondi(messaggio: m.id)
+        controlla(s.letturaTrenta?.avvio == 2 && s.letturaTrenta?.sezione == 0, "Trenta secondi: «Ascolta di nuovo» riparte dalla prima sezione")
+        s.fermaLetturaTrenta()
+        controlla(s.letturaTrenta?.finita == true, "Trenta secondi: «Ferma» chiude la lettura")
+        s.trentaSecondiDallaScheda("laura")
+        controlla(s.conversazione("laura").last?.trenta?.clienteId == "laura" && s.aperta(.vera) && s.clienteAttivoId == "laura",
+                  "Trenta secondi: con un tocco dalla scheda del cliente Vera si apre e racconta")
     }
 
     // MARK: - Il codice in tasca
@@ -333,6 +397,101 @@ enum ProvaFaseDueVera {
         s.veraPortafoglio = true
         let ignoto = s.rispondiDocumentoCaduto(file, pagine: ["Un documento senza nomi"], pagineOCR: 0, chiave: VeraPortafoglio.chiave)
         controlla(ignoto.conferma == nil && ignoto.testo.contains("non trovo il cliente"), "Lascia cadere: senza cliente riconoscibile Vera lo dice e non archivia")
+    }
+
+    /// «Lascia cadere qui» come nel template: l'estratto conto va in Posizioni (posizioni lette, da confermare), la carta
+    /// d'identità in Anagrafica con la scadenza, con più clienti si sceglie dalla risposta, i dati letti si correggono uno
+    /// per uno, e «Archiviati da Vera oggi» li elenca.
+    static let estrattoDiProva = "ESTRATTO CONTO TITOLI (fac-simile)\nIntestatario: Marco Bianchi\nData valore: 30/09/2026\nConto corrente ordinario 12.450,30 €\nFondo Azionario Europa ISIN LU0123456789 quote 120,500 controvalore 8.300,00 €\nBTP Italia 2030 IT0005497000 5.000,00 €\nTotale patrimonio 25.750,30 €\n05/09/2026 Bonifico in uscita 300,00 €"
+    static let identitaDiProva = "CARTA D'IDENTITÀ ELETTRONICA (fac-simile)\nCognome e nome: Andrea Conti\nNumero documento: CA12345AB\nData di rilascio: 14/03/2021\nData di scadenza: 14/03/2031"
+
+    private static func lasciaCadereDove(_ controlla: (Bool, String) -> Void) {
+        // Le posizioni lette dalle regole: nome, ISIN, valore e pagina; mai totali, movimenti o righe con una data
+        let lette = LasciaCadereVera.posizioniLette([estrattoDiProva])
+        controlla(lette.map(\.nome) == ["Conto corrente ordinario", "Fondo Azionario Europa", "BTP Italia"]
+                  && lette.map(\.valore) == [12_450.30, 8_300, 5_000] && lette[1].isin == "LU0123456789" && lette[2].isin == "IT0005497000"
+                  && lette.allSatisfy { $0.pagina == 1 },
+                  "Lascia cadere: dall'estratto conto tre posizioni lette, senza il totale né i movimenti (\(lette.map(\.nome)))")
+        controlla(LasciaCadereVera.areaProbabile("Conto corrente ordinario") == .liquidita && LasciaCadereVera.areaProbabile("Fondo pensione aperto") == .previdenza
+                  && LasciaCadereVera.areaProbabile("Fondo Azionario Europa") == .investimento,
+                  "Lascia cadere: l'area della posizione letta dal nome")
+        var fondo = Posizione(clienteId: "marco", canale: .indipendente, stato: .inEssere, area: .investimento, nome: "Azionario Europa")
+        fondo.id = "pos-prova-fondo"
+        let doppio = Posizione(clienteId: "marco", canale: .indipendente, stato: .inEssere, area: .investimento, nome: "Fondo Europa")
+        controlla(LasciaCadereVera.posizioneEsistente(lette[1], tra: [fondo], cliente: "marco")?.id == fondo.id
+                  && LasciaCadereVera.posizioneEsistente(lette[1], tra: [fondo], cliente: "laura") == nil
+                  && LasciaCadereVera.posizioneEsistente(lette[1], tra: [fondo, { var x = fondo; x.id = "altro"; return x }()], cliente: "marco") == nil
+                  && LasciaCadereVera.posizioneEsistente(lette[0], tra: [doppio], cliente: "marco") == nil,
+                  "Lascia cadere: una posizione letta aggiorna quella che c'è solo se il nome torna e la posizione è una sola")
+
+        let s = StatoShell(persistente: false)
+        s.clienteAttivoId = "marco"
+        let cartella = FileManager.default.temporaryDirectory.appendingPathComponent("ProvaLasciaCadereDove-\(UUID().uuidString)", isDirectory: true)
+        try? FileManager.default.createDirectory(at: cartella, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: cartella) }
+        func file(_ nome: String) -> URL {
+            let u = cartella.appendingPathComponent(nome)
+            try? Data("finto".utf8).write(to: u)
+            return u
+        }
+
+        // Estratto conto → Posizioni
+        let posizioni = s.dati.posizioni.count
+        let e = s.rispondiDocumentoCaduto(file("Estratto conto ottobre.pdf"), pagine: [estrattoDiProva], pagineOCR: 0, chiave: "marco")
+        let righe = e.conferma?.azioni.filter { $0.strumento == LasciaCadereVera.strumentoPosizione } ?? []
+        controlla(e.conferma?.azioni.first?.strumento == RegistroStrumenti.documentiArchivia && righe.count == 3
+                  && righe.allSatisfy { $0.app == .posizioni && $0.argomenti["cliente"] == "marco" } && e.testo.contains("tre posizioni")
+                  && s.dati.posizioni.count == posizioni,
+                  "Lascia cadere: l'estratto conto di Marco propone tre posizioni in Posizioni, da confermare (\(e.testo))")
+        // Il valore di una posizione si corregge prima della conferma
+        if let primo = righe.first { s.correggiPosizioneCaduta(messaggio: e.id, azione: primo.id, valore: 12_400) }
+        controlla(s.messaggioVera(e.id)?.conferma?.azioni.first { $0.id == righe.first?.id }?.argomenti["valore"] == "12400.0",
+                  "Lascia cadere: il valore di una posizione letta si corregge prima di «Conferma»")
+        _ = s.confermaSchedaVera(messaggio: e.id)
+        let nuove = righe.filter { $0.argomenti["posizione"] == nil }.count
+        controlla(s.dati.posizioni.count == posizioni + nuove
+                  && s.dati.posizioni.contains { $0.clienteId == "marco" && $0.nome == "Fondo Azionario Europa" && $0.controvalore == 8_300 && $0.canale == .indipendente }
+                      == (righe.first { $0.argomenti["nome"] == "Fondo Azionario Europa" }?.argomenti["posizione"] == nil),
+                  "Lascia cadere: dopo «Conferma» le posizioni lette sono in Posizioni (in essere, indipendenti, con il valore)")
+        let archiviati = s.archiviatiDaVeraOggi()
+        controlla(archiviati.first?.titolo == "Estratto conto ottobre" && archiviati.first?.dove == "Posizioni"
+                  && archiviati.first?.dettaglio.contains("posizioni lette") == true,
+                  "Lascia cadere: «Archiviati da Vera oggi» dice che l'estratto conto è andato in Posizioni")
+        s.annullaSchedaVera(messaggio: e.id)
+        controlla(s.dati.posizioni.count == posizioni && s.archiviatiDaVeraOggi().isEmpty,
+                  "Lascia cadere: «Annulla» toglie le posizioni aggiunte e il documento esce dagli archiviati di oggi")
+
+        // Carta d'identità → Anagrafica, con la scadenza
+        let id = s.rispondiDocumentoCaduto(file("Carta d'identità Andrea.pdf"), pagine: [identitaDiProva], pagineOCR: 0, chiave: "marco")
+        controlla(id.conferma?.azioni.map(\.strumento) == [RegistroStrumenti.documentiArchivia, TagliandoVera.strumentoDocumento]
+                  && id.conferma?.azioni.last?.dettaglio.contains("Scade il") == true && id.testo.contains("anagrafica"),
+                  "Lascia cadere: la carta d'identità di Andrea propone la scadenza in anagrafica (\(id.conferma?.azioni.map(\.titolo) ?? []))")
+        // I dati letti si correggono uno per uno: la scadenza corretta cambia anche la riga dell'anagrafica
+        s.correggiCampoCaduto(messaggio: id.id, campo: .scadenza, valore: "15/03/2031")
+        let corretta = s.messaggioVera(id.id)?.conferma
+        controlla(RegistroStrumenti.daIso(corretta?.azioni.last?.argomenti["scadenza"]).map { Calendar.current.component(.day, from: $0) } == 15
+                  && corretta?.azioni.first?.argomenti["campi"]?.contains("15/03/2031") == true,
+                  "Lascia cadere: un dato letto corretto prima di «Conferma» cambia la scheda e le righe che ne dipendono")
+        _ = s.confermaSchedaVera(messaggio: id.id)
+        let andrea = s.cliente("andrea")
+        let scad = andrea?.conformita?.documento?.scadenza.map { Calendar.current.dateComponents([.year, .month, .day], from: $0) }
+        controlla(scad?.year == 2031 && scad?.month == 3 && scad?.day == 15 && andrea?.conformita?.documento?.tipo == .cartaIdentita
+                  && andrea?.conformita?.documento?.numero == "CA12345AB"
+                  && s.dati.documenti.last?.campi.first { $0.chiave == .scadenza }?.valore == "15/03/2031",
+                  "Lascia cadere: dopo «Conferma» la carta d'identità è in anagrafica con numero e scadenza corretta")
+        controlla(s.archiviatiDaVeraOggi().first?.dove == "Anagrafica" && s.archiviatiDaVeraOggi().first?.dettaglio.contains("2031") == true,
+                  "Lascia cadere: «Archiviati da Vera oggi» con la carta d'identità in Anagrafica e la scadenza")
+
+        // Più clienti: si sceglie dalla risposta
+        s.veraPortafoglio = true
+        let due = s.rispondiDocumentoCaduto(file("Comunicazione.pdf"), pagine: ["Comunicazione per Marco Bianchi e Laura Moretti (fac-simile)"],
+                                            pagineOCR: 0, chiave: VeraPortafoglio.chiave)
+        controlla(due.titolo == StatoShell.titoloSceltaCaduto && due.conferma == nil && Set(s.scelteClienteCaduto[due.id]?.possibili ?? []) == ["marco", "laura"],
+                  "Lascia cadere: con più clienti nel documento Vera chiede di chi è, con un pulsante per cliente")
+        let scelta = s.scegliClienteCaduto(messaggio: due.id, cliente: "laura", chiave: VeraPortafoglio.chiave)
+        controlla(scelta?.conferma?.azioni.first?.argomenti["cliente"] == "laura" && s.scelteClienteCaduto[due.id] == nil
+                  && s.scegliClienteCaduto(messaggio: due.id, cliente: "marco", chiave: VeraPortafoglio.chiave) == nil,
+                  "Lascia cadere: scelto il cliente dalla risposta, la scheda è per lui (e la scelta non si ripete)")
     }
 
     // MARK: - Archivio

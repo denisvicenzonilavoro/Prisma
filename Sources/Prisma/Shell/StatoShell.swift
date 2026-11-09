@@ -339,6 +339,12 @@ enum VoceConfronto: Hashable {
     @ObservationIgnored var rispostaAVoce = false
     /// Conversazione a voce in corso: dopo ogni risposta Vera torna ad ascoltare, finché non le dici «basta».
     var conversazioneAVoce = false { didSet { aggiornaMenu() } }
+    /// «Il cliente in 30 secondi» letto a voce (TrentaSecondiShell.swift): quale messaggio, quale sezione sta dicendo
+    /// Vera, e quante volte è ripartito (l'anello del conto alla rovescia riparte a ogni «Ascolta di nuovo»).
+    var letturaTrenta: LetturaTrentaSecondi?
+    /// «Lascia cadere qui» con più clienti possibili (LasciaCadereShell.swift): per ogni risposta di Vera, il documento
+    /// letto in attesa che il consulente scelga di chi è. Solo in memoria, come la copia nella cartella temporanea.
+    var scelteClienteCaduto: [String: SceltaClienteCaduto] = [:]
     /// Qwen sul Mac (Ollama): pronto o perché no. Si aggiorna con `verificaMotoreLocale()`.
     var disponibilitaLocale = DisponibilitaVera.nonDisponibile("Ollama non ancora verificato.")
     /// La risposta di Vera mentre arriva (osservata solo dalla bolla in arrivo).

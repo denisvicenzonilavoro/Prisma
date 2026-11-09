@@ -815,7 +815,8 @@ extension StatoShell {
         var c = dati.clienti[i]
         var conf = c.conformita ?? ConformitaCliente()
         let prima = conf.documento
-        let titolo = a.argomenti["documento"].flatMap { d in dati.documenti.first { $0.id == d }?.titolo }
+        // Il titolo del documento letto: dai Documenti, oppure (da «Lascia cadere qui») quello del file appena archiviato
+        let titolo = a.argomenti["documento"].flatMap { d in dati.documenti.first { $0.id == d }?.titolo } ?? a.argomenti["titoloDocumento"]
         let numero = a.argomenti["numero"]?.trimmingCharacters(in: .whitespaces)
         conf.documento = DocumentoIdentita(tipo: titolo.flatMap(Self.tipoIdentitaTagliando) ?? prima?.tipo,
                                            numero: (numero?.isEmpty ?? true) ? nil : numero,

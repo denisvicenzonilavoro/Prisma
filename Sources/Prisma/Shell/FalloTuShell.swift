@@ -464,6 +464,9 @@ extension StatoShell {
 
         case RegistroStrumenti.documentiArchivia:
             return archiviaDocumentoCaduto(a)
+        // «Lascia cadere qui»: le posizioni lette in un estratto conto (LasciaCadereShell.swift)
+        case LasciaCadereVera.strumentoPosizione:
+            return eseguiPosizioneCaduta(a)
 
         // Fase 4: «Le routine» (CollegaRoutineShell.swift)
         case RoutineVera.strumentoPosizioneFirmata:
@@ -535,6 +538,8 @@ extension StatoShell {
             if let u = urlDocumento(d) { try? FileManager.default.removeItem(at: u) }
             if let u = urlTesto(d) { try? FileManager.default.removeItem(at: u) }
             dati.documenti.removeAll { $0.id == id }
+        case LasciaCadereVera.strumentoPosizione:
+            guard disfaPosizioneCaduta(a) else { return false }
         // Fase 4: «Le routine», «Scrive come te» e «Tre livelli»
         case RoutineVera.strumentoPosizioneFirmata:
             return disfaPosizioneFirmataRoutine(a)

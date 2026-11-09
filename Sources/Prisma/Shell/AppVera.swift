@@ -125,6 +125,8 @@ struct AppVera: View {
                     schedaAmbito(larghezza: interna - col.paddingScheda.leading - col.paddingScheda.trailing)
                     // Il tagliando dei dati (fase 4): salute dell'archivio e cose da sistemare, apre la pagina (fuori dalla modalità cliente)
                     SchedaTagliandoColonnaVera()
+                    // «Lascia cadere qui»: i documenti archiviati oggi e dove sono andati (VisteLasciaCadereVera.swift)
+                    ArchiviatiOggiVeraVista()
                     if let t = urgente { schedaAvviso(t) }
                     if let c = cliente, !stato.veraPortafoglio { quadro(c) }
                 }
@@ -575,7 +577,7 @@ struct AppVera: View {
                 .padding(ch.paddingVoce)
                 .background { Capsule(style: .continuous).fill(ch.fondoVoce) }
                 if v.parla {
-                    Button { stato.voceVera.zitta() } label: { Label("Interrompi", systemImage: "speaker.slash") }
+                    Button { stato.fermaLetturaTrenta(); stato.voceVera.zitta() } label: { Label("Interrompi", systemImage: "speaker.slash") }
                         .buttonStyle(.apple)
                         .fixedSize()
                         .help("Vera smette di parlare")
@@ -859,6 +861,13 @@ struct NuvolaVera: View {
                     // «Fallo tu»: la scheda di conferma, niente si esegue prima di «Conferma»
                     // In modalità cliente non si vedono le schede del sussurro e del mercato, né quelle di una routine,
                     // di un piano o di azioni su altri clienti (`schedaVisibileSulloSchermo`)
+                    // «Lascia cadere qui»: di chi è il documento (più clienti possibili) e i dati letti da correggere
+                    if messaggio.titolo == StatoShell.titoloSceltaCaduto {
+                        SceltaClienteCadutoVista(messaggio: messaggio.id)
+                    }
+                    if let c = messaggio.conferma, c.origine == .documento, c.stato == .daConfermare, stato.schedaVisibileSulloSchermo(messaggio) {
+                        CampiLettiVeraVista(messaggio: messaggio.id, scheda: c)
+                    }
                     if let c = messaggio.conferma, stato.schedaVisibileSulloSchermo(messaggio) {
                         SchedaConfermaVeraVista(scheda: c, messaggio: messaggio.id)
                             .padding(.top, b.sopraScheda)
@@ -869,7 +878,7 @@ struct NuvolaVera: View {
                     }
                     // Fase 2: «Il cliente in 30 secondi» e gli articoli della biblioteca delle norme
                     if let t = messaggio.trenta {
-                        TrentaSecondiVista(scheda: t)
+                        TrentaSecondiVista(scheda: t, messaggio: messaggio.id)
                     }
                     if let n = messaggio.norme {
                         NormeVeraVista(risposta: n)

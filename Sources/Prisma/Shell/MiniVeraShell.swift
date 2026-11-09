@@ -72,6 +72,7 @@ extension StatoShell {
             mini.nota = "Con la dettatura del Mac scrivi qui sotto, oppure parla con Vera nella sua app (⌥⌘E)."
             return
         }
+        fermaLetturaTrenta()
         voceVera.zitta()
         let scelta = vera.riconoscimento == .automatico
             ? (ripiegoAscolto ?? SceltaRiconoscimento.catenaAutomatica.first ?? .classico) : vera.riconoscimento

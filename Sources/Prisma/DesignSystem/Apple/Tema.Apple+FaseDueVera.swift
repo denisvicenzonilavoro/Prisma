@@ -20,6 +20,61 @@ extension Tema.Apple {
         static let sopraScheda: CGFloat = 10
         static let avatarTrenta: CGFloat = 34
         static let fonti = Carattere(dimensione: 12, peso: .semibold)
+        /// La lettura a voce: l'anello del conto alla rovescia (rubino, come nel template), i secondi al centro, le sezioni
+        /// non ancora dette in trasparenza (template `.s30`, opacità 0,25 → 1 in 0,5 s).
+        static let anelloTrenta: CGFloat = 46
+        static let spessoreAnelloTrenta: CGFloat = 4.5
+        static let coloreAnelloTrenta = Color.dinamico(chiaro: Color(hex: "#C2264B"), scuro: Color(hex: "#FF5C83"))
+        static let binarioAnelloTrenta = Colore.chip
+        static let secondiTrenta = Carattere(dimensione: 15, peso: .bold)
+        static let spazioAscolto: CGFloat = 10
+        static let opacitaAttesa: Double = 0.25
+        static let cambioSezione = 0.5
+        static let fineAnello = 0.4
+        static let fondoSezioneDetta = Color.dinamico(chiaro: Color(hex: "#C2264B").opacity(0.06), scuro: Color(hex: "#FF5C83").opacity(0.10))
+        /// La card nella Panoramica del dossier («Raccontami Marco»).
+        static let sferaCardTrenta: CGFloat = 30
+        static let titoloCardTrenta = Carattere(dimensione: 14, peso: .bold)
+        static let sottotitoloCardTrenta = Carattere(dimensione: 12.5, peso: .regular)
+
+        // MARK: Lascia cadere qui · dati letti, scelta del cliente, «Archiviati da Vera oggi»
+
+        /// I dati letti da correggere uno per uno prima di «Conferma»: etichetta a sinistra, campo a destra, la pagina.
+        static let titoloCampiLetti = Carattere(dimensione: 12.5, peso: .semibold)
+        static let etichettaCampo = Carattere(dimensione: 12.5, peso: .regular)
+        static let valoreCampo = Carattere(dimensione: 13, peso: .medium)
+        static let larghezzaEtichettaCampo: CGFloat = 150
+        static let larghezzaValorePosizione: CGFloat = 120
+        static let spazioCampi: CGFloat = 5
+        static let paddingCampiLetti = Misura.padding(10, 12)
+        /// La scelta del cliente: un pulsante per cliente con l'avatar.
+        static let avatarScelta: CGFloat = 22
+        static let spazioScelta: CGFloat = 8
+        /// Le righe di «Archiviati da Vera oggi»: il foglietto con il colore del tipo (template `rigaD`), la pillola, dove.
+        static let foglietto = CGSize(width: 22, height: 28)
+        static let raggioFoglietto: CGFloat = 3
+        static let testataFoglietto: CGFloat = 4
+        static let fondoFoglietto = Color.white
+        static let massimoArchiviati = 4
+        static let spazioArchiviati: CGFloat = 8
+        static let titoloArchiviato = Carattere(dimensione: 12.5, peso: .semibold)
+        static let dettaglioArchiviato = Carattere(dimensione: 11.5, peso: .regular)
+        static func coloreTipo(_ c: CategoriaDocumento) -> Color {
+            switch c {
+            case .kid: return Color(hex: "#2563EB")
+            case .identita: return Color(hex: "#8B5CF6")
+            default: return Colore.inchiostro2
+            }
+        }
+        static func coloreTipo(_ t: Documento.Tipo, categoria c: CategoriaDocumento) -> Color {
+            if c == .identita || c == .kid { return coloreTipo(c) }
+            switch t {
+            case .estrattoConto: return Color(hex: "#2FA35A")
+            case .polizza: return Color(hex: "#E08A00")
+            case .kid: return Color(hex: "#2563EB")
+            default: return Colore.inchiostro2
+            }
+        }
 
         // MARK: Citazioni delle norme
 

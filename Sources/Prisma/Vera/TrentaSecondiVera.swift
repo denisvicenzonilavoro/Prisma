@@ -3,8 +3,9 @@ import Foundation
 // «Il cliente in 30 secondi» (Vera/BRIEF.md, funzione 6; template «Il cliente in 30 secondi»): prima di una chiamata Vera
 // racconta la relazione in cinque sezioni fisse, ognuna con la sua fonte: chi è, la famiglia, cosa avete deciso, cosa
 // preferisce, cosa è in sospeso. Prima il codice: Prisma compone le cinque sezioni dalla scheda, dagli incontri, dalle
-// attività, dalle posizioni e dai ricordi. Qwen (se è pronto) le rende più scorrevoli in JSON con lo schema fisso; se
-// cambia o aggiunge una cifra, resta il testo di Prisma («Mai a caso»).
+// attività, dalle posizioni, dai messaggi e dai ricordi. Qwen (se è pronto) le rende più scorrevoli in JSON con lo schema fisso; se
+// cambia o aggiunge una cifra, resta il testo di Prisma («Mai a caso»). Si chiede a voce, per scritto o con un tocco dalla
+// scheda del cliente, e Vera la racconta a voce in 30 secondi, una sezione alla volta (TrentaSecondiShell.swift).
 
 struct SezioneTrenta: Codable, Equatable {
     var titolo: String
@@ -110,14 +111,20 @@ enum TrentaSecondiVera {
         let testoDeciso = deciso.isEmpty ? "Non ci sono ancora decisioni registrate negli incontri." : deciso.joined(separator: ". ") + "."
         let fonteDeciso = conclusi.isEmpty ? (obiettivi.isEmpty ? "Incontri" : "Gli obiettivi") : (conclusi.count == 1 ? "1 incontro" : "\(conclusi.count) incontri")
 
-        // Cosa preferisce
+        // Cosa preferisce: i ricordi, il canale dei messaggi che gli hai mandato davvero, gli incontri
         let suoi = ricordi.filter { $0.clienteId == c.id }.sorted { $0.data > $1.data }
-        var preferisce = suoi.prefix(3).map(\.testo)
+        let suoiMessaggi = messaggi.filter { $0.clienteId == c.id }
+        let canale = canalePreferito(suoiMessaggi)
+        var preferisce = suoi.prefix(canale == nil ? 3 : 2).map(\.testo)
+        if let canale { preferisce.append(canale == .mail ? "Di solito vi scrivete via mail" : "Di solito vi scrivete su Messaggi") }
         if let esperienza = f.incontri.sorted(by: { $0.data > $1.data }).first(where: { !$0.esperienza.isEmpty })?.esperienza {
             preferisce.append(esperienza.trimmingCharacters(in: .whitespacesAndNewlines))
         }
         let testoPreferisce = preferisce.isEmpty ? "Non lo so ancora: dimmi «ricorda che…» e me lo segno." : preferisce.prefix(3).joined(separator: ". ") + "."
-        let fontePreferisce = suoi.isEmpty ? "Gli incontri" : (suoi.count == 1 ? "1 ricordo" : "\(suoi.count) ricordi")
+        var fontiPreferisce: [String] = []
+        if !suoi.isEmpty { fontiPreferisce.append(suoi.count == 1 ? "1 ricordo" : "\(suoi.count) ricordi") }
+        if canale != nil { fontiPreferisce.append("i messaggi") }
+        let fontePreferisce = fontiPreferisce.isEmpty ? "Gli incontri" : maiuscola(elenco(fontiPreferisce))
 
         // In sospeso
         var sospeso: [String] = []
@@ -128,6 +135,13 @@ enum TrentaSecondiVera {
         for a in f.attivita.filter({ !$0.completata }).sorted(by: { $0.scadenza < $1.scadenza }).prefix(2) {
             sospeso.append("da fare: \(a.titolo.prefix(1).lowercased() + a.titolo.dropFirst())")
         }
+        // Un messaggio preparato e mai aperto in Mail o in Messaggi negli ultimi due mesi: è rimasto in sospeso
+        let daQuando = Calendar.current.date(byAdding: .day, value: -giorniBozza, to: oggi) ?? oggi
+        let bozza = suoiMessaggi.filter { $0.stato == .bozza && $0.creatoIl >= daQuando }.max { $0.creatoIl < $1.creatoIl }
+        if let b = bozza {
+            let oggetto = b.oggetto?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            sospeso.append("un messaggio ancora da mandare" + (oggetto.isEmpty ? "" : " («\(oggetto)»)"))
+        }
         if !c.consensi.privacy { sospeso.append("manca il consenso privacy") }
         if !f.analisiSalvata { sospeso.append("mancano le spese mensili (Analisi 360)") }
         let testoSospeso = sospeso.isEmpty ? "Niente in sospeso." : (sospeso.first!.prefix(1).uppercased() + elenco(sospeso).dropFirst()) + "."
@@ -136,11 +150,53 @@ enum TrentaSecondiVera {
                        SezioneTrenta(titolo: titoli[1], testo: testoFamiglia, fonte: "La scheda"),
                        SezioneTrenta(titolo: titoli[2], testo: testoDeciso, fonte: fonteDeciso),
                        SezioneTrenta(titolo: titoli[3], testo: testoPreferisce, fonte: fontePreferisce),
-                       SezioneTrenta(titolo: titoli[4], testo: testoSospeso, fonte: "Agenda e posizioni")]
+                       SezioneTrenta(titolo: titoli[4], testo: testoSospeso, fonte: bozza == nil ? "Agenda e posizioni" : "Agenda, posizioni e messaggi")]
         let annoFa = Calendar.current.date(byAdding: .year, value: -1, to: oggi) ?? oggi
         return SchedaTrentaSecondi(clienteId: c.id, nome: c.nome, tema: c.tema, canali: canali, sezioni: sezioni,
                                    incontri: f.incontri.count, messaggi: messaggi.filter { $0.clienteId == c.id && $0.creatoIl >= annoFa }.count,
                                    ricordi: suoi.count, documenti: f.documenti.count)
+    }
+
+    /// Una bozza più vecchia di così non è più «in sospeso».
+    static let giorniBozza = 60
+
+    private static func maiuscola(_ s: String) -> String { s.prefix(1).uppercased() + s.dropFirst() }
+
+    /// Il canale dei messaggi che il consulente ha aperto davvero in Mail o in Messaggi: quello di almeno due terzi, con
+    /// almeno due messaggi (nil se non ce ne sono abbastanza o se usa i due canali allo stesso modo).
+    static func canalePreferito(_ messaggi: [MessaggioCliente]) -> CanaleMessaggio? {
+        let usciti = messaggi.filter { $0.stato == .apertoInMail || $0.stato == .apertoInMessaggi }
+        guard usciti.count >= 2 else { return nil }
+        let mail = usciti.filter { $0.stato == .apertoInMail }.count
+        if mail * 3 >= usciti.count * 2 { return .mail }
+        if (usciti.count - mail) * 3 >= usciti.count * 2 { return .messaggi }
+        return nil
+    }
+
+    // MARK: - La lettura a voce in 30 secondi (template: anello del conto alla rovescia e «Ascolta di nuovo»)
+
+    /// Quanto dura il racconto: l'anello conta alla rovescia da qui.
+    static let durata: Double = 30
+    /// Caratteri al secondo della sintesi vocale di macOS alla velocità 1 (stima prudente per l'italiano).
+    static let caratteriAlSecondo: Double = 15
+    /// La velocità più alta che si chiede alla voce (oltre non si capisce più).
+    static let velocitaMassima: Double = 1.4
+
+    /// Quello che Vera dice per una sezione: la prima comincia con «Marco Bianchi in trenta secondi.»; poi il titolo e il
+    /// testo, così com'è sullo schermo (stesse cifre), ripulito per la voce.
+    static func parlato(_ s: SchedaTrentaSecondi, sezione i: Int) -> String {
+        guard s.sezioni.indices.contains(i) else { return "" }
+        let x = s.sezioni[i]
+        let corpo = "\(x.titolo). \(TestoParlato.pulisci(x.testo))"
+        return i == 0 ? "\(s.nome) in trenta secondi. " + corpo : corpo
+    }
+
+    /// La velocità della voce per stare nei 30 secondi: quella scelta in Impostazioni, più svelta solo se il racconto è
+    /// lungo, mai oltre `velocitaMassima`.
+    static func velocita(_ s: SchedaTrentaSecondi, preferita: Double) -> Double {
+        let caratteri = s.sezioni.indices.reduce(0) { $0 + parlato(s, sezione: $1).count }
+        let necessaria = Double(caratteri) / (caratteriAlSecondo * durata)
+        return min(velocitaMassima, max(preferita, necessaria))
     }
 
     // MARK: - Qwen rende le sezioni scorrevoli (JSON, «Mai a caso»)
