@@ -19,6 +19,8 @@ extension Tema.Apple {
         static let saturazione: Double = 1.25
         /// Sotto questa larghezza il registro va sotto i comandi.
         static let larghezzaStretta: CGFloat = 1100
+        /// La carta in piccolo nella vetrina del tema (istantanea 400).
+        static let scalaVetrina: CGFloat = 0.42
 
         enum Testata {
             static let margine: CGFloat = 120

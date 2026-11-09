@@ -288,6 +288,26 @@ extension VetrinaApple {
                     .frame(width: Tema.Apple.Apparecchio.larghezza * M.scalaTelefono,
                            height: Tema.Apple.Apparecchio.altezza * M.scalaTelefono)
             }
+            #if os(macOS)
+            // «Luce» giro 14: una carta della notte di prova con i due timbri (dati di prova)
+            RiquadroVetrinaApple(titolo: "Carta della notte") {
+                CartaNotteVista(carta: CartaNotte(id: "notte-prova-vetrina", tipo: .fascicolo, clienteId: nil, riferimento: "vetrina",
+                                                  titolo: "Il fascicolo di Giulia è pronto",
+                                                  descrizione: "Per l'incontro delle 09:30: 3 report. Lo metto nei Documenti quando approvi.",
+                                                  conferma: TestiNotte.confermaFascicolo,
+                                                  preparataIl: Date(timeIntervalSinceReferenceDate: 0), perIl: Date(timeIntervalSinceReferenceDate: 0)),
+                                spostamento: 0, timbri: false, ruota: false)
+                    .overlay(alignment: .topLeading) {
+                        TimbroNotte(testo: TestiNotte.timbroApprova, colore: Tema.Apple.Notte.Timbro.approva, sinistra: true)
+                    }
+                    .overlay(alignment: .topTrailing) {
+                        TimbroNotte(testo: TestiNotte.timbroPiuTardi, colore: Tema.Apple.Notte.Timbro.piuTardi, sinistra: false)
+                    }
+                    .scaleEffect(Tema.Apple.Notte.scalaVetrina, anchor: .topLeading)
+                    .frame(width: Tema.Apple.Notte.Pila.larghezza * Tema.Apple.Notte.scalaVetrina,
+                           height: Tema.Apple.Notte.Pila.altezza * Tema.Apple.Notte.scalaVetrina, alignment: .topLeading)
+            }
+            #endif
             RiquadroVetrinaApple(titolo: "Tela animata e shader (fermi)") {
                 HStack(spacing: M.spazioInterno) {
                     TelaAnimata(tempoFinale: 1) { c, misura, t in

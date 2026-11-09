@@ -81,7 +81,7 @@ struct CarteNotte: View {
         if !rimanenti.isEmpty {
             disposizione(stretta: stretta) {
                 VStack(spacing: N.Comandi.sottoPila) {
-                    PilaNotte(carte: rimanenti, notte: n, dx: dx, entrate: entrate, inVolo: inVolo,
+                    PilaNotte(carte: rimanenti, notte: n, clienti: clientiCarte(rimanenti), dx: dx, entrate: entrate, inVolo: inVolo,
                               trascina: { trascina($0) }, rilascia: { rilascia() }, apri: { stato.apriCartaNotte($0) },
                               sopra: { monitor.sopraPila = $0 })
                     ComandiNotte(posizione: notte.registro.count + 1, totale: max(notte.pila.count, notte.registro.count + 1),
@@ -113,6 +113,14 @@ struct CarteNotte: View {
                 RegistroNotte(notte: notte, stretta: false)
             }
         }
+    }
+
+    /// I clienti delle carte visibili (avatar e nome).
+    private func clientiCarte(_ carte: [CartaNotte]) -> [String: Cliente] {
+        let ids = Set(carte.prefix(Tema.Apple.Notte.Pila.visibili).compactMap(\.clienteId))
+        var elenco: [String: Cliente] = [:]
+        for c in stato.dati.clienti where ids.contains(c.id) && elenco[c.id] == nil { elenco[c.id] = c }
+        return elenco
     }
 
     private func conteggiFine(_ n: NotteDiLavoro?) -> (approvate: Int, rimandate: Int) {
@@ -235,6 +243,7 @@ private struct TestataNotte: View {
 private struct PilaNotte: View {
     let carte: [CartaNotte]
     let notte: NotteDiLavoro?
+    let clienti: [String: Cliente]
     let dx: CGFloat
     let entrate: Bool
     let inVolo: Bool
@@ -255,7 +264,7 @@ private struct PilaNotte: View {
         ZStack(alignment: .top) {
             ForEach(Array(visibili.enumerated()).reversed(), id: \.element.id) { k, c in
                 let davanti = k == 0
-                CartaNotteVista(carta: c, daIeri: notte.map { MotoreNotte.daIeri(c, in: $0) } ?? false,
+                CartaNotteVista(carta: c, cliente: c.clienteId.flatMap { clienti[$0] }, daIeri: notte.map { MotoreNotte.daIeri(c, in: $0) } ?? false,
                                 spostamento: davanti ? dx : 0, timbri: davanti,
                                 ruota: !calmo, apri: { apri(c.id) })
                     .scaleEffect(1 - CGFloat(k) * P.riduzione, anchor: .top)
@@ -308,8 +317,8 @@ private struct PilaNotte: View {
 /// Una carta della notte (anche nella vetrina): tassello e occhiello del tipo, cliente, titolo, descrizione, piede con
 /// «Apri ›», timbri durante il trascinamento.
 struct CartaNotteVista: View {
-    @Environment(StatoShell.self) var stato
     let carta: CartaNotte
+    var cliente: Cliente? = nil
     var daIeri = false
     var spostamento: CGFloat = 0
     var timbri = true
@@ -330,7 +339,7 @@ struct CartaNotteVista: View {
                     .carattereApple(C.occhiello)
                     .foregroundColor(tinta)
                 Spacer(minLength: C.spazioRiga)
-                if let id = carta.clienteId, let c = stato.dati.clienti.first(where: { $0.id == id }) {
+                if let c = cliente {
                     AvatarCliente(iniziali: c.iniziali, tinta: c.tinta.colori, lato: C.avatar)
                     Text(c.nome)
                         .carattereApple(C.nome)
