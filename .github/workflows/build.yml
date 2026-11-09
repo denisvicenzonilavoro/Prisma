@@ -125,6 +125,17 @@ jobs:
             exit 1
           fi
 
+      - name: "Prisma del cliente: lettore del file (Node, solo prova)"
+        run: |
+          # «Luce» giro 15 (decisioni 3 e 109): il lettore JavaScript del file del cliente non usa la rete; Prisma scrive un
+          # file di prova (contenuto e password di prova) e Node, solo qui e mai nell'app, lo apre con il lettore vero
+          if grep -nE 'fetch\(|XMLHttpRequest|WebSocket|sendBeacon|import\(|https?://' Sources/Prisma/Risorse/PrismaCliente/lettore.js; then
+            echo "::error::Il lettore del Prisma del cliente non deve usare la rete"; exit 1
+          fi
+          node --version
+          "Prisma.app/Contents/MacOS/Prisma" --prova-file-cliente "$PWD/file-cliente"
+          node Supporto/prova-file-cliente.mjs "$PWD/file-cliente"
+
       - name: Verifica Prisma.app
         run: |
           APP=Prisma.app

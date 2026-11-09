@@ -81,13 +81,14 @@ enum CompositorePrismaCliente {
                     PosizioneMini(nome: p.nome, canale: p.canale.nomeBreve,
                                   coloreCanaleHex: p.canale == .alleanza ? Tema.Apple.PrismaCliente.canaleAlleanzaHex
                                       : Tema.Apple.PrismaCliente.canaleIndipendenteHex,
-                                  valore: p.valore, data: p.dataValore ?? creato)
+                                  valore: p.valore, data: secondi(p.dataValore ?? creato))
                 }
             miniPosizioni = elenco.isEmpty ? nil : elenco
         }
 
-        let testoLettera = voci.contains(.lettera) ? lettera.flatMap { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : $0 } : nil
-        let miniSinistri = voci.contains(.sinistro) && !sinistri.isEmpty ? sinistri : nil
+        let testoLettera: String? = voci.contains(.lettera) ? lettera.flatMap { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : $0 } : nil
+        let miniSinistri: [SinistroMini]? = voci.contains(.sinistro) && !sinistri.isEmpty
+            ? sinistri.map { s -> SinistroMini in var m = s; m.aggiornatoIl = secondi(s.aggiornatoIl); return m } : nil
         return ContenutoPrismaCliente(nomeBattesimo: TestiPrismaCliente.nomeBattesimo(cliente), consulente: consulente,
                                       creatoIl: creato, validoFinoAl: fino, obiettivi: miniObiettivi, lineaVita: linea,
                                       lettera: testoLettera, film: voci.contains(.film) ? film : nil,
@@ -95,6 +96,11 @@ enum CompositorePrismaCliente {
                                       giornata: voci.contains(.giornata) ? giornata : nil,
                                       sinistri: miniSinistri, posizioni: miniPosizioni, avvertenze: avvertenze, diProva: diProva,
                                       conFilm: voci.contains(.film) && (conFilm || film != nil))
+    }
+
+    /// Una data al secondo intero (il JSON del file porta le date ISO 8601 senza frazioni).
+    static func secondi(_ d: Date) -> Date {
+        Date(timeIntervalSinceReferenceDate: d.timeIntervalSinceReferenceDate.rounded(.down))
     }
 
     /// La quota già da parte (decisione 81): `disponibileOggi / importo`, fra 0 e 1.
