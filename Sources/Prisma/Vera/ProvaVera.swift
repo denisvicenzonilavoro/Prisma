@@ -499,6 +499,29 @@ enum ProvaVera {
         provaSala.areaPosizioniDaAprire = nil
         provaSala.portafoglio = false
         provaSala.apri(.sala)
+        // I traguardi (§5.4.4, dati di prova di TraguardiDiProva): la riga «Da festeggiare» del dossier e la notifica
+        // interna, che apre Messaggi; festeggiato, spariscono tutte e due; in modalità cliente la notifica non c'è
+        let festa = StatoShell(persistente: false)
+        let daFesteggiare = festa.traguardiDaFesteggiare(cliente: "sofia")
+        let notificheFesta = MotoreNotifiche.calcola(festa).filter { $0.id.hasPrefix(MotoreNotifiche.prefissoTraguardo) }
+        controlla(!daFesteggiare.isEmpty && daFesteggiare.allSatisfy { $0.clienteId == "sofia" && $0.festeggiatoIl == nil }
+                  && notificheFesta.contains { $0.id == MotoreNotifiche.prefissoTraguardo + (daFesteggiare.first?.id ?? "") && $0.app == .messaggi },
+                  "Traguardi: Sofia ha un traguardo da festeggiare nel dossier e nelle notifiche interne")
+        if let n = notificheFesta.first(where: { $0.id == MotoreNotifiche.prefissoTraguardo + (daFesteggiare.first?.id ?? "") }) {
+            festa.apriNotifica(n)
+            controlla(festa.appAttiva == .messaggi, "Traguardi: la notifica del traguardo apre Messaggi")
+        }
+        if let t = daFesteggiare.first {
+            festa.segnaFesteggiato(t)
+            controlla(!festa.traguardiDaFesteggiare(cliente: "sofia").contains { $0.id == t.id }
+                      && !MotoreNotifiche.calcola(festa).contains { $0.id == MotoreNotifiche.prefissoTraguardo + t.id },
+                      "Traguardi: festeggiato, il traguardo esce dal dossier e dalle notifiche")
+        }
+        festa.clienteAttivoId = "giulia"
+        festa.entraModoCliente(avviso: false)
+        controlla(!MotoreNotifiche.calcola(festa).contains { $0.id.hasPrefix(MotoreNotifiche.prefissoTraguardo) },
+                  "Traguardi: in modalità cliente nessuna notifica dei traguardi")
+        festa.esciModoCliente()
         provaSala.apriVoceNovita(NovitaLuce.dopoLaFirma)
         controlla(provaSala.appAttiva == .pratiche && provaSala.schedaPratiche == .dopoLaFirma,
                   "Novità: «Le pratiche dopo la firma» apre Pratiche sulla scheda «Dopo la firma»")
