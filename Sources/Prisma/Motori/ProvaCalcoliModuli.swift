@@ -7,7 +7,8 @@ import PDFKit
 /// prova (date gg/mm/aaaa, premio con la virgola), i mancanti e le firme; scrittura e rilettura dei valori; il PDF piatto
 /// con il testo nelle caselle; l'IBAN (mod 97, mascherato, solo con l'interruttore acceso); nessuna risposta del cliente
 /// (titolare effettivo, PEP, origine dei fondi, scopo) compilata, neanche con Vera o con una correzione a mano; Vera che
-/// propone solo dati ammessi e per etichette date; il modulo Alleanza non compilabile (decisione 60).
+/// propone solo dati ammessi e per etichette date; il modulo Alleanza non compilabile (decisione 60); «Aggiorna anche il
+/// dossier» che riporta nel cliente solo i dati di un campo strutturato (data in gg/mm/aaaa, IBAN valido e conservato).
 /// Chiamata da `ProvaCalcoli.esegui()`.
 enum ProvaCalcoliModuli {
     static func esegui(_ verifica: VerificaCalcoli) {
@@ -20,6 +21,51 @@ enum ProvaCalcoliModuli {
         vera(verifica)
         caselle(verifica)
         statoCompilazione(verifica)
+        aggiornaDossier(verifica)
+    }
+
+    /// «Aggiorna anche il dossier» (§7.2.4): il valore corretto a mano entra nel dossier solo per i dati strutturati.
+    private static func aggiornaDossier(_ verifica: VerificaCalcoli) {
+        var c = clienteDiProva(iban: nil)
+        var p: Posizione? = nil
+        verifica.vero("Dossier: codice fiscale corretto, maiuscolo e senza spazi",
+                      CompilatoreModuli.aggiornaDossier(.codiceFiscale, testo: "rss glu 89c54 a944x", cliente: &c, posizione: &p,
+                                                        conservaIban: false) && c.codiceFiscale == "RSSGLU89C54A944X")
+        verifica.vero("Dossier: data di nascita da gg/mm/aaaa",
+                      CompilatoreModuli.aggiornaDossier(.dataNascita, testo: "15/03/1989", cliente: &c, posizione: &p, conservaIban: false)
+                      && c.dataNascita.map { Formati.dataBreve.string(from: $0) } == "15/03/1989")
+        let primaNascita = c.dataNascita
+        verifica.vero("Dossier: una data non valida non cambia il dossier",
+                      !CompilatoreModuli.aggiornaDossier(.dataNascita, testo: "31 febbraio", cliente: &c, posizione: &p, conservaIban: false)
+                      && c.dataNascita == primaNascita)
+        verifica.vero("Dossier: il comune va nella sede della scheda fiscale",
+                      CompilatoreModuli.aggiornaDossier(.comune, testo: "Treviso", cliente: &c, posizione: &p, conservaIban: false)
+                      && c.fiscale?.sede.comune == "Treviso")
+        verifica.vero("Dossier: il numero del documento va in Conformità",
+                      CompilatoreModuli.aggiornaDossier(.documentoNumero, testo: "CA12345BX", cliente: &c, posizione: &p, conservaIban: false)
+                      && c.conformita?.documento?.numero == "CA12345BX")
+        verifica.vero("Dossier: l'IBAN solo se conservato (decisione 40)",
+                      !CompilatoreModuli.aggiornaDossier(.iban, testo: "IT60X0542811101000000123456", cliente: &c, posizione: &p,
+                                                         conservaIban: false) && c.iban == nil)
+        verifica.vero("Dossier: un IBAN non valido non entra",
+                      !CompilatoreModuli.aggiornaDossier(.iban, testo: "IT61X0542811101000000123456", cliente: &c, posizione: &p,
+                                                         conservaIban: true) && c.iban == nil)
+        verifica.vero("Dossier: un IBAN valido e conservato entra",
+                      CompilatoreModuli.aggiornaDossier(.iban, testo: "IT60 X054 2811 1010 0000 0123 456", cliente: &c, posizione: &p,
+                                                        conservaIban: true) && c.iban == "IT60X0542811101000000123456")
+        verifica.vero("Dossier: i beneficiari senza proposta restano nel modulo",
+                      !CompilatoreModuli.aggiornaDossier(.beneficiari, testo: "Gli eredi legittimi", cliente: &c, posizione: &p,
+                                                         conservaIban: false))
+        p = AiutiProva.posizione("Proposta", .protezione, 0)
+        verifica.vero("Dossier: i beneficiari vanno nella proposta",
+                      CompilatoreModuli.aggiornaDossier(.beneficiari, testo: "Gli eredi legittimi", cliente: &c, posizione: &p,
+                                                        conservaIban: false) && p?.beneficiari == "Gli eredi legittimi")
+        let prima = c
+        verifica.vero("Dossier: indirizzo, premio e capitale restano nel modulo",
+                      !CompilatoreModuli.aggiornaDossier(.indirizzo, testo: "Via Roma 3", cliente: &c, posizione: &p, conservaIban: false)
+                      && !CompilatoreModuli.aggiornaDossier(.premio, testo: "32,40", cliente: &c, posizione: &p, conservaIban: false)
+                      && !CompilatoreModuli.aggiornaDossier(.capitale, testo: "150.000", cliente: &c, posizione: &p, conservaIban: false)
+                      && c == prima)
     }
 
     /// Un cliente di prova con tutto ciò che serve (dati di prova dichiarati, inventati).

@@ -105,6 +105,80 @@ enum CompilatoreModuli {
         }
     }
 
+    // MARK: - «Aggiorna anche il dossier»
+
+    /// I dati che una correzione a mano può riportare nel dossier (§7.2.4): quelli che stanno in un solo campo
+    /// strutturato. Indirizzo (via e civico insieme), cifre, date e scelte della proposta, luogo e data e consulente
+    /// restano nel modulo.
+    static func aggiornabile(_ d: DatoModulo) -> Bool {
+        switch d {
+        case .cognome, .nome, .codiceFiscale, .dataNascita, .luogoNascita, .cap, .comune, .provincia, .telefono, .email,
+             .professione, .documentoNumero, .documentoRilascio, .documentoScadenza, .beneficiari, .numeroContratto, .iban:
+            return true
+        case .indirizzo, .statoCivile, .documentoTipo, .premio, .frequenza, .decorrenza, .scadenza, .capitale, .prodotto,
+             .luogoData, .consulente:
+            return false
+        }
+    }
+
+    /// Riporta nel dossier il valore corretto a mano («Aggiorna anche il dossier», dopo la conferma). false se il dato
+    /// non si riporta o il valore non si legge: una data non in gg/mm/aaaa, un IBAN non valido o non conservato
+    /// (decisione 40), un valore vuoto, un dato della proposta senza proposta.
+    static func aggiornaDossier(_ dato: DatoModulo, testo: String, cliente c: inout Cliente, posizione p: inout Posizione?,
+                                conservaIban: Bool) -> Bool {
+        let t = testo.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard aggiornabile(dato), !t.isEmpty else { return false }
+        func data() -> Date? { Formati.dataBreve.date(from: t).map(ValoriDaDocumento.mezzogiorno) }
+        func fiscale(_ modifica: (inout DatiFiscaliCliente) -> Void) {
+            var f = c.fiscale ?? DatiFiscaliCliente()
+            modifica(&f)
+            c.fiscale = f
+        }
+        func documento(_ modifica: (inout DocumentoIdentita) -> Void) {
+            var conf = c.conformita ?? ConformitaCliente()
+            var d = conf.documento ?? DocumentoIdentita()
+            modifica(&d)
+            conf.documento = d
+            c.conformita = conf
+        }
+        switch dato {
+        case .cognome: fiscale { $0.cognome = t }
+        case .nome: fiscale { $0.nome = t }
+        case .codiceFiscale: c.codiceFiscale = t.replacingOccurrences(of: " ", with: "").uppercased()
+        case .dataNascita:
+            guard let d = data() else { return false }
+            c.dataNascita = d
+        case .luogoNascita: c.luogoNascita = t
+        case .cap: fiscale { $0.sede.cap = t }
+        case .comune: fiscale { $0.sede.comune = t }
+        case .provincia: fiscale { $0.sede.provincia = t.uppercased() }
+        case .telefono: c.telefono = t
+        case .email: c.email = t
+        case .professione: c.professione = t
+        case .documentoNumero: documento { $0.numero = t }
+        case .documentoRilascio:
+            guard let d = data() else { return false }
+            documento { $0.rilasciatoIl = d }
+        case .documentoScadenza:
+            guard let d = data() else { return false }
+            documento { $0.scadenza = d }
+        case .beneficiari:
+            guard p != nil else { return false }
+            p?.beneficiari = t
+        case .numeroContratto:
+            guard p != nil else { return false }
+            p?.numeroContratto = t
+        case .iban:
+            let i = IBAN.pulito(t)
+            guard conservaIban, IBAN.valido(i) else { return false }
+            c.iban = i
+        case .indirizzo, .statoCivile, .documentoTipo, .premio, .frequenza, .decorrenza, .scadenza, .capitale, .prodotto,
+             .luogoData, .consulente:
+            return false
+        }
+        return true
+    }
+
     /// «al mese», «al trimestre»… (nil per il premio unico).
     static func perFrequenza(_ f: Frequenza) -> String? {
         switch f {
