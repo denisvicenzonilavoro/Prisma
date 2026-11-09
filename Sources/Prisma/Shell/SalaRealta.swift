@@ -180,34 +180,6 @@ struct PalcoRealtaAumentata: View {
     }
 }
 
-/// Le etichette sopra il fermo-immagine: le stesse posizioni del disegno di `CristalloFermo`.
-struct EtichetteFermeRealta: View {
-    let esito: EsitoRealta
-    let nome: String
-    let anno: Int?
-    let esploso: Bool
-    let scelto: String?
-    let targhettaVisibile: Bool
-
-    @StateObject private var etichette = EtichetteRealta()
-
-    var body: some View {
-        GeometryReader { geo in
-            EtichetteSopraRealta(etichette: etichette, esito: esito, nome: nome, anno: anno, esploso: esploso, scelto: scelto,
-                                 targhettaVisibile: targhettaVisibile)
-                .onAppear { posiziona(geo.size) }
-                .onChange(of: geo.size) { _, s in posiziona(s) }
-                .onChange(of: anno) { _, _ in posiziona(geo.size) }
-                .onChange(of: esploso) { _, _ in posiziona(geo.size) }
-        }
-    }
-
-    private func posiziona(_ misura: CGSize) {
-        etichette.targhetta = CristalloFermo.puntoTarghetta(esito, anno: anno, esploso: esploso, misura: misura)
-        etichette.strati = CristalloFermo.puntiStrati(esito, anno: anno, esploso: esploso, misura: misura)
-    }
-}
-
 #if canImport(RealityKit)
 /// La scena RealityKit del Mac: sempre virtuale (nessuna fotocamera, nessun ARKit).
 struct ScenaRealtaMac: NSViewRepresentable {

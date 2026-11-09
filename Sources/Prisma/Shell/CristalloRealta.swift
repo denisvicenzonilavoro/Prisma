@@ -72,6 +72,10 @@ final class ControlloScenaRealta: ObservableObject {
     var tempo: Double = 0
     var calmo = false
     let etichette = EtichetteRealta()
+    /// Sull'iPhone e sull'iPad: un tocco su uno strato lo sceglie (la vista aggiorna la targhetta).
+    var sceltoCambiato: ((String?) -> Void)?
+    /// Sull'iPad del tavolo con la fotocamera: l'immagine della vista con la stanza, in memoria (decisione 27).
+    var scattaConStanza: ((@escaping (CGImage?) -> Void) -> Void)?
 }
 
 #if canImport(RealityKit)
