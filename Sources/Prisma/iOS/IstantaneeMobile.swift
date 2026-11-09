@@ -266,6 +266,13 @@ enum IstantaneeMobile {
                     m.apri(.clienti)
                     m.percorsoClienti = [.potenziali]
                 },
+                // «Luce» giro 15: i sinistri in sola lettura (i tre sinistri di prova, ridotti come nell'istantanea di
+                // «Prisma ovunque»: niente descrizione, numeri, stime né importi)
+                Scena(nome: "836-sinistri-iphone") { m in
+                    m.stato.dati.sinistri = m.stato.dati.sinistri.map(SpazioOvunque.sinistroPerOvunque)
+                    m.apri(.clienti)
+                    m.percorsoClienti = [.sinistri]
+                },
                 // Mercato (giro 7): la prima tessera grande, le altre su due colonne, chi è toccato e gli avvisi
                 Scena(nome: "540-mercato") { m in IstantaneeMobile.mercato(m) },
                 // Inquadra e capisci (giro 5): la schermata della fotocamera a lettura finita, con il foglio di prova

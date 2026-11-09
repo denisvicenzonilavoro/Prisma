@@ -24,6 +24,8 @@ enum DestinazioneTelefono: Hashable {
     case area(String, filtro: String)
     /// I potenziali clienti, in sola lettura («Luce» giro 12, PotenzialiTelefono.swift).
     case potenziali
+    /// I sinistri, in sola lettura («Luce» giro 15, SinistriTelefono.swift).
+    case sinistri
 }
 
 /// Il file che l'iPad chiede di scegliere con `.fileImporter` (`StatoShell.sceltaFileMobile`): sul Mac sono

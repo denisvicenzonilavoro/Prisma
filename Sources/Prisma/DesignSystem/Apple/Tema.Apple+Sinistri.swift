@@ -197,6 +197,16 @@ extension Tema.Apple.Pratiche {
         static let carattereCampi = Tema.Apple.Carattere.secondario
     }
 
+    /// I sinistri sull'iPhone, in sola lettura: la linea delle fasi in piccolo (nodi 12, filo 2, spazio 6).
+    enum SinistriTelefono {
+        static let nodo: CGFloat = 12
+        static let bordoNodo: CGFloat = 2
+        static let filo: CGFloat = 2
+        static let spazio: CGFloat = 6
+        static let sopraLinea: CGFloat = 8
+        static let fase = Tema.Apple.Carattere(dimensione: 12, peso: .semibold)
+    }
+
     /// La riga «Sinistri aperti» nella panoramica del dossier.
     enum DossierSinistri {
         static let riga = Tema.Apple.Carattere(dimensione: 13, peso: .semibold)

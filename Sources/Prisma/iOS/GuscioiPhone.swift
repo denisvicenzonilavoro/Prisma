@@ -192,6 +192,7 @@ extension View {
             case .area(let a, let filtro):
                 ElencoAreaTelefono(area: AreaPosizione(rawValue: a) ?? .investimento, filtro: FiltroPosizioniTelefono(chiave: filtro))
             case .potenziali: PotenzialiTelefono()
+            case .sinistri: SinistriTelefono()
             }
         }
     }
@@ -381,6 +382,22 @@ private struct ClientiTelefono: View {
                         VStack(alignment: .leading, spacing: E.spazioTesto) {
                             Text("Potenziali").carattereApple(E.nome).foregroundColor(E.coloreNome)
                             Text(TestiPassaparola.tilePotenziali.lowercased() + " e passaparola")
+                                .carattereApple(E.dettaglio).foregroundColor(E.coloreDettaglio)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        ChevronTelefono()
+                    }
+                    .schedaTelefono(premibile: true)
+                }
+                .buttonStyle(.plain)
+            }
+            // «Luce» giro 15: i sinistri, in sola lettura (mai in modalità cliente)
+            if !stato.inModoCliente && cerca.isEmpty && !stato.sinistriVisibili.isEmpty {
+                NavigationLink(value: DestinazioneTelefono.sinistri) {
+                    HStack(spacing: E.spazioRiga) {
+                        VStack(alignment: .leading, spacing: E.spazioTesto) {
+                            Text("Sinistri").carattereApple(E.nome).foregroundColor(E.coloreNome)
+                            Text(TestiSinistri.titoloBarra.lowercased())
                                 .carattereApple(E.dettaglio).foregroundColor(E.coloreDettaglio)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
