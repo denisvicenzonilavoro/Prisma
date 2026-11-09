@@ -46,6 +46,9 @@ extension ProvaBackup {
         if let e = try provaInterrotto(base.appendingPathComponent("Interrotto", isDirectory: true)) {
             return "archivio a pezzi: \(e)"
         }
+        if let e = try provaSezioneNuova(base.appendingPathComponent("SezioneNuova", isDirectory: true)) {
+            return "archivio a pezzi: \(e)"
+        }
         if let e = try provaRevisioneArchivio(base.appendingPathComponent("Revisione", isDirectory: true)) {
             return "archivio a pezzi: \(e)"
         }
@@ -327,6 +330,43 @@ extension ProvaBackup {
             guard !FileManager.default.fileExists(atPath: pezzi.appendingPathComponent("Clienti/" + tolto.file).path) else {
                 return "il file del cliente tolto è rimasto"
             }
+        }
+        return nil
+    }
+
+    /// Un archivio di un Prisma di prima, senza una sezione che oggi c'è («relazione», «Luce» giro 12): un salvataggio che
+    /// cambia solo una nota scrive anche la sezione che l'indice nuovo cita, e la rilettura non trova file mancanti.
+    private static func provaSezioneNuova(_ base: URL) throws -> String? {
+        let fm = FileManager.default
+        let cartella = base.appendingPathComponent("Prisma", isDirectory: true)
+        let pezzi = ArchivioPezzi.cartellaPezzi(in: cartella)
+        var d = try passatoDalDisco(DatiPrisma.demo())
+        try Archivio.salva(d, in: cartella)
+        // Come un Prisma di prima: l'indice e la riserva senza «relazione», e il suo file tolto
+        var indice = try ArchivioPezzi.leggiIndice(pezzi)
+        indice.sezioni.removeAll { $0 == "relazione" }
+        let datiIndice = try Archivio.nuovoCodificatore().encode(indice)
+        try datiIndice.write(to: pezzi.appendingPathComponent(ArchivioPezzi.nomeIndice), options: .atomic)
+        try datiIndice.write(to: pezzi.appendingPathComponent(ArchivioPezzi.nomeRiserva), options: .atomic)
+        try? fm.removeItem(at: pezzi.appendingPathComponent(ArchivioPezzi.nomeFileSezione("relazione")))
+        // Riaperto, i potenziali non ci sono (la sezione non è citata): si salva con quello che si è letto
+        let letto = Archivio.carica(in: cartella)
+        Archivio.coda.sync {}
+        guard let sulDisco = letto.sulDisco else { return "sezione nuova: l'archivio di prima non si riapre pulito" }
+        d = letto.dati
+        let s = SalvataggioArchivio(cartella: cartella, coda: DispatchQueue(label: "prisma.prova-sezione-nuova", qos: .utility))
+        s.prepara(sulDisco)
+        guard let nota = d.note.indices.first else { return "sezione nuova: nessuna nota di prova" }
+        d.note[nota].testo += " modificata"
+        s.accoda(d, generazione: 1) { errore in print("ERRORE: \(errore.localizedDescription)") }
+        s.attendi()
+        let dopo = try ArchivioPezzi.leggiIndice(pezzi)
+        guard dopo.sezioni.contains("relazione"),
+              fm.fileExists(atPath: pezzi.appendingPathComponent(ArchivioPezzi.nomeFileSezione("relazione")).path) else {
+            return "sezione nuova: l'indice cita «relazione» ma il suo file non è stato scritto"
+        }
+        guard let riletto = archivioSulDisco(cartella), let atteso = try? passatoDalDisco(d), riletto == atteso else {
+            return "sezione nuova: la rilettura trova file mancanti o dati diversi"
         }
         return nil
     }

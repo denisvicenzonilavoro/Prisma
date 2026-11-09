@@ -6,8 +6,8 @@ import SwiftUI
 extension StatoShell {
     /// Le app che in modalità cliente non si aprono: leggono i dati di tutti i clienti. Con «Luce» anche Territorio
     /// (tutti i clienti sulla mappa) e Pratiche (bisogni e pratiche di più clienti); Sala e Biblioteca restano
-    /// consentite (decisione 50).
-    static let appRiservate: Set<AppPrisma> = [.note, .ricerca, .impostazioni, .territorio, .pratiche]
+    /// consentite (decisione 50). Dal giro 12 anche Messaggi: le campagne mostrano tutti i clienti (decisione 50).
+    static let appRiservate: Set<AppPrisma> = [.note, .ricerca, .impostazioni, .territorio, .pratiche, .messaggi]
 
     func appConsentita(_ app: AppPrisma) -> Bool {
         modoCliente == nil || !Self.appRiservate.contains(app)
@@ -37,6 +37,10 @@ extension StatoShell {
         // Cruscotto (che mostra «Studio resta tuo»)
         studioSpese.foglio = nil
         if schedaStudio == .spese { schedaStudio = .cruscotto }
+        // Potenziali e Passaparola mostrano persone che non sono il cliente («Luce» giro 12): Clienti torna alla Rubrica
+        if vistaClienti != .rubrica { vistaClienti = .rubrica }
+        potenziali.modulo = nil
+        potenziali.evidenziato = nil
         if avviso { mostraAvviso("Modalità cliente: si vede solo il dossier di \(c.nome).") }
     }
 

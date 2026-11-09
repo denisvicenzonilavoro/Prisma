@@ -335,6 +335,21 @@ enum ProvaCalcoliMessaggi {
            let o = CompilatoreModuli.occasioneDatiMancanti(cliente: giulia, modello: modello, dati: [.iban, .cap], oggi: oggi) {
             occasioni.append(o)
         }
+        // Una campagna («Luce» giro 12): il bisogno di Marco e due orari liberi, con le sole cifre di Marco
+        let membro = MembroCampagna(clienteId: "marco", motivo: "«Piano Pensione» senza versamenti dal 3 ottobre 2025",
+                                    cifre: [CifraMessaggio(.bisogno, "il fondo pensione è fermo dal 3 ottobre 2025"),
+                                            CifraMessaggio(.ultimoVersamento, "3 ottobre 2025")],
+                                    consenso: true, recapitoMail: true, recapitoMessaggi: true, giaContattato: nil,
+                                    ultimaCampagna: nil, canaleLavoro: .alleanza, inclusoDiBase: true, anchein: [])
+        let gruppo = GruppoCampagna(id: "previdenzaFerma", tipo: .previdenzaFerma, titolo: "Fondo pensione fermo da un anno",
+                                    membri: [membro], nonValutati: 0, notaNonValutati: nil)
+        occasioni.append(MotoreCampagne.occasione(gruppo: gruppo, membro: membro, campagnaId: "campagna-prova",
+                                                  appuntamenti: [d(2026, 11, 10), d(2026, 11, 11)]))
+        // La richiesta di presentazione (Clienti › Passaparola): il fatto di Sofia, mai cifre né nomi d'altri
+        let momento = MomentoPerChiedere(id: "sofia-obiettivo-prova", clienteId: "sofia",
+                                         fatto: "ha raggiunto «Rendita integrativa» ieri", riferimento: "obiettivo-prova",
+                                         data: oggi)
+        occasioni.append(MotorePassaparola.occasioneRichiesta(momento, cliente: sofia, posizioni: []))
         return (x, occasioni)
     }
 

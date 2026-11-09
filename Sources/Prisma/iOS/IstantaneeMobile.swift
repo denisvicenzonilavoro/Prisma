@@ -261,6 +261,11 @@ enum IstantaneeMobile {
                 // Messaggi (giro 3 di «Orizzonte»): il messaggio dell'occasione in alto, tono, canale e testo, le altre
                 // occasioni a un tocco nel menu «Occasioni»
                 Scena(nome: "497-messaggi") { m in IstantaneeMobile.messaggi(m) },
+                // «Luce» giro 12: i potenziali clienti in sola lettura (una cosa grande in alto, poi l'elenco per fase)
+                Scena(nome: "76-potenziali-iphone") { m in
+                    m.apri(.clienti)
+                    m.percorsoClienti = [.potenziali]
+                },
                 // Mercato (giro 7): la prima tessera grande, le altre su due colonne, chi è toccato e gli avvisi
                 Scena(nome: "540-mercato") { m in IstantaneeMobile.mercato(m) },
                 // Inquadra e capisci (giro 5): la schermata della fotocamera a lettura finita, con il foglio di prova

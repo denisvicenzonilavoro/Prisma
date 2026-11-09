@@ -181,6 +181,8 @@ enum MotoreOccasioniMessaggi {
         elenco += avvisiMercato(dati.mercato.avvisi, clienti: clienti, posizioni: posizioni, oggi: oggi, cal: cal)
         // I traguardi da festeggiare («Luce» giro 5, MotoreTraguardi)
         elenco += MotoreTraguardi.occasioni(MotoreTraguardi.calcola(dati: dati, oggi: oggi, cal: cal), oggi: oggi, cal: cal)
+        // Le bozze delle campagne ancora da aprire («Luce» giro 12): in «Da mandare oggi», priorità bassa
+        elenco += MotoreCampagne.occasioniDaBozze(dati: dati, oggi: oggi)
         return dividi(elenco, messaggi: dati.messaggi, clienti: clienti, oggi: oggi, cal: cal)
     }
 
@@ -448,8 +450,11 @@ enum MotoreOccasioniMessaggi {
             if na != nb { return na.localizedCompare(nb) == .orderedAscending }
             return a.id < b.id
         }
+        // Le bozze delle campagne («Luce» giro 12) non entrano nel limite di 8 e non scacciano le altre: in coda, tutte
+        let oggiNormali = ordinate.filter { $0.gruppo == .oggi && $0.tipo != .campagna }.prefix(RegoleMessaggi.massimoPerGruppo)
+        let oggiCampagne = ordinate.filter { $0.gruppo == .oggi && $0.tipo == .campagna }
         return OccasioniMessaggi(festeggiare: Array(ordinate.filter { $0.gruppo == .festeggiare }.prefix(RegoleMessaggi.massimoPerGruppo)),
-                                 oggi: Array(ordinate.filter { $0.gruppo == .oggi }.prefix(RegoleMessaggi.massimoPerGruppo)),
+                                 oggi: Array(oggiNormali) + oggiCampagne,
                                  settimana: Array(ordinate.filter { $0.gruppo == .settimana }.prefix(RegoleMessaggi.massimoPerGruppo)))
     }
 

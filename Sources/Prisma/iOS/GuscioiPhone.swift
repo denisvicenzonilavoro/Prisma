@@ -189,6 +189,7 @@ extension View {
             case .appuntamento(let id): DettaglioAppuntamentoTelefono(appuntamentoId: id)
             case .area(let a, let filtro):
                 ElencoAreaTelefono(area: AreaPosizione(rawValue: a) ?? .investimento, filtro: FiltroPosizioniTelefono(chiave: filtro))
+            case .potenziali: PotenzialiTelefono()
             }
         }
     }
@@ -369,6 +370,22 @@ private struct ClientiTelefono: View {
             .filter { cerca.isEmpty || $0.nome.localizedCaseInsensitiveContains(cerca) }
             .sorted { $0.nome.localizedCaseInsensitiveCompare($1.nome) == .orderedAscending }
         FondoTelefono {
+            // «Luce» giro 12: i potenziali clienti, in sola lettura (mai in modalità cliente)
+            if !stato.inModoCliente && cerca.isEmpty && !stato.dati.potenziali.isEmpty {
+                NavigationLink(value: DestinazioneTelefono.potenziali) {
+                    HStack(spacing: E.spazioRiga) {
+                        VStack(alignment: .leading, spacing: E.spazioTesto) {
+                            Text("Potenziali").carattereApple(E.nome).foregroundColor(E.coloreNome)
+                            Text(TestiPassaparola.tilePotenziali.lowercased() + " e passaparola")
+                                .carattereApple(E.dettaglio).foregroundColor(E.coloreDettaglio)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        ChevronTelefono()
+                    }
+                    .schedaTelefono(premibile: true)
+                }
+                .buttonStyle(.plain)
+            }
             if elenco.isEmpty {
                 VuotoTelefono(testo: cerca.isEmpty ? "Nessun cliente: apri il backup del Mac dal centro di controllo." : "Nessun cliente con «\(cerca)».")
             }

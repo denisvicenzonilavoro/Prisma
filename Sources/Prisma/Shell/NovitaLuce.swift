@@ -227,6 +227,7 @@ enum NovitaLuce: String, CaseIterable, Identifiable {
         case .speseScadenze: return true         // giro 9: Studio › Spese, chilometri, spese e scadenze
         case .compilaDaSolo: return true         // giro 10: Pratiche › Moduli, «Compila da solo»
         case .territorio: return true            // giro 11: Territorio, il tuo territorio
+        case .passaparola, .campagne: return true   // giro 12: Clienti › Potenziali e Passaparola, Messaggi › Campagne
         default: return false
         }
     }

@@ -91,6 +91,13 @@ struct DatiPrisma: Codable, Equatable {
     /// Studio › Spese (versione 27, «Luce» giro 9). Un dato del cliente: sta nel suo file della cartella a pezzi e se ne va
     /// con lui. Resta sul Mac: non entra in «Prisma ovunque».
     var kmClienti: [String: Double] = [:]
+    /// Clienti › Potenziali («Luce» giro 12, versione 27, PotenzialeCliente.swift): i potenziali clienti con fonte, stima
+    /// facoltativa, probabilità e data scritte dall'utente, informativa e consenso al contatto. Un elenco a sé, non
+    /// clienti (decisione 94). In «Prisma ovunque» solo con `ImpostazioniOvunque.potenzialiNelloSpazio`.
+    var potenziali: [PotenzialeCliente] = []
+    /// Messaggi › Campagne («Luce» giro 12, versione 27, Campagna.swift): lo storico delle campagne avviate (i testi sono
+    /// messaggi del cliente in `messaggi`).
+    var campagne: [Campagna] = []
     var clienteAttivoId: String
     var impostazioni: Impostazioni
 
@@ -175,6 +182,10 @@ struct DatiPrisma: Codable, Equatable {
     ///     Giro 11: la posizione a mano del cliente (`Cliente.luogo`), l'appuntamento da confermare
     ///     (`Appuntamento.daConfermare`) e le impostazioni del Territorio (`Impostazioni.territorio`), letti con
     ///     tolleranza. Le tabelle dei comuni e dei confini sono risorse, non archivio.
+    ///     Giro 12: i potenziali clienti (`potenziali`) e lo storico delle campagne (`campagne`), nella sezione
+    ///     «relazione», chi ha presentato il cliente e quando (`Cliente.presentatoDa`, `Cliente.presentatoIl`) e i
+    ///     messaggi `campagna` e `richiestaPresentazione`, tutti letti con tolleranza (un potenziale senza id o nome e
+    ///     una campagna senza id si scartano; un Prisma di prima salta i messaggi con i tipi nuovi).
     static let versioneAttuale = 27
 
     init(clienti: [Cliente], appuntamenti: [Appuntamento], attivita: [Attivita], posizioni: [Posizione],
@@ -224,6 +235,8 @@ struct DatiPrisma: Codable, Equatable {
         TraguardiDiProva.applica(&d)
         // Chilometri, spese e scadenze («Luce» giro 9): spese, corsi e scadenze non fiscali, segnati «dati di prova»
         SpeseDiProva.applica(&d)
+        // I potenziali clienti («Luce» giro 12): gli otto del template, segnati «dati di prova»
+        PotenzialiDiProva.applica(&d)
         return d
     }
 
@@ -244,6 +257,7 @@ struct DatiPrisma: Codable, Equatable {
         case partiteRischio
         case promesse, confrontiDocumenti, coperture
         case speseStudio, kmClienti
+        case potenziali, campagne
     }
 
     /// Lettura tollerante: gli archivi delle versioni precedenti non hanno tutte le sezioni.
@@ -312,6 +326,9 @@ struct DatiPrisma: Codable, Equatable {
         // I km per cliente: un valore negativo o non finito si scarta, gli altri restano
         kmClienti = (((try? c.decodeIfPresent([String: Double].self, forKey: .kmClienti)) ?? nil) ?? [:])
             .filter { $0.value.isFinite && $0.value >= 0 }
+        // Potenziali clienti e campagne (versione 27, giro 12): un elemento illeggibile si scarta, gli altri restano
+        potenziali = ((try? c.decodeIfPresent(ElencoTollerante<PotenzialeCliente>.self, forKey: .potenziali)) ?? nil)?.elementi ?? []
+        campagne = ((try? c.decodeIfPresent(ElencoTollerante<Campagna>.self, forKey: .campagne)) ?? nil)?.elementi ?? []
         clienteAttivoId = try c.decodeIfPresent(String.self, forKey: .clienteAttivoId) ?? (clienti.first?.id ?? "")
         impostazioni = try c.decodeIfPresent(Impostazioni.self, forKey: .impostazioni) ?? Impostazioni()
     }
@@ -367,6 +384,8 @@ struct DatiPrisma: Codable, Equatable {
         try metti(coperture, .coperture)
         try metti(speseStudio, .speseStudio)
         try metti(kmClienti, .kmClienti)
+        try metti(potenziali, .potenziali)
+        try metti(campagne, .campagne)
         try metti(clienteAttivoId, .clienteAttivoId)
         try metti(impostazioni, .impostazioni)
     }

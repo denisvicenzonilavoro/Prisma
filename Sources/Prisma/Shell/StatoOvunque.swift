@@ -796,6 +796,13 @@ extension StatoShell {
         sincronizzaOvunque(forza: true, automatica: true)
     }
 
+    /// «Porta anche i potenziali clienti» (Mac, «Luce» giro 12, decisione 44): l'istantanea dopo li porta o li toglie.
+    func impostaPotenzialiOvunque(_ si: Bool) {
+        guard !solaLettura, dati.impostazioni.ovunque.potenzialiNelloSpazio != si else { return }
+        dati.impostazioni.ovunque.potenzialiNelloSpazio = si
+        sincronizzaOvunque(forza: true, automatica: true)
+    }
+
     /// La scelta su un conflitto di «Da decidere». L'istantanea dopo la porta a iPhone e iPad.
     func decidiOvunque(_ id: String, scelta: SceltaConflitto) {
         var d = dati.istantanea

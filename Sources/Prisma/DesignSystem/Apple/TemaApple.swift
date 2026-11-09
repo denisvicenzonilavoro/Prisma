@@ -241,6 +241,10 @@ extension Tema.Apple {
         case tasselloScena
         /// Il foglio della lettera dal futuro (Sala, «Luce» giro 8): 0 22 50 −18 rgba(40,30,20,.35), uguale in chiaro e scuro.
         case foglioLettera
+        /// La scheda di un potenziale cliente (Clienti › Potenziali, «Luce» giro 12): 0 6 14 −10 nero al 30%.
+        case schedaPotenziale
+        /// La stessa scheda sotto il puntatore: 0 12 24 −12 nero al 35%.
+        case schedaPotenzialeSopra
 
         private static func blu(_ a: Double) -> Color { Color(r: 8, g: 40, b: 60, a: a) }
         private static func nero(_ a: Double) -> Color { Color(r: 0, g: 0, b: 0, a: a) }
@@ -281,6 +285,10 @@ extension Tema.Apple {
                 return [S(colore: Self.nero(0.40), y: 10, sfocatura: 20, espansione: -10)]
             case .foglioLettera:
                 return [S(colore: Color(r: 40, g: 30, b: 20, a: 0.35), y: 22, sfocatura: 50, espansione: -18)]
+            case .schedaPotenziale:
+                return [S(colore: Self.nero(0.30), y: 6, sfocatura: 14, espansione: -10)]
+            case .schedaPotenzialeSopra:
+                return [S(colore: Self.nero(0.35), y: 12, sfocatura: 24, espansione: -12)]
             }
         }
 

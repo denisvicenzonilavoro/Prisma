@@ -86,6 +86,11 @@ struct Cliente: Identifiable, Codable, Hashable {
     /// dell'indirizzo. nil = la posizione viene dal comune (`MotoreTerritorio.luoghi`). Entra nei backup e nello spazio
     /// cifrato di «Prisma ovunque» con il cliente, ma non si modifica dal dispositivo.
     var luogo: LuogoManuale?
+    /// Chi ha presentato il cliente (l'id di un altro cliente; versione 27, «Luce» giro 12, Clienti › Passaparola). nil =
+    /// nessuno o non scritto. Un id che non è più in archivio si ignora (il cliente va al primo livello dell'albero).
+    var presentatoDa: String?
+    /// Quando è stato presentato (versione 27, «Luce» giro 12). nil = data non scritta.
+    var presentatoIl: Date?
 
     init(id: String, nome: String, iniziali: String, tinta: TintaAvatar, tema: String, email: String,
          telefono: String, preferito: Bool, nota: String, creatoIl: Date) {
@@ -130,6 +135,7 @@ struct Cliente: Identifiable, Codable, Hashable {
         case clienteDal
         case luogoNascita, iban
         case luogo
+        case presentatoDa, presentatoIl
     }
 
     /// Lettura tollerante: i campi aggiunti nelle versioni successive possono mancare.
@@ -176,6 +182,11 @@ struct Cliente: Identifiable, Codable, Hashable {
         iban = ((try? c.decodeIfPresent(String.self, forKey: .iban)) ?? nil).flatMap { IBAN.valido($0) ? IBAN.pulito($0) : nil }
         // Posizione a mano (versione 27, giro 11): illeggibile o fuori scala = dal comune dell'indirizzo
         luogo = ((try? c.decodeIfPresent(LuogoManuale.self, forKey: .luogo)) ?? nil).flatMap { $0.coordinata.valida ? $0 : nil }
+        // Passaparola (versione 27, giro 12): vuoto, illeggibile o sé stesso = nessuno
+        let idLetto = id
+        presentatoDa = ((try? c.decodeIfPresent(String.self, forKey: .presentatoDa)) ?? nil)
+            .flatMap { $0.isEmpty || $0 == idLetto ? nil : $0 }
+        presentatoIl = (try? c.decodeIfPresent(Date.self, forKey: .presentatoIl)) ?? nil
     }
 
     /// Le aziende registrate (vuoto se nessuna).

@@ -13,8 +13,8 @@ import Foundation
 // - traguardo: il primo traguardo della settimana non ancora festeggiato (MotoreTraguardi);
 // - anno = dal 1° gennaio a oggi: famiglie protette (una per cliente, con posizioni di protezione entrate nell'anno) e
 //   capitale assicurato se scritto; patrimonio seguito e variazione da inizio anno (MotoreAndamentoPortafoglio; nil
-//   al primo anno: «Da quest'anno in Prisma»); clienti nuovi dalla data d'inserimento (il passaparola non c'è ancora:
-//   nessuna riga); i chilometri non ci sono ancora (giro 9): nessuna pagina e NESSUN paragone senza la tabella
+//   al primo anno: «Da quest'anno in Prisma»); clienti nuovi dalla data d'inserimento, con quanti dal passaparola
+//   («Luce» giro 12: nil, e nessuna riga, se nessun cliente dell'archivio ha «Presentato da»); i chilometri non ci sono ancora (giro 9): nessuna pagina e NESSUN paragone senza la tabella
 //   approvata dall'utente (decisione 72); il momento dell'anno è il traguardo più importante, con la frase fissa.
 // Motore puro: riceve i dati, `oggi` e il calendario.
 
@@ -196,8 +196,13 @@ enum MotoreStorie {
         }
 
         // Clienti nuovi (dalla data d'inserimento in Prisma)
-        let nuovi = dati.clienti.filter { $0.creatoIl >= inizio && $0.creatoIl < fine }.count
-        if nuovi > 0 { pagine.append(.nuoviClienti(numero: nuovi, daPassaparola: nil)) }
+        let delAnno = dati.clienti.filter { $0.creatoIl >= inizio && $0.creatoIl < fine }
+        let nuovi = delAnno.count
+        // Il passaparola («Luce» giro 12): senza nessun presentatore nell'archivio il dato non c'è (nil, nessuna riga)
+        let idClienti = Set(dati.clienti.map(\.id))
+        func presentato(_ c: Cliente) -> Bool { c.presentatoDa.map { idClienti.contains($0) && $0 != c.id } ?? false }
+        let passaparola: Int? = dati.clienti.contains(where: presentato) ? delAnno.filter(presentato).count : nil
+        if nuovi > 0 { pagine.append(.nuoviClienti(numero: nuovi, daPassaparola: passaparola)) }
 
         // Il momento dell'anno
         if let t = MotoreTraguardi.momento(MotoreTraguardi.calcola(dati: dati, da: inizio, a: fine, oggi: oggi, cal: cal)) {

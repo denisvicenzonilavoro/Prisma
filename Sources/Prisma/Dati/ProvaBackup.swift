@@ -177,6 +177,8 @@ enum ProvaBackup {
             ProvaBackup.aggiungiSpeseDiProva(&originale)
             // «Luce», giro 11: posizione a mano, appuntamento da confermare e impostazioni del Territorio (ProvaBackupTerritorio.swift)
             ProvaBackup.aggiungiTerritorioDiProva(&originale)
+            // «Luce», giro 12: potenziali clienti, presentatori, una campagna con le bozze (ProvaBackupLuceClienti.swift)
+            ProvaBackup.aggiungiLuceClientiDiProva(&originale)
             // Vera, fase 3: promesse, confronti, coperture e un resoconto (ProvaBackupFaseTreVera.swift)
             ProvaBackup.aggiungiFaseTreVeraDiProva(&originale)
             // Il versamento mensile previsto dell'obiettivo (cursore del dettaglio nel tema Apple)
@@ -313,6 +315,8 @@ enum ProvaBackup {
             // Posizione a mano, appuntamento da confermare e impostazioni del Territorio (versione 27, «Luce» giro 11),
             // un archivio senza e la lettura tollerante (ProvaBackupTerritorio.swift)
             if let e = try verificaTerritorio(originale: originale, estratto: estratto.dati) {
+            // Potenziali clienti, passaparola e campagne (versione 27, «Luce» giro 12), e un archivio della 26 (ProvaBackupLuceClienti.swift)
+            if let e = try verificaLuceClienti(originale: originale, estratto: estratto.dati) {
                 print("ERRORE: \(e)")
                 return 1
             }
@@ -618,6 +622,16 @@ enum ProvaBackup {
             }
             // «Compila da solo» di «Luce» (giro 10): la cartella Moduli/, luogo di nascita e IBAN, il modulo compilato (ProvaBackupModuli.swift)
             if let errore = try provaModuli(radice: radice) {
+                print("ERRORE: \(errore)")
+                return 1
+            }
+            // «Luce», giro 12: potenziali e campagne in relazione.json, il presentatore nel file del cliente (ProvaBackupLuceClienti.swift)
+            if let errore = try provaPezziLuceClienti(radice: radice) {
+                print("ERRORE: \(errore)")
+                return 1
+            }
+            // «Luce», giro 12: in modalità cliente Messaggi non si apre e Clienti torna alla Rubrica (ProvaBackupLuceClienti.swift)
+            if let errore = provaModoClienteLuce() {
                 print("ERRORE: \(errore)")
                 return 1
             }

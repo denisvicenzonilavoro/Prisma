@@ -13,7 +13,9 @@ import Foundation
 ///       Clienti/<id>-<impronta>.json   un file per cliente: anagrafica e ciò che è solo suo
 ///       Clienti/senza-cliente.json     gli elementi che nominano un cliente che non c'è più (mai persi)
 ///       agenda.json, attivita.json, conversazioni.json, prodotti.json, spazi.json, pratiche.json,
-///       mercato.json, ovunque.json, studio.json      le sezioni comuni
+///       mercato.json, ovunque.json, studio.json,
+///       relazione.json                               le sezioni comuni (relazione: potenziali clienti e campagne,
+///                                                    «Luce» giro 12)
 ///
 /// La divisione (`pezzo(_:)`, uno `switch` completo su tutte le chiavi di `DatiPrisma`):
 /// - nell'indice solo ciò che è piccolo e serve subito (le impostazioni danno aspetto, misura del testo e nome della
@@ -68,6 +70,8 @@ enum ArchivioPezzi {
         case .mercato: return .sezione("mercato")
         case .giornaleOvunque, .conflittiOvunque, .arriviOvunque, .inquadratureDaConfermare: return .sezione("ovunque")
         case .famiglie, .ocf, .portafogliModello, .speseStudio: return .sezione("studio")
+        // «Luce» giro 12: i potenziali clienti (non sono clienti: niente file per cliente) e lo storico delle campagne
+        case .potenziali, .campagne: return .sezione("relazione")
         }
     }
 
@@ -184,6 +188,8 @@ enum ArchivioPezzi {
         case .coperture: return a.coperture == b.coperture
         case .speseStudio: return a.speseStudio == b.speseStudio
         case .kmClienti: return a.kmClienti == b.kmClienti
+        case .potenziali: return a.potenziali == b.potenziali
+        case .campagne: return a.campagne == b.campagne
         case .clienteAttivoId: return a.clienteAttivoId == b.clienteAttivoId
         case .impostazioni: return a.impostazioni == b.impostazioni
         }
@@ -231,6 +237,8 @@ enum ArchivioPezzi {
         case .coperture: b.coperture = a.coperture
         case .speseStudio: b.speseStudio = a.speseStudio
         case .kmClienti: b.kmClienti = a.kmClienti
+        case .potenziali: b.potenziali = a.potenziali
+        case .campagne: b.campagne = a.campagne
         case .clienteAttivoId: b.clienteAttivoId = a.clienteAttivoId
         case .impostazioni: b.impostazioni = a.impostazioni
         }
@@ -524,6 +532,7 @@ extension ArchivioPezzi {
         case "mercato": return "i dati di Mercato"
         case "ovunque": return "Prisma ovunque"
         case "studio": return "lo studio (portafogli modello, famiglie, esame OCF)"
+        case "relazione": return "i potenziali clienti e le campagne"
         default: return "la sezione «\(nome)»"
         }
     }
@@ -1002,7 +1011,11 @@ final class ScrittorePezzi {
             guard let p = pezzi[g], let f = file[g] else { continue }
             lavori.append((ArchivioPezzi.nomeClienti + "/" + f, PezzoDaScrivere(dati: p, chiavi: ArchivioPezzi.chiaviCliente, generazione: generazione)))
         }
-        for sez in ArchivioPezzi.sezioni where sez.chiavi.contains(where: { !ArchivioPezzi.uguale($0, dati, s.dati) }) {
+        // Una sezione si scrive se è cambiata o se l'indice di prima non la cita ancora (archivio di un Prisma di prima,
+        // sezione nuova come «relazione» del giro 12 di «Luce»): `nuovoIndice` elenca sempre tutte le sezioni, e una
+        // sezione citata senza file risulterebbe mancante alla riapertura.
+        for sez in ArchivioPezzi.sezioni
+        where !s.indice.sezioni.contains(sez.nome) || sez.chiavi.contains(where: { !ArchivioPezzi.uguale($0, dati, s.dati) }) {
             lavori.append((ArchivioPezzi.nomeFileSezione(sez.nome), PezzoDaScrivere(dati: dati, chiavi: sez.chiavi, generazione: generazione)))
         }
         var indice = nuovoIndice(dati, file: file, ordini: ordini, generazione: generazione)

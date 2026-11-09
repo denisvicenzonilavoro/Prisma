@@ -111,6 +111,24 @@ inventa):
 - **Impostazioni › Studio:** aliquote delle provvigioni Alleanza.
 - **Spese:** km di andata e ritorno per cliente, dati fiscali, €/km e scadenze (da verificare con il commercialista).
 - **Moduli:** i PDF veri dei moduli del canale indipendente; per Alleanza serve prima l'approvazione della compagnia.
+- **Clienti: potenziali, passaparola e campagne (Luce giro 12, branch `luce/giro-12-clienti`):**
+  1. dopo quanti mesi cancellare i potenziali «non interessati» e quelli senza informativa (oggi nessuna
+     cancellazione automatica, solo «Elimina» a mano; decisione 39);
+  2. il testo dell'informativa ai terzi (art. 14 GDPR): Prisma registra solo la data;
+  3. le soglie delle campagne (`RegoleCampagne`): età 40/50/60, scadenze entro 6 mesi, fondo fermo da 12 mesi,
+     90 giorni per lo stesso bisogno, 30 giorni fra due campagne, 30 minuti di appuntamento;
+  4. l'elenco dei gruppi (famiglia senza protezione, scadenze nel mese, età tonde, fondo fermo, previdenza assente,
+     liquidità ferma): altri dai bisogni esistenti (successione, tutela del mutuo)?;
+  5. il momento giusto per chiedere una presentazione: 7 e 180 giorni vanno bene? Gli anniversari contano (oggi no)?;
+  6. la tile «Probabile entro fine anno» o «Valore pesato del percorso»?;
+  7. la colonna «Presentato da» nell'import CSV dei clienti?;
+  8. i potenziali in «Prisma ovunque» spenti di base vanno bene?;
+  9. le frasi fisse dei messaggi di campagna e della richiesta di presentazione (`Motori/ModelliMessaggi.swift`) da
+     rileggere;
+  10. il via per il commit di `Vera/Istruzioni/messaggi.md` (sezioni «Campagna» e «Richiesta di presentazione»);
+  11. con Messaggi fra le app riservate il biglietto del traguardo non si mostra più da Messaggi in modalità cliente
+      (l'istantanea 734 mostra l'avviso): va bene, o serve un'altra strada (dossier o Sala)?;
+  12. la quota del passaparola usa «Cliente dal» se scritto, altrimenti la data della scheda (con la nota): va bene?
 
 ## Regole da non dimenticare
 

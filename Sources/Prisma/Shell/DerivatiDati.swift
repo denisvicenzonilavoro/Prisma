@@ -142,6 +142,8 @@ final class DerivatiDati {
     var territorioOggi: (ora: Int, imp: ImpostazioniTerritorio, valore: TerritorioOggi)?
     var crescitaTerritorio: CrescitaTerritorio?
     var giriTerritorio: [Date: (ora: Int, imp: ImpostazioniTerritorio, partenza: Coordinata?, valore: GiroGiorno)] = [:]
+    /// I gruppi delle campagne di oggi (CampagneMessaggi.swift, «Luce» giro 12): stesse dipendenze delle occasioni.
+    var gruppiCampagne: [GruppoCampagna]?
     /// Il numero dell'ultima impaginazione del documento di Prospetti: cambia solo quando il documento si
     /// impagina di nuovo, quindi dice alle pagine sul tavolo se sono ancora le stesse. Non si azzera con la
     /// chiave e viene da un contatore comune a tutti gli stati, così due documenti non hanno mai lo stesso numero.
@@ -184,6 +186,7 @@ final class DerivatiDati {
         cruscottoStudio = nil
         trackRecord = nil
         occasioniMessaggi = nil
+        gruppiCampagne = nil
         radar = nil
         datiCalcoli = nil
         contiAree = [:]
@@ -529,6 +532,8 @@ extension DatiPrisma {
         // Chilometri, spese e scadenze («Luce» giro 9) si calcolano nella vista, senza cache
         b.speseStudio = a.speseStudio
         b.kmClienti = a.kmClienti
+        // I potenziali («Luce» giro 12) si calcolano nella vista, senza cache
+        b.potenziali = a.potenziali
         b.impostazioni.studio.spese = a.impostazioni.studio.spese
         return a == b
     }
