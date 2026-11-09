@@ -38,10 +38,11 @@ extension StatoShell {
 
     /// Conserva la lettera della versione (§3.1.4: «Aggiungi al Prisma» e il PDF): la stesura vista sul palco se c'è,
     /// altrimenti la lettera di Prisma con la firma. Sostituisce la conservata dello stesso cliente e versione. nil
-    /// senza scheda (manca la data di nascita).
+    /// senza scheda (manca la data di nascita) o in sola lettura. La data al secondo, come si scrive nell'archivio (ISO 8601).
     @discardableResult
-    func conservaLettera(_ c: Cliente, versione: VersioneLettera, oggi: Date = Date()) -> LetteraFuturo? {
-        guard let s = schedaLettera(c) else { return nil }
+    func conservaLettera(_ c: Cliente, versione: VersioneLettera, oggi adesso: Date = Date()) -> LetteraFuturo? {
+        guard !solaLettura, let s = schedaLettera(c) else { return nil }
+        let oggi = Date(timeIntervalSinceReferenceDate: adesso.timeIntervalSinceReferenceDate.rounded(.down))
         let stesura = sala.stesureLettera[c.id]?[versione]
         let lettera: LetteraFuturo
         if let st = stesura, !st.testo.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {

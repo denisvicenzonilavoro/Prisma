@@ -165,7 +165,7 @@ extension ProvaBackup {
         senzaTesto["id"] = "lettera-prova-vuota"
         senzaTesto["testo"] = "   "
         let lette = try Archivio.decodificatore.decode(ElencoTollerante<LetteraFuturo>.self,
-                                                       from: JSONSerialization.data(withJSONObject: [senzaTesto, strana, "rovinata"])).elementi
+                                                       from: JSONSerialization.data(withJSONObject: [senzaTesto, strana, "rovinata"] as [Any])).elementi
         guard lette.count == 1, lette[0].id == "lettera-prova-g1", lette[0].versione == .conPiano, lette[0].autore == .modelloFisso,
               lette[0].cifre.isEmpty, lette[0].testo == lettere[0].testo else {
             return "lettere: non si leggono con tolleranza"
