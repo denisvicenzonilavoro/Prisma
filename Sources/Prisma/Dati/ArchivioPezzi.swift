@@ -59,14 +59,17 @@ enum ArchivioPezzi {
             return .indice
         case .clienti, .posizioni, .simulazioni, .analisi, .incontri, .obiettivi, .documenti, .valutazioni, .commenti,
              .note, .fotografie, .schedeAdeguatezza, .confrontiTFR, .parcelle, .raccomandazioni, .messaggi, .eventiVita,
-             .sessioniCopilota, .partiteRischio, .promesse, .confrontiDocumenti, .coperture, .kmClienti:
+             .sessioniCopilota, .partiteRischio, .promesse, .confrontiDocumenti, .coperture, .kmClienti,
+             .capsule, .uscite:
             return .cliente
         case .appuntamenti: return .sezione("agenda")
         case .attivita: return .sezione("attivita")
         case .conversazioni: return .sezione("conversazioni")
         case .prodotti: return .sezione("prodotti")
         case .spazi: return .sezione("spazi")
-        case .pratiche: return .sezione("pratiche")
+        // «Luce» giro 15: i sinistri stanno con le pratiche (una sezione esistente: un archivio di prima non ha un file
+        // «mancante» nell'indice)
+        case .pratiche, .sinistri: return .sezione("pratiche")
         case .mercato: return .sezione("mercato")
         // Le note dall'iPhone («Luce» giro 13) stanno con le altre cose arrivate dai dispositivi: una sezione esistente,
         // così un archivio di prima non ha un file «mancante» nell'indice
@@ -111,6 +114,8 @@ enum ArchivioPezzi {
         .elenco(.confrontiDocumenti, \.confrontiDocumenti),
         .elenco(.coperture, \.coperture),
         .dizionario(.kmClienti, \.kmClienti),
+        .elenco(.capsule, \.capsule),
+        .elenco(.uscite, \.uscite),
     ]
 
     /// Un archivio vuoto, base di ogni pezzo (le impostazioni di base si costruiscono una volta sola).
@@ -193,6 +198,9 @@ enum ArchivioPezzi {
         case .potenziali: return a.potenziali == b.potenziali
         case .campagne: return a.campagne == b.campagne
         case .noteInArrivo: return a.noteInArrivo == b.noteInArrivo
+        case .capsule: return a.capsule == b.capsule
+        case .sinistri: return a.sinistri == b.sinistri
+        case .uscite: return a.uscite == b.uscite
         case .clienteAttivoId: return a.clienteAttivoId == b.clienteAttivoId
         case .impostazioni: return a.impostazioni == b.impostazioni
         }
@@ -243,6 +251,9 @@ enum ArchivioPezzi {
         case .potenziali: b.potenziali = a.potenziali
         case .campagne: b.campagne = a.campagne
         case .noteInArrivo: b.noteInArrivo = a.noteInArrivo
+        case .capsule: b.capsule = a.capsule
+        case .sinistri: b.sinistri = a.sinistri
+        case .uscite: b.uscite = a.uscite
         case .clienteAttivoId: b.clienteAttivoId = a.clienteAttivoId
         case .impostazioni: b.impostazioni = a.impostazioni
         }
@@ -290,6 +301,8 @@ extension PartitaRischio: DelCliente { var idClientePezzo: String { clienteId } 
 extension PromessaCliente: DelCliente { var idClientePezzo: String { clienteId } }
 extension ConfrontoDocumenti: DelCliente { var idClientePezzo: String { clienteId } }
 extension CoperturaPolizza: DelCliente { var idClientePezzo: String { clienteId } }
+extension CapsulaTempo: DelCliente { var idClientePezzo: String { clienteId } }
+extension UscitaCliente: DelCliente { var idClientePezzo: String { clienteId } }
 
 /// Una corsa dell'ordine di un elenco: `quanti` elementi di fila del gruppo `gruppo`. Su disco è `["giulia", 3]`.
 struct Corsa: Codable, Equatable {

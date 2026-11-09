@@ -37,7 +37,7 @@ import Observation
     @ObservationIgnored private var inCarica = false
 
     /// Numero dei campi di `DatiPrisma` copiati qui (la prova lo confronta con Mirror).
-    static let numeroCampi = 44
+    static let numeroCampi = 47
 
     var versione: Int { didSet { segnala(.calcoli) } }
     var clienti: [Cliente] { didSet(prima) { segnalaClienti(prima, clienti, \.id) } }
@@ -87,6 +87,11 @@ import Observation
     var campagne: [Campagna] { didSet { segnala(.calcoli) } }
     /// Le note dall'iPhone («Luce» giro 13): nessun calcolo in cache.
     var noteInArrivo: [NotaInArrivo] { didSet { segnala(.neutro) } }
+    /// Le cose date al cliente («Luce» giro 15): capsule, sinistri e traccia delle uscite; nessun calcolo in cache (i
+    /// traguardi leggono le capsule vive).
+    var capsule: [CapsulaTempo] { didSet { segnala(.neutro) } }
+    var sinistri: [Sinistro] { didSet { segnala(.neutro) } }
+    var uscite: [UscitaCliente] { didSet { segnala(.neutro) } }
     var clienteAttivoId: String { didSet(prima) { segnala(.clienteAttivo(prima: prima)) } }
     var impostazioni: Impostazioni { didSet(prima) { segnala(.impostazioni(prima: prima)) } }
 
@@ -133,6 +138,9 @@ import Observation
         potenziali = d.potenziali
         campagne = d.campagne
         noteInArrivo = d.noteInArrivo
+        capsule = d.capsule
+        sinistri = d.sinistri
+        uscite = d.uscite
         clienteAttivoId = d.clienteAttivoId
         impostazioni = d.impostazioni
     }
@@ -226,6 +234,9 @@ import Observation
         d.potenziali = potenziali
         d.campagne = campagne
         d.noteInArrivo = noteInArrivo
+        d.capsule = capsule
+        d.sinistri = sinistri
+        d.uscite = uscite
         return d
     }
 
@@ -273,6 +284,9 @@ import Observation
         d.potenziali = _potenziali
         d.campagne = _campagne
         d.noteInArrivo = _noteInArrivo
+        d.capsule = _capsule
+        d.sinistri = _sinistri
+        d.uscite = _uscite
         return d
     }
 
@@ -323,6 +337,9 @@ import Observation
         if potenziali != d.potenziali { potenziali = d.potenziali }
         if campagne != d.campagne { campagne = d.campagne }
         if noteInArrivo != d.noteInArrivo { noteInArrivo = d.noteInArrivo }
+        if capsule != d.capsule { capsule = d.capsule }
+        if sinistri != d.sinistri { sinistri = d.sinistri }
+        if uscite != d.uscite { uscite = d.uscite }
         if clienteAttivoId != d.clienteAttivoId { clienteAttivoId = d.clienteAttivoId }
         if impostazioni != d.impostazioni { impostazioni = d.impostazioni }
         inCarica = false

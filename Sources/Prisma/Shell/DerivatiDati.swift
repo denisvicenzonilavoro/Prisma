@@ -536,6 +536,10 @@ extension DatiPrisma {
         b.potenziali = a.potenziali
         // Le note dall'iPhone («Luce» giro 13) non entrano in nessun calcolo in cache
         b.noteInArrivo = a.noteInArrivo
+        // Le cose date al cliente («Luce» giro 15): capsule, sinistri e uscite non entrano in nessun calcolo in cache
+        b.capsule = a.capsule
+        b.sinistri = a.sinistri
+        b.uscite = a.uscite
         b.impostazioni.studio.spese = a.impostazioni.studio.spese
         return a == b
     }
