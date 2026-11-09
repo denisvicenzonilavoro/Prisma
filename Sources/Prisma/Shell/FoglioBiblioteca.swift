@@ -226,9 +226,29 @@ enum PagineBiblioteca {
         guard let p = pagina(d, n), (p.string ?? "").trimmingCharacters(in: .whitespacesAndNewlines).count >= LetturaDocumenti.sogliaTesto else { return nil }
         let b = p.bounds(for: .mediaBox)
         let scala = Tema.Apple.Biblioteca.larghezzaFoglio * 2 / max(1, b.width)
-        let i = p.thumbnail(of: NSSize(width: b.width * scala, height: b.height * scala), for: .mediaBox)
+        let misura = NSSize(width: b.width * scala, height: b.height * scala)
+        let i = MetalPrisma.spento ? (disegnoSenzaGPU(p, misura: misura) ?? p.thumbnail(of: misura, for: .mediaBox))
+                                   : p.thumbnail(of: misura, for: .mediaBox)
         immagini.setObject(i, forKey: chiave)
         return i
+    }
+
+    /// La pagina disegnata da CoreGraphics in una bitmap, senza GPU: solo con `PRISMA_SENZA_METAL=1` (le prove sul
+    /// runner di GitHub, dove `thumbnail` può passare da Metal sulla GPU virtuale e fermare il processo).
+    private static func disegnoSenzaGPU(_ p: PDFPage, misura: NSSize) -> NSImage? {
+        let w = Int(misura.width.rounded()), h = Int(misura.height.rounded())
+        guard w > 0, h > 0,
+              let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: 0,
+                                  space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+        else { return nil }
+        ctx.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: 1))
+        ctx.fill(CGRect(x: 0, y: 0, width: w, height: h))
+        let b = p.bounds(for: .mediaBox)
+        ctx.scaleBy(x: CGFloat(w) / max(1, b.width), y: CGFloat(h) / max(1, b.height))
+        ctx.translateBy(x: -b.minX, y: -b.minY)
+        p.draw(with: .mediaBox, to: ctx)
+        guard let cg = ctx.makeImage() else { return nil }
+        return NSImage(cgImage: cg, size: misura)
     }
 
     /// Le righe delle frasi sulla pagina (0…1, origine in alto): `selection(for:)` e `selectionsByLine()`.
