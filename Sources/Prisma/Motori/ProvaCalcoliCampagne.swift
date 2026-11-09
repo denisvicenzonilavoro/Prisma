@@ -243,6 +243,13 @@ enum ProvaCalcoliCampagne {
         let (dentro, altri) = MotoreCampagne.disposizione(g)
         verifica.vero("Campagne: al più sei gruppi nella mappa, gli altri in «Altri bisogni»",
                       dentro.count == min(6, g.count) && altri.count == max(0, g.count - 6))
+        // I gruppi del template per le istantanee 862-868 (CampagneDiProva, solo nei dati della scena)
+        let scena = MotoreCampagne.gruppi(dati: CampagneDiProva.datiScena(), oggi: Date())
+        let tipi = Set(scena.map(\.tipo))
+        verifica.vero("Campagne: i dati della scena hanno i gruppi del template (scadenze, compleanni tondi, fondi fermi)",
+                      tipi.isSuperset(of: [.scadenzaNelMese, .etaTonda, .previdenzaFerma]))
+        verifica.vero("Campagne: i dati della scena non toccano l'archivio di prova dei clienti fittizi",
+                      !ClientiFittizi.completi().posizioni.contains { $0.id.hasPrefix(CampagneDiProva.prefisso) })
     }
 
     // MARK: - 11, 12 Bozze (StatoShell)
