@@ -53,7 +53,11 @@ lancia() {
     local inizio=$SECONDS
     rm -f "$esito"
     echo "::group::$nome"
-    corri "$LIMITE" xcrun simctl launch --console-pty --terminate-running-process \
+    # La prova della realtà aumentata gira senza Metal (fermo-immagine), come sul Mac del runner: nel simulatore la GPU
+    # virtuale può fermare RealityKit. simctl passa all'app le variabili con il prefisso SIMCTL_CHILD_.
+    local senzaMetal=""
+    [ "$nome" = prova-realta ] && senzaMetal=1
+    SIMCTL_CHILD_PRISMA_SENZA_METAL="$senzaMetal" corri "$LIMITE" xcrun simctl launch --console-pty --terminate-running-process \
         "$UDID" "$BID" "--$nome" "$@" < /dev/null
     local codice=$?   # subito dopo il lancio: è l'uscita di simctl (142 = tempo scaduto)
     echo "::endgroup::"
