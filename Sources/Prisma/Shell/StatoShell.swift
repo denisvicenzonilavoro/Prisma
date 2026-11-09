@@ -299,6 +299,9 @@ enum VoceConfronto: Hashable {
     var prodottoSelezionato: String?
     var filtroCanaleProdotti: Canale?
     var filtroAreaProdotti: AreaPosizione?
+    /// «Apri ›» delle famiglie protette nella storia dell'anno (§5.2.4): l'area con cui aprire Posizioni (Portafoglio di
+    /// tutti i clienti); la consuma `AppPosizioni` appena la legge.
+    var areaPosizioniDaAprire: AreaPosizione?
     var obiettivoSelezionato: String?
 
     // Note

@@ -11,7 +11,7 @@ extension ProvaBackup {
     static func aggiungiRelazioneDiProva(_ d: inout DatiPrisma) {
         // Date a secondi interi, come le altre dell'archivio di prova
         let t = Date(timeIntervalSinceReferenceDate: 815_000_000)
-        d.impostazioni.storie.aperturaLunedi = false
+        d.impostazioni.storie.aperturaLunedi = true
         d.impostazioni.storie.ultimaSettimanaVista = t
         d.impostazioni.storie.ultimoAnnoVisto = 2026
         d.impostazioni.traguardi.tipiSpenti = [.mutuoEstinto]
@@ -24,7 +24,7 @@ extension ProvaBackup {
     /// Restituisce il motivo dell'errore (nil = tutto bene).
     static func verificaRelazione(originale: DatiPrisma, estratto: DatiPrisma) throws -> String? {
         // 1. Dal backup tornano uguali
-        guard !originale.impostazioni.storie.aperturaLunedi, originale.impostazioni.traguardi.tipiSpenti == [.mutuoEstinto],
+        guard originale.impostazioni.storie.aperturaLunedi, originale.impostazioni.traguardi.tipiSpenti == [.mutuoEstinto],
               originale.obiettivi.first?.raggiuntoIl != nil else {
             return "l'archivio di prova non ha le storie, i traguardi o l'obiettivo raggiunto di prova"
         }
@@ -46,11 +46,11 @@ extension ProvaBackup {
         radice["obiettivi"] = obiettivi
         let letto = try Archivio.decodifica(JSONSerialization.data(withJSONObject: radice))
         guard letto.impostazioni.storie == ImpostazioniStorie(), letto.impostazioni.traguardi == ImpostazioniTraguardi(),
-              letto.impostazioni.storie.aperturaLunedi,
+              !letto.impostazioni.storie.aperturaLunedi,
               letto.impostazioni.traguardi.anniversari == ImpostazioniTraguardi.anniversariPredefiniti,
               letto.obiettivi.count == originale.obiettivi.count, letto.obiettivi.first?.raggiuntoIl == nil,
               letto.clienti.count == originale.clienti.count, letto.pratiche == originale.pratiche else {
-            return "archivio senza storie e traguardi non letto con i valori di base (apertura del lunedì accesa, 1-5-10-15-20 anni)"
+            return "archivio senza storie e traguardi non letto con i valori di base (apertura del lunedì spenta, decisione 128; 1-5-10-15-20 anni)"
         }
         // 3. Campi rovinati: tornano ai valori di base senza perdere il resto; un tipo sconosciuto si salta
         impostazioni["storie"] = ["aperturaLunedi": "sì", "ultimoAnnoVisto": "duemila"] as [String: Any]
@@ -60,7 +60,7 @@ extension ProvaBackup {
         radice["impostazioni"] = impostazioni
         radice["obiettivi"] = obiettivi
         let rovinato = try Archivio.decodifica(JSONSerialization.data(withJSONObject: radice))
-        guard rovinato.impostazioni.storie.aperturaLunedi, rovinato.impostazioni.storie.ultimoAnnoVisto == nil,
+        guard !rovinato.impostazioni.storie.aperturaLunedi, rovinato.impostazioni.storie.ultimoAnnoVisto == nil,
               rovinato.impostazioni.traguardi.tipiSpenti == [.mutuoEstinto], rovinato.impostazioni.traguardi.anniversari == [5],
               rovinato.impostazioni.traguardi.festeggiati.isEmpty,
               rovinato.obiettivi.count == originale.obiettivi.count, rovinato.obiettivi.first?.raggiuntoIl == nil,

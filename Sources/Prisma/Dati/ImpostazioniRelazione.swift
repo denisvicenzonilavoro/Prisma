@@ -5,11 +5,12 @@ import Foundation
 // (`Impostazioni.storie`, `Impostazioni.traguardi`, versione 27) ed entrano nel backup; lette con tolleranza: un campo
 // illeggibile torna al suo valore di base, mai un errore che fa perdere le altre impostazioni.
 
-/// «La tua settimana»: il lunedì si apre da sola una volta dopo lo sblocco (spegnibile in Impostazioni › Studio) e
-/// Prisma ricorda quale settimana e quale anno sono già stati visti, per non riproporli.
+/// «La tua settimana»: il lunedì la scrivania la propone con l'invito «La tua settimana è pronta», senza aprirla da sola
+/// (decisione 128), e Prisma ricorda quale settimana e quale anno sono già stati visti, per non riproporli.
 struct ImpostazioniStorie: Codable, Equatable, Hashable {
-    /// Il lunedì, al primo sblocco, la storia della settimana si apre da sola (una volta per settimana).
-    var aperturaLunedi = true
+    /// Non più usato (decisione 128: la storia non si apre mai da sola). Resta per leggere e riscrivere gli archivi e i
+    /// backup di prima senza perdere il valore; spento di base.
+    var aperturaLunedi = false
     /// Il lunedì della settimana già vista (inizio del giorno); nil = mai vista.
     var ultimaSettimanaVista: Date?
     /// L'anno della storia «Il tuo anno» già vista; nil = mai vista.
@@ -21,7 +22,7 @@ struct ImpostazioniStorie: Codable, Equatable, Hashable {
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        aperturaLunedi = ((try? c.decodeIfPresent(Bool.self, forKey: .aperturaLunedi)) ?? nil) ?? true
+        aperturaLunedi = ((try? c.decodeIfPresent(Bool.self, forKey: .aperturaLunedi)) ?? nil) ?? false
         ultimaSettimanaVista = (try? c.decodeIfPresent(Date.self, forKey: .ultimaSettimanaVista)) ?? nil
         ultimoAnnoVisto = (try? c.decodeIfPresent(Int.self, forKey: .ultimoAnnoVisto)) ?? nil
     }

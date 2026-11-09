@@ -492,6 +492,13 @@ enum ProvaVera {
                   "Gioco del rischio: fuori dal gioco la conferma non scatta")
         provaSala.sala.rischioAMeta = false
         provaSala.tornaAllaSala()
+        // La storia dell'anno (§5.2.4): «Apri ›» delle famiglie protette porta a Posizioni, portafoglio, area protezione
+        provaSala.apriDallaStoria(.protette(famiglie: 3, capitale: nil))
+        controlla(provaSala.appAttiva == .posizioni && provaSala.portafoglio && provaSala.areaPosizioniDaAprire == .protezione,
+                  "Storie: «Apri ›» delle famiglie protette apre Posizioni filtrate sulla protezione")
+        provaSala.areaPosizioniDaAprire = nil
+        provaSala.portafoglio = false
+        provaSala.apri(.sala)
         provaSala.apriVoceNovita(NovitaLuce.dopoLaFirma)
         controlla(provaSala.appAttiva == .pratiche && provaSala.schedaPratiche == .dopoLaFirma,
                   "Novità: «Le pratiche dopo la firma» apre Pratiche sulla scheda «Dopo la firma»")

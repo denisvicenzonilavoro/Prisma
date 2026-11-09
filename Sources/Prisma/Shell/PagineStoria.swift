@@ -174,6 +174,7 @@ struct PaginaStoriaVista: View {
             testo(TestiStorie.protetto, sopra: 0).entrataStoria(0)
             numeroConParola(Double(famiglie), parola: TestiStorie.famiglie(famiglie)).entrataStoria(1)
             if let capitale { testo(TestiStorie.capitale(capitale)).entrataStoria(2) }
+            apri(3)
         case .patrimonio(let valore, let serie, let variazione):
             testo(TestiStorie.segui, sopra: 0).entrataStoria(0)
             NumeroCheConta(valore, formato: .euro)
@@ -187,8 +188,9 @@ struct PaginaStoriaVista: View {
             numeroConParola(Double(numero), parola: numero == 1 ? "cliente nuovo" : "clienti nuovi").entrataStoria(0)
             pallini(numero, passaparola: passaparola).padding(.top, S.sopraAvatar).entrataStoria(1)
             if let passaparola, passaparola > 0 { testo(TestiStorie.passaparola(passaparola)).entrataStoria(2) }
-        case .chilometri(let km, let paragone, _):
-            testo(TestiStorie.percorso, sopra: 0).entrataStoria(0)
+        case .chilometri(let km, let paragone, let stima):
+            // Dai giri di Studio › Spese: «almeno» se qualche giro è da completare
+            testo(stima ? TestiStorie.percorso + " " + TestiStorie.almenoKm : TestiStorie.percorso, sopra: 0).entrataStoria(0)
             numeroConParola(km, parola: "km").entrataStoria(1)
             // Il paragone solo da una tabella approvata dall'utente (decisione 72)
             if let paragone { testo(paragone).entrataStoria(2) }

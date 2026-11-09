@@ -513,8 +513,8 @@ struct Impostazioni: Codable, Equatable {
     /// Le pratiche dopo la firma: dopo quanti giorni senza un passo nuovo una pratica è ferma (Impostazioni › Pratiche).
     /// Versione 27 («Luce» giro 3), letta con tolleranza: senza, 7 giorni.
     var pratiche = ImpostazioniPratiche()
-    /// «La tua settimana, il tuo anno» (versione 27, «Luce» giro 5): l'apertura da sola del lunedì (accesa di base) e
-    /// la settimana e l'anno già visti. Letta con tolleranza.
+    /// «La tua settimana, il tuo anno» (versione 27, «Luce» giro 5): la settimana e l'anno già visti (l'apertura da
+    /// sola del lunedì non c'è più, decisione 128: resta solo il campo, spento). Letta con tolleranza.
     var storie = ImpostazioniStorie()
     /// I traguardi festeggiati (versione 27, «Luce» giro 5): tipi spenti, anniversari, festeggiati e scartati. Letta
     /// con tolleranza.
