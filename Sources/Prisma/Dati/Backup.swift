@@ -108,12 +108,15 @@ enum GestoreBackup {
         // Senza nessun archivio il backup non si fa: con la rotazione sostituirebbe quelli buoni
         let archivio: Set<String> = [ArchivioPezzi.nomeCartella, Archivio.nomeFileVecchio]
         func lasciaFuori(_ nome: String) -> Bool {
-            escludi.contains(nome) || archivio.contains(nome) || nome.hasPrefix(Archivio.nomeCopiaAvvio)
+            escludi.contains(nome) || archivio.contains(nome) || nome.hasPrefix(Archivio.nomeCopiaAvvio) || nome == fileChiaviCapsule
                 || nome == Archivio.nomeConversioneDaVerificare || nome.hasPrefix(Archivio.prefissoCartellaScartata)
         }
         let voci = try fm.contentsOfDirectory(atPath: sorgente.path)
+        // «Luce» giro 15 (decisione 42): le chiavi delle capsule del tempo solo nei backup protetti, dentro lo zip che poi
+        // si cifra (si passa sempre dalla copia temporanea); senza password non entrano mai
+        let chiaviCapsule = password == nil ? [] : chiaviCapsuleDaSalvare()
         let soloArchivioJson = !voci.contains { lasciaFuori($0) && $0 != Archivio.nomeFileVecchio }
-        if soloArchivioJson {
+        if soloArchivioJson && chiaviCapsule.isEmpty {
             // Il formato di prima, niente da lasciare fuori: lo zip della cartella com'è
             guard Archivio.valeArchivioJson(in: sorgente) else { throw ErroreBackup.senzaArchivio }
         } else {
@@ -134,6 +137,10 @@ enum GestoreBackup {
                 } else {
                     throw ErroreBackup.senzaArchivio
                 }
+            }
+            if !chiaviCapsule.isEmpty {
+                let testi = chiaviCapsule.map { $0.base64EncodedString() }
+                try JSONEncoder().encode(testi).write(to: dentro.appendingPathComponent(fileChiaviCapsule), options: .atomic)
             }
             sorgente = dentro
         }
@@ -216,13 +223,32 @@ enum GestoreBackup {
     /// password: senza → `.serveLaPassword`, sbagliata → `.passwordErrata`. I vecchi .zip in
     /// chiaro si ripristinano come sempre (la password, se c'è, non serve).
     static func estrai(_ backup: URL, password: String? = nil) throws -> (dati: DatiPrisma, cartella: URL) {
-        guard CifraturaBackup.cifrato(backup) else { return try estraiZip(backup) }
+        guard CifraturaBackup.cifrato(backup) else {
+            let estratto = try estraiZip(backup)
+            togliChiaviCapsule(in: estratto.cartella, consegna: false)
+            return estratto
+        }
         guard let password, !password.isEmpty else { throw ErroreBackup.serveLaPassword }
         // Lo zip decifrato vive solo nella cartella temporanea, il tempo di estrarlo
         let chiaro = FileManager.default.temporaryDirectory.appendingPathComponent("Prisma-decifrato-\(UUID().uuidString).zip")
         defer { try? FileManager.default.removeItem(at: chiaro) }
         try CifraturaBackup.decifra(backup, in: chiaro, password: password)
-        return try estraiZip(chiaro)
+        let estratto = try estraiZip(chiaro)
+        togliChiaviCapsule(in: estratto.cartella, consegna: true)
+        return estratto
+    }
+
+    /// Le chiavi delle capsule di un backup protetto: si consegnano a `chiaviCapsuleRitrovate` e il file si toglie
+    /// prima di restituire la cartella (non arriva mai nella cartella dell'archivio). Da un backup in chiaro (non
+    /// dovrebbe averle) il file si toglie e basta.
+    private static func togliChiaviCapsule(in cartella: URL, consegna: Bool) {
+        let url = cartella.appendingPathComponent(fileChiaviCapsule)
+        guard FileManager.default.fileExists(atPath: url.path) else { return }
+        defer { try? FileManager.default.removeItem(at: url) }
+        guard consegna, let dati = try? Data(contentsOf: url),
+              let testi = try? JSONDecoder().decode([String].self, from: dati) else { return }
+        let chiavi = testi.compactMap { Data(base64Encoded: $0) }
+        if !chiavi.isEmpty { chiaviCapsuleRitrovate(chiavi) }
     }
 
     private static func estraiZip(_ zip: URL) throws -> (dati: DatiPrisma, cartella: URL) {
@@ -361,4 +387,14 @@ enum GestoreBackup {
         }
     }
     #endif
+}
+
+/// Le chiavi delle capsule del tempo nei backup protetti («Luce» giro 15, decisione 42). Gli hook li imposta solo
+/// l'«Avvio vero» (`CapsuleNelBackup.installa()`, con il Portachiavi) o la prova del backup (con chiavi di prova): di base
+/// nessuna chiave entra e nessuna si consegna.
+extension GestoreBackup {
+    nonisolated(unsafe) static var chiaviCapsuleDaSalvare: () -> [Data] = { [] }
+    nonisolated(unsafe) static var chiaviCapsuleRitrovate: ([Data]) -> Void = { _ in }
+    /// Il file dentro lo zip cifrato: JSON con le chiavi in base64.
+    static let fileChiaviCapsule = "chiavi-capsule.bin"
 }
