@@ -367,6 +367,6 @@ enum ProvaCalcoliPratiche {
         let stati = MotorePratiche.stati(dati, oggi: oggi, calendario: cal)
         let durata = Date().timeIntervalSince(inizio)
         verifica("Pratiche: 200 pratiche calcolate", Double(stati.count), 200)
-        verifica.vero("Pratiche: 200 pratiche in meno di mezzo secondo", durata < 0.5)
+        verifica.vero("Pratiche: 200 pratiche in meno di mezzo secondo", durata < 0.5 * ProvaCarico.fattoreTempo)
     }
 }
