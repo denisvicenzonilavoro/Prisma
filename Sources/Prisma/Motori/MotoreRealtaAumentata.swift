@@ -293,14 +293,13 @@ enum TestiRealta {
     static let disegnaSulliPad = "Il cliente disegna sull'iPad"
     static let scriviPrimaLettera = "Scrivi prima la lettera sul palco"
     static let dopoPensioneDisegno = "Dopo la pensione il disegno è solo un'indicazione: il confronto guarda l'età di pensione."
-    static let aiutoCapsula = "Scrivi con calma: puoi anche dettare con il microfono della tastiera. Il messaggio passa al Mac, dove si sigilla dopo una conferma; poi nessuno lo legge prima del giorno giusto."
-    /// Sull'iPad il testo non si sigilla: passa al Mac come bozza (giro 16, D-C4) e sparisce dall'iPad.
-    static let confermaInvio = "Il messaggio passa al Mac e sparisce da questo iPad. Si sigilla sul Mac, dopo una conferma."
-    static let mandaAlMac = "✉︎ Manda al Mac"
-    static let manda = "Manda"
+    static let aiutoCapsula = "Scrivi con calma: puoi anche dettare con il microfono della tastiera. Il messaggio si sigilla sul Mac e nessuno lo legge prima del giorno giusto."
+    /// La conferma sull'iPad prima dell'invio: il Mac sigilla appena arriva, senza mostrarlo (giro 16, D-C4).
+    static let confermaSigillo = "Il messaggio va al Mac, che lo sigilla appena arriva: nessuno lo legge fino al giorno in cui si apre, e dopo il sigillo non si può rileggere né correggere."
+    static let sigilla = "✉︎ Sigilla la capsula"
     /// Sul Mac, nella vista della capsula (`Shell/SalaCapsula.swift`).
     static let scriviSullIPad = "Scrivi sull'iPad"
-    static let aiutoScriviSullIPad = "Il cliente scrive sull'iPad del tavolo: il testo torna in questo campo come bozza, da sigillare qui con la conferma"
+    static let aiutoScriviSullIPad = "Il cliente scrive sull'iPad del tavolo: il Mac sigilla il messaggio appena arriva, senza mostrarlo"
     static let annullaAttesaCapsula = "L'iPad torna alla schermata neutra e il campo dell'iPad si svuota"
 
     /// Il nome di battesimo («Giulia» da «Giulia Rossi»).
@@ -320,9 +319,7 @@ enum TestiRealta {
     static func confermaCifre(_ primo: String) -> String { "Sull'iPad compaiono le cifre di \(primo). Vanno bene per chi è al tavolo?" }
     static func titoloFoglio(_ cliente: String, anno: Int) -> String { "Il cristallo di \(cliente) · \(anno)" }
     static func titoloDocumento(anno: Int, ora: String) -> String { "Il cristallo · \(anno) · \(ora)" }
-    static func capsulaArrivata(_ primo: String) -> String {
-        "Il messaggio di \(primo) è arrivato dall'iPad: è nel campo, non ancora sigillato. Sigillalo quando è pronto."
-    }
+    static func capsulaArrivata(_ primo: String) -> String { "Il messaggio di \(primo) è arrivato dall'iPad ed è sigillato" }
     static func attesaCapsula(_ primo: String) -> String { "\(primo) scrive sull'iPad…" }
     /// «Si apre a marzo 2027» sull'iPad: la frase di `MotoreCapsule.quando` con la maiuscola.
     static func siApreCapsula(_ quando: String) -> String { quando.prefix(1).uppercased() + quando.dropFirst() }
@@ -333,7 +330,7 @@ enum TestiRealta {
          serveLuce, piuLentamente, esploso, fine, apri, stimata, fotocameraAssente, consentiImpostazioni, fotocameraNegata,
          scattoSoloAlTavolo, scattoConStanzaTitolo, scattoConStanzaAiuto, stanzaNonPermessa, scattoGuasto, notaFoglio,
          rigaStanza, attesaTavolo, rispondeSulliPad, lanciaSulliPad, disegnaSulliPad, scriviPrimaLettera,
-         dopoPensioneDisegno, aiutoCapsula, confermaInvio, mandaAlMac, manda, scriviSullIPad, aiutoScriviSullIPad,
+         dopoPensioneDisegno, aiutoCapsula, confermaSigillo, sigilla, scriviSullIPad, aiutoScriviSullIPad,
          annullaAttesaCapsula]
     }
 }

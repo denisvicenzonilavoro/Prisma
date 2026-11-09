@@ -23,9 +23,11 @@ import SwiftUI
 // - Il PDF su carta bianca («Stampala su carta per …») e «Condividi…» solo come PDF protetto con una password nuova,
 //   detta a voce (mai conservata); la traccia nel dossier (`UscitaCliente(.capsula)`).
 // - «Scrivi sull'iPad» (giro 16, D-C4, decisione 48): solo sul Mac e solo con l'iPad del tavolo collegato. Il cliente
-//   scrive sull'iPad; il testo torna in rete locale cifrata (`TavoloMac.chiediTestoCapsula`) ed entra nel campo come
-//   bozza, con una nota: si sigilla solo con «✉︎ Sigilla la capsula» e la sua conferma, mai da solo. Durante l'attesa
-//   «Annulla» riporta l'iPad alla schermata neutra; chiudere la vista o bloccare Prisma fa lo stesso.
+//   scrive sull'iPad e conferma il sigillo lì; il testo torna in rete locale cifrata (`TavoloMac.chiediTestoCapsula`) e
+//   il Mac lo sigilla subito con la scelta di «Si apre quando» fatta alla richiesta (stesso `sigillaCapsula`, stessa
+//   chiave del Portachiavi): il testo è privato, mai nel campo, mai a schermo, mai nei registri; sul Mac si vede solo
+//   la riga nuova e «…è arrivato dall'iPad ed è sigillato». Durante l'attesa «Annulla» riporta l'iPad alla schermata
+//   neutra; chiudere la vista o bloccare Prisma fa lo stesso.
 
 /// Il contenuto del palco per la capsula del tempo.
 struct CapsulaDelTempo: View {
@@ -50,9 +52,7 @@ struct CapsulaDelTempo: View {
     @State private var aperta: CapsulaAperta?
     @State private var daEliminare: CapsulaTempo?
     @State private var daCambiare: CapsulaTempo?
-    /// Il testo nel campo è arrivato dall'iPad del tavolo: bozza da sigillare (la nota sotto il campo).
-    @State private var bozzaDalTavolo = false
-    /// L'iPad sta scrivendo il testo («Scrivi sull'iPad»): «Sigilla» aspetta.
+    /// L'iPad sta scrivendo il testo («Scrivi sull'iPad»): campo, «Si apre quando» e «Sigilla» aspettano.
     @State private var attesaTavolo = false
 
     private typealias K = Tema.Apple.SalaRacconti.Capsula
@@ -113,9 +113,6 @@ struct CapsulaDelTempo: View {
             if attesaTavolo { stato.tavolo.annullaTestoCapsula() }
             #endif
         }
-        .onChange(of: testo) { _, t in
-            if t.isEmpty { bozzaDalTavolo = false }
-        }
         .confirmationDialog(TestiCapsule.conferma, isPresented: $conferma, titleVisibility: .visible) {
             Button("Sigilla") { sigilla(obiettivi: obiettivi) }
             Button("Annulla", role: .cancel) {}
@@ -152,13 +149,6 @@ struct CapsulaDelTempo: View {
                 .scaleEffect(sigillo.testoVola ? K.scalaVoloTesto : 1, anchor: .topLeading)
                 .offset(x: sigillo.testoVola ? K.voloTesto.width : 0, y: sigillo.testoVola ? K.voloTesto.height : 0)
                 .opacity(sigillo.testoVola ? 0 : 1)
-            if bozzaDalTavolo {
-                Text(TestiRealta.capsulaArrivata(TestiRealta.primoNome(cliente.nome)))
-                    .carattereApple(K.nota)
-                    .foregroundColor(K.coloreBozzaArrivata)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, K.sopraAiuto)
-            }
             Text(TestiCapsule.aiutoDettatura)
                 .carattereApple(K.aiuto)
                 .foregroundColor(K.coloreAiuto)
@@ -180,6 +170,7 @@ struct CapsulaDelTempo: View {
             if attuale == .data {
                 DatePicker("Si apre il", selection: $dataScelta, in: domani..., displayedComponents: .date)
                     .datePickerStyle(.compact)
+                    .disabled(attesaTavolo)
                     .fixedSize()
                     .padding(.top, K.sottoEtichetta)
             }
@@ -191,13 +182,12 @@ struct CapsulaDelTempo: View {
                     .help(TestiCapsule.conferma)
                 #if os(macOS)
                 // Il tavolo con l'iPad: il pulsante compare solo con l'iPad collegato (come «▣ Mostra sul tavolo»)
-                ScriviCapsulaSullIPad(tavolo: stato.tavolo, cliente: cliente,
-                                      siApre: TestiRealta.siApreCapsula(quandoScelto(obiettivi: obiettivi, attuale: attuale)),
+                let apertura = aperturaScelta(attuale)
+                ScriviCapsulaSullIPad(tavolo: stato.tavolo, cliente: cliente, apertura: apertura,
+                                      siApre: TestiRealta.siApreCapsula(MotoreCapsule.quando(apertura, obiettivo: obiettivoScelto(attuale, obiettivi))),
                                       attivo: !(sigillo.inCorso || istantanea || stato.solaLettura),
-                                      inAttesa: $attesaTavolo) { arrivato in
-                    testo = MotoreCapsule.unisciBozza(testo, arrivato: arrivato)
-                    bozzaDalTavolo = !testo.isEmpty
-                    stato.mostraAvviso(TestiRealta.capsulaArrivata(TestiRealta.primoNome(cliente.nome)))
+                                      inAttesa: $attesaTavolo) { nuova in
+                    sigillataDalTavolo(nuova)
                 }
                 #endif
             }
@@ -205,13 +195,30 @@ struct CapsulaDelTempo: View {
         }
     }
 
-    /// «si apre quando «Anticipo casa» è raggiunto» o «si apre a marzo 2027»: la scelta attuale, per l'iPad del tavolo.
-    private func quandoScelto(obiettivi: [Obiettivo], attuale: SceltaAperturaCapsula) -> String {
+    /// L'apertura della scelta attuale di «Si apre quando» (la stessa per il sigillo sul Mac e per l'iPad del tavolo).
+    private func aperturaScelta(_ attuale: SceltaAperturaCapsula) -> CapsulaTempo.Apertura {
         switch attuale {
-        case .obiettivo(let id):
-            return MotoreCapsule.quando(.obiettivo(id: id), obiettivo: obiettivi.first { $0.id == id })
-        case .data:
-            return MotoreCapsule.quando(.data(Calendar.current.startOfDay(for: dataScelta)), obiettivo: nil)
+        case .obiettivo(let id): return .obiettivo(id: id)
+        case .data: return .data(Calendar.current.startOfDay(for: dataScelta))
+        }
+    }
+
+    private func obiettivoScelto(_ attuale: SceltaAperturaCapsula, _ obiettivi: [Obiettivo]) -> Obiettivo? {
+        guard case .obiettivo(let id) = attuale else { return nil }
+        return obiettivi.first { $0.id == id }
+    }
+
+    /// La capsula scritta sull'iPad è sigillata (o no): la riga nuova con il lampo e l'avviso, mai il testo.
+    private func sigillataDalTavolo(_ nuova: String?) {
+        guard let nuova else {
+            stato.mostraAvviso(TestiCapsule.toastNonSigillata)
+            return
+        }
+        stato.mostraAvviso(TestiRealta.capsulaArrivata(TestiRealta.primoNome(cliente.nome)))
+        guard !calmo, !istantanea else { return }
+        lampo = nuova
+        Movimenti.dopo(M.rigaNuova) {
+            withAnimation(.easeOut(duration: M.rigaNuova)) { lampo = nil }
         }
     }
 
@@ -244,7 +251,7 @@ struct CapsulaDelTempo: View {
             }
             ChipCapsula(titolo: TestiCapsule.inUnaData, scelta: attuale == .data) { scelta = .data }
         }
-        .disabled(sigillo.inCorso || istantanea)
+        .disabled(sigillo.inCorso || istantanea || attesaTavolo)
     }
 
     private var domani: Date {
@@ -353,11 +360,7 @@ struct CapsulaDelTempo: View {
     // MARK: Sigillare
 
     private func sigilla(obiettivi: [Obiettivo]) {
-        let apertura: CapsulaTempo.Apertura
-        switch sceltaAttuale(obiettivi) {
-        case .obiettivo(let id): apertura = .obiettivo(id: id)
-        case .data: apertura = .data(Calendar.current.startOfDay(for: dataScelta))
-        }
+        let apertura = aperturaScelta(sceltaAttuale(obiettivi))
         let prima = Set(stato.dati.capsule.map(\.id))
         // Riduci movimento: il campo si svuota e la riga nuova compare con la dissolvenza di 0,15 s
         let sigillata: Bool
@@ -443,16 +446,19 @@ struct CapsulaDelTempo: View {
 
 #if os(macOS)
 /// «Scrivi sull'iPad» accanto a «Sigilla» (giro 16, D-C4): osserva il tavolo e compare solo con l'iPad collegato. Durante
-/// l'attesa: l'indicatore, «Giulia scrive sull'iPad…» e «Annulla». Il testo arrivato va a `arrivato` (il campo, come
-/// bozza); qui non si sigilla nulla.
+/// l'attesa: l'indicatore, «Giulia scrive sull'iPad…» e «Annulla». Il testo arrivato si sigilla subito qui, con
+/// l'apertura scelta alla richiesta e lo stesso `sigillaCapsula` del sigillo sul Mac: non passa da nessuno `@State`, campo
+/// o registro, e a chi sta sopra arriva solo l'id della capsula nuova (nil se il sigillo non è riuscito).
 struct ScriviCapsulaSullIPad: View {
+    @Environment(StatoShell.self) var stato
     @ObservedObject var tavolo: TavoloMac
     let cliente: Cliente
+    let apertura: CapsulaTempo.Apertura
     /// «Si apre a marzo 2027», già con la maiuscola.
     let siApre: String
     let attivo: Bool
     @Binding var inAttesa: Bool
-    let arrivato: (String) -> Void
+    let sigillata: (String?) -> Void
 
     private typealias K = Tema.Apple.SalaRacconti.Capsula
 
@@ -483,9 +489,18 @@ struct ScriviCapsulaSullIPad: View {
 
     private func chiedi(primo: String) {
         let capsula = CapsulaTavolo(nome: primo, siApre: siApre, aiuto: TestiRealta.aiutoCapsula)
+        let stato = stato, cliente = cliente, apertura = apertura, sigillata = sigillata
         tavolo.chiediTestoCapsula(ContestoTavolo(documento: nil, pagina: 0, clienteId: cliente.id), capsula: capsula) { testo in
-            arrivato(testo)
+            sigillata(Self.sigilla(testo, apertura: apertura, cliente: cliente, stato: stato))
         }
+    }
+
+    /// Il sigillo del testo arrivato dall'iPad: l'id della capsula nuova, nil se non si è sigillata. Anche la prova del
+    /// tavolo passa da qui (`--prova-tavolo`).
+    static func sigilla(_ testo: String, apertura: CapsulaTempo.Apertura, cliente: Cliente, stato: StatoShell) -> String? {
+        let prima = Set(stato.dati.capsule.map(\.id))
+        guard stato.sigillaCapsula(testo, apertura: apertura, cliente: cliente) else { return nil }
+        return stato.dati.capsule.first { !prima.contains($0.id) }?.id
     }
 }
 #endif

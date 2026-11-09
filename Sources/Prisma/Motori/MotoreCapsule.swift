@@ -110,13 +110,4 @@ enum MotoreCapsule {
             return "si apre quando «\(obiettivo.titolo)» è raggiunto"
         }
     }
-
-    /// Il testo scritto sull'iPad del tavolo entra nel campo come bozza (giro 16, D-C4): con il campo vuoto lo prende
-    /// com'è, altrimenti si aggiunge sotto, dopo una riga vuota. Mai sigillato qui: lo sigilla il consulente, con la conferma.
-    static func unisciBozza(_ campo: String, arrivato: String) -> String {
-        let nuovo = arrivato.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !nuovo.isEmpty else { return campo }
-        let esistente = campo.trimmingCharacters(in: .whitespacesAndNewlines)
-        return esistente.isEmpty ? nuovo : esistente + "\n\n" + nuovo
-    }
 }

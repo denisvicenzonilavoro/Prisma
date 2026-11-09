@@ -422,42 +422,51 @@ enum ProvaTavolo {
         } else {
             controlla(false, "Tavolo: la capsula arriva sull'iPad")
         }
-        // 6b. «Scrivi sull'iPad» della vista della capsula (Shell/SalaCapsula.swift): l'attesa si vede, «Annulla» riporta
-        // l'iPad al neutro e un testo tardivo si ignora; il testo arrivato entra nel campo come bozza (sotto quello già
-        // scritto) e nessuna capsula si sigilla da sola
+        // 6b. «Scrivi sull'iPad» della vista della capsula (Shell/SalaCapsula.swift, D-C4): l'attesa si vede, «Annulla»
+        // riporta l'iPad al neutro e un testo tardivo si ignora; il testo arrivato si sigilla subito (una capsula in più,
+        // stessa cifratura del sigillo sul Mac) e non compare in nessuno stato del Mac oltre al sigillo cifrato
         let capsulePrima = stato.dati.capsule.count
-        let siApre = TestiRealta.siApreCapsula(MotoreCapsule.quando(.data(Calendar.current.date(byAdding: .year, value: 2, to: Date()) ?? Date()),
-                                                                     obiettivo: nil))
+        let apertura = CapsulaTempo.Apertura.data(Calendar.current.startOfDay(for: Calendar.current.date(byAdding: .year, value: 2, to: Date()) ?? Date()))
+        let siApre = TestiRealta.siApreCapsula(MotoreCapsule.quando(apertura, obiettivo: nil))
         let datiCapsula = CapsulaTavolo(nome: primo, siApre: siApre, aiuto: TestiRealta.aiutoCapsula)
-        var bozza = ""
-        tavolo.chiediTestoCapsula(contesto, capsula: datiCapsula) { bozza = MotoreCapsule.unisciBozza(bozza, arrivato: $0) }
+        var sigillate: [String?] = []
+        let sigillaArrivato: (String) -> Void = { sigillate.append(ScriviCapsulaSullIPad.sigilla($0, apertura: apertura, cliente: c, stato: stato)) }
+        tavolo.chiediTestoCapsula(contesto, capsula: datiCapsula, riceve: sigillaArrivato)
         if attendi(5, { mostrato(ipad)?.genere == .capsula }), let m = mostrato(ipad) {
             let inAttesa = tavolo.capsulaInAttesa
             tavolo.annullaTestoCapsula()
             let neutra = attendi(5) { ipad.schermo == .neutra }
             ipad.mandaTestoCapsula(testoCapsula, mostra: m.id)
             _ = attendi(1) { false }
-            controlla(inAttesa && !tavolo.capsulaInAttesa && neutra && bozza.isEmpty,
-                      "Tavolo: «Scrivi sull'iPad» aspetta, «Annulla» riporta l'iPad al neutro e il testo tardivo si ignora")
+            controlla(inAttesa && !tavolo.capsulaInAttesa && neutra && sigillate.isEmpty && stato.dati.capsule.count == capsulePrima,
+                      "Tavolo: «Scrivi sull'iPad» aspetta, «Annulla» riporta l'iPad al neutro e il testo tardivo non si sigilla")
         } else {
             controlla(false, "Tavolo: la capsula di «Scrivi sull'iPad» arriva sull'iPad")
         }
-        let giaScritto = "Prima riga scritta sul Mac."
-        bozza = giaScritto
-        tavolo.chiediTestoCapsula(contesto, capsula: datiCapsula) { bozza = MotoreCapsule.unisciBozza(bozza, arrivato: $0) }
+        let privato = "Messaggio privato di prova per la capsula, scritto sull'iPad."
+        tavolo.chiediTestoCapsula(contesto, capsula: datiCapsula, riceve: sigillaArrivato)
         if attendi(5, { mostrato(ipad)?.genere == .capsula }), let m = mostrato(ipad) {
             controlla(m.capsula?.siApre.first?.isUppercase == true && m.capsula?.nome == primo,
                       "Tavolo: la capsula sull'iPad porta il nome di battesimo e «\(m.capsula?.siApre ?? "—")»")
-            ipad.mandaTestoCapsula("  \(testoCapsula)\n", mostra: m.id)
-            let arrivata = attendi(5) { bozza != giaScritto && ipad.schermo == .neutra }
-            controlla(arrivata && bozza == giaScritto + "\n\n" + testoCapsula && !tavolo.capsulaInAttesa,
-                      "Tavolo: il testo dell'iPad entra nel campo come bozza, sotto quello già scritto")
-            controlla(stato.dati.capsule.count == capsulePrima, "Tavolo: il testo dall'iPad non sigilla nessuna capsula da solo")
+            ipad.mandaTestoCapsula("  \(privato)\n", mostra: m.id)
+            let arrivata = attendi(5) { !sigillate.isEmpty && ipad.schermo == .neutra }
+            let nuova = sigillate.first.flatMap { id in stato.dati.capsule.first { $0.id == id } }
+            controlla(arrivata && sigillate.count == 1 && stato.dati.capsule.count == capsulePrima + 1 && nuova?.clienteId == presente
+                      && nuova?.apertura == apertura && nuova?.stato == .sigillata && !tavolo.capsulaInAttesa,
+                      "Tavolo: il testo dall'iPad si sigilla subito in una capsula nuova del cliente, con l'apertura scelta")
+            let aperto = nuova.flatMap { k in stato.chiaveCapsula(k).flatMap { try? SigilloCapsule.apri(k, chiave: $0) } }
+            controlla(aperto == privato, "Tavolo: il sigillo è quello di sempre (la chiave delle capsule lo riapre)")
+            // Il testo non è in chiaro da nessuna parte del Mac: dati (con il sigillo), avvisi, tavolo, messaggi all'iPad
+            let datiInChiaro = (try? JSONEncoder().encode(stato.dati)).map { String(decoding: $0, as: UTF8.self) } ?? privato
+            let osservabili = [datiInChiaro, stato.avviso ?? "", tavolo.avviso ?? "", tavolo.mostrato ?? "",
+                               String(describing: tavolo.mostraAttivo as Any)]
+            let nelSigillo = nuova.map { String(decoding: $0.sigillo, as: UTF8.self).contains(privato) } ?? true
+            let rimandato = ipad.registro.contains { String(decoding: $0, as: UTF8.self).contains(privato) }
+            controlla(!osservabili.contains { $0.contains(privato) } && !nelSigillo && !rimandato,
+                      "Tavolo: il testo della capsula non compare sul Mac fuori dal sigillo cifrato, né torna all'iPad")
         } else {
             controlla(false, "Tavolo: la seconda capsula di «Scrivi sull'iPad» arriva sull'iPad")
         }
-        controlla(MotoreCapsule.unisciBozza("", arrivato: " \n") == "" && MotoreCapsule.unisciBozza(" ", arrivato: "Ciao") == "Ciao",
-                  "Tavolo: un testo vuoto non cambia il campo, un campo vuoto prende il testo com'è")
         // 7. Un altro cliente sul Mac con il cristallo sull'iPad: schermata neutra
         tavolo.mandaRealta(contesto)
         _ = attendi(5) { mostrato(ipad)?.genere == .realtaAumentata }

@@ -591,8 +591,8 @@ final class TavoloMac: ObservableObject {
     }
 
     /// La capsula del tempo scritta sull'iPad (D-C4): il testo arriva una volta sola a `riceve` e l'iPad torna neutro.
-    /// La vista della capsula (`Shell/SalaCapsula.swift`, «Scrivi sull'iPad») lo mette nel suo campo come bozza: si
-    /// sigilla solo sul Mac, con la conferma di sempre; mai da solo all'arrivo.
+    /// La vista della capsula (`Shell/SalaCapsula.swift`, «Scrivi sull'iPad») lo sigilla subito con `sigillaCapsula`: il
+    /// testo non si mostra sul Mac, non va in nessun campo né registro.
     func chiediTestoCapsula(_ c: ContestoTavolo, capsula: CapsulaTavolo, riceve: @escaping (String) -> Void) {
         guard collegato, let s = stato, let id = clientePresente(c), let cliente = s.cliente(id) else { return }
         var m = MostraTavolo(id: idMostra(.capsula, cliente: id), genere: .capsula, titolo: EsperienzaSala.capsula.titolo,
@@ -696,7 +696,7 @@ final class TavoloMac: ObservableObject {
             dallIPad.send(c)
         case .testoCapsula(let x):
             guard let m = mostraAttivo, m.id == x.id, m.genere == .capsula, let riceve = testoCapsulaArrivato else { return }
-            // Una volta sola; sul Mac va solo a chi lo aspetta (il campo della capsula, come bozza), sull'iPad non resta
+            // Una volta sola; sul Mac va solo a chi lo sigilla (mai a schermo né nei registri), sull'iPad non resta
             testoCapsulaArrivato = nil
             riceve(String(x.testo.prefix(ProtocolloTavolo.massimoTestoCapsula)))
             schermataNeutra()

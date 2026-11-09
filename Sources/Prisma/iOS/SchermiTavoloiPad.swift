@@ -1120,14 +1120,14 @@ struct DisegnoTavoloiPad: View {
     }
 }
 
-/// La capsula del tempo sull'iPad (D-C4): il cliente scrive (anche dettando con la tastiera), conferma l'invio e il
-/// testo va al Mac, dove entra nel campo della capsula come bozza e si sigilla solo con la conferma del consulente.
-/// Il testo vive solo in questa vista e si svuota all'uscita.
+/// La capsula del tempo sull'iPad (D-C4): il cliente scrive (anche dettando con la tastiera), conferma il sigillo e il
+/// testo va al Mac, che sigilla subito senza mostrarlo (`ScriviCapsulaSullIPad` in Shell/SalaCapsula.swift). Il testo
+/// vive solo in questa vista e si svuota all'uscita.
 struct CapsulaTavoloiPad: View {
     let mostra: MostraTavolo
     let dati: CapsulaTavolo
     var testoIniziale = ""
-    let manda: (String) -> Void
+    let sigilla: (String) -> Void
 
     @State private var testo = ""
     @State private var conferma = false
@@ -1152,15 +1152,15 @@ struct CapsulaTavoloiPad: View {
                 .carattereApple(Tema.Apple.Tavolo.iPad.nota)
                 .foregroundColor(Tema.Apple.Tavolo.iPad.coloreNota)
                 .fixedSize(horizontal: false, vertical: true)
-            Button { conferma = true } label: { Text(TestiRealta.mandaAlMac).frame(maxWidth: .infinity) }
+            Button { conferma = true } label: { Text(TestiRealta.sigilla).frame(maxWidth: .infinity) }
                 .buttonStyle(.applePrimario)
                 .disabled(testo.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
-        .confirmationDialog(TestiRealta.confermaInvio, isPresented: $conferma, titleVisibility: .visible) {
-            Button(TestiRealta.manda) {
+        .confirmationDialog(TestiRealta.confermaSigillo, isPresented: $conferma, titleVisibility: .visible) {
+            Button("Sigilla") {
                 let t = testo
                 testo = ""
-                manda(t)
+                sigilla(t)
             }
             Button("Annulla", role: .cancel) {}
         }
