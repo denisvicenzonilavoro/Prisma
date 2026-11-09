@@ -50,6 +50,7 @@ locale sul Mac del 7-8 novembre 2026. Le regole vincolanti restano in `CLAUDE.md
 | Branch | Cosa | Stato |
 |---|---|---|
 | `luce/unione-8-10` | Luce giri 8-10: Sala (lettera dal futuro, Lancia l'anno, Quanto vale avermi accanto), Studio › Spese (chilometri, spese e scadenze), Pratiche › Moduli (compila da solo); ognuno con revisione avversaria e correzioni | compila in debug sul Mac e le prove dei singoli giri erano verdi; manca la build completa con tutte le prove (la fa il workflow al primo push) |
+| `luce/giro-13-iphone` | Luce giro 13 «Dall'iPhone al Mac»: nuovo cliente in 10 secondi (carta d'identità letta sull'iPhone o trascinata sul Mac, codice fiscale «coerente (comune non controllato)», solo in memoria fino a «Crea il dossier») e la nota vocale (dettata sull'iPhone, coda cifrata, proposte confermate sul Mac); ponte versione 3 | scritto nel cloud, solo controllo della sintassi: manca la build con tutte le prove e lo sguardo alle istantanee 840-847, 770-774 e iOS 75, 775-777; aperto da `luce/unione-8-10` (senza i giri 11 e 12) |
 | `vera/fase-4` | Vera, fase 4: funzioni 3, 4, 5, 7, 14, 15, 17, 20, collegate a chat, viste e archivio | due giri di revisione con correzioni, prove verdi in debug sul Mac (db982bc); contiene già `main` con il giro 0; si unisce in main solo con build verde e il via dell'utente |
 
 
@@ -111,6 +112,7 @@ inventa):
 - **Impostazioni › Studio:** aliquote delle provvigioni Alleanza.
 - **Spese:** km di andata e ritorno per cliente, dati fiscali, €/km e scadenze (da verificare con il commercialista).
 - **Moduli:** i PDF veri dei moduli del canale indipendente; per Alleanza serve prima l'approvazione della compagnia.
+  Per il nuovo cliente servono anche «Informativa privacy» e «Adeguata verifica» dei due canali (giro 13).
 - **Clienti: potenziali, passaparola e campagne (Luce giro 12, branch `luce/giro-12-clienti`):**
   1. dopo quanti mesi cancellare i potenziali «non interessati» e quelli senza informativa (oggi nessuna
      cancellazione automatica, solo «Elimina» a mano; decisione 39);
@@ -129,6 +131,19 @@ inventa):
   11. con Messaggi fra le app riservate il biglietto del traguardo non si mostra più da Messaggi in modalità cliente
       (l'istantanea 734 mostra l'avviso): va bene, o serve un'altra strada (dossier o Sala)?;
   12. la quota del passaparola usa «Cliente dal» se scritto, altrimenti la data della scheda (con la nota): va bene?
+- **Giro 13, nuovo cliente e nota vocale** (domande aperte, con la proposta seguita fra parentesi):
+  1. Codici catastali dei comuni: approvi una tabella (Agenzia delle Entrate o ISTAT, ~200 KB nelle risorse, da
+     aggiornare a mano)? Quale fonte e licenza? (Oggi no: «✓ coerente (comune non controllato)».)
+  2. Copia del documento d'identità per l'adeguata verifica: va conservata? Per quale canale e con quali regole?
+     (L'interruttore nella scheda resta spento; solo per foto o PDF trascinati sul Mac.)
+  3. Nota vocale con Prisma ovunque: le note dettate lontano dal Mac possono passare dal giornale cifrato su iCloud
+     Drive? (Oggi no: restano cifrate sull'iPhone, al più 20.)
+  4. Invio automatico della nota dopo 3 secondi con «Annulla»? (Oggi no: si manda con il tocco ✓.)
+  5. Consegna in background delle note (`BGAppRefreshTask`)? (Oggi no, decisione 33.)
+  6. La cittadinanza nei moduli (un nuovo dato dei moduli)? (Oggi solo nel dossier.)
+  7. I testi di `Supporto/iOS/Info.plist` per fotocamera, microfono e riconoscimento vanno bene?
+  8. Il messaggio nato da una nota («mandarle il confronto…») è non commerciale? (Proposta seguita: sì, non serve il
+     consenso commerciale.)
 
 ## Regole da non dimenticare
 

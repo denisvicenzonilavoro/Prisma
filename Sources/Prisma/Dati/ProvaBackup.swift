@@ -315,6 +315,9 @@ enum ProvaBackup {
             // Posizione a mano, appuntamento da confermare e impostazioni del Territorio (versione 27, «Luce» giro 11),
             // un archivio senza e la lettura tollerante (ProvaBackupTerritorio.swift)
             if let e = try verificaTerritorio(originale: originale, estratto: estratto.dati) {
+                print("ERRORE: \(e)")
+                return 1
+            }
             // Potenziali clienti, passaparola e campagne (versione 27, «Luce» giro 12), e un archivio della 26 (ProvaBackupLuceClienti.swift)
             if let e = try verificaLuceClienti(originale: originale, estratto: estratto.dati) {
                 print("ERRORE: \(e)")
@@ -632,6 +635,11 @@ enum ProvaBackup {
             }
             // «Luce», giro 12: in modalità cliente Messaggi non si apre e Clienti torna alla Rubrica (ProvaBackupLuceClienti.swift)
             if let errore = provaModoClienteLuce() {
+                print("ERRORE: \(errore)")
+                return 1
+            }
+            // La nota vocale e il nuovo cliente di «Luce» (giro 13): note dall'iPhone e cittadinanza (ProvaBackupNoteVocali.swift)
+            if let errore = try provaNoteVocali(radice: radice) {
                 print("ERRORE: \(errore)")
                 return 1
             }

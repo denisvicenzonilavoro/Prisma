@@ -37,7 +37,7 @@ import Observation
     @ObservationIgnored private var inCarica = false
 
     /// Numero dei campi di `DatiPrisma` copiati qui (la prova lo confronta con Mirror).
-    static let numeroCampi = 43
+    static let numeroCampi = 44
 
     var versione: Int { didSet { segnala(.calcoli) } }
     var clienti: [Cliente] { didSet(prima) { segnalaClienti(prima, clienti, \.id) } }
@@ -85,6 +85,8 @@ import Observation
     var potenziali: [PotenzialeCliente] { didSet { segnala(.neutro) } }
     /// Le campagne avviate («Luce» giro 12) entrano nelle occasioni dei messaggi e nei gruppi (regola dei 30 giorni).
     var campagne: [Campagna] { didSet { segnala(.calcoli) } }
+    /// Le note dall'iPhone («Luce» giro 13): nessun calcolo in cache.
+    var noteInArrivo: [NotaInArrivo] { didSet { segnala(.neutro) } }
     var clienteAttivoId: String { didSet(prima) { segnala(.clienteAttivo(prima: prima)) } }
     var impostazioni: Impostazioni { didSet(prima) { segnala(.impostazioni(prima: prima)) } }
 
@@ -130,6 +132,7 @@ import Observation
         kmClienti = d.kmClienti
         potenziali = d.potenziali
         campagne = d.campagne
+        noteInArrivo = d.noteInArrivo
         clienteAttivoId = d.clienteAttivoId
         impostazioni = d.impostazioni
     }
@@ -222,6 +225,7 @@ import Observation
         d.kmClienti = kmClienti
         d.potenziali = potenziali
         d.campagne = campagne
+        d.noteInArrivo = noteInArrivo
         return d
     }
 
@@ -268,6 +272,7 @@ import Observation
         d.kmClienti = _kmClienti
         d.potenziali = _potenziali
         d.campagne = _campagne
+        d.noteInArrivo = _noteInArrivo
         return d
     }
 
@@ -317,6 +322,7 @@ import Observation
         if kmClienti != d.kmClienti { kmClienti = d.kmClienti }
         if potenziali != d.potenziali { potenziali = d.potenziali }
         if campagne != d.campagne { campagne = d.campagne }
+        if noteInArrivo != d.noteInArrivo { noteInArrivo = d.noteInArrivo }
         if clienteAttivoId != d.clienteAttivoId { clienteAttivoId = d.clienteAttivoId }
         if impostazioni != d.impostazioni { impostazioni = d.impostazioni }
         inCarica = false

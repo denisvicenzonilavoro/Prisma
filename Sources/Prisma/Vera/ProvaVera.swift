@@ -1002,6 +1002,9 @@ enum ProvaVera {
         ProvaMessaggiVera.esegui(controlla)
         // Il copilota dell'incontro (giro 5 di Orizzonte): consenso, regole, Qwen finto, conferma, archivio, ponte (ProvaCopilota.swift)
         ProvaCopilota.esegui(controlla)
+        // «Luce» giro 13: la nota vocale (busta, arrivo, cliente, proposte, conferma senza doppioni, coda cifrata dell'iPhone,
+        // fuori da Prisma ovunque, Novità) (ProvaNotaVocale.swift)
+        ProvaNotaVocale.esegui(controlla)
         // La palestra della trattativa («Luce» giro 5): schema, livelli, cifre solo di Prisma, Qwen finto (ProvaPalestraVera.swift)
         ProvaPalestraVera.esegui(controlla)
         // «Luce», giro 8: la lettera dal futuro (scheda dei fatti, streaming, cifre, promesse, «senza il piano», Qwen finto) (ProvaLetteraVera.swift)

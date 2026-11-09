@@ -182,6 +182,24 @@ enum VoceConfronto: Hashable {
     /// Inquadra e capisci: la scena del Mac (velo, iPhone disegnato, scheda «Prisma sul Mac») e la schermata della
     /// fotocamera sull'iPhone (StatoInquadra.swift). Un oggetto a parte: la cascata dei campi non pubblica StatoShell.
     let inquadra = StatoInquadra()
+    /// «Nuovo cliente in 10 secondi» («Luce» giro 13, StatoNuovoCliente.swift): la scena della carta d'identità sul Mac e
+    /// la schermata della fotocamera sull'iPhone. Solo in memoria: chiudere, bloccare o il riposo del Mac scartano tutto.
+    let nuovoCliente = StatoNuovoCliente()
+    /// La nota vocale («Luce» giro 13, NotaVocaleArrivo.swift): la scheda «Arriva sul Mac» mostrata e la voce in modifica.
+    /// Non si salva (le note stanno in `dati.noteInArrivo`).
+    let notaVocale = StatoNotaVocaleMac()
+    /// La schermata «Una nota veloce» di iPhone e iPad («Luce» giro 13, StatoNotaVocaleTelefono.swift): il testo dettato,
+    /// l'onda e le note in partenza. Sul Mac non si usa. Non si salva (la coda cifrata sta sul telefono).
+    let notaTelefono = StatoNotaVocaleTelefono()
+    /// Le carte d'identità arrivate dall'iPhone e non ancora usate («Luce» giro 13): **solo in memoria** (decisione 25),
+    /// mai nell'archivio né nei backup; si scartano al blocco di Prisma e al riposo del Mac.
+    var carteInArrivo: [CartaIdentitaPonte] = []
+    /// La nota arrivata con Prisma bloccato: allo sblocco si mostra la scheda «Arriva sul Mac».
+    @ObservationIgnored var notaInAttesaSblocco: String?
+    /// L'abbonamento allo sblocco per la nota in attesa è già fatto.
+    @ObservationIgnored var sbloccoNoteOsservato = false
+    /// iPhone e iPad: la schermata «Una nota veloce» è aperta (Incontri, azione rapida dall'icona; «Luce» giro 13).
+    var notaVeloceAperta = false
     /// La Sala di «Luce» (StatoSala.swift): l'esperienza sul palco, osservata solo dalla Sala.
     let sala = StatoSala()
     /// La storia della settimana e dell'anno di «Luce» (giro 5, StoriaLuce.swift): le pagine e quella in corso,
@@ -206,6 +224,9 @@ enum VoceConfronto: Hashable {
     var richiestaNuovaPosizione: StatoPosizione?
     /// Il pulsante "Nuovo cliente" dell'intestazione chiede alla rubrica di aprire il modulo.
     var richiestaNuovoCliente = false
+    /// «Scrivi a mano» dalla scena del nuovo cliente («Luce» giro 13): la bozza con i dati letti, che Clienti apre nel
+    /// modulo (si consuma appena letta).
+    var bozzaNuovoCliente: Cliente?
     /// Completezza dei dati: chiede a Clienti o Posizioni di aprire il modulo su un campo (si consuma appena letta).
     var richiestaCompletamento: RichiestaCompletamento?
     /// Completezza dei dati: il campo dell'Analisi 360 da evidenziare (si toglie lasciando quell'area).
@@ -554,6 +575,9 @@ enum VoceConfronto: Hashable {
         applicaImpostazioniVera()
         DiagnosticaVoce.osservatore = { [weak self] riga in self?.passaggioVoce = riga }
         aggiornaElencoBackup()
+        // La nota vocale («Luce» giro 13): via le note decise da più di 30 giorni; allo sblocco la scheda in attesa
+        if !caricati.solaLettura { potaNoteInArrivo() }
+        osservaSbloccoNote()
         // Promemoria del Mac: solo qui, con l'archivio sul disco (mai nelle istantanee e nelle prove)
         avviaPromemoria()
         #if os(macOS)
@@ -832,6 +856,13 @@ enum VoceConfronto: Hashable {
         // Studio › Spese («Luce» giro 9): i km del cliente se ne vanno con lui; le spese restano del consulente, senza il
         // legame al cliente tolto
         dati.kmClienti[id] = nil
+        // La nota vocale («Luce» giro 13): le note del cliente se ne vanno con lui, e il suo id esce dai candidati
+        // (una sola assegnazione, solo se serve)
+        if dati.noteInArrivo.contains(where: { $0.clienteId == id || $0.candidati.contains(id) }) {
+            var note = dati.noteInArrivo.filter { $0.clienteId != id }
+            for i in note.indices where note[i].candidati.contains(id) { note[i].candidati.removeAll { $0 == id } }
+            dati.noteInArrivo = note
+        }
         if dati.speseStudio.spese.contains(where: { $0.clienteId == id }) {
             var spese = dati.speseStudio
             for i in spese.spese.indices where spese.spese[i].clienteId == id { spese.spese[i].clienteId = nil }
@@ -2094,6 +2125,12 @@ enum VoceConfronto: Hashable {
         Task {
             let d = await MotoreLocale.verificaDispositivo(vera)
             DispatchQueue.main.async { if self.disponibilitaLocale != d { self.disponibilitaLocale = d } }
+            #if os(iOS)
+            // «Luce» giro 13: il ponte ha trovato il Mac (anche con Qwen non pronto): partono le note in partenza
+            if vera.ponte.abbinato, d.motivo != PonteVera.macNonTrovato {
+                await MainActor.run { self.consegnaNoteInPartenza() }
+            }
+            #endif
         }
     }
 
@@ -3397,6 +3434,10 @@ enum VoceConfronto: Hashable {
         var potenziali = dati.potenziali
         PotenzialiDiProva.togli(&potenziali)
         if potenziali != dati.potenziali { dati.potenziali = potenziali }
+        // E le note vocali di prova, se ce ne sono («Luce» giro 13)
+        if dati.noteInArrivo.contains(where: { $0.id.hasPrefix(NotaVocaleDiProva.prefisso) }) {
+            dati.noteInArrivo.removeAll { $0.id.hasPrefix(NotaVocaleDiProva.prefisso) }
+        }
     }
 
     /// Torna ai dati di prova (con backup di sicurezza dello stato attuale): i 5 clienti del template,

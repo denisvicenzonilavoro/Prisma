@@ -270,6 +270,12 @@ extension StatoShell {
         } else if voce == .campagne {
             // Messaggi › Campagne sul primo gruppo (giro 12, MessaggiCampagne.swift)
             apriCampagne(nil)
+        } else if voce == .nuovoCliente {
+            // Clienti, poi la scena della carta d'identità (giro 13, NuovoClienteShell.swift)
+            apriNuovoClienteDaNovita()
+        } else if voce == .notaVocale {
+            // Incontri, poi «Come funziona» della nota vocale (giro 13, NotaVocaleShell.swift)
+            apriNotaVocaleDaNovita()
         } else if app == .studio {
             apriStudio(.cruscotto)
         } else {

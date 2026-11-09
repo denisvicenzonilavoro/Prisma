@@ -91,6 +91,9 @@ struct Cliente: Identifiable, Codable, Hashable {
     var presentatoDa: String?
     /// Quando è stato presentato (versione 27, «Luce» giro 12). nil = data non scritta.
     var presentatoIl: Date?
+    /// La cittadinanza («Italiana»; versione 27, «Luce» giro 13): letta dalla carta d'identità o scritta a mano. nil = non
+    /// inserita. Va nei backup e, come il luogo di nascita, in «Prisma ovunque» con il cliente.
+    var cittadinanza: String?
 
     init(id: String, nome: String, iniziali: String, tinta: TintaAvatar, tema: String, email: String,
          telefono: String, preferito: Bool, nota: String, creatoIl: Date) {
@@ -136,6 +139,7 @@ struct Cliente: Identifiable, Codable, Hashable {
         case luogoNascita, iban
         case luogo
         case presentatoDa, presentatoIl
+        case cittadinanza
     }
 
     /// Lettura tollerante: i campi aggiunti nelle versioni successive possono mancare.
@@ -187,6 +191,9 @@ struct Cliente: Identifiable, Codable, Hashable {
         presentatoDa = ((try? c.decodeIfPresent(String.self, forKey: .presentatoDa)) ?? nil)
             .flatMap { $0.isEmpty || $0 == idLetto ? nil : $0 }
         presentatoIl = (try? c.decodeIfPresent(Date.self, forKey: .presentatoIl)) ?? nil
+        // Cittadinanza (versione 27, giro 13): vuota o illeggibile = non inserita
+        cittadinanza = ((try? c.decodeIfPresent(String.self, forKey: .cittadinanza)) ?? nil)
+            .flatMap { $0.trimmingCharacters(in: .whitespaces).isEmpty ? nil : $0 }
     }
 
     /// Le aziende registrate (vuoto se nessuna).

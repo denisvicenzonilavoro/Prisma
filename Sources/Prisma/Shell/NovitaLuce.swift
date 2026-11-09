@@ -228,6 +228,7 @@ enum NovitaLuce: String, CaseIterable, Identifiable {
         case .compilaDaSolo: return true         // giro 10: Pratiche › Moduli, «Compila da solo»
         case .territorio: return true            // giro 11: Territorio, il tuo territorio
         case .passaparola, .campagne: return true   // giro 12: Clienti › Potenziali e Passaparola, Messaggi › Campagne
+        case .nuovoCliente, .notaVocale: return true   // giro 13: Clienti › Nuovo cliente in 10 secondi, Incontri › Nota dall'iPhone
         default: return false
         }
     }

@@ -150,6 +150,8 @@ enum SpazioOvunque {
         x.speseStudio = ArchivioSpese()
         x.kmClienti = [:]
         x.impostazioni.studio.spese = ImpostazioniSpese()
+        // Le note dettate sull'iPhone restano sul Mac (decisione 44, «Luce» giro 13)
+        x.noteInArrivo = []
         // L'IBAN dei clienti e i moduli compilati restano sul Mac (decisioni 40 e 44; i modelli stanno in Moduli/, fuori
         // dall'archivio)
         x.clienti = x.clienti.map { c in
@@ -478,6 +480,7 @@ enum SincroniaOvunque {
         nuovo.partiteRischio = locale.partiteRischio
         nuovo.speseStudio = locale.speseStudio
         nuovo.kmClienti = locale.kmClienti
+        nuovo.noteInArrivo = locale.noteInArrivo
         let mie = locale.impostazioni
         var imp = nuovo.impostazioni
         imp.vera = mie.vera

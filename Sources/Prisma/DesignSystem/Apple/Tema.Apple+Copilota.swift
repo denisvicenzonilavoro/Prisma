@@ -346,3 +346,27 @@ extension Tema.Apple.Moto.StileEntrata {
                                                              spostamentoY: 0,
                                                              scala: Tema.Apple.Moto.Copilota.scalaScheda, sfocatura: 0)
 }
+
+/// I valori di un'onda «nastro» (`OndaNastroApple`): quella del copilota (`.copilota`, i valori di
+/// `Tema.Apple.Copilota.Onda`) e quella del telefono della nota vocale (`Tema.Apple.NotaVocale.onda`, «Luce» giro 13).
+struct ParametriOnda {
+    let larghezza: CGFloat
+    let altezza: CGFloat
+    let barre: Int
+    let passo: CGFloat
+    let larghezzaBarra: CGFloat
+    let raggioBarra: CGFloat
+    let minima: CGFloat
+    let scala: CGFloat
+    let coloreAscolto: Color
+    let coloreFermo: Color
+    let tempoIstantanea: Double
+
+    static let copilota = ParametriOnda(larghezza: Tema.Apple.Copilota.Onda.larghezza, altezza: Tema.Apple.Copilota.Onda.altezza,
+                                        barre: Tema.Apple.Copilota.Onda.barre, passo: Tema.Apple.Copilota.Onda.passo,
+                                        larghezzaBarra: Tema.Apple.Copilota.Onda.larghezzaBarra,
+                                        raggioBarra: Tema.Apple.Copilota.Onda.raggioBarra, minima: Tema.Apple.Copilota.Onda.minima,
+                                        scala: Tema.Apple.Copilota.Onda.scala, coloreAscolto: Tema.Apple.Copilota.Onda.coloreAscolto,
+                                        coloreFermo: Tema.Apple.Copilota.Onda.coloreFermo,
+                                        tempoIstantanea: Tema.Apple.Copilota.Onda.tempoIstantanea)
+}

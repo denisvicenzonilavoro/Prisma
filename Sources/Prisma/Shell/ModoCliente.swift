@@ -36,6 +36,8 @@ extension StatoShell {
         // Studio › Spese non si vede in modalità cliente (§6.3.1 punto 1.7): niente foglio aperto, e il segmentato torna al
         // Cruscotto (che mostra «Studio resta tuo»)
         studioSpese.foglio = nil
+        // La nota dall'iPhone porta il testo dettato e il nome di un altro cliente: la scheda si chiude («Luce» giro 13)
+        notaVocale.mostrata = nil
         if schedaStudio == .spese { schedaStudio = .cruscotto }
         // Potenziali e Passaparola mostrano persone che non sono il cliente («Luce» giro 12): Clienti torna alla Rubrica
         if vistaClienti != .rubrica { vistaClienti = .rubrica }

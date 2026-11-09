@@ -6,6 +6,8 @@ import UIKit
 
 @main
 struct PrismaAppMobile: App {
+    /// L'azione rapida «Nota veloce» dall'icona («Luce» giro 13, AzioneRapidaMobile.swift).
+    @UIApplicationDelegateAdaptor(DelegatoMobile.self) private var delegato
     /// Avvio normale o istantanee per il workflow (`--istantanee-ios [scene separate da virgole]`).
     private enum Modo {
         case normale

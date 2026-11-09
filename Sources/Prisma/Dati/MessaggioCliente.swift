@@ -29,6 +29,10 @@ enum TipoOccasioneMessaggio: String, Codable, CaseIterable, Identifiable {
     /// nomi d'altri, mai cifre, mai incentivi. Commerciale. Un Prisma di prima salta i messaggi con questi due tipi
     /// (ElencoTollerante) senza perdere gli altri.
     case richiestaPresentazione
+    /// Un messaggio promesso al cliente e detto nella nota vocale dettata sull'iPhone («Luce» giro 13: «mandarle il
+    /// confronto…»): solo la cosa detta, nessuna cifra in più. Non commerciale: è un seguito chiesto dal cliente
+    /// (proposta seguita, domanda per l'utente). In fondo all'enum: l'ordine e il valore salvato restano stabili.
+    case notaVocale
 
     var id: String { rawValue }
 
@@ -49,6 +53,7 @@ enum TipoOccasioneMessaggio: String, Codable, CaseIterable, Identifiable {
         case .datiMancanti: return "Dati da completare"
         case .campagna: return "Campagna"
         case .richiestaPresentazione: return "Richiesta di presentazione"
+        case .notaVocale: return "Dalla nota vocale"
         }
     }
 
@@ -56,7 +61,8 @@ enum TipoOccasioneMessaggio: String, Codable, CaseIterable, Identifiable {
     var commerciale: Bool {
         switch self {
         case .riesame, .occasioneAgenda, .avvisoMercato, .provaFuoco, .campagna, .richiestaPresentazione: return true
-        case .riepilogoIncontro, .scadenzaPosizione, .compleanno, .consenso, .parcella, .richiestaVera, .pratica, .traguardo, .datiMancanti: return false
+        case .riepilogoIncontro, .scadenzaPosizione, .compleanno, .consenso, .parcella, .richiestaVera, .pratica, .traguardo, .datiMancanti,
+             .notaVocale: return false
         }
     }
 

@@ -534,6 +534,8 @@ extension DatiPrisma {
         b.kmClienti = a.kmClienti
         // I potenziali («Luce» giro 12) si calcolano nella vista, senza cache
         b.potenziali = a.potenziali
+        // Le note dall'iPhone («Luce» giro 13) non entrano in nessun calcolo in cache
+        b.noteInArrivo = a.noteInArrivo
         b.impostazioni.studio.spese = a.impostazioni.studio.spese
         return a == b
     }

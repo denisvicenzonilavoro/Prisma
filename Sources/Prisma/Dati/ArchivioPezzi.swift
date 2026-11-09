@@ -68,7 +68,9 @@ enum ArchivioPezzi {
         case .spazi: return .sezione("spazi")
         case .pratiche: return .sezione("pratiche")
         case .mercato: return .sezione("mercato")
-        case .giornaleOvunque, .conflittiOvunque, .arriviOvunque, .inquadratureDaConfermare: return .sezione("ovunque")
+        // Le note dall'iPhone («Luce» giro 13) stanno con le altre cose arrivate dai dispositivi: una sezione esistente,
+        // così un archivio di prima non ha un file «mancante» nell'indice
+        case .giornaleOvunque, .conflittiOvunque, .arriviOvunque, .inquadratureDaConfermare, .noteInArrivo: return .sezione("ovunque")
         case .famiglie, .ocf, .portafogliModello, .speseStudio: return .sezione("studio")
         // «Luce» giro 12: i potenziali clienti (non sono clienti: niente file per cliente) e lo storico delle campagne
         case .potenziali, .campagne: return .sezione("relazione")
@@ -190,6 +192,7 @@ enum ArchivioPezzi {
         case .kmClienti: return a.kmClienti == b.kmClienti
         case .potenziali: return a.potenziali == b.potenziali
         case .campagne: return a.campagne == b.campagne
+        case .noteInArrivo: return a.noteInArrivo == b.noteInArrivo
         case .clienteAttivoId: return a.clienteAttivoId == b.clienteAttivoId
         case .impostazioni: return a.impostazioni == b.impostazioni
         }
@@ -239,6 +242,7 @@ enum ArchivioPezzi {
         case .kmClienti: b.kmClienti = a.kmClienti
         case .potenziali: b.potenziali = a.potenziali
         case .campagne: b.campagne = a.campagne
+        case .noteInArrivo: b.noteInArrivo = a.noteInArrivo
         case .clienteAttivoId: b.clienteAttivoId = a.clienteAttivoId
         case .impostazioni: b.impostazioni = a.impostazioni
         }
@@ -530,7 +534,7 @@ extension ArchivioPezzi {
         case "spazi": return "gli spazi di lavoro"
         case "pratiche": return "le pratiche"
         case "mercato": return "i dati di Mercato"
-        case "ovunque": return "Prisma ovunque"
+        case "ovunque": return "Prisma ovunque e le note arrivate dall’iPhone"
         case "studio": return "lo studio (portafogli modello, famiglie, esame OCF)"
         case "relazione": return "i potenziali clienti e le campagne"
         default: return "la sezione «\(nome)»"

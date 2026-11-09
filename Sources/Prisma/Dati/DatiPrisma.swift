@@ -98,6 +98,10 @@ struct DatiPrisma: Codable, Equatable {
     /// Messaggi › Campagne («Luce» giro 12, versione 27, Campagna.swift): lo storico delle campagne avviate (i testi sono
     /// messaggi del cliente in `messaggi`).
     var campagne: [Campagna] = []
+    /// Le note dettate sull'iPhone e arrivate sul Mac (versione 27, «Luce» giro 13, `Dati/NotaInArrivo.swift`): il testo, il
+    /// cliente e le proposte da confermare. Sezione «ovunque» della cartella a pezzi, nei backup, mai in «Prisma ovunque»;
+    /// le decise si tolgono dopo 30 giorni.
+    var noteInArrivo: [NotaInArrivo] = []
     var clienteAttivoId: String
     var impostazioni: Impostazioni
 
@@ -186,6 +190,8 @@ struct DatiPrisma: Codable, Equatable {
     ///     «relazione», chi ha presentato il cliente e quando (`Cliente.presentatoDa`, `Cliente.presentatoIl`) e i
     ///     messaggi `campagna` e `richiestaPresentazione`, tutti letti con tolleranza (un potenziale senza id o nome e
     ///     una campagna senza id si scartano; un Prisma di prima salta i messaggi con i tipi nuovi).
+    ///     Giro 13: le note dettate sull'iPhone (`noteInArrivo`, con le proposte da confermare, lette con tolleranza:
+    ///     una nota illeggibile si scarta) e la cittadinanza del cliente (`Cliente.cittadinanza`).
     static let versioneAttuale = 27
 
     init(clienti: [Cliente], appuntamenti: [Appuntamento], attivita: [Attivita], posizioni: [Posizione],
@@ -258,6 +264,7 @@ struct DatiPrisma: Codable, Equatable {
         case promesse, confrontiDocumenti, coperture
         case speseStudio, kmClienti
         case potenziali, campagne
+        case noteInArrivo
     }
 
     /// Lettura tollerante: gli archivi delle versioni precedenti non hanno tutte le sezioni.
@@ -329,6 +336,8 @@ struct DatiPrisma: Codable, Equatable {
         // Potenziali clienti e campagne (versione 27, giro 12): un elemento illeggibile si scarta, gli altri restano
         potenziali = ((try? c.decodeIfPresent(ElencoTollerante<PotenzialeCliente>.self, forKey: .potenziali)) ?? nil)?.elementi ?? []
         campagne = ((try? c.decodeIfPresent(ElencoTollerante<Campagna>.self, forKey: .campagne)) ?? nil)?.elementi ?? []
+        // Le note dall'iPhone (versione 27, giro 13): una nota illeggibile si scarta, le altre restano
+        noteInArrivo = ((try? c.decodeIfPresent(ElencoTollerante<NotaInArrivo>.self, forKey: .noteInArrivo)) ?? nil)?.elementi ?? []
         clienteAttivoId = try c.decodeIfPresent(String.self, forKey: .clienteAttivoId) ?? (clienti.first?.id ?? "")
         impostazioni = try c.decodeIfPresent(Impostazioni.self, forKey: .impostazioni) ?? Impostazioni()
     }
@@ -386,6 +395,7 @@ struct DatiPrisma: Codable, Equatable {
         try metti(kmClienti, .kmClienti)
         try metti(potenziali, .potenziali)
         try metti(campagne, .campagne)
+        try metti(noteInArrivo, .noteInArrivo)
         try metti(clienteAttivoId, .clienteAttivoId)
         try metti(impostazioni, .impostazioni)
     }

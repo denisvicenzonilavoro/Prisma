@@ -326,6 +326,18 @@ struct CorpoShell: View {
             StratoInquadra(inquadra: stato.inquadra)
                 .frame(width: misura.width, height: misura.height)
                 .opacity(nascosti ? 0 : 1)
+            // «Luce» giro 13: la scena del nuovo cliente (ScenaNuovoCliente.swift) e «Come funziona» della nota vocale
+            // (NotaVocaleArrivo.swift), sopra barra, finestre e dock
+            StratoNuovoCliente(nuovoCliente: stato.nuovoCliente, aperta: sistema.sovrapposizione == .scena(.cartaIdentita))
+                .frame(width: misura.width, height: misura.height)
+                .opacity(nascosti ? 0 : 1)
+            StratoComeFunzionaNota(aperta: sistema.sovrapposizione == .scena(.notaVocale))
+                .frame(width: misura.width, height: misura.height)
+                .opacity(nascosti ? 0 : 1)
+            // La scheda «Arriva sul Mac» della nota vocale: in alto a destra sotto la barra, come le notifiche
+            StratoNotaVocaleArrivo(notaVocale: stato.notaVocale)
+                .frame(width: misura.width, height: misura.height, alignment: .topTrailing)
+                .opacity(nascosti ? 0 : 1)
             #endif
 
             ZStack {

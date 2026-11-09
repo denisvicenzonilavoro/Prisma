@@ -219,6 +219,12 @@ enum ModelliMessaggi {
                    "Grazie, resto a disposizione per qualsiasi chiarimento."]
                 : ["per completare il modulo\(modulo) mi servono ancora questi dati: \(cosa). Mandameli quando ti è comodo, nel modo che preferisci.",
                    "Grazie, scrivimi pure per qualsiasi cosa."]
+        case .notaVocale:
+            // Detto nella nota vocale («Luce» giro 13): solo la cosa promessa, nessuna cifra in più
+            let cosa = v(.occasione) ?? (lei ? "quanto ci eravamo detti" : "quanto ci eravamo detti")
+            return lei
+                ? ["le scrivo come ci eravamo detti: le mando \(cosa).", "Resto a disposizione per qualsiasi chiarimento."]
+                : ["ti scrivo come ci eravamo detti: ti mando \(cosa).", "Scrivimi pure per qualsiasi dubbio."]
         case .traguardo:
             // Un traguardo da festeggiare: il fatto, mai una cifra in più né una proposta (decisione 87)
             let cosa = v(.traguardo).map { " («\(minuscolaIniziale($0))»)" } ?? ""
@@ -316,6 +322,9 @@ enum ModelliMessaggi {
         case .datiMancanti:
             let cosa = v(.datiModulo) ?? "alcuni dati"
             return (["per completare il modulo mi servono ancora: \(cosa)."], ["Mandameli quando ti è comodo."])
+        case .notaVocale:
+            let cosa = v(.occasione) ?? "quanto ci eravamo detti"
+            return (["come d'accordo, ti mando \(cosa)."], ["A presto."])
         case .traguardo:
             let cosa = v(.traguardo).map { " («\(minuscolaIniziale($0))»)" } ?? ""
             return (["oggi è un giorno da ricordare\(cosa): complimenti!"], ["Grazie per la fiducia."])

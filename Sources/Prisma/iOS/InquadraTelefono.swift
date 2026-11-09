@@ -359,7 +359,7 @@ final class ControlloreScannerInquadra: NSObject, ObservableObject, DataScannerV
     }
 }
 
-private struct ScannerInquadra: UIViewControllerRepresentable {
+struct ScannerInquadra: UIViewControllerRepresentable {
     let controllore: ControlloreScannerInquadra
 
     func makeUIViewController(context: Context) -> DataScannerViewController {
@@ -386,7 +386,7 @@ private struct ScannerInquadra: UIViewControllerRepresentable {
 
 // MARK: - Il ripiego: la scansione documenti di sistema
 
-private struct CameraDocumentiInquadra: UIViewControllerRepresentable {
+struct CameraDocumentiInquadra: UIViewControllerRepresentable {
     let fatto: (UIImage?) -> Void
 
     func makeCoordinator() -> Coordinatore { Coordinatore(fatto: fatto) }

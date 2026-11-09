@@ -1710,6 +1710,10 @@ enum Istantanee {
         tutteLeScene += scenePotenziali
         // «Luce», giro 12: Messaggi › Campagne (Shell/IstantaneeCampagne.swift)
         tutteLeScene += sceneCampagne
+        // «Luce», giro 13: nuovo cliente in 10 secondi (Shell/IstantaneeNuovoCliente.swift) e la nota vocale
+        // (Shell/IstantaneeNotaVocale.swift)
+        tutteLeScene += sceneNuovoCliente
+        tutteLeScene += sceneNotaVocale
         for scena in tutteLeScene where solo?.contains(scena.nome) ?? true {
             // Un pool per scena: senza il ciclo degli eventi (si esce in PrismaApp.init) niente lo svuoterebbe,
             // e stato, finestra e bitmap di ogni scena resterebbero in memoria fino all'ultima istantanea
