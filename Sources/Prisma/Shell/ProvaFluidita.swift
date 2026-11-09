@@ -399,7 +399,11 @@ enum ProvaFluidita {
                 }, verifica: { stato.provaFuoco.vista == vista && stato.portafoglio == portafoglio }),
             ])
         }
-        if stato.appConsentita(.territorio) {
+        if MetalPrisma.spento {
+            // Sul runner di GitHub (PRISMA_SENZA_METAL=1) la mappa del Territorio, aggiornando la finestra, fermava il
+            // processo con l'asserzione di Metal della GPU virtuale: il passo si salta lì e resta sul Mac dell'utente
+            print("PASSO fluidità · Luce · Territorio saltato (senza Metal sul runner)")
+        } else if stato.appConsentita(.territorio) {
             // Territorio (giro 11): la mappa di Oggi, il passaggio al giro di domani e la chiusura (la tabella dei comuni
             // si carica all'apertura e si libera alla chiusura)
             let vistaTerritorio = stato.vistaTerritorio
