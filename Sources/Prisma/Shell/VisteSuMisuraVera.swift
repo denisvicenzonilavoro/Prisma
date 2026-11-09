@@ -416,7 +416,7 @@ private extension View {
 /// Una frase con i segnaposto in rubino («[Cliente]», «[Indirizzo]»).
 struct EsempioSegnapostoVista: View {
     let testo: String
-    var carattere = G.esempio
+    var carattere = Tema.Apple.SuMisura.esempio
 
     var body: some View {
         Self.testo(testo)
