@@ -79,7 +79,7 @@ enum EsportaBiglietto {
         let renderer = ImageRenderer(content: vista)
         renderer.proposedSize = ProposedViewSize(B.biglietto)
         renderer.scale = B.Esporta.scala
-        guard let cg = renderer.cgImage else { return nil }
+        guard let cg = renderer.immaginePrisma else { return nil }
         return ProtocolloTavolo.png(cg)
     }
 

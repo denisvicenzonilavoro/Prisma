@@ -164,7 +164,7 @@ private struct CorpoDisegno: View {
         let r = ImageRenderer(content: vista)
         r.proposedSize = ProposedViewSize(misura)
         r.scale = Tema.Apple.Tavolo.scalaPagina
-        guard let immagine = r.cgImage, let png = ProtocolloTavolo.png(immagine) else { return nil }
+        guard let immagine = r.immaginePrisma, let png = ProtocolloTavolo.png(immagine) else { return nil }
         return PaginaTavolo(numero: 1, totale: 1, larghezza: Double(misura.width), altezza: Double(misura.height), png: png)
     }
 

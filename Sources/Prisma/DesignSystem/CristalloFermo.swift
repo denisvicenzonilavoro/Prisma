@@ -215,7 +215,7 @@ struct CristalloFermo: View {
             .environment(\.colorScheme, .light))
         r.proposedSize = ProposedViewSize(width: lato, height: lato)
         r.scale = 1
-        return r.cgImage
+        return r.immaginePrisma
     }
 }
 

@@ -299,7 +299,7 @@ extension StatoShell {
         let r = ImageRenderer(content: vista)
         r.proposedSize = ProposedViewSize(misura)
         r.scale = Tema.Apple.RealtaAumentata.ImmaginePalco.scala
-        guard let immagine = r.cgImage, let png = ProtocolloTavolo.png(immagine) else {
+        guard let immagine = r.immaginePrisma, let png = ProtocolloTavolo.png(immagine) else {
             mostraAvviso("Non riesco a preparare l'immagine del palco per l'iPad.")
             return
         }

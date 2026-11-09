@@ -305,7 +305,7 @@ final class CristalloRealta {
         let r = ImageRenderer(content: LogoPrisma(colore: T.Fermo.coloreLogo).frame(width: lato, height: lato))
         r.proposedSize = ProposedViewSize(width: lato, height: lato)
         r.scale = 1
-        return r.cgImage
+        return r.immaginePrisma
     }
 
     /// L'ombra colorata: la pianta del cristallo, allargata e sfumata, a fasce nei colori degli strati.

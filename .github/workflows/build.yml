@@ -148,7 +148,7 @@ jobs:
             echo "::error::Il lettore del Prisma del cliente non deve usare la rete"; exit 1
           fi
           node --version
-          "Prisma.app/Contents/MacOS/Prisma" --prova-file-cliente "$PWD/file-cliente"
+          PRISMA_SENZA_METAL=1 "Prisma.app/Contents/MacOS/Prisma" --prova-file-cliente "$PWD/file-cliente"
           node Supporto/prova-file-cliente.mjs "$PWD/file-cliente"
 
       - name: Privacy della realtà aumentata
@@ -238,7 +238,7 @@ jobs:
           "$APP/Contents/MacOS/Prisma" --prova-ovunque
           # Il film del piano («Luce» giro 15): il video dei dati di prova (senza il codificatore H.264 sul runner un
           # avviso, la build resta verde)
-          "$APP/Contents/MacOS/Prisma" --prova-film
+          PRISMA_SENZA_METAL=1 "$APP/Contents/MacOS/Prisma" --prova-film
           codesign --verify --deep --strict --verbose=2 "$APP"
           echo "Prisma.app verificata"
 

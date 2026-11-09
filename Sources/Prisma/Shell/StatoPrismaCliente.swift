@@ -165,7 +165,7 @@ extension StatoShell {
             .environment(\.colorScheme, .light))
         renderer.proposedSize = ProposedViewSize(misura)
         renderer.scale = scala
-        guard let cg = renderer.cgImage else { return nil }
+        guard let cg = renderer.immaginePrisma else { return nil }
         return ProtocolloTavolo.png(cg)
     }
 
