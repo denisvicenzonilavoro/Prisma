@@ -352,6 +352,8 @@ struct AppVera: View {
     private var chat: some View {
         let ch = Tema.Apple.Vera.Chat.self
         return VStack(spacing: 0) {
+            // «Il filo lungo»: nelle conversazioni lunghe, quanta finestra occupa e il riassunto tenuto da parte
+            FiloConversazioneVista(chiave: chiave)
             messaggiVista
                 .frame(maxHeight: .infinity)
             conVoce { v in notaVoce(v) }

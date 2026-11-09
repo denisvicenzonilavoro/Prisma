@@ -76,6 +76,21 @@ extension Tema.Apple {
             }
         }
 
+        // MARK: Il filo lungo e le lezioni di Vera
+
+        /// Il filo della conversazione sopra la chat: la barra della finestra occupata (rubino) e il riassunto tenuto da parte.
+        static let paddingFilo = Misura.padding(8, 12)
+        static let altezzaBarraFilo: CGFloat = 6
+        static let titoloFilo = Carattere(dimensione: 11.5, peso: .semibold)
+        static let testoFilo = Carattere(dimensione: 12.5, peso: .regular, interlinea: 1.4)
+        static let righeRiassunto = 2
+        static let sottoFilo: CGFloat = 8
+        /// «Le lezioni di Vera»: la percentuale delle risposte approvate al primo colpo e le barre delle ultime settimane.
+        static let percentualeLezioni = Carattere(dimensione: 26, peso: .bold)
+        static let altezzaBarreLezioni: CGFloat = 30
+        static let larghezzaBarraLezioni: CGFloat = 9
+        static let spazioBarreLezioni: CGFloat = 4
+
         // MARK: Citazioni delle norme
 
         static let iconaCitazione: CGFloat = 28

@@ -29,6 +29,13 @@ extension Istantanee {
             ("634-vera-lascia-cadere-scelta-scuro", { s in preparaLasciaCadereScelta(s) }),
             ("635-vera-archiviati-oggi", { s in preparaArchiviatiOggi(s) }),
             ("635-vera-archiviati-oggi-scuro", { s in preparaArchiviatiOggi(s) }),
+            // La memoria (18), i pollici con la lezione salvata e «Le lezioni di Vera» (21), il filo lungo (24)
+            ("636-vera-memoria", { s in preparaMemoria(s) }),
+            ("636-vera-memoria-scuro", { s in preparaMemoria(s) }),
+            ("637-vera-pollici-correzione", { s in preparaPollici(s) }),
+            ("637-vera-pollici-correzione-scuro", { s in preparaPollici(s) }),
+            ("638-vera-filo-lungo", { s in preparaFiloLungo(s) }),
+            ("638-vera-filo-lungo-scuro", { s in preparaFiloLungo(s) }),
             ("491-biblioteca", { s in preparaNorme(s); s.apri(.biblioteca) }),
             ("491-biblioteca-scuro", { s in preparaNorme(s); s.apri(.biblioteca) }),
         ]
@@ -116,6 +123,73 @@ extension Istantanee {
         if let m = s.conversazione("marco").last(where: { $0.conferma?.origine == .documento && $0.conferma?.stato == .daConfermare }) {
             _ = s.confermaSchedaVera(messaggio: m.id)
         }
+    }
+
+    /// Le risposte votate di Sofia (testi di prova scritti qui, mai chiesti a Qwen): una con 👍, una corretta con 👎.
+    nonisolated private static func conversazioneVotata(_ s: StatoShell) {
+        let qwen = s.qwen.nome
+        let giorni = [-44, -37, -30, -23, -16, -9, -2]
+        for (k, g) in giorni.enumerated() {
+            var d = MessaggioVera(autore: .utente, testo: "Prepara due righe per Sofia sulla rivalutabile.")
+            d.data = Calendar.current.date(byAdding: .day, value: g, to: Date()) ?? Date()
+            var r = MessaggioVera(autore: .vera, testo: "Sofia, la rivalutabile scade a gennaio: giovedì decidiamo insieme cosa fare.", motore: qwen)
+            r.data = d.data
+            r.voto = k % 3 != 0
+            s.aggiungiMessaggio(d, cliente: "sofia", parla: false)
+            s.aggiungiMessaggio(r, cliente: "sofia", parla: false)
+        }
+    }
+
+    nonisolated static func preparaMemoria(_ s: StatoShell) {
+        s.rispostePreparate = true
+        s.disponibilitaLocale = .pronto
+        s.clienteAttivoId = "sofia"
+        s.veraPortafoglio = false
+        s.memoriaVera.ricorda("Preferisco le mail brevi, una cosa per riga", cliente: nil, fonte: "in chat")
+        s.memoriaVera.ricorda("Il martedì mattina lo tengo libero per lo studio", cliente: nil, fonte: "in chat")
+        s.memoriaVera.ricorda("Sofia decide sempre insieme a Paolo", cliente: "sofia", fonte: "in chat")
+        s.memoriaVera.ricorda("Marco preferisce le videochiamate al mattino", cliente: "marco", fonte: "dal resoconto")
+        s.memoriaVera.ricorda("Laura vuole smettere di lavorare a 60 anni", cliente: "laura", fonte: "dall'incontro")
+        _ = s.memoriaVera.impara("Con i clienti Alleanza parla di «piano», non di «prodotto»")
+        _ = s.memoriaVera.impara("Con Sofia usa il Lei e frasi brevi")
+        conversazioneVotata(s)
+        s.apri(.vera)
+        s.memoriaVera.aperta = true
+    }
+
+    nonisolated static func preparaPollici(_ s: StatoShell) {
+        s.rispostePreparate = true
+        s.disponibilitaLocale = .pronto
+        s.clienteAttivoId = "sofia"
+        s.veraPortafoglio = false
+        let qwen = s.qwen.nome
+        s.aggiungiMessaggio(MessaggioVera(autore: .utente, testo: "Spiega a Sofia perché conviene decidere giovedì sulla rivalutabile."), cliente: "sofia", parla: false)
+        let prima = MessaggioVera(autore: .vera, testo: "Ciao Sofia! Il prodotto scade a gennaio, quindi conviene muoversi: giovedì vediamo le opzioni.", motore: qwen)
+        s.aggiungiMessaggio(prima, cliente: "sofia", parla: false)
+        _ = s.correggiRispostaVera(prima.id, correzione: "Con Sofia usa il Lei e frasi brevi; parla di «piano», non di «prodotto»")
+        s.aggiungiMessaggio(MessaggioVera(autore: .utente, testo: "Riscrivila."), cliente: "sofia", parla: false)
+        let dopo = MessaggioVera(autore: .vera, testo: "Gentile Sofia, il suo piano scade a gennaio.\nGiovedì scegliamo insieme se rinnovarlo o reinvestire.\nPorti pure Paolo.", motore: qwen)
+        s.aggiungiMessaggio(dopo, cliente: "sofia", parla: false)
+        s.approvaRispostaVera(dopo.id)
+        s.apri(.vera)
+    }
+
+    nonisolated static func preparaFiloLungo(_ s: StatoShell) {
+        s.rispostePreparate = true
+        s.disponibilitaLocale = .pronto
+        s.clienteAttivoId = "laura"
+        s.veraPortafoglio = false
+        // 16.000 token: la conversazione lunga su Laura esce in parte dalla finestra e Vera tiene il riassunto
+        s.dati.impostazioni.vera.finestra = 16_384
+        let domande = ["Laura vuole smettere di lavorare a 60 anni: da dove partiamo?", "Niente rischi sulla casa, me l'ha detto due volte.",
+                       "Proviamo con 500 € al mese.", "E con 700 € al mese?", "Quanto le manca rispetto alla pensione pubblica?",
+                       "Il fondo pensione le conviene?"]
+        let risposta = "Con le ipotesi della scheda di Laura, Prisma ha rifatto i conti: a 60 anni con 700 € al mese il divario si chiude quasi del tutto, con 500 € al mese l'obiettivo si sposta verso i 62 anni. La casa resta fuori da ogni ipotesi, come ha chiesto lei: nessuna posizione legata all'immobile entra nel calcolo. "
+        for i in 0..<30 {
+            s.aggiungiMessaggio(MessaggioVera(autore: .utente, testo: domande[i % domande.count]), cliente: "laura", parla: false)
+            s.aggiungiMessaggio(MessaggioVera(autore: .vera, testo: String(repeating: risposta, count: 5), motore: s.qwen.nome), cliente: "laura", parla: false)
+        }
+        s.apri(.vera)
     }
 
     nonisolated static let pagineNormeDiProva = [

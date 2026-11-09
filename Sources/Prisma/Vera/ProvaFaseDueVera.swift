@@ -24,6 +24,7 @@ enum ProvaFaseDueVera {
         norme(controlla)
         lasciaCadere(controlla)
         lasciaCadereDove(controlla)
+        lezioniEFilo(controlla)
         archivio(controlla)
     }
 
@@ -492,6 +493,40 @@ enum ProvaFaseDueVera {
         controlla(scelta?.conferma?.azioni.first?.argomenti["cliente"] == "laura" && s.scelteClienteCaduto[due.id] == nil
                   && s.scegliClienteCaduto(messaggio: due.id, cliente: "marco", chiave: VeraPortafoglio.chiave) == nil,
                   "Lascia cadere: scelto il cliente dalla risposta, la scheda è per lui (e la scelta non si ripete)")
+    }
+
+    /// «Le lezioni di Vera» dai voti veri (mai cifre d'esempio) e «Il filo lungo» sullo schermo per le conversazioni lunghe.
+    private static func lezioniEFilo(_ controlla: (Bool, String) -> Void) {
+        let oggi = Date(timeIntervalSinceReferenceDate: 820_000_000)
+        func voto(_ v: Bool, giorni: Int) -> MessaggioVera {
+            var m = MessaggioVera(autore: .vera, testo: "Risposta di prova", motore: "Qwen sul Mac")
+            m.voto = v
+            m.data = Calendar.current.date(byAdding: .day, value: -giorni, to: oggi) ?? oggi
+            return m
+        }
+        let voti = [voto(true, giorni: 1), voto(true, giorni: 2), voto(false, giorni: 3), voto(true, giorni: 17), voto(false, giorni: 140),
+                    MessaggioVera(autore: .vera, testo: "Senza voto"), MessaggioVera(autore: .utente, testo: "Domanda")]
+        let a = AndamentoApprovazioni.da(voti, oggi: oggi)
+        controlla(a.votate == 5 && a.approvate == 3 && a.percentuale == 60 && a.perSettimana.count == AndamentoApprovazioni.settimane
+                  && a.perSettimana.last.flatMap { $0 }.map { abs($0 - 2.0 / 3.0) < 0.001 } == true && a.perSettimana[5] == 1
+                  && a.perSettimana.compactMap { $0 }.count == 2,
+                  "Lezioni di Vera: approvate al primo colpo e andamento per settimana dai voti veri (\(a.perSettimana))")
+        controlla(AndamentoApprovazioni.da([MessaggioVera(autore: .vera, testo: "x")], oggi: oggi).percentuale == nil,
+                  "Lezioni di Vera: senza voti nessuna percentuale")
+
+        let s = StatoShell(persistente: false)
+        s.clienteAttivoId = "giulia"
+        for i in 0..<5 { s.aggiungiMessaggio(MessaggioVera(autore: i % 2 == 0 ? .utente : .vera, testo: "Battuta \(i)"), cliente: "giulia", parla: false) }
+        controlla(s.filoConversazione(chiave: "giulia") == nil, "Il filo lungo: una conversazione breve non mostra il filo")
+        // Le conversazioni tengono al massimo 60 messaggi: battute lunghe, così una parte esce comunque dalla finestra
+        let lunga = String(repeating: "Laura vuole smettere di lavorare a 60 anni e non vuole rischi sulla casa. ", count: 30)
+        for i in 5..<StatoShell.massimoMessaggi {
+            s.aggiungiMessaggio(MessaggioVera(autore: i % 2 == 0 ? .utente : .vera, testo: "Battuta \(i): " + lunga), cliente: "giulia", parla: false)
+        }
+        let f = s.filoConversazione(chiave: "giulia")
+        controlla(f != nil && (f?.uscite ?? 0) > 0 && f?.riassunto?.contains("Tu:") == true && (f?.token ?? 0) <= (f?.finestra ?? 0)
+                  && (f?.frazione ?? 0) > 0,
+                  "Il filo lungo: una conversazione lunga mostra la finestra occupata e il riassunto delle battute uscite")
     }
 
     // MARK: - Archivio

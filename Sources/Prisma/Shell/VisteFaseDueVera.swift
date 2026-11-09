@@ -61,9 +61,21 @@ extension View {
 
 private struct PaginaMemoriaVera: ViewModifier {
     @Bindable var memoria: StatoMemoriaVera
+    @Environment(\.modoIstantanea) private var istantanea
 
     func body(content: Content) -> some View {
-        content.sheet(isPresented: $memoria.aperta) { MemoriaVeraVista(memoria: memoria) }
+        // Nelle istantanee il foglio non si disegna: la pagina compare sopra la finestra, come le altre pagine di Vera
+        content
+            .sheet(isPresented: istantanea ? .constant(false) : $memoria.aperta) { MemoriaVeraVista(memoria: memoria) }
+            .overlay {
+                if istantanea && memoria.aperta {
+                    ZStack {
+                        Tema.Apple.SuMisura.velo
+                        MemoriaVeraVista(memoria: memoria)
+                            .superficieApple(Tema.Apple.SuMisura.superficiePagina, raggio: Tema.Apple.SuMisura.raggioPagina)
+                    }
+                }
+            }
     }
 }
 
@@ -123,11 +135,13 @@ struct MemoriaVeraVista: View {
             colonna("Sui clienti", memoria.ricordi.filter { $0.clienteId != nil })
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Text("Le lezioni").carattereApple(F.titoloColonna)
+                    Text("Le lezioni di Vera").carattereApple(F.titoloColonna)
+                    pillola("\(memoria.lezioni.count)")
                     Spacer()
                     Toggle("", isOn: Bindable(stato.dati).impostazioni.vera.imparaDalleCorrezioni).toggleStyle(.switch).labelsHidden()
                         .help("Impara dalle correzioni")
                 }
+                LezioniAndamentoVista(andamento: stato.approvazioniVera())
                 ScrollView {
                     VStack(alignment: .leading, spacing: 8) {
                         if memoria.lezioni.isEmpty {
@@ -233,11 +247,12 @@ struct PolliciVera: View {
                 Button("👎") { correggi = true }
                     .buttonStyle(StilePulsanteApple(messaggio.voto == false ? .principale : .secondaria))
                     .help("Non va: scrivi cosa correggere")
-                if salvata {
+                // Anche riaprendo la conversazione: 👎 con una correzione salvata resta «Lezione salvata»
+                if salvata || messaggio.voto == false {
                     Label("Lezione salvata", systemImage: "checkmark").carattereApple(F.fonteSezione).foregroundColor(F.votoDato)
                 }
             }
-            if correggi && !salvata {
+            if correggi && !salvata && messaggio.voto != false {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Cosa non va?").carattereApple(Tema.Apple.Carattere.etichetta).foregroundColor(F.coloreFonte)
                     TextField("Per esempio: con i clienti Alleanza parla di «piano», non di «prodotto»", text: $testo)
@@ -255,6 +270,79 @@ struct PolliciVera: View {
                     }
                 }
             }
+        }
+    }
+}
+
+// MARK: - Le lezioni di Vera e il filo lungo
+
+/// «Risposte approvate al primo colpo»: la percentuale sui voti veri e le barre delle ultime settimane (una settimana senza
+/// voti resta vuota). Senza voti lo dice.
+struct LezioniAndamentoVista: View {
+    let andamento: AndamentoApprovazioni
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Risposte approvate al primo colpo").carattereApple(F.fonteRicordo).foregroundColor(F.testoPillola)
+            if let p = andamento.percentuale {
+                HStack(alignment: .bottom, spacing: 12) {
+                    Text("\(p)%").carattereApple(F.percentualeLezioni).monospacedDigit()
+                    Spacer(minLength: 0)
+                    HStack(alignment: .bottom, spacing: F.spazioBarreLezioni) {
+                        ForEach(Array(andamento.perSettimana.enumerated()), id: \.offset) { _, q in
+                            Capsule(style: .continuous)
+                                .fill(q == nil ? F.binarioAnelloTrenta : F.coloreAnelloTrenta)
+                                .frame(width: F.larghezzaBarraLezioni, height: max(F.larghezzaBarraLezioni, F.altezzaBarreLezioni * (q ?? 0)))
+                        }
+                    }
+                    .frame(height: F.altezzaBarreLezioni, alignment: .bottom)
+                    .accessibilityLabel(Text("Le ultime \(AndamentoApprovazioni.settimane) settimane"))
+                }
+                Text("\(andamento.approvate) su \(andamento.votate) risposte votate, con 👍 e 👎").carattereApple(F.fonteRicordo).foregroundColor(F.testoPillola)
+            } else {
+                Text("Ancora nessun voto: con 👍 e 👎 sotto le risposte vedrai quante vanno bene al primo colpo.")
+                    .carattereApple(F.fonteRicordo).foregroundColor(F.testoPillola)
+            }
+        }
+        .padding(F.paddingRicordo)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .superficieApple(Tema.Apple.Vera.SchedaCalcoli.superficie, raggio: Tema.Apple.Raggio.tile)
+    }
+}
+
+/// «Il filo lungo» sopra la chat (template: «Memoria della conversazione» e «Riassunto che Vera tiene da parte»): quanta
+/// finestra occupa la conversazione e, se delle battute sono uscite, l'inizio del riassunto che Vera porta con sé.
+struct FiloConversazioneVista: View {
+    @Environment(StatoShell.self) var stato
+    let chiave: String
+
+    var body: some View {
+        if let f = stato.filoConversazione(chiave: chiave) {
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 8) {
+                    Text("IL FILO DELLA CONVERSAZIONE").carattereApple(F.titoloFilo).foregroundColor(F.coloreAnelloTrenta)
+                    Spacer(minLength: 0)
+                    Text("\(f.messaggi) messaggi · circa \(Formati.numeroFormatter.string(from: NSNumber(value: f.token)) ?? "\(f.token)") di \(Formati.numeroFormatter.string(from: NSNumber(value: f.finestra)) ?? "\(f.finestra)") token")
+                        .carattereApple(F.titoloFilo).foregroundColor(F.coloreFonte).monospacedDigit()
+                }
+                GeometryReader { g in
+                    ZStack(alignment: .leading) {
+                        Capsule(style: .continuous).fill(F.binarioAnelloTrenta)
+                        Capsule(style: .continuous).fill(F.coloreAnelloTrenta).frame(width: g.size.width * f.frazione)
+                    }
+                }
+                .frame(height: F.altezzaBarraFilo)
+                if let r = f.riassunto {
+                    Text("Riassunto che Vera tiene da parte (\(f.uscite) battute): \(r.replacingOccurrences(of: "\n", with: " · "))")
+                        .carattereApple(F.testoFilo).foregroundColor(F.coloreFonte)
+                        .lineLimit(F.righeRiassunto)
+                        .help(r)
+                }
+            }
+            .padding(F.paddingFilo)
+            .superficieApple(Tema.Apple.Vera.SchedaCalcoli.superficie, raggio: Tema.Apple.Raggio.tile)
+            .padding(.bottom, F.sottoFilo)
+            .accessibilityElement(children: .combine)
         }
     }
 }
