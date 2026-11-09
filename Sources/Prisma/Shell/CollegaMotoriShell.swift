@@ -88,7 +88,7 @@ extension StatoShell {
 
     // MARK: - Le frasi in chat
 
-    static let frasiDueVelocita = #"\bcome smisti\b|\bdue velocita\b|^(?:apri |mostra(?:mi)? )?i (?:tuoi )?motori(?: di vera)?$|\bquali motori (?:usi|hai)\b"#
+    static let frasiDueVelocita = #"\bcome smisti\b|^(?:apri |mostra(?:mi)? )?(?:le )?due velocita(?: di vera)?$|^(?:apri |mostra(?:mi)? )?i (?:tuoi )?motori(?: di vera)?$|\bquali motori (?:usi|hai)\b"#
     static let frasiCervello = #"\bmotore esterno\b|\bcervello grande\b"#
 
     /// «Come smisti le domande?», «due velocità», «motore esterno», «cervello grande»: apre la pagina dei motori (sul Mac)

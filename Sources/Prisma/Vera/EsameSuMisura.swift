@@ -130,6 +130,8 @@ enum EsameSuMisura {
             return esito
         }
         for (indice, modello) in [attuale, nuovo].enumerated() {
+            // Fermato durante il primo modello: il secondo non si carica nemmeno
+            if Task.isCancelled { break }
             var impostazioni = vera
             impostazioni.fornitore = .ollama
             impostazioni.modelloLocale = modello

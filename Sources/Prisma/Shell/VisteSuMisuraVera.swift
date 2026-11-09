@@ -143,6 +143,9 @@ struct PaginaSuMisuraVista: View {
             #if os(macOS)
             stato.scegliDoveEsportareSuMisura()
             stato.anteprimaSuMisuraAperta = false
+            #else
+            // Su iPhone e iPad su misura si fa dal Mac: un caso di switch non può restare vuoto
+            break
             #endif
         case .usa(let id): _ = stato.installaSuMisura(id)
         case .tornaIndietro: _ = stato.tornaAllaVeraDiPrima()
@@ -437,7 +440,7 @@ struct EsempioSegnapostoVista: View {
         var resto = t[...]
         while let a = resto.range(of: #"\[[^\]]{1,24}\]"#, options: .regularExpression) {
             r = r + Text(String(resto[..<a.lowerBound]))
-            r = r + Text(String(resto[a])).fontWeight(.semibold).foregroundColor(G.rubino)
+            r = r + Text(String(resto[a])).fontWeight(G.segnaposto.peso).foregroundColor(G.rubino)
             resto = resto[a.upperBound...]
         }
         return r + Text(String(resto))
