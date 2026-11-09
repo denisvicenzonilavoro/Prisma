@@ -326,6 +326,15 @@ extension AppImpostazioni {
     /// Come nel template (§4.6, PIE i07): «Motore» con lo stato reale di Qwen sul Mac (Ollama o un server compatibile
     /// OpenAI, solo indirizzi locali), «iPhone e iPad» (il ponte cifrato) e la scorciatoia della mini Vera; poi come
     /// lavora Vera (modello, ragionamento, avvio, conversazioni) e, chiuse, fornitore e indirizzo in «Avanzate».
+    /// Il tono della pillola di «Vera su misura» (verde in uso o promossa, arancio se non va, neutro altrimenti).
+    private var tonoSuMisura: Pillola.Tono {
+        switch stato.faseSuMisura {
+        case .inUso, .superata: return .ok
+        case .nonSuperata, .soloOllama, .memoriaBloccata: return .attenzione
+        default: return .neutro
+        }
+    }
+
     var paginaVera: some View {
         let vera = stato.dati.impostazioni.vera
         let pronta = stato.disponibilitaLocale.pronto
@@ -431,6 +440,32 @@ extension AppImpostazioni {
             // Fase 4 di Vera, funzione 15: «Il tuo stile» (regole, provenienza, interruttori, esempio; VisteStileVera.swift)
             GruppoImpostazioni(titolo: "Il tuo stile") {
                 GruppoStileVeraImpostazioni()
+            }
+            .cascataImpostazioni(6)
+            // Fase 5 di Vera: «Vera su misura», «Due velocità», «Il cervello grande» e l'etichetta sotto le risposte (regola
+            // bloccata: niente interruttore). Le pagine si aprono sopra la chat di Vera (VisteSuMisuraVera, VisteMotoriVera)
+            GruppoImpostazioni(titolo: "Motori e su misura") {
+                RigaImpostazione(titolo: "Vera su misura", sottotitolo: stato.statoSuMisuraInBreve,
+                                 stato: Pillola(testo: stato.pillolaSuMisura, tono: tonoSuMisura)) {
+                    Button("Apri") { stato.apriPaginaSuMisura() }
+                        .buttonStyle(StilePulsanteRigaImpostazioni())
+                        .fixedSize()
+                }
+                RigaImpostazione(titolo: "Due velocità", sottotitolo: "Prima le regole di Prisma, poi Qwen sul Mac. Il modello Apple è spento.",
+                                 stato: Pillola(testo: "Regole e Qwen", tono: .ok)) {
+                    Button("Apri") { stato.apriPaginaMotori(.dueVelocita) }
+                        .buttonStyle(StilePulsanteRigaImpostazioni())
+                        .fixedSize()
+                }
+                RigaImpostazione(titolo: "Motore esterno", sottotitolo: "Solo per le conversazioni generali: i dati dei clienti non escono mai dal Mac.",
+                                 stato: Pillola(testo: "Non collegato", tono: .neutro)) {
+                    Button("Apri") { stato.apriPaginaMotori(.cervello) }
+                        .buttonStyle(StilePulsanteRigaImpostazioni())
+                        .fixedSize()
+                }
+                RigaImpostazione(titolo: "Chi risponde", sottotitolo: "Etichetta sotto ogni risposta · sempre accesa", ultima: true) {
+                    EmptyView()
+                }
             }
             .cascataImpostazioni(6)
             // Fase 4 di Vera, funzione 5: il tagliando dei dati (VisteTagliandoVera.swift)
