@@ -735,7 +735,6 @@ extension StatoShell {
         }
     }
 
-    /// Le righe arrivate dall'iPhone mentre la vista attiva è lo Smontaggio: le legge MotoreSmontaggio, non Inquadra.
     /// La sostituzione chiesta dallo Smontaggio diventa il bisogno scelto di Pratiche › Proposta.
     func proponiSostituzioneDaSmontaggio(attuale: Posizione, registrata: Bool, proposta: Posizione, costi: SmontaggioCosti) {
         guard let c = cliente(attuale.clienteId.isEmpty ? proposta.clienteId : attuale.clienteId) else { return }
@@ -779,6 +778,7 @@ extension StatoShell {
         mostraAvviso("Documento aggiunto ai Documenti di \(c.nome.split(separator: " ").first.map(String.init) ?? c.nome), senza la foto")
     }
 
+    /// Le righe arrivate dall'iPhone mentre la vista attiva è lo Smontaggio: le legge MotoreSmontaggio, non Inquadra.
     func prendiInquadraturaSmontaggio(_ x: InquadraturaPonte) {
         smontaggio.carica(righe: x.righe, titolo: x.righe.first(where: { MotoreSmontaggio.tipo($0.testo) == nil && $0.testo.count > 3 })?.testo ?? "Documento inquadrato",
                           origine: "inquadrato con \(x.dispositivo)", clienteId: x.clienteId ?? clienteAttivoId)

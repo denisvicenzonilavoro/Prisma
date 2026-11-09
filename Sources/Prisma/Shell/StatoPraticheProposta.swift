@@ -367,7 +367,6 @@ extension StatoShell {
     /// «Presenta a …»: con l'iPad collegato al tavolo il prospetto va sull'iPad, altrimenti si apre la presentazione in
     /// sala sul Mac (decisione D1.7). Presentare segna la proposta «presentata»: `salvaPosizione` scrive la data
     /// (`SeguitoProposta.presentataIl`) e registra la raccomandazione del track record, come per ogni proposta presentata.
-    @MainActor
     func presentaProposta(_ bozza: Posizione, prospetto: ProspettoProposta?) {
         guard !solaLettura else {
             mostraAvviso(TestiSeguito.solaLettura)
