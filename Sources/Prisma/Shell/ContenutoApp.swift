@@ -72,8 +72,10 @@ extension ContenutoApp {
     /// Pulsanti a destra nell'intestazione dell'app.
     @ViewBuilder var azioni: some View {
         switch app {
-        case .clienti: AzioneNuovoCliente()
+        case .clienti: AzioniClienti()
         case .posizioni: AzioniPosizioni()
+        // «Luce» giro 13: «Nota dall’iPhone» (Mac) e «Nota veloce» (iPad) (AzioniIncontri.swift)
+        case .incontri: AzioniIncontri()
         case .note: AzioneNuovaNota()
         case .vera: AzioniVera()
         // Il segmentato a pillola delle quattro schede di Studio (StudioApp.swift)
@@ -84,36 +86,82 @@ extension ContenutoApp {
         case .territorio: AzioniTerritorio()
         case .pratiche: AzioniPratiche()
         case .sala: AzioniSala()
+        // «Luce» giro 12: il segmentato «Messaggi · Campagne» (MessaggiCampagne.swift)
+        case .messaggi: AzioniMessaggi()
         default: EmptyView()
         }
     }
 }
 
-struct AzioneNuovoCliente: View {
+/// La testata di Clienti («Luce» giri 12 e 13, §9.1, decisione 1.4): il segmentato «Rubrica · Potenziali · Passaparola»
+/// (giro 12) e, nella Rubrica, il menu «…» con «Importa…» e «Incolla da Excel» (non si perdono) e il pulsante blu
+/// «Nuovo cliente» con il glifo `scan`, che apre la scena della carta d'identità (sul Mac, anche con ⌘N: la testata c'è
+/// solo con Clienti davanti) o la schermata della fotocamera (iPad).
+struct AzioniClienti: View {
     @Environment(StatoShell.self) var stato
 
     var body: some View {
         let _ = ContaCorpi.segna()
         HStack(spacing: Misure.IntestazioneApp.spazioAzioni) {
+            // «Luce» giro 12: «Rubrica · Potenziali · Passaparola» (non in modalità cliente: mostrano altre persone)
+            if !stato.inModoCliente {
+                SegmentatoPillola(selezione: Bindable(stato).vistaClienti, valori: VistaClienti.allCases, titolo: { $0.titolo })
+                    .fixedSize()
+            }
+            if stato.inModoCliente || stato.vistaClienti == .rubrica {
+                pulsantiRubrica
+            }
+        }
+    }
+
+    /// Il menu «…» (Importa, Incolla da Excel) e il blu «Nuovo cliente»: solo nella Rubrica.
+    @ViewBuilder private var pulsantiRubrica: some View {
+        Menu {
             Button { stato.importaClientiDaFile() } label: {
                 Label("Importa…", systemImage: "square.and.arrow.down")
             }
-            .buttonStyle(StileVetro())
             .disabled(stato.solaLettura)
-            .help("Importa clienti da un file vCard (app Contatti), Excel o CSV. Puoi anche trascinare il file sulla finestra.")
             Button { stato.incollaDaExcel(posizioni: false) } label: {
                 Label("Incolla da Excel", systemImage: "doc.on.clipboard")
             }
-            .buttonStyle(StileVetro())
             .disabled(stato.solaLettura)
-            .help("Incolla da Excel: copia in Excel le righe dei clienti con l'intestazione (⌘C), poi premi qui")
-            // Il blu dell'app: la cosa da fare qui
-            Button { stato.richiestaNuovoCliente = true } label: {
-                Label("Nuovo cliente", systemImage: "person.badge.plus")
-            }
-            .buttonStyle(StileAqua())
-            .help("Nuovo cliente: apri la scheda vuota e scrivi nome, contatti e situazione")
+        } label: {
+            Image(systemName: "ellipsis")
+                .accessibilityLabel(Text("Altro"))
         }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+        .help("Importa clienti da un file (vCard, Excel o CSV) o incollali da Excel")
+        // Il blu dell'app: la cosa da fare qui
+        Button(action: nuovoCliente) {
+            Label {
+                Text("Nuovo cliente")
+            } icon: {
+                GlifoLuceVista(glifo: .scan, lato: Tema.Apple.NuovoCliente.Scheda.glifoTestata, colore: Tema.Colore.Componenti.testoSuColore)
+            }
+        }
+        .buttonStyle(StileAqua())
+        .modifier(ScorciatoiaNuovoCliente())
+        .help("Nuovo cliente: inquadra la carta d’identità con l’iPhone o trascina una foto, oppure scrivi a mano")
+    }
+
+    private func nuovoCliente() {
+        #if os(macOS)
+        stato.apriNuovoCliente()
+        #else
+        stato.nuovoCliente.apriTelefono()
+        #endif
+    }
+}
+
+/// ⌘N solo sul Mac (nessun altro ⌘N: PrismaApp toglie `.newItem`; la testata c'è solo con Clienti davanti).
+private struct ScorciatoiaNuovoCliente: ViewModifier {
+    func body(content: Content) -> some View {
+        #if os(macOS)
+        content.keyboardShortcut("n", modifiers: .command)
+        #else
+        content
+        #endif
     }
 }
 

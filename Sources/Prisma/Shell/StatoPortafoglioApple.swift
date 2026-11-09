@@ -34,19 +34,23 @@ extension StatoShell {
         let d = derivatiValidi()
         let ora = DerivatiDati.ora()
         if let c = d.nastroDaFare, c.ora == ora { return c.valore }
-        let adesso = Date()
+        let v = MotoreDaFare.calcola(ingressiDaFare(adesso: Date()))
+        d.nastroDaFare = (ora, v)
+        return v
+    }
+
+    /// Ciò che MotoreDaFare incrocia, dalle cache di sempre: per il nastro e per tutte le voci del Territorio
+    /// (`vociDaFareTutte`, «Luce» giro 11).
+    func ingressiDaFare(adesso: Date) -> MotoreDaFare.Ingressi {
         let cal = Calendar.current
         let inizio = cal.startOfDay(for: adesso)
         let fine = cal.date(byAdding: .day, value: MotoreDaFare.giorniOccasioni + 1, to: inizio) ?? inizio
         let comune = portafoglioComune()
-        let x = MotoreDaFare.Ingressi(clienti: clienti, posizioni: posizioni, attivita: attivita,
-                                      proposte: proposteInSospeso, riesami: comune.dovuti,
-                                      conformita: conformitaClienti(oggi: adesso),
-                                      occasioni: occasioni(da: inizio, a: fine), attenzioni: comune.attenzioni,
-                                      oggi: adesso)
-        let v = MotoreDaFare.calcola(x)
-        d.nastroDaFare = (ora, v)
-        return v
+        return MotoreDaFare.Ingressi(clienti: clienti, posizioni: posizioni, attivita: attivita,
+                                     proposte: proposteInSospeso, riesami: comune.dovuti,
+                                     conformita: conformitaClienti(oggi: adesso),
+                                     occasioni: occasioni(da: inizio, a: fine), attenzioni: comune.attenzioni,
+                                     oggi: adesso)
     }
 
     // MARK: - Le azioni delle schede

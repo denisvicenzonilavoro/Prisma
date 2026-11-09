@@ -81,6 +81,8 @@ extension StatoShell {
             raccogliPromesse(cliente: o.clienteId)
             // «Scrive come te» (funzione 15 di Vera): il messaggio uscito entra nell'apprendimento dello stile
             aggiornaStileVera()
+            // «Luce» giro 15: l'aggiornamento del sinistro segna il giorno nel sinistro e la traccia nel dossier
+            if o.tipo == .sinistro { segnaAggiornamentoSinistro(o, canale: canale) }
         }
         return esito
     }

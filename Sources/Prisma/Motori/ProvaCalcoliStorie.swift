@@ -4,7 +4,9 @@ import Foundation
 /// assenti con i dati vuoti (restano la prima e l'ultima), la settimana da lunedì a domenica anche a cavallo di mese e
 /// d'anno, «il più importante» = la firma, le telefonate escluse, «in arrivo» per giorno con la somma uguale al totale e
 /// la nota senza aliquote, le famiglie protette contate una volta per cliente, la variazione nil al primo anno, i clienti
-/// nuovi dell'anno, la frase del momento senza cifre inventate, nessun paragone dei chilometri senza la tabella.
+/// nuovi dell'anno, la frase del momento senza cifre inventate, nessun paragone dei chilometri senza la tabella; la pagina
+/// dei chilometri dai giri di Studio › Spese dell'anno (solo i km noti, «almeno» se un giro è da completare, la media a
+/// settimana al posto del paragone).
 /// Chiamata da `ProvaCalcoli.esegui()`.
 enum ProvaCalcoliStorie {
     static func esegui(_ verifica: VerificaCalcoli) {
@@ -13,6 +15,7 @@ enum ProvaCalcoliStorie {
         incontri(verifica)
         inArrivo(verifica)
         anno(verifica)
+        chilometri(verifica)
         momento(verifica)
     }
 
@@ -67,6 +70,65 @@ enum ProvaCalcoliStorie {
                       s3.start == cal.startOfDay(for: d(2026, 12, 28)) && s3.end == cal.startOfDay(for: d(2027, 1, 4)))
         let s4 = MotoreStorie.settimanaDi(d(2026, 11, 2), cal: cal)   // lunedì
         verifica.vero("Storie: il lunedì è l'inizio della sua settimana", s4.start == cal.startOfDay(for: d(2026, 11, 2)))
+    }
+
+    // MARK: Chilometri (Studio › Spese)
+
+    private static func chilometri(_ verifica: VerificaCalcoli) {
+        func visita(_ id: String, _ c: String, _ m: Int, _ g: Int, presso: LuogoIncontro? = .cliente,
+                    stato: Appuntamento.Stato = .concluso, anno: Int = 2026) -> Appuntamento {
+            Appuntamento(id: id, clienteId: c, titolo: "Visita \(id)", inizio: d(anno, m, g, ora: 10), durataMinuti: 60,
+                         luogo: "", note: "", stato: stato, tipo: .analisi, presso: presso)
+        }
+        // DATI DI PROVA: km di andata e ritorno scritti per due clienti (cifre di prova)
+        let base = archivio([cliente("giulia", "Giulia Rossi"), cliente("marco", "Marco Bianchi")]) {
+            $0.kmClienti = ["giulia": 37.4, "marco": 52.8]
+            $0.appuntamenti = [visita("k1", "giulia", 2, 3), visita("k2", "marco", 6, 17), visita("k3", "giulia", 10, 21),
+                               // fuori: l'anno prima, in studio, non conclusa, dopo oggi
+                               visita("k4", "marco", 12, 9, anno: 2025), visita("k5", "giulia", 4, 8, presso: .studio),
+                               visita("k6", "marco", 5, 6, stato: .pianificato), visita("k7", "giulia", 11, 20)]
+        }
+        let a = MotoreStorie.anno(dati: base, anno: 2026, oggi: oggi, cal: cal)
+        guard case .chilometri(let km, let paragone, let stima)? = a.first(where: { $0.nome == "chilometri" }) else {
+            verifica.vero("Storie: con i giri di Studio › Spese l'anno ha la pagina dei chilometri", false)
+            return
+        }
+        verifica.vero("Storie: i km dell'anno sono quelli dei giri conclusi dal 1° gennaio a oggi (37,4 + 52,8 + 37,4)",
+                      abs(km - 127.6) < 0.001 && !stima)
+        let settimane = Double(cal.dateComponents([.day], from: d(2026, 1, 1, ora: 0),
+                                                  to: cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: oggi)) ?? oggi).day ?? 1) / 7
+        verifica.vero("Storie: senza la tabella approvata, al posto del paragone la media a settimana (decisione 72)",
+                      paragone == TestiStorie.mediaKm(127.6, settimane: settimane) && paragone?.hasPrefix("in media ") == true)
+        verifica.vero("Storie: la pagina dei chilometri viene dopo i clienti nuovi e prima del grazie",
+                      (a.firstIndex { $0.nome == "chilometri" } ?? 0) < (a.firstIndex { $0.nome == "grazie" } ?? 0))
+        // Un giro da completare (luogo non indicato): la cifra resta quella nota, con «almeno»
+        var incompleto = base
+        incompleto.appuntamenti.append(visita("k8", "marco", 9, 14, presso: nil))
+        if case .chilometri(let km2, _, let stima2)? = MotoreStorie.anno(dati: incompleto, anno: 2026, oggi: oggi, cal: cal)
+            .first(where: { $0.nome == "chilometri" }) {
+            verifica.vero("Storie: un giro senza km lascia i km noti e segna «almeno»", abs(km2 - 127.6) < 0.001 && stima2)
+        } else {
+            verifica.vero("Storie: un giro senza km lascia i km noti e segna «almeno»", false)
+        }
+        // La correzione a mano del giorno vince (come in Studio › Spese)
+        var corretto = base
+        corretto.impostazioni.studio.spese.kmCorretti[ImpostazioniSpese.chiaveGiorno(d(2026, 6, 17), calendario: cal)] = 61.3
+        if case .chilometri(let km3, _, _)? = MotoreStorie.anno(dati: corretto, anno: 2026, oggi: oggi, cal: cal)
+            .first(where: { $0.nome == "chilometri" }) {
+            verifica.vero("Storie: la correzione a mano di un giro entra nei km dell'anno", abs(km3 - 136.1) < 0.001)
+        } else {
+            verifica.vero("Storie: la correzione a mano di un giro entra nei km dell'anno", false)
+        }
+        // Senza km noti, niente pagina
+        var senza = base
+        senza.kmClienti = [:]
+        verifica.vero("Storie: senza km noti niente pagina dei chilometri",
+                      !MotoreStorie.anno(dati: senza, anno: 2026, oggi: oggi, cal: cal).contains { $0.nome == "chilometri" })
+        // Il paragone solo da una voce della tabella (qui una tabella di prova passata alla funzione, non quella vera)
+        verifica.vero("Storie: il paragone usa solo la tabella che riceve, la voce più lunga che ci sta",
+                      TestiStorie.paragoneKm(900, settimane: 10, tabella: [("fino al paese di prova A", 130), ("fino al paese di prova B", 410)])
+                        == "più o meno 2 volte fino al paese di prova B"
+                      && TestiStorie.paragoneKm(90, settimane: 10, tabella: [("fino al paese di prova A", 130)]) == TestiStorie.mediaKm(90, settimane: 10))
     }
 
     // MARK: Incontri
@@ -179,6 +241,19 @@ enum ProvaCalcoliStorie {
             verifica.vero("Storie: senza il dato del passaparola nessuna riga", passaparola == nil)
         } else {
             verifica.vero("Storie: la pagina dei clienti nuovi c'è", false)
+        }
+        // Con due presentatori («Luce» giro 12): Bruno (dell'anno) presentato da Carla, Carla presentata da Anna
+        var conPassaparola = dati
+        if let b = conPassaparola.clienti.firstIndex(where: { $0.id == "bruno" }),
+           let c = conPassaparola.clienti.firstIndex(where: { $0.id == "carla" }) {
+            conPassaparola.clienti[b].presentatoDa = "carla"
+            conPassaparola.clienti[c].presentatoDa = "anna"
+        }
+        if case .nuoviClienti(_, let passaparola)? = MotoreStorie.anno(dati: conPassaparola, anno: 2026, oggi: oggi, cal: cal)
+            .first(where: { $0.nome == "nuoviClienti" }) {
+            verifica("Storie: dal passaparola solo i clienti nuovi dell'anno con «Presentato da»", Double(passaparola ?? -1), 1)
+        } else {
+            verifica.vero("Storie: la pagina dei clienti nuovi c'è (con il passaparola)", false)
         }
         if case .patrimonio(let valore, _, let variazione)? = p.first(where: { $0.nome == "patrimonio" }) {
             verifica("Storie: il patrimonio seguito è il valore di oggi", valore, 30_000)

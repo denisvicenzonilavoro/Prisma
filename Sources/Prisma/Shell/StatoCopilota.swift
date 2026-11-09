@@ -216,6 +216,14 @@ extension StatoShell {
             }
             mostraAvviso("È arrivato il testo inquadrato con \(x.dispositivo): controllalo prima di aggiungerlo a Posizioni.")
             return .accettata()
+        case .cartaIdentita(let c):
+            // «Luce» giro 13: solo in memoria, mai nell'archivio; con Prisma bloccato si rimanda dall'iPhone (decisione 25)
+            guard !bloccato else { return .rifiutata("Prisma sul Mac è bloccato: sbloccalo e rimanda la carta dall’iPhone.") }
+            accogliCarta(c)
+            return .accettata()
+        case .notaVocale(let n):
+            // «Luce» giro 13: la nota entra sempre (anche con Prisma bloccato), le proposte si confermano sul Mac
+            return riceviNotaVocale(n)
         }
     }
 

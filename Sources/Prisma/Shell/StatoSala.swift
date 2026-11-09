@@ -35,14 +35,14 @@ enum EsperienzaSala: String, CaseIterable, Identifiable {
     var glifo: GlifoLuce { novita.glifo }
     var colore: Color { glifo.colore }
 
-    /// La frase della scheda (`ESP[].d`, diversa da quella del pannello Novità). Il film segue le decisioni 1 e 108:
-    /// niente invio diretto, un video breve da mostrare.
+    /// La frase della scheda (`ESP[].d`, diversa da quella del pannello Novità). Il Prisma del cliente e il film seguono
+    /// le decisioni 1, 3 e 108 (giro 15): un PDF protetto e un video di venti secondi che manda il consulente.
     var frase: String {
         switch self {
-        case .prismaCliente: return "La sua app personale, in un file da mandargli"
+        case .prismaCliente: return "Il suo piano in un file protetto, da mandargli"
         case .prismaLuce: return "Il patrimonio che si scompone in raggi"
         case .lettera: return "Scritta da sé stesso a 67 anni"
-        case .film: return "Un breve video da mostrare dopo l’incontro"
+        case .film: return "Venti secondi da mandare dopo l’incontro"
         case .disegna: return "Lo scarabocchio diventa un piano"
         case .giocoRischio: return "Il profilo vissuto, non dichiarato"
         case .giornataPensione: return "Il divario diventa una vita concreta"
@@ -62,8 +62,12 @@ enum EsperienzaSala: String, CaseIterable, Identifiable {
     /// L'esperienza è già in Prisma (il palco la mostra); le altre dicono «Arriva con un prossimo aggiornamento».
     var disponibile: Bool { novita.disponibile }
 
-    /// «▣ Mostra sul tavolo» per le esperienze: arriva con l'immagine del palco sull'iPad (decisione 111).
-    static let tavoloPronto = false
+    /// «▣ Mostra sul tavolo» già pronto («Luce» giro 16): il doppio senso per realtà aumentata, rischio, Lancia l'anno e
+    /// disegno; l'immagine del palco (decisione 111) per prisma di luce e giornata; il foglio per la lettera. Il film
+    /// resta fuori finché non c'è.
+    var tavoloPronto: Bool {
+        [.realtaAumentata, .giocoRischio, .lanciaAnno, .disegna, .prismaLuce, .lettera, .giornataPensione].contains(self)
+    }
 
     /// Le dieci schede piccole della griglia (la prima, grande, è il Prisma del cliente).
     static var piccole: [EsperienzaSala] { allCases.filter { $0 != .prismaCliente } }
@@ -123,6 +127,11 @@ enum VistaTerritorio: String, CaseIterable, Identifiable, Hashable {
     @ObservationIgnored var giornataConPiano = false
     /// Istantanee: il punto del gioco del rischio da disegnare (scenario e risposte già date). Non pubblicato.
     @ObservationIgnored var rischioIstantanea: PuntoGiocoRischio?
+    /// Il gioco del rischio sul palco ha già risposte e non è al risultato (§4.1.4): uscire dal palco o cambiare cliente
+    /// chiede conferma. Lo scrive `GiocoRischioVista` (solo quella del consulente). Non pubblicato.
+    @ObservationIgnored var rischioAMeta = false
+    /// La conferma in attesa per lasciare il gioco del rischio a metà (§4.1.4). Osservato: la Sala mostra il dialogo.
+    var uscitaRischio: UscitaRischio?
     /// La lettera dal futuro: la versione scelta resta finché si torna all'esperienza (§3.1.1). Non pubblicato.
     @ObservationIgnored var versioneLettera: VersioneLettera = .conPiano
     /// Solo istantanee: mostra l'avviso «Vera non è pronta» sotto il segmentato (642).
@@ -145,6 +154,38 @@ enum VistaTerritorio: String, CaseIterable, Identifiable, Hashable {
     @ObservationIgnored var stesureLettera: [String: [VersioneLettera: TestoLettera]] = [:]
     /// La scheda della lettera ricordata per cliente, versione dei dati e giorno (`StatoShell.schedaLettera`).
     @ObservationIgnored var memoScheda: (chiave: String, scheda: SchedaLettera?)?
+    /// Solo istantanee (giro 15): lo stato da disegnare del Prisma del cliente, del film e della capsula. Non pubblicato.
+    @ObservationIgnored var provaUscite = ProvaUsciteSala()
+    /// La capsula da aprire entrando nel palco della capsula (giro 15: «Apri la capsula» dai traguardi); la azzera
+    /// `CapsulaDelTempo` appena apre la consegna. Non pubblicato.
+    @ObservationIgnored var capsulaDaAprire: String?
+    /// «▣ Mostra sul tavolo» con il doppio senso («Luce» giro 16, decisione 48): l'esperienza che manda all'iPad il suo
+    /// stato a ogni passo (gioco del rischio, Lancia l'anno, disegno). nil = nessuna. Osservato: la vista del gioco lo legge.
+    var tavoloEsperienza: EsperienzaSala?
+    /// La riga di conferma delle cifre sull'iPad (decisione 49) in testa al palco di questa esperienza. nil = nessuna.
+    var confermaCifreTavolo: EsperienzaSala?
+    /// Solo istantanee: lo stato di prova della realtà aumentata (anno, esploso, strato scelto, tavolo collegato).
+    @ObservationIgnored var realtaIstantanea: ScenaRealtaDiProva?
+    /// iPhone e iPad: la realtà aumentata a tutto schermo è aperta («Apri in realtà aumentata»).
+    var realtaAperta = false
+}
+
+/// Che cosa lascia a metà il gioco del rischio (§4.1.4): il ritorno alla griglia («‹ Sala» o Esc) o il cambio di cliente.
+enum UscitaRischio: Equatable {
+    case torna
+    case cliente(String)
+}
+
+/// Solo istantanee: lo stato della realtà aumentata da disegnare («Luce» giro 16).
+struct ScenaRealtaDiProva {
+    /// nil = oggi; `allaPensione` = l'ultimo anno del cursore.
+    var anno: Int?
+    var allaPensione = false
+    var esploso = false
+    var scelto: String?
+    var tavoloCollegato = false
+    /// iPhone e iPad: il ripiego con «Consenti in Impostazioni» (73).
+    var fotocameraNegata = false
 }
 
 /// Solo istantanee: una partita di Lancia l'anno già giocata (seme fisso, anni, carte a mano per anno).
@@ -169,6 +210,35 @@ extension StatoShell {
     func tornaAllaSala() {
         guard sala.esperienza != nil else { return }
         sala.esperienza = nil
+    }
+
+    // MARK: Il gioco del rischio a metà (§4.1.4)
+
+    /// Lasciare il palco o cambiare cliente perderebbe le risposte già date al gioco del rischio.
+    var partitaRischioAMeta: Bool { sala.esperienza == .giocoRischio && sala.rischioAMeta }
+
+    /// Il cambio di cliente dalle pillole della Sala: a metà del gioco del rischio chiede prima conferma.
+    func scegliClienteSala(_ id: String) {
+        guard id != clienteAttivoId else { return }
+        if partitaRischioAMeta { sala.uscitaRischio = .cliente(id) } else { clienteAttivoId = id }
+    }
+
+    /// «‹ Sala» ed Esc dal palco: true se si può tornare subito; a metà del gioco del rischio chiede conferma (false).
+    func puoTornareAllaSala() -> Bool {
+        guard partitaRischioAMeta else { return true }
+        sala.uscitaRischio = .torna
+        return false
+    }
+
+    /// La conferma data: le risposte a metà si perdono e si fa ciò che era stato chiesto.
+    func confermaUscitaRischio() {
+        guard let u = sala.uscitaRischio else { return }
+        sala.uscitaRischio = nil
+        sala.rischioAMeta = false
+        switch u {
+        case .torna: tornaAllaSala()
+        case .cliente(let id): clienteAttivoId = id
+        }
     }
 
     /// Apre Pratiche sulla scheda data (dal pannello Novità, dalle altre app).

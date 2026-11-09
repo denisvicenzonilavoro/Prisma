@@ -49,6 +49,8 @@ private struct CorpoPraticheProposta: View {
                 .entrataCascata(1, base: Tema.Apple.Moto.Cascata.baseDentroApp)
             }
             .animation(Tema.Apple.Moto.animazione(P.Moto.cambio, calmo: calmo, istantanea: istantanea), value: scelto?.id)
+            // I modelli di Pratiche › Moduli per la tappa 5 (si leggono una volta, mai dentro il body)
+            .onAppear { stato.moduli.carica() }
             .onDisappear { proposta.fermaSequenza() }
         }
     }
@@ -107,6 +109,7 @@ private struct ColonnaProposta: View {
                     passi(unaRiga: unaRiga)
                     if vista.pronta {
                         RiquadroPropostaPronta(nomeCompleto: nomeCompleto, nome: nome,
+                                               riepilogo: vista.costruita.map(MotoreProposta.riepilogo) ?? MotoreProposta.riepilogoPronta,
                                                presenta: presenta, fascicolo: nelFascicolo)
                             .transition(.asymmetric(insertion: .opacity.combined(with: .offset(y: P.Moto.Pronta.spostamento)),
                                                     removal: .opacity))
@@ -290,12 +293,12 @@ private struct ColonnaProposta: View {
         case .fatto(let v):
             VStack(alignment: .leading, spacing: Q.spazioDentro) {
                 MiniaturaProspettoProposta()
-                Text("\(v.pagine) \(v.pagine == 1 ? "pagina" : "pagine") · su carta bianca")
+                Text("\(v.pagine) \(v.pagine == 1 ? "pagina" : "pagine") · " + (v.attualeId != nil ? "restare o cambiare" : "su carta bianca"))
                     .carattereApple(Q.spiegazione)
                     .foregroundColor(Tema.Apple.Colore.inchiostro2)
             }
             .contentShape(Rectangle())
-            .onTapGesture { if let b = vista.bozza { stato.clienteAttivoId = b.clienteId; stato.apriProspetto(.posizione(b.id)) } }
+            .onTapGesture { if let b = vista.bozza { stato.apriProspettoProposta(b, prospetto: v) } }
         case .manca(let frase, let rimedio):
             fermo(frase, rimedio: rimedio)
         default:
@@ -324,7 +327,11 @@ private struct ColonnaProposta: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             .contentShape(Rectangle())
-            .onTapGesture { if let b = vista.bozza { stato.apriPosizione(b) } }
+            // La scheda di adeguatezza (PannelloAdeguatezza) nel dettaglio della proposta; la liquidità non ne ha
+            .onTapGesture {
+                guard let b = vista.bozza else { return }
+                if a.semaforo == nil { stato.apriPosizione(b) } else { stato.apriAdeguatezzaProposta(b) }
+            }
         case .bloccato(let frase):
             VStack(alignment: .leading, spacing: Q.spazioDentro) {
                 Anello(frazione: 1, colore: Q.anelloRosso, misura: Q.anello, spessore: Q.spessoreAnello,
@@ -343,8 +350,20 @@ private struct ColonnaProposta: View {
         }
     }
 
-    @ViewBuilder private func passoModuli(_ e: EsitoPasso<Void>) -> some View {
-        if case .inArrivo(let frase) = e {
+    /// I moduli della proposta, ognuno con «N campi compilati · M da chiedere»; senza modelli (o per Alleanza) la frase.
+    /// Un clic apre Pratiche › Moduli sul primo modulo della proposta.
+    @ViewBuilder private func passoModuli(_ e: EsitoPasso<[ModuloProposta]>) -> some View {
+        switch e {
+        case .fatto(let elenco):
+            VStack(alignment: .leading, spacing: Q.spazioModuli) {
+                ForEach(Array(elenco.enumerated()), id: \.element.id) { i, m in
+                    RigaModuloProposta(modulo: m, indice: i)
+                }
+            }
+            .contentShape(Rectangle())
+            .onTapGesture { if let b = vista.bozza { stato.apriModuliProposta(b, modulo: elenco.first?.modelloId) } }
+            .accessibilityAddTraits(.isButton)
+        case .inArrivo(let frase):
             VStack(alignment: .leading, spacing: Q.spazioDentro) {
                 TasselloGlifo(glifo: .modulo, lato: Q.tassello)
                 Text(frase)
@@ -352,6 +371,10 @@ private struct ColonnaProposta: View {
                     .foregroundColor(Tema.Apple.Colore.inchiostro2)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            .contentShape(Rectangle())
+            .onTapGesture { if let b = vista.bozza { stato.apriModuliProposta(b, modulo: nil) } }
+        default:
+            EmptyView()
         }
     }
 
@@ -379,7 +402,7 @@ private struct ColonnaProposta: View {
     // MARK: Azioni del riquadro finale
 
     private func presenta() {
-        if let b = vista.bozza { stato.apriPosizione(b) }
+        if let b = vista.bozza { stato.presentaProposta(b, prospetto: vista.costruita?.prospetto?.valore) }
     }
 
     private func nelFascicolo() {
@@ -402,6 +425,49 @@ private struct ColonnaProposta: View {
         stato.apriProspetto(.fascicolo)
         stato.mostraAvviso(prossimo != nil ? "Aggiunta al fascicolo del prossimo incontro."
                                            : "Nessun incontro fissato con \(nomeCompleto): il fascicolo è pronto in Prospetti.")
+    }
+}
+
+// MARK: - Un modulo della proposta
+
+/// Una riga dei moduli (`.prep`): il pallino con la spunta che diventa verde, il nome e «N campi compilati».
+private struct RigaModuloProposta: View {
+    let modulo: ModuloProposta
+    let indice: Int
+
+    @Environment(\.prismaStatoFinale) private var fermo
+    @State private var accesa = false
+
+    private typealias Q = Tema.Apple.Pratiche.Proposta
+
+    var body: some View {
+        let acceso = accesa || fermo
+        HStack(alignment: .top, spacing: Q.spazioPallino) {
+            ZStack {
+                Circle().fill(acceso ? Q.pallinoAcceso : Color.clear)
+                Circle().strokeBorder(acceso ? Q.pallinoAcceso : Q.pallinoSpento, lineWidth: Q.bordoPallinoModulo)
+                SpuntaPiccolaApple()
+                    .stroke(Q.spuntaModulo, style: StrokeStyle(lineWidth: Q.trattoSpuntaModulo, lineCap: .butt, lineJoin: .miter))
+                    .opacity(acceso ? 1 : 0)
+            }
+            .frame(width: Q.pallinoModulo, height: Q.pallinoModulo)
+            VStack(alignment: .leading, spacing: Q.spazioRighe) {
+                Text(modulo.titolo)
+                    .carattereApple(Q.nomeModulo)
+                    .foregroundColor(Tema.Apple.Colore.inchiostro)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(modulo.riga)
+                    .carattereApple(Q.rigaModulo)
+                    .foregroundColor(Tema.Apple.Colore.inchiostro2)
+            }
+        }
+        .accessibilityElement(children: .combine)
+        // Le spunte diventano verdi una dopo l'altra (Pratiche.Moto.Spunte); ferme nelle istantanee e con «Riduci movimento»
+        .onAppear {
+            guard !fermo else { return }
+            let m = Tema.Apple.Pratiche.Moto.self
+            withAnimation(m.animazioneSpunta.delay(m.ritardoSpunta(indice))) { accesa = true }
+        }
     }
 }
 
@@ -535,6 +601,7 @@ struct MiniaturaProspettoProposta: View {
 private struct RiquadroPropostaPronta: View {
     let nomeCompleto: String
     let nome: String
+    let riepilogo: String
     let presenta: () -> Void
     let fascicolo: () -> Void
 
@@ -548,7 +615,7 @@ private struct RiquadroPropostaPronta: View {
                 Text("Proposta pronta")
                     .carattereApple(Q.titoloPronta)
                     .foregroundColor(Tema.Apple.Colore.inchiostro)
-                Text("Per \(nomeCompleto): \(MotoreProposta.riepilogoPronta)")
+                Text("Per \(nomeCompleto): \(riepilogo)")
                     .carattereApple(Q.testoPronta)
                     .foregroundColor(Tema.Apple.Colore.inchiostro2)
                     .fixedSize(horizontal: false, vertical: true)

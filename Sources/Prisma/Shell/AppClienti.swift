@@ -10,20 +10,37 @@ struct AppClienti: View {
     @State var familiare: ModificaFamiliare?
     /// Il campo su cui si apre il modulo del cliente o del familiare (completezza dei dati).
     @State var fuoco: FuocoModulo?
+    /// Il potenziale da cui nasce il cliente del modulo («Luce» giro 12: arrivo in «Cliente»); nil = modulo normale.
+    @State private var potenzialeDelModulo: String?
 
     var body: some View {
         let _ = ContaCorpi.segna()
-        // Il dettaglio che nasce dalle card del dossier (obiettivi) si apre sopra rubrica e dossier
-        conDettaglio
+        // Rubrica, Potenziali o Passaparola: i fogli e le richieste valgono per tutte e tre le viste
+        contenuto
         // Il modulo del familiare per la scheda Famiglia (anche quella del template)
         .environment(\.azioneFamiliareDossier, AzioneFamiliareDossier(apri: { familiare = $0 }))
-        .sheet(item: $modulo, onDismiss: { fuoco = nil }) { c in
+        .sheet(item: $modulo, onDismiss: {
+            fuoco = nil
+            // Annullato senza salvare: il potenziale resta (o torna) in «Proposta»
+            if let p = potenzialeDelModulo {
+                stato.annullaClienteDaPotenziale(p)
+                potenzialeDelModulo = nil
+            }
+        }) { c in
             ModuloCliente(
                 bozza: c,
                 nuovo: !stato.clienti.contains { $0.id == c.id },
-                salva: { stato.salvaCliente($0) },
+                salva: { cliente in
+                    if let p = potenzialeDelModulo {
+                        stato.confermaClienteDaPotenziale(potenziale: p, cliente: cliente)
+                        potenzialeDelModulo = nil
+                    } else {
+                        stato.salvaCliente(cliente)
+                    }
+                },
                 elimina: { stato.eliminaCliente(c.id) },
-                conservaIban: stato.dati.impostazioni.pratiche.ibanConservato
+                conservaIban: stato.dati.impostazioni.pratiche.ibanConservato,
+                rubrica: stato.clienti
             )
             .environment(\.fuocoModulo, fuoco)
         }
@@ -38,9 +55,34 @@ struct AppClienti: View {
         .onAppear {
             controllaRichiesta(stato.richiestaNuovoCliente)
             controllaCompletamento(stato.richiestaCompletamento)
+            controllaPotenziale(stato.richiestaClienteDaPotenziale)
+            controllaBozza(stato.bozzaNuovoCliente)
         }
         .onChange(of: stato.richiestaNuovoCliente) { controllaRichiesta($0) }
+        .onChange(of: stato.richiestaClienteDaPotenziale) { controllaPotenziale($0) }
+        // «Luce» giro 13: «Scrivi a mano» dalla scena del nuovo cliente apre il modulo con i dati letti
+        .onChange(of: stato.bozzaNuovoCliente) { controllaBozza($0) }
+        #if os(iOS)
+        // iPad: «Nuovo cliente» della testata apre la fotocamera per la carta d'identità («Luce» giro 13)
+        .cartaIdentitaTelefono(stato)
+        #endif
         .onChange(of: stato.richiestaCompletamento) { controllaCompletamento($0) }
+    }
+
+    /// La vista scelta nella testata (in modalità cliente sempre la Rubrica).
+    @ViewBuilder private var contenuto: some View {
+        switch stato.inModoCliente ? .rubrica : stato.vistaClienti {
+        case .potenziali: VistaPotenziali()
+        case .passaparola: VistaPassaparola()
+        case .rubrica: conDettaglio
+        }
+    }
+
+    /// Il modulo del nuovo cliente già compilato dal potenziale arrivato in «Cliente».
+    private func controllaPotenziale(_ id: String?) {
+        guard let id, modulo == nil, let c = stato.clienteDaPotenziale(id) else { return }
+        potenzialeDelModulo = id
+        modulo = c
     }
 
     /// Rubrica e dossier con sopra il dettaglio delle card. Su iPad il vetro della finestra resta fuori dal
@@ -115,10 +157,26 @@ struct AppClienti: View {
         stato.richiestaCompletamento = nil
     }
 
+    /// «Nuovo cliente» da un altro punto (Prova del fuoco…): sul Mac apre la scena della carta d'identità («Luce» giro 13),
+    /// su iPhone e iPad il modulo vuoto.
     private func controllaRichiesta(_ richiesta: Bool) {
         guard richiesta else { return }
         stato.richiestaNuovoCliente = false
+        #if os(macOS)
+        stato.apriNuovoCliente()
+        #else
         modulo = Cliente.nuovo(tinta: stato.prossimaTinta)
+        #endif
+    }
+
+    /// La bozza del nuovo cliente con i dati letti dalla carta: il modulo si apre già compilato (si consuma subito).
+    private func controllaBozza(_ bozza: Cliente?) {
+        guard let bozza else { return }
+        stato.bozzaNuovoCliente = nil
+        // «Scrivi a mano» dalla scena aperta per un potenziale: salvato collega la scheda, annullato la riporta in «Proposta»
+        potenzialeDelModulo = stato.potenzialeDellaBozza
+        stato.potenzialeDellaBozza = nil
+        modulo = bozza
     }
 
     #if os(iOS)
@@ -220,6 +278,8 @@ struct AppClienti: View {
                 RigaCampo(etichetta: "Email", valore: c.email)
                 RigaCampo(etichetta: "Telefono", valore: c.telefono)
                 RigaCampo(etichetta: "Indirizzo", valore: c.indirizzo)
+                // «Luce» giro 11: da dove viene la posizione sulla mappa del Territorio, con «Mettila a mano»
+                RigaPosizioneMappa(cliente: c)
                 RigaCampo(etichetta: "In rubrica dal", valore: Formati.dataEstesa.string(from: c.creatoIl))
             }
             // I dati per la fattura (Studio › Parcelle e fatture, giro 2): dal modulo «Modifica la scheda»
@@ -244,6 +304,36 @@ struct AppClienti: View {
             }
                 .buttonStyle(StileCuoioChiaro())
         }
+    }
+
+    private func portafoglioModello(_ c: Cliente) -> some View {
+        let modelli = stato.dati.portafogliModello
+        return VStack(alignment: .leading, spacing: 4) {
+            OcchielloSezione(titolo: "Portafoglio modello")
+            HStack(spacing: 10) {
+                Picker("Portafoglio modello", selection: Binding(
+                    get: { c.modelloId ?? "" },
+                    set: { assegnaModello(c.id, $0.isEmpty ? nil : $0) })) {
+                    Text("Nessun modello").tag("")
+                    ForEach(modelli) { m in Text(m.nome.isEmpty ? "Senza nome" : m.nome).tag(m.id) }
+                }
+                .labelsHidden()
+                .frame(width: Tema.Apple.Posizioni.Radar.Impostazioni.sceltaModello)
+                .disabled(stato.solaLettura || modelli.isEmpty)
+                Button(modelli.isEmpty ? "Imposta i modelli" : "I modelli") { stato.apriImpostazioniModelli() }
+                    .buttonStyle(.appleSobrio)
+            }
+            .padding(.vertical, 6)
+            Text("Il modello è una scelta tua, separata dal profilo MiFID: il radar segnala se chiede più rischio del profilo.")
+                .font(Tipo.rubricaTema)
+                .foregroundColor(Colori.Rubrica.secondario)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func assegnaModello(_ clienteId: String, _ modelloId: String?) {
+        guard !stato.solaLettura, let i = stato.dati.clienti.firstIndex(where: { $0.id == clienteId }) else { return }
+        stato.dati.clienti[i].modelloId = modelloId
     }
 
     private func profilo(_ c: Cliente) -> some View {
@@ -273,6 +363,11 @@ struct AppClienti: View {
                     ForEach(c.canali) { EtichettaCanale(canale: $0) }
                 }
                 .padding(.vertical, 8)
+            }
+            // Il portafoglio modello del radar («Luce» §8.3.5): scelta del consulente, separata dal profilo MiFID. In
+            // modalità cliente non si vede (il radar e i modelli sono riservati, decisione 50)
+            if !stato.inModoCliente {
+                portafoglioModello(c)
             }
             VStack(alignment: .leading, spacing: 4) {
                 OcchielloSezione(titolo: "Consensi")

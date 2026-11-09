@@ -43,6 +43,11 @@ extension Tema.Apple {
             static let finestraChiude = Curva(x1: 0.5, y1: 0, x2: 0.3, y2: 1)
             /// Anello del backup.
             static let backup = Curva(x1: 0.4, y1: 0, x2: 0.2, y2: 1)
+            /// La molla leggera `cubic-bezier(.34,1.3,.64,1)`: l'iPhone di Inquadra, il volo delle schede dei potenziali
+            /// («Luce» giro 12).
+            static let mollaLeggera = Curva(x1: 0.34, y1: 1.3, x2: 0.64, y2: 1)
+            /// Il raduno dei pallini nei gruppi delle campagne `cubic-bezier(.34,1.15,.5,1)` («Luce» giro 12).
+            static let raduno = Curva(x1: 0.34, y1: 1.15, x2: 0.5, y2: 1)
 
             /// `1 − (1−t)^4`: numeri che si contano e `morphP` (si usa in `Animatable`, non come `Animation`).
             static func quartica(_ t: Double) -> Double {

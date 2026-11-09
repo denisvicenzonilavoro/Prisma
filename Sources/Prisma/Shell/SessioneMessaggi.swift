@@ -62,6 +62,11 @@ final class SessioneMessaggi: ObservableObject {
             riapri(m, elenco: base, stato: stato)
             return
         }
+        // «Apri ›» di una carta della notte: la bozza preparata, non ancora nel dossier (salvandola nasce il messaggio)
+        if let b = r.bozza {
+            riapri(b, elenco: base, stato: stato, ricordaId: false)
+            return
+        }
         if r.occasioneId == nil && r.clienteId == nil {
             // Dal pannello Novità: la prima occasione
             scelta = nil
@@ -77,7 +82,7 @@ final class SessioneMessaggi: ObservableObject {
     }
 
     /// Un messaggio salvato torna nel pannello con il suo tono, il suo canale e il suo testo.
-    private func riapri(_ m: MessaggioCliente, elenco base: OccasioniMessaggi, stato: StatoShell) {
+    private func riapri(_ m: MessaggioCliente, elenco base: OccasioniMessaggi, stato: StatoShell, ricordaId: Bool = true) {
         let daOrigine = OccasioneMessaggio.id(tipo: m.origine.tipo, clienteId: m.clienteId, riferimento: m.origine.riferimento)
         let occasione: String
         if let o = base.occasione(m.occasioneId) ?? base.occasione(daOrigine) {
@@ -93,7 +98,7 @@ final class SessioneMessaggi: ObservableObject {
         testi[k] = TestoScrittoMessaggio(oggetto: m.oggetto, testo: m.testo, autore: m.autore, modello: m.modello, avviso: nil)
         correzioni[k] = nil
         comparsi.insert(k)
-        salvati[k] = m.id
+        if ricordaId { salvati[k] = m.id }
         scelta = occasione
     }
 
@@ -125,6 +130,17 @@ final class SessioneMessaggi: ObservableObject {
     func prepara(_ o: OccasioneMessaggio, stato: StatoShell) {
         let k = chiave(o)
         guard testi[k] == nil, inScrittura != k else { return }
+        // La bozza di una campagna («Luce» giro 12) ha già il suo testo, per il suo tono e il suo canale: si mostra quella,
+        // modificabile come ogni messaggio, senza scriverne una nuova né duplicarla
+        if o.tipo == .campagna, let m = stato.dati.messaggi.first(where: { $0.occasioneId == o.id && $0.stato == .bozza }) {
+            // Salvare o aprire aggiorna sempre la stessa bozza (anche con un altro tono o canale)
+            salvati[k] = m.id
+            if m.tono == k.tono && m.canale == k.canale {
+                testi[k] = TestoScrittoMessaggio(oggetto: m.oggetto, testo: m.testo, autore: m.autore, modello: m.modello, avviso: nil)
+                comparsi.insert(k)
+                return
+            }
+        }
         scrivi(o, chiave: k, stato: stato)
     }
 
@@ -272,13 +288,7 @@ extension StatoShell {
     /// Il consenso commerciale del cliente vale oggi (In regola, MotoreConformita). Se il consulente non lo segue
     /// (impostazioni) non si segnala niente.
     func consensoCommercialeValido(_ c: Cliente, oggi: Date = Date()) -> Bool {
-        let esito = MotoreConformita.calcola(cliente: c, posizioni: [], regole: dati.impostazioni.conformita, oggi: oggi)
-        guard let v = esito.voci.first(where: { $0.tipo == .commerciale }) else { return true }
-        switch v.stato {
-        case .inRegola, .entro30, .entro60: return true
-        case .nonRichiesta: return v.motivo != .consensoNonDato
-        case .scaduta, .mancante: return false
-        }
+        MotoreConformita.commercialeValido(c, regole: dati.impostazioni.conformita, oggi: oggi)
     }
 
     /// Apre il dossier del cliente sull'anagrafica (per aggiungere email o telefono).

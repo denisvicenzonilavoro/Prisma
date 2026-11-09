@@ -241,6 +241,7 @@ extension DestinazioneRicerca {
         case .obiettivo(let id): return "obiettivo:" + id
         case .incontro(let id): return "incontro:" + id
         case .prodotto(let id): return "prodotto:" + id
+        case .biblioteca(let id, let pagina): return "biblioteca:" + id + "@" + String(pagina)
         }
     }
 
@@ -263,6 +264,12 @@ extension DestinazioneRicerca {
         case "obiettivo": self = .obiettivo(id)
         case "incontro": self = .incontro(id)
         case "prodotto": self = .prodotto(id)
+        case "biblioteca":
+            // «<id>@<pagina>»: la pagina dopo l'ultima «@»
+            guard let chiocciola = id.lastIndex(of: "@"), let pagina = Int(id[id.index(after: chiocciola)...]) else { return nil }
+            let doc = String(id[..<chiocciola])
+            guard !doc.isEmpty else { return nil }
+            self = .biblioteca(doc, pagina: pagina)
         default: return nil
         }
     }

@@ -124,6 +124,39 @@ enum MotorePianificazione {
         return orario(giorno, minuti: allineati, cal: cal)
     }
 
+    /// Fino a `quanti` spazi liberi di `durata` minuti nei prossimi `giorni` giorni lavorativi (orari di lavoro, margine,
+    /// festivi saltati), al più uno per giorno se `unoPerGiorno` (Messaggi › Campagne, «Luce» giro 12, decisione 98:
+    /// gli orari proposti in un messaggio, mai bloccati in Agenda). Costruita su `primoSpazio`, un giorno alla volta.
+    /// Vuoto = Agenda piena.
+    static func spazi(durata: Int, da: Date, giorni: Int, quanti: Int, unoPerGiorno: Bool = true,
+                      appuntamenti: [Appuntamento], orari: OrariLavoro, cal: Calendar = calendario) -> [SpazioLibero] {
+        guard durata > 0, giorni > 0, quanti > 0 else { return [] }
+        var trovati: [SpazioLibero] = []
+        var lavorativi = 0
+        let primo = cal.startOfDay(for: da)
+        var n = 0
+        // Al più un anno di calendario, per sicurezza (orari senza giorni di lavoro)
+        while lavorativi < giorni, trovati.count < quanti, n < 366 {
+            defer { n += 1 }
+            guard let g = cal.date(byAdding: .day, value: n, to: primo) else { continue }
+            let giorno = cal.startOfDay(for: g)
+            guard lavorativo(giorno, orari: orari, cal: cal) else { continue }
+            lavorativi += 1
+            var occupati = appuntamenti
+            var inizio = max(da, giorno)
+            while trovati.count < quanti,
+                  let s = primoSpazio(durata: durata, da: inizio, appuntamenti: occupati, orari: orari, cal: cal, giorni: 1) {
+                trovati.append(s)
+                if unoPerGiorno { break }
+                // Lo spazio trovato occupa il tempo (solo per la ricerca: nessun appuntamento creato)
+                occupati.append(Appuntamento(id: "spazio-\(trovati.count)", clienteId: "", titolo: "", inizio: s.inizio,
+                                             durataMinuti: durata, luogo: "", note: "", stato: .pianificato))
+                inizio = s.fine
+            }
+        }
+        return trovati
+    }
+
     /// Il primo spazio libero di `durata` minuti da `da` in avanti, o nil se in `giorni` giorni non ce n'è.
     static func primoSpazio(durata: Int, da: Date, appuntamenti: [Appuntamento], orari: OrariLavoro,
                             cal: Calendar = calendario, giorni: Int = giorniRicerca) -> SpazioLibero? {

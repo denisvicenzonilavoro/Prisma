@@ -23,6 +23,9 @@ struct RichiestaMessaggi: Equatable, Identifiable {
     var occasioneId: String?
     /// Un messaggio già salvato o aperto da mostrare (dal dossier).
     var messaggioId: String?
+    /// Una bozza non salvata da mostrare («Apri ›» di una carta della notte, «Luce» giro 14): entra nel pannello, ma nel
+    /// dossier solo se la salva l'utente.
+    var bozza: MessaggioCliente? = nil
 }
 
 extension StatoShell {
@@ -32,7 +35,7 @@ extension StatoShell {
     /// Apre Messaggi con il contesto: cliente, occasione dell'elenco (`occasioneId`) o su richiesta (`occasione`, che
     /// entra in testa all'elenco), messaggio salvato, file da allegare all'apertura in Mail o in Messaggi.
     func preparaMessaggio(clienteId: String? = nil, occasioneId: String? = nil, occasione: OccasioneMessaggio? = nil,
-                          messaggioId: String? = nil, allegati: [URL] = []) {
+                          messaggioId: String? = nil, allegati: [URL] = [], bozza: MessaggioCliente? = nil) {
         guard appConsentita(.messaggi) else {
             // `apri` dice perché in modalità cliente non si apre
             apri(.messaggi)
@@ -47,8 +50,10 @@ extension StatoShell {
         }
         let scelta = occasione?.id ?? occasioneId
         if let scelta, !allegati.isEmpty { allegatiMessaggi[scelta] = allegati }
-        richiestaMessaggi = RichiestaMessaggi(clienteId: clienteId ?? occasione?.clienteId, occasioneId: scelta,
-                                              messaggioId: messaggioId)
+        richiestaMessaggi = RichiestaMessaggi(clienteId: clienteId ?? occasione?.clienteId ?? bozza?.clienteId, occasioneId: scelta,
+                                              messaggioId: messaggioId, bozza: bozza)
+        // Un messaggio si prepara nella vista Messaggi, non in Campagne («Luce» giro 12)
+        if vistaMessaggi != .messaggi { vistaMessaggi = .messaggi }
         apri(.messaggi)
     }
 

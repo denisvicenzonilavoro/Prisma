@@ -37,7 +37,7 @@ import Observation
     @ObservationIgnored private var inCarica = false
 
     /// Numero dei campi di `DatiPrisma` copiati qui (la prova lo confronta con Mirror).
-    static let numeroCampi = 45
+    static let numeroCampi = 53
 
     var versione: Int { didSet { segnala(.calcoli) } }
     var clienti: [Cliente] { didSet(prima) { segnalaClienti(prima, clienti, \.id) } }
@@ -87,6 +87,22 @@ import Observation
     var tagliando: StatoTagliando { didSet { segnala(.neutro) } }
     var sussurriChiusi: [SussurroChiuso] { didSet { segnala(.neutro) } }
     var spiegazioniTreLivelli: [SpiegazioneTreLivelli] { didSet { segnala(.neutro) } }
+    /// I potenziali clienti («Luce» giro 12) si calcolano nella vista, senza cache: spostare una scheda non rifà le cache
+    /// dei clienti.
+    var potenziali: [PotenzialeCliente] { didSet { segnala(.neutro) } }
+    /// Le campagne avviate («Luce» giro 12) entrano nelle occasioni dei messaggi e nei gruppi (regola dei 30 giorni).
+    var campagne: [Campagna] { didSet { segnala(.calcoli) } }
+    /// Le note dall'iPhone («Luce» giro 13): nessun calcolo in cache.
+    var noteInArrivo: [NotaInArrivo] { didSet { segnala(.neutro) } }
+    /// Le notti di lavoro di «Stanotte» («Luce» giro 14): nessun calcolo in cache.
+    var notti: [NotteDiLavoro] { didSet { segnala(.neutro) } }
+    /// Le cose date al cliente («Luce» giro 15): capsule, sinistri e traccia delle uscite; nessun calcolo in cache (i
+    /// traguardi leggono le capsule vive).
+    var capsule: [CapsulaTempo] { didSet { segnala(.neutro) } }
+    var sinistri: [Sinistro] { didSet { segnala(.neutro) } }
+    var uscite: [UscitaCliente] { didSet { segnala(.neutro) } }
+    /// Le lettere dal futuro conservate (§3.1.5): nessun calcolo in cache.
+    var lettere: [LetteraFuturo] { didSet { segnala(.neutro) } }
     var clienteAttivoId: String { didSet(prima) { segnala(.clienteAttivo(prima: prima)) } }
     var impostazioni: Impostazioni { didSet(prima) { segnala(.impostazioni(prima: prima)) } }
 
@@ -134,6 +150,14 @@ import Observation
         tagliando = d.tagliando
         sussurriChiusi = d.sussurriChiusi
         spiegazioniTreLivelli = d.spiegazioniTreLivelli
+        potenziali = d.potenziali
+        campagne = d.campagne
+        noteInArrivo = d.noteInArrivo
+        notti = d.notti
+        capsule = d.capsule
+        sinistri = d.sinistri
+        uscite = d.uscite
+        lettere = d.lettere
         clienteAttivoId = d.clienteAttivoId
         impostazioni = d.impostazioni
     }
@@ -228,6 +252,14 @@ import Observation
         d.tagliando = tagliando
         d.sussurriChiusi = sussurriChiusi
         d.spiegazioniTreLivelli = spiegazioniTreLivelli
+        d.potenziali = potenziali
+        d.campagne = campagne
+        d.noteInArrivo = noteInArrivo
+        d.notti = notti
+        d.capsule = capsule
+        d.sinistri = sinistri
+        d.uscite = uscite
+        d.lettere = lettere
         return d
     }
 
@@ -276,6 +308,14 @@ import Observation
         d.tagliando = _tagliando
         d.sussurriChiusi = _sussurriChiusi
         d.spiegazioniTreLivelli = _spiegazioniTreLivelli
+        d.potenziali = _potenziali
+        d.campagne = _campagne
+        d.noteInArrivo = _noteInArrivo
+        d.notti = _notti
+        d.capsule = _capsule
+        d.sinistri = _sinistri
+        d.uscite = _uscite
+        d.lettere = _lettere
         return d
     }
 
@@ -327,6 +367,14 @@ import Observation
         if tagliando != d.tagliando { tagliando = d.tagliando }
         if sussurriChiusi != d.sussurriChiusi { sussurriChiusi = d.sussurriChiusi }
         if spiegazioniTreLivelli != d.spiegazioniTreLivelli { spiegazioniTreLivelli = d.spiegazioniTreLivelli }
+        if potenziali != d.potenziali { potenziali = d.potenziali }
+        if campagne != d.campagne { campagne = d.campagne }
+        if noteInArrivo != d.noteInArrivo { noteInArrivo = d.noteInArrivo }
+        if notti != d.notti { notti = d.notti }
+        if capsule != d.capsule { capsule = d.capsule }
+        if sinistri != d.sinistri { sinistri = d.sinistri }
+        if uscite != d.uscite { uscite = d.uscite }
+        if lettere != d.lettere { lettere = d.lettere }
         if clienteAttivoId != d.clienteAttivoId { clienteAttivoId = d.clienteAttivoId }
         if impostazioni != d.impostazioni { impostazioni = d.impostazioni }
         inCarica = false
@@ -356,6 +404,10 @@ extension Impostazioni {
         // Vera, fase 4: il tagliando dei dati e il profilo di stile non entrano nei calcoli
         b.tagliando = tagliando
         b.stileVera = stileVera
+        // Il Territorio non entra nei calcoli in cache: le sue cache hanno le impostazioni nella chiave («Luce» giro 11)
+        b.territorio = territorio
+        // Il lavoro della notte («Luce» giro 14) non entra nei calcoli in cache
+        b.notte = notte
         return self == b
     }
 }

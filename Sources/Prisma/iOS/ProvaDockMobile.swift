@@ -61,7 +61,7 @@ enum ProvaDockMobile {
         verifica("le app del Mac che non stanno nel dock dell'iPad sono in «Tutte le app»",
                  Set(AppPrisma.delDock).subtracting(dockiPad) == Set<AppPrisma>([.biblioteca, .mercato, .studio, .impostazioni]))
 
-        // In modo cliente solo le app consentite (Note, Ricerca, Impostazioni, Territorio e Pratiche no)
+        // In modo cliente solo le app consentite (Note, Ricerca, Impostazioni, Territorio, Pratiche e Messaggi no)
         let consentita: (AppPrisma) -> Bool = { !StatoShell.appRiservate.contains($0) }
         let telefonoCliente = DisposizioneDockMobile.app(.telefono, consentita: consentita)
         let iPadCliente = DisposizioneDockMobile.app(.iPad, consentita: consentita)
@@ -69,7 +69,8 @@ enum ProvaDockMobile {
                  telefonoCliente.allSatisfy(consentita))
         verifica("modo cliente: niente app riservate nel dock dell'iPad",
                  Set(iPadCliente) == Set(dockiPad).subtracting(StatoShell.appRiservate)
-                 && !iPadCliente.contains(.territorio) && !iPadCliente.contains(.pratiche) && iPadCliente.contains(.sala))
+                 && !iPadCliente.contains(.territorio) && !iPadCliente.contains(.pratiche) && !iPadCliente.contains(.messaggi)
+                 && iPadCliente.contains(.sala))
 
         if errori.isEmpty {
             print("Prova del dock: tutto a posto")

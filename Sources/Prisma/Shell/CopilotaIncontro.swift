@@ -153,6 +153,7 @@ struct ColonnaOggiCopilota: View {
     var body: some View {
         let _ = ContaCorpi.segna()
         let elenco = oggi
+        let note = stato.noteDaGuardare
         return VStack(alignment: .leading, spacing: 0) {
             Text("Oggi")
                 .carattereApple(C.occhiello)
@@ -161,12 +162,25 @@ struct ColonnaOggiCopilota: View {
                 .accessibilityAddTraits(.isHeader)
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
+                    // «Luce» giro 13: le note dettate sull'iPhone ancora da guardare, prima degli appuntamenti
+                    if !note.isEmpty {
+                        VStack(alignment: .leading, spacing: C.fraVoci) {
+                            ForEach(note) { n in VoceOggiNotaVocale(nota: n) }
+                        }
+                        .padding(.bottom, Tema.Apple.NotaVocale.Oggi.sopra)
+                    }
                     if elenco.isEmpty {
                         VStack(alignment: .leading, spacing: C.spazioVuoto) {
                             Text(TestiCopilota.nessunIncontro)
                                 .carattereApple(C.vuoto)
                                 .foregroundColor(C.coloreVuoto)
                                 .fixedSize(horizontal: false, vertical: true)
+                            if note.isEmpty {
+                                Text("Nessuna nota dall’iPhone. Dettane una dopo la prossima visita: arriva qui.")
+                                    .carattereApple(C.vuoto)
+                                    .foregroundColor(C.coloreVuoto)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
                             Button(TestiCopilota.senzaAppuntamento) { senzaAppuntamento() }
                                 .buttonStyle(.apple)
                                 .disabled(copilota.ascolta || stato.cliente(clienteId) == nil)

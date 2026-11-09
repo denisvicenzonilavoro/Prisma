@@ -134,6 +134,16 @@ final class DerivatiDati {
     var trackRecord: TrackRecord?
     /// Le occasioni dei messaggi di oggi (StatoMessaggi.swift): dipendono dai dati dei calcoli (messaggi compresi) e dal giorno.
     var occasioniMessaggi: OccasioniMessaggi?
+    /// Territorio («Luce» giro 11, StatoTerritorio.swift): le impostazioni del Territorio stanno nella chiave perché non
+    /// cambiano `versioneCalcoli` (`Impostazioni.stessiCalcoli`). Tutte le voci di MotoreDaFare con le attenzioni, i
+    /// luoghi dei clienti, la vista Oggi, la crescita e i giri per giorno (al più 7).
+    var vociDaFare: (ora: Int, valore: [VoceDaFare], attenzioni: [Attenzione])?
+    var luoghiTerritorio: (imp: ImpostazioniTerritorio, valore: (luoghi: [String: LuogoCliente], senzaLuogo: [ClienteSenzaLuogo]))?
+    var territorioOggi: (ora: Int, imp: ImpostazioniTerritorio, valore: TerritorioOggi)?
+    var crescitaTerritorio: CrescitaTerritorio?
+    var giriTerritorio: [Date: (ora: Int, imp: ImpostazioniTerritorio, partenza: Coordinata?, valore: GiroGiorno)] = [:]
+    /// I gruppi delle campagne di oggi (CampagneMessaggi.swift, «Luce» giro 12): stesse dipendenze delle occasioni.
+    var gruppiCampagne: [GruppoCampagna]?
     /// Il numero dell'ultima impaginazione del documento di Prospetti: cambia solo quando il documento si
     /// impagina di nuovo, quindi dice alle pagine sul tavolo se sono ancora le stesse. Non si azzera con la
     /// chiave e viene da un contatore comune a tutti gli stati, così due documenti non hanno mai lo stesso numero.
@@ -176,9 +186,15 @@ final class DerivatiDati {
         cruscottoStudio = nil
         trackRecord = nil
         occasioniMessaggi = nil
+        gruppiCampagne = nil
         radar = nil
         datiCalcoli = nil
         contiAree = [:]
+        vociDaFare = nil
+        luoghiTerritorio = nil
+        territorioOggi = nil
+        crescitaTerritorio = nil
+        giriTerritorio = [:]
     }
 }
 
@@ -516,6 +532,19 @@ extension DatiPrisma {
         // Chilometri, spese e scadenze («Luce» giro 9) si calcolano nella vista, senza cache
         b.speseStudio = a.speseStudio
         b.kmClienti = a.kmClienti
+        // I potenziali («Luce» giro 12) si calcolano nella vista, senza cache
+        b.potenziali = a.potenziali
+        // Le note dall'iPhone («Luce» giro 13) non entrano in nessun calcolo in cache
+        b.noteInArrivo = a.noteInArrivo
+        // Le notti di lavoro di «Stanotte» («Luce» giro 14) non entrano in nessun calcolo in cache
+        b.notti = a.notti
+        b.impostazioni.notte = a.impostazioni.notte
+        // Le cose date al cliente («Luce» giro 15): capsule, sinistri e uscite non entrano in nessun calcolo in cache
+        b.capsule = a.capsule
+        b.sinistri = a.sinistri
+        b.uscite = a.uscite
+        // Le lettere dal futuro conservate non entrano in nessun calcolo in cache
+        b.lettere = a.lettere
         b.impostazioni.studio.spese = a.impostazioni.studio.spese
         // Vera, fase 4: le routine, il tagliando dei dati («Va bene così» non rifà le cache), le spiegazioni in tre livelli
         // e il profilo di stile non entrano in nessun calcolo in cache

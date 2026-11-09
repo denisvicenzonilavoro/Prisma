@@ -135,6 +135,7 @@ extension SchedaImpostazioni {
         case .pratiche: return .app(.pratiche)
         case .sala: return .app(.sala)
         case .moduli: return .simbolo("doc.text.fill", c.conformita)
+        case .territorio: return .app(.territorio)
         case .strumenti: return .simbolo("wrench.and.screwdriver.fill", c.strumenti)
         }
     }

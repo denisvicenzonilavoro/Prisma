@@ -3,7 +3,8 @@
 #
 # Uso: Supporto/iOS/prove.sh <udid> [prova …]
 #   Senza elenco esegue tutte le prove del giro 1:
-#     verifica-risorse prova-calcoli prova-prospetti prova-carico prova-backup prova-vera prova-dock backup-ditto prova-ovunque
+#     verifica-risorse prova-calcoli prova-prospetti prova-carico prova-backup prova-vera prova-dock backup-ditto prova-ovunque prova-realta
+#   «prova-realta» («Luce» giro 16): la prova di fattibilità della realtà aumentata (il cristallo in RealityKit, vista virtuale).
 #   «prova-dock» (giro 3): il lato delle icone del dock di iPhone e iPad (fitDock del tema) e le app del dock.
 #   «backup-ditto» è una sequenza: l'app prepara un archivio di prova (--prepara-campione-backup),
 #   lo script lo comprime con ditto sul runner (gli stessi argomenti di Backup.swift) e l'app lo
@@ -27,7 +28,7 @@ LIMITE="${PRISMA_LIMITE_PROVA:-600}"   # secondi per prova
 if [ $# -gt 0 ]; then
     PROVE=("$@")
 else
-    PROVE=(verifica-risorse prova-calcoli prova-prospetti prova-carico prova-backup prova-vera prova-dock backup-ditto prova-ovunque)
+    PROVE=(verifica-risorse prova-calcoli prova-prospetti prova-carico prova-backup prova-vera prova-dock backup-ditto prova-ovunque prova-realta)
 fi
 
 # macOS non ha `timeout`: un'app bloccata non deve bloccare il job fino al limite di GitHub
@@ -52,7 +53,11 @@ lancia() {
     local inizio=$SECONDS
     rm -f "$esito"
     echo "::group::$nome"
-    corri "$LIMITE" xcrun simctl launch --console-pty --terminate-running-process \
+    # La prova della realtà aumentata gira senza Metal (fermo-immagine), come sul Mac del runner: nel simulatore la GPU
+    # virtuale può fermare RealityKit. simctl passa all'app le variabili con il prefisso SIMCTL_CHILD_.
+    local senzaMetal=""
+    [ "$nome" = prova-realta ] && senzaMetal=1
+    SIMCTL_CHILD_PRISMA_SENZA_METAL="$senzaMetal" corri "$LIMITE" xcrun simctl launch --console-pty --terminate-running-process \
         "$UDID" "$BID" "--$nome" "$@" < /dev/null
     local codice=$?   # subito dopo il lancio: è l'uscita di simctl (142 = tempo scaduto)
     echo "::endgroup::"

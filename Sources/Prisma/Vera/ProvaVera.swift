@@ -435,6 +435,12 @@ enum ProvaVera {
         controlla(StatoShell.appRiservate.isSuperset(of: [.territorio, .pratiche])
                   && !StatoShell.appRiservate.contains(.sala) && !StatoShell.appRiservate.contains(.biblioteca),
                   "Modalità cliente: Territorio e Pratiche riservate, Sala e Biblioteca consentite (decisione 50)")
+        // «Luce», giro 11: la voce Novità del Territorio apre Territorio › Oggi (anche se era su un'altra vista)
+        let territorio = StatoShell(persistente: false)
+        territorio.vistaTerritorio = .crescita
+        territorio.apriVoceNovita(NovitaLuce.territorio)
+        controlla(NovitaLuce.territorio.disponibile && territorio.appAttiva == .territorio && territorio.vistaTerritorio == .oggi,
+                  "Novità: «Il tuo territorio» apre Territorio › Oggi")
         let gruppi = NovitaLuce.Gruppo.allCases.map { $0.voci.count }
         controlla(NovitaLuce.allCases.count == 29 && gruppi == [15, 14]
                   && Set(NovitaLuce.allCases.map(\.titolo)).count == 29
@@ -455,6 +461,67 @@ enum ProvaVera {
                   "Novità: «La lettera dal futuro» apre la Sala sul palco della lettera")
         provaSala.tornaAllaSala()
         controlla(provaSala.sala.esperienza == nil && provaSala.appAttiva == .sala, "Sala: «‹ Sala» torna alla griglia")
+        // Il gioco del rischio a metà (§4.1.4): «‹ Sala», Esc e le pillole chiedono conferma; senza risposte no
+        provaSala.apriEsperienza(.giocoRischio, cliente: "giulia")
+        provaSala.sala.rischioAMeta = false
+        provaSala.scegliClienteSala("marco")
+        controlla(provaSala.clienteAttivoId == "marco" && provaSala.sala.uscitaRischio == nil,
+                  "Gioco del rischio: senza risposte il cambio di cliente non chiede conferma")
+        provaSala.sala.rischioAMeta = true
+        provaSala.scegliClienteSala("giulia")
+        controlla(provaSala.clienteAttivoId == "marco" && provaSala.sala.uscitaRischio == .cliente("giulia"),
+                  "Gioco del rischio: a metà partita il cambio di cliente chiede conferma prima di cambiare")
+        provaSala.sala.uscitaRischio = nil
+        controlla(!provaSala.puoTornareAllaSala() && provaSala.sala.uscitaRischio == .torna && provaSala.sala.esperienza == .giocoRischio,
+                  "Gioco del rischio: a metà partita «‹ Sala» ed Esc chiedono conferma e restano sul palco")
+        provaSala.confermaUscitaRischio()
+        controlla(provaSala.sala.esperienza == nil && provaSala.sala.uscitaRischio == nil && !provaSala.sala.rischioAMeta,
+                  "Gioco del rischio: confermata l'uscita si torna alla griglia e le risposte a metà si perdono")
+        provaSala.apriEsperienza(.giocoRischio, cliente: "marco")
+        provaSala.sala.rischioAMeta = true
+        provaSala.scegliClienteSala("giulia")
+        provaSala.confermaUscitaRischio()
+        controlla(provaSala.clienteAttivoId == "giulia" && provaSala.sala.esperienza == .giocoRischio,
+                  "Gioco del rischio: confermato il cambio, il gioco riparte per l'altro cliente")
+        provaSala.sala.rischioAMeta = true
+        provaSala.tornaAllaSala()
+        provaSala.sala.rischioAMeta = false
+        provaSala.apriEsperienza(.lettera, cliente: "giulia")
+        provaSala.sala.rischioAMeta = true
+        controlla(provaSala.puoTornareAllaSala() && provaSala.sala.uscitaRischio == nil,
+                  "Gioco del rischio: fuori dal gioco la conferma non scatta")
+        provaSala.sala.rischioAMeta = false
+        provaSala.tornaAllaSala()
+        // La storia dell'anno (§5.2.4): «Apri ›» delle famiglie protette porta a Posizioni, portafoglio, area protezione
+        provaSala.apriDallaStoria(.protette(famiglie: 3, capitale: nil))
+        controlla(provaSala.appAttiva == .posizioni && provaSala.portafoglio && provaSala.areaPosizioniDaAprire == .protezione,
+                  "Storie: «Apri ›» delle famiglie protette apre Posizioni filtrate sulla protezione")
+        provaSala.areaPosizioniDaAprire = nil
+        provaSala.portafoglio = false
+        provaSala.apri(.sala)
+        // I traguardi (§5.4.4, dati di prova di TraguardiDiProva): la riga «Da festeggiare» del dossier e la notifica
+        // interna, che apre Messaggi; festeggiato, spariscono tutte e due; in modalità cliente la notifica non c'è
+        let festa = StatoShell(persistente: false)
+        let daFesteggiare = festa.traguardiDaFesteggiare(cliente: "sofia")
+        let notificheFesta = MotoreNotifiche.calcola(festa).filter { $0.id.hasPrefix(MotoreNotifiche.prefissoTraguardo) }
+        controlla(!daFesteggiare.isEmpty && daFesteggiare.allSatisfy { $0.clienteId == "sofia" && $0.festeggiatoIl == nil }
+                  && notificheFesta.contains { $0.id == MotoreNotifiche.prefissoTraguardo + (daFesteggiare.first?.id ?? "") && $0.app == .messaggi },
+                  "Traguardi: Sofia ha un traguardo da festeggiare nel dossier e nelle notifiche interne")
+        if let n = notificheFesta.first(where: { $0.id == MotoreNotifiche.prefissoTraguardo + (daFesteggiare.first?.id ?? "") }) {
+            festa.apriNotifica(n)
+            controlla(festa.appAttiva == .messaggi, "Traguardi: la notifica del traguardo apre Messaggi")
+        }
+        if let t = daFesteggiare.first {
+            festa.segnaFesteggiato(t)
+            controlla(!festa.traguardiDaFesteggiare(cliente: "sofia").contains { $0.id == t.id }
+                      && !MotoreNotifiche.calcola(festa).contains { $0.id == MotoreNotifiche.prefissoTraguardo + t.id },
+                      "Traguardi: festeggiato, il traguardo esce dal dossier e dalle notifiche")
+        }
+        festa.clienteAttivoId = "giulia"
+        festa.entraModoCliente(avviso: false)
+        controlla(!MotoreNotifiche.calcola(festa).contains { $0.id.hasPrefix(MotoreNotifiche.prefissoTraguardo) },
+                  "Traguardi: in modalità cliente nessuna notifica dei traguardi")
+        festa.esciModoCliente()
         provaSala.apriVoceNovita(NovitaLuce.dopoLaFirma)
         controlla(provaSala.appAttiva == .pratiche && provaSala.schedaPratiche == .dopoLaFirma,
                   "Novità: «Le pratiche dopo la firma» apre Pratiche sulla scheda «Dopo la firma»")
@@ -996,6 +1063,12 @@ enum ProvaVera {
         ProvaMessaggiVera.esegui(controlla)
         // Il copilota dell'incontro (giro 5 di Orizzonte): consenso, regole, Qwen finto, conferma, archivio, ponte (ProvaCopilota.swift)
         ProvaCopilota.esegui(controlla)
+        // «Luce» giro 13: la nota vocale (busta, arrivo, cliente, proposte, conferma senza doppioni, coda cifrata dell'iPhone,
+        // fuori da Prisma ovunque, Novità) (ProvaNotaVocale.swift)
+        ProvaNotaVocale.esegui(controlla)
+        // «Luce» giro 14: Stanotte Prisma ha lavorato (Novità, modalità cliente, approva e annulla per tipo senza invii, più
+        // tardi, fascicolo senza cambiare il cliente attivo, fase 1 con id stabili, blocco, Prisma ovunque, memoria) (ProvaNotte.swift)
+        ProvaNotte.esegui(controlla)
         // La palestra della trattativa («Luce» giro 5): schema, livelli, cifre solo di Prisma, Qwen finto (ProvaPalestraVera.swift)
         ProvaPalestraVera.esegui(controlla)
         // «Luce», giro 8: la lettera dal futuro (scheda dei fatti, streaming, cifre, promesse, «senza il piano», Qwen finto) (ProvaLetteraVera.swift)

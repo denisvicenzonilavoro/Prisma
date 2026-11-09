@@ -38,6 +38,8 @@ enum MotoreNotifiche {
     static let giorniAvanti = 30
     static let giorniCompleanno = 7
     static let massimoPerGruppo = 8
+    /// L'inizio dell'id della notifica di un traguardo (il resto è l'id del traguardo).
+    static let prefissoTraguardo = "traguardo-"
 
     static func calcola(_ stato: StatoShell, oggi: Date = Date()) -> [Notifica] {
         let cal = Calendar.current
@@ -254,6 +256,61 @@ enum MotoreNotifiche {
                                                                : praticheFerme.map { nome($0.clienteId) }.joined(separator: ", "),
                                    data: inizio, canale: praticheFerme.count == 1 ? prima.canale : nil))
         }
+        // «Luce» giro 15: i sinistri aperti senza fatti da più dei giorni scelti (Impostazioni › Pratiche), solo dei
+        // clienti visibili: una voce sola, solo dentro Prisma (decisione 29, nessuna notifica di macOS)
+        let sogliaSinistri = dati.impostazioni.pratiche.sogliaSinistroFermo
+        let sinistriFermi = dati.sinistri.filter { s in
+            nomi[s.clienteId] != nil && MotoreSinistri.fermo(s, oggi: oggi, soglia: sogliaSinistri, cal: cal)
+        }
+        if let primoFermo = sinistriFermi.first {
+            elenco.append(Notifica(id: "sinistri-" + sinistriFermi.map(\.id).joined(separator: ","),
+                                   gruppo: .daSistemare, app: .pratiche,
+                                   titolo: TestiSinistri.titoloNotifica(quanti: sinistriFermi.count,
+                                                                        giorni: MotoreSinistri.giorniFermo(primoFermo, oggi: oggi, cal: cal)),
+                                   dettaglio: sinistriFermi.count == 1 ? "\(nome(primoFermo.clienteId)) · \(primoFermo.titolo)"
+                                                                      : sinistriFermi.map { nome($0.clienteId) }.joined(separator: ", "),
+                                   data: inizio))
+        }
+        // «Luce» giro 13: la carta d'identità arrivata dall'iPhone, **senza il nome** (decisione 25: solo dentro Prisma,
+        // mai nel Centro notifiche del Mac; la carta vive solo in memoria)
+        for c in stato.carteInArrivo where c.id != stato.nuovoCliente.cartaId {
+            elenco.append(Notifica(id: "carta-iphone-\(c.id)", gruppo: .oggi, app: .clienti,
+                                   titolo: "Una carta d’identità dall’iPhone",
+                                   dettaglio: "Crea il cliente: i dati letti aspettano qui", data: c.quando))
+        }
+        // Le note dettate sull'iPhone ancora da guardare (in modalità cliente no: portano il nome di altri clienti)
+        if !stato.inModoCliente {
+            for n in dati.noteInArrivo where n.stato == .daGuardare {
+                elenco.append(Notifica(id: "nota-iphone-\(n.id)", gruppo: .oggi, app: .incontri,
+                                       titolo: "Nota dall’iPhone · \(Formati.ora.string(from: n.quando))",
+                                       dettaglio: n.clienteId.map { nome($0) } ?? "Di chi si parla?", data: n.quando))
+            }
+        }
+        // «Luce» giro 14: le carte della notte da decidere (decisione 29: «Stanotte ho preparato N cose», senza nomi né
+        // cifre; in modalità cliente no). Il clic apre le carte
+        let carteNotte = stato.carteDaDecidere
+        if carteNotte > 0, let n = stato.notteDiOggi {
+            elenco.append(Notifica(id: "notte-\(n.giornoChiave)-\(carteNotte)", gruppo: .oggi, app: .studio,
+                                   titolo: TestiNotte.voceNotifica(carteNotte), dettaglio: TestiNotte.dettaglioNotifica,
+                                   data: n.fine ?? n.giorno))
+        }
+        // «Luce» giro 15: le capsule del tempo pronte dei clienti visibili (solo dentro Prisma, decisione 29; mai il testo,
+        // mai a Vera). Il clic apre la Sala sulla griglia: aprire la capsula resta un gesto del consulente nel palco
+        for id in MotoreCapsule.pronte(dati.capsule, obiettivi: dati.obiettivi, oggi: oggi, cal: cal) {
+            guard let c = dati.capsule.first(where: { $0.id == id }), let n = nomi[c.clienteId] else { continue }
+            elenco.append(Notifica(id: "capsula-pronta-\(c.id)", gruppo: .oggi, app: .sala,
+                                   titolo: TestiCapsule.titoloNotifica(nome: TestiTraguardi.primoNome(n)),
+                                   dettaglio: TestiCapsule.dettaglioNotifica, data: inizio))
+        }
+        // «Luce» §5.4.4 (proposta): i traguardi da festeggiare, una notifica interna per traguardo (solo nel pannello di
+        // Prisma, mai nel Centro notifiche del Mac; in modalità cliente no: Messaggi non si apre). Il clic apre Messaggi
+        // sul biglietto
+        if !stato.inModoCliente {
+            for t in stato.traguardi(oggi: oggi) where t.festeggiatoIl == nil && nomi[t.clienteId] != nil {
+                elenco.append(Notifica(id: Self.prefissoTraguardo + t.id, gruppo: .oggi, app: .messaggi,
+                                       titolo: t.fraseBreve, dettaglio: t.perche, data: t.data))
+            }
+        }
         // Fine anno: clienti che possono ancora dedurre versando alla previdenza (negli ultimi due mesi dell'anno)
         let deducibili = stato.deducibiliFineAnno(oggi: oggi)
         if let primo = deducibili.first {
@@ -441,6 +498,19 @@ extension StatoShell {
             cercaOvunque()
             return
         }
+        // «Luce» §5.4.4: il traguardo apre Messaggi sul suo biglietto
+        if n.id.hasPrefix(MotoreNotifiche.prefissoTraguardo) {
+            pannelloNotifiche = false
+            let id = String(n.id.dropFirst(MotoreNotifiche.prefissoTraguardo.count))
+            apriTraguardo(id, clienteId: traguardo(id)?.clienteId)
+            return
+        }
+        // «Luce» giro 14: la voce di «Stanotte» apre le carte della notte
+        if n.id.hasPrefix("notte-") {
+            pannelloNotifiche = false
+            apriNotte()
+            return
+        }
         if let d = n.destinazione {
             vai(a: d)
             // Un cliente solo: la scheda del dossier dopo l'apertura (`apriCliente` mette la Panoramica)
@@ -470,6 +540,13 @@ extension StatoShell {
             portafoglio = true
             posizioneInDettaglio = nil
             apri(.posizioni)
+        } else if n.id.hasPrefix("carta-iphone-") {
+            // «Luce» giro 13: la carta dall'iPhone apre la scena del nuovo cliente
+            apriNuovoCliente()
+        } else if n.id.hasPrefix("nota-iphone-") {
+            // «Luce» giro 13: la nota dall'iPhone apre Incontri e la scheda «Arriva sul Mac»
+            apri(.incontri)
+            notaVocale.mostrata = String(n.id.dropFirst("nota-iphone-".count))
         } else if n.id.hasPrefix("pratiche-") {
             // Le pratiche ferme: Pratiche › Dopo la firma, con le ferme in testa
             apriPratiche(.dopoLaFirma)
@@ -539,7 +616,8 @@ extension MotoreNotifiche {
         // Appuntamenti ancora da fare: qualche minuto prima dell'inizio
         if scelte.appuntamenti {
             let anticipo = ImpostazioniPromemoria.nomeAnticipo(scelte.anticipoMinuti)
-            for a in dati.appuntamenti where a.stato == .pianificato {
+            // Gli appuntamenti proposti dal Territorio e non ancora confermati non suonano («Luce» giro 11)
+            for a in dati.appuntamenti where a.stato == .pianificato && a.daConfermare != true {
                 let quando = Appuntamento.alMinuto(a.inizio.addingTimeInterval(-TimeInterval(scelte.anticipoMinuti * 60)))
                 guard quando > adesso else { continue }
                 let ora = Formati.ora.string(from: a.inizio)
@@ -651,6 +729,20 @@ extension MotoreNotifiche {
                                                         titolo: titolo, corpo: corpo, gruppo: "occasioni",
                                                         data: quando, destinazione: destinazione))
                 }
+            }
+        }
+
+        // «Luce» giro 14: la notifica del mattino di «Stanotte», solo con l'interruttore (spento di base) e con carte da
+        // decidere: «Stanotte ho preparato N cose», mai nomi né cifre dei clienti (decisione 29)
+        if dati.impostazioni.notte.notificaAlMattino {
+            let oggi = cal.startOfDay(for: adesso)
+            for n in dati.notti where n.giorno >= oggi {
+                let quante = MotoreNotte.daDecidere(n, cal: cal)
+                guard quante > 0, let quando = cal.date(byAdding: .minute, value: dati.impostazioni.orari.mattina.inizio,
+                                                        to: cal.startOfDay(for: n.giorno)), quando > adesso else { continue }
+                elenco.append(PromemoriaPianificato(id: "\(prefissoPromemoria)notte-\(n.giornoChiave)", titolo: "Prisma",
+                                                    corpo: TestiNotte.notifica(quante), gruppo: "notte", data: quando,
+                                                    destinazione: nil))
             }
         }
 

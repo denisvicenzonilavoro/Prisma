@@ -335,6 +335,39 @@ enum ProvaCalcoliMessaggi {
            let o = CompilatoreModuli.occasioneDatiMancanti(cliente: giulia, modello: modello, dati: [.iban, .cap], oggi: oggi) {
             occasioni.append(o)
         }
+        // Una campagna («Luce» giro 12): il bisogno di Marco e due orari liberi, con le sole cifre di Marco
+        let membro = MembroCampagna(clienteId: "marco", motivo: "«Piano Pensione» senza versamenti dal 3 ottobre 2025",
+                                    cifre: [CifraMessaggio(.bisogno, "il fondo pensione è fermo dal 3 ottobre 2025"),
+                                            CifraMessaggio(.ultimoVersamento, "3 ottobre 2025")],
+                                    consenso: true, recapitoMail: true, recapitoMessaggi: true, giaContattato: nil,
+                                    ultimaCampagna: nil, canaleLavoro: .alleanza, inclusoDiBase: true, anchein: [])
+        let gruppo = GruppoCampagna(id: "previdenzaFerma", tipo: .previdenzaFerma, titolo: "Fondo pensione fermo da un anno",
+                                    membri: [membro], nonValutati: 0, notaNonValutati: nil)
+        occasioni.append(MotoreCampagne.occasione(gruppo: gruppo, membro: membro, campagnaId: "campagna-prova",
+                                                  appuntamenti: [d(2026, 11, 10), d(2026, 11, 11)]))
+        // La richiesta di presentazione (Clienti › Passaparola): il fatto di Sofia, mai cifre né nomi d'altri
+        let momento = MomentoPerChiedere(id: "sofia-obiettivo-prova", clienteId: "sofia",
+                                         fatto: "ha raggiunto «Rendita integrativa» ieri", riferimento: "obiettivo-prova",
+                                         data: oggi)
+        occasioni.append(MotorePassaparola.occasioneRichiesta(momento, cliente: sofia, posizioni: []))
+        // Il messaggio detto nella nota vocale («Luce» giro 13): solo la cosa promessa, nessuna cifra in più
+        if let giulia = x.clienti.first(where: { $0.id == "giulia" }) {
+            let nota = NotaVocaleDiProva.inArrivo(x, oggi: oggi)
+            if let p = nota.proposte.first(where: { $0.tipo == .messaggio }) {
+                occasioni.append(ApplicaNotaVocale.occasioneMessaggio(p, nota: nota, cliente: giulia))
+            }
+        }
+        // L'aggiornamento del sinistro di prova di Marco («Luce» giro 15): titolo, fase e ultimo fatto, mai polizza né importi
+        if let marco = x.clienti.first(where: { $0.id == "marco" }),
+           let sinistro = SinistriDiProva.sinistri(oggi: oggi).first(where: { $0.id == SinistriDiProva.idMarco }) {
+            occasioni.append(MotoreSinistri.occasione(sinistro, cliente: marco, consulente: "Denis", oggi: oggi))
+        }
+        // La richiesta del documento d'identità della notte («Luce» giro 14), su Giulia, con una scadenza fra 20 giorni
+        if let giulia = x.clienti.first(where: { $0.id == "giulia" }),
+           let scadenza = Calendar.current.date(byAdding: .day, value: 20, to: oggi) {
+            occasioni.append(MotoreNotte.occasioneDocumento(giulia, scadenza: scadenza, scaduto: false, documento: "Carta d'identità",
+                                                            riferimento: "campionario-documento"))
+        }
         return (x, occasioni)
     }
 

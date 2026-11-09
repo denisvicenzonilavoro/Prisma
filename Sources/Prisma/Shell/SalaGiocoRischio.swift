@@ -18,7 +18,11 @@ import SwiftUI
 //   Il gioco non scrive mai `Cliente.profilo.propensione` (decisione 59): «Salva nel dossier» (con conferma) mette la
 //   partita nell'archivio, «Apri il profilo di …» porta al Profilo del dossier con l'avviso.
 // - Testi, risposte e soglie da `Risorse/Sala/gioco-rischio.json`, con l'etichetta «testi di prova» finché l'utente non
-//   li approva. Stato della partita locale (si azzera uscendo e cambiando cliente).
+//   li approva. Stato della partita locale (si azzera uscendo e cambiando cliente): a metà partita (risposte già date,
+//   risultato non ancora) «‹ Sala», Esc e il cambio di cliente con le pillole chiedono conferma (§4.1.4,
+//   `StatoSala.rischioAMeta` e `uscitaRischio`, dialogo in Shell/AppSala.swift).
+// - Tastiera (Mac, proposta della §4.1.4): A, B, C e 1, 2, 3 scelgono la risposta, solo quando le risposte sono
+//   visibili e nessuna è ancora scelta, con la Sala davanti (`ScorciatoieRischio`, pulsanti invisibili come la palestra).
 // - «Riduci movimento»: grafico già tracciato, numero finale, risposte già presenti, dissolvenza di 0,15 s. Istantanee:
 //   stato finale dello scenario (o del risultato) scelto da `StatoSala.rischioIstantanea`.
 
@@ -102,6 +106,52 @@ struct GiocoRischioVista: View {
         }
         .padding(R.padding)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        // Il tavolo a doppio senso (giro 16, decisione 48): lo scenario va sull'iPad a ogni passo, la risposta torna
+        // con i secondi misurati sull'iPad. Le risposte restano toccabili anche qui (ripiego del consulente)
+        .dalTavolo { c in if case .rispostaRischio(let r) = c { rispondiDalTavolo(r) } }
+        .onChange(of: fase) { _, _ in mandaAlTavolo() }
+        .onChange(of: stato.sala.tavoloEsperienza) { _, _ in mandaAlTavolo() }
+        // A metà partita uscire o cambiare cliente chiede conferma (§4.1.4): solo la vista del consulente lo dice
+        .onChange(of: aMeta, initial: true) { _, nuovo in if consulente { stato.sala.rischioAMeta = nuovo } }
+        .onDisappear {
+            stato.lasciaTavolo(.giocoRischio)
+            if consulente { stato.sala.rischioAMeta = false }
+        }
+    }
+
+    /// Ci sono risposte date e il risultato non è ancora arrivato.
+    private var aMeta: Bool {
+        guard !risposte.isEmpty, case .scenario(let i) = fase, let s = scenari else { return false }
+        return i < s.scenari.count
+    }
+
+    /// Lo scenario in corso o il risultato all'iPad (solo se il tavolo è per il gioco). Niente nomi né cifre del cliente.
+    private func mandaAlTavolo() {
+        guard stato.sala.tavoloEsperienza == .giocoRischio, let s = scenari else { return }
+        let n = s.scenari.count
+        switch fase {
+        case .ultimaVolta:
+            rifai()
+        case .scenario(let i) where i < n:
+            stato.rischioAlTavolo(RischioTavolo(indice: i, totale: n, scenario: s.scenari[i], avvertenza: s.avvertenza,
+                                                testiDiProva: s.testiDiProva, emerso: nil, punteggio: nil, massimo: nil),
+                                  cliente: cliente.id)
+        default:
+            let partita = PartitaRischio(clienteId: cliente.id, data: dataPartita, versioneScenari: s.versione, risposte: risposte)
+            let profilo = MotoreGiocoRischio.profilo(partita, scenari: s)
+            stato.rischioAlTavolo(RischioTavolo(indice: n, totale: n, scenario: nil, avvertenza: s.notaFinale,
+                                                testiDiProva: s.testiDiProva, emerso: profilo?.rawValue,
+                                                punteggio: partita.punteggio, massimo: s.massimo),
+                                  cliente: cliente.id)
+        }
+    }
+
+    /// La risposta toccata sull'iPad: la stessa strada della risposta sul Mac, con i secondi dell'iPad.
+    private func rispondiDalTavolo(_ r: RispostaRischioTavolo) {
+        guard let s = scenari, case .scenario(let n) = fase, n < s.scenari.count, s.scenari[n].id == r.scenario,
+              (0..<s.scenari[n].risposte.count).contains(r.scelta) else { return }
+        visibili = true
+        registra(s.scenari[n], scelta: r.scelta, secondi: max(0, r.secondi))
     }
 
     // MARK: L'ultima volta
@@ -161,6 +211,12 @@ struct GiocoRischioVista: View {
                     .minimumScaleFactor(0.8)
             }
             .entrataCascata(0, base: Tema.Apple.Moto.Cascata.baseDentroApp)
+            if stato.sala.tavoloEsperienza == .giocoRischio {
+                Text(TestiRealta.rispondeSulliPad)
+                    .carattereApple(R.etichetta)
+                    .foregroundColor(R.coloreEtichetta)
+                    .padding(.top, R.sopraDomanda)
+            }
             Text(sc.domanda)
                 .carattereApple(R.domanda)
                 .foregroundColor(R.coloreDomanda)
@@ -195,6 +251,15 @@ struct GiocoRischioVista: View {
                 }
                 .frame(width: R.larghezzaRisposte, alignment: .leading)
                 .padding(.top, strade ? R.sopraRisposteStrade : R.sopraRisposte)
+                #if os(macOS)
+                .background {
+                    // A, B, C e 1, 2, 3 (§4.1.4): solo con le risposte visibili e nessuna scelta; la vista del palco
+                    // fuori dalla presentazione, quella della sala opaca durante (mai tutte e due)
+                    if visibili && scelta == nil && consulente == (stato.presentazione == nil) {
+                        ScorciatoieRischio(sistema: stato.sistema, quante: sc.risposte.count) { i in rispondi(sc, i) }
+                    }
+                }
+                #endif
             }
             .entrataCascata(2, base: Tema.Apple.Moto.Cascata.baseDentroApp)
             Spacer(minLength: 0)
@@ -220,10 +285,15 @@ struct GiocoRischioVista: View {
     }
 
     private func rispondi(_ sc: ScenarioRischio, _ i: Int) {
+        registra(sc, scelta: i, secondi: Date().timeIntervalSince(compaiono))
+    }
+
+    /// La parte comune della risposta (dal Mac o dall'iPad del tavolo).
+    private func registra(_ sc: ScenarioRischio, scelta i: Int, secondi: Double) {
         guard scelta == nil, visibili, case .scenario(let n) = fase else { return }
         scelta = i
         risposte.removeAll { $0.scenario == sc.id }
-        risposte.append(RispostaRischio(scenario: sc.id, scelta: i, secondi: Date().timeIntervalSince(compaiono)))
+        risposte.append(RispostaRischio(scenario: sc.id, scelta: i, secondi: secondi))
         DispatchQueue.main.asyncAfter(deadline: .now() + M.pausaDopoScelta) {
             guard case .scenario(let ora) = fase, ora == n else { return }
             passa(a: .scenario(n + 1))
@@ -382,7 +452,8 @@ struct GiocoRischioVista: View {
 
 /// Il grafico di uno scenario: la linea con l'area e il riferimento tratteggiato al valore iniziale (scenari 1-2), o
 /// le due strade su dieci anni con il nome in fondo a destra (scenario 3).
-private struct GraficoScenarioRischio: View {
+/// Il grafico di uno scenario (interno dal giro 16: lo usa anche l'iPad del tavolo).
+struct GraficoScenarioRischio: View {
     let scenario: ScenarioRischio
 
     private typealias R = Tema.Apple.SalaEsperienze.Rischio
@@ -448,3 +519,41 @@ private struct GraficoScenarioRischio: View {
         }
     }
 }
+
+/// I testi della conferma per lasciare il gioco del rischio a metà (§4.1.4).
+enum TestiUscitaRischio {
+    static let titoloLasciaRischio = "Lasciare il gioco del rischio a metà?"
+    static let messaggioTornaRischio = "Le risposte date finora si perdono: il gioco non è salvato nel dossier."
+    static let messaggioClienteRischio = "Cambiando cliente le risposte date finora si perdono e il gioco riparte da capo per l’altro cliente."
+    static let lasciaRischio = "Lascia il gioco"
+    static let continuaRischio = "Continua il gioco"
+}
+
+#if os(macOS)
+/// Pulsanti invisibili, solo per i tasti: A/B/C e 1/2/3 scelgono la risposta (proposta della §4.1.4, come la palestra
+/// della trattativa). Solo con la Sala davanti e senza la ricerca aperta.
+private struct ScorciatoieRischio: View {
+    let sistema: StatoFinestre
+    let quante: Int
+    let scegli: (Int) -> Void
+
+    private static let lettere: [Character] = ["a", "b", "c"]
+    private static let cifre: [Character] = ["1", "2", "3"]
+
+    var body: some View {
+        if sistema.appAttiva == .sala && !sistema.pannelloRicerca {
+            HStack(spacing: 0) {
+                ForEach(0..<min(quante, Self.lettere.count), id: \.self) { i in
+                    Button("") { scegli(i) }
+                        .keyboardShortcut(KeyEquivalent(Self.lettere[i]), modifiers: [])
+                    Button("") { scegli(i) }
+                        .keyboardShortcut(KeyEquivalent(Self.cifre[i]), modifiers: [])
+                }
+            }
+            .frame(width: 0, height: 0)
+            .opacity(0)
+            .accessibilityHidden(true)
+        }
+    }
+}
+#endif

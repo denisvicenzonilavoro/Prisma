@@ -415,6 +415,8 @@ enum TestiPratiche {
 
     /// Stati vuoti.
     static let nessuna = "Nessuna pratica aperta. Una pratica nasce quando una proposta viene firmata."
+    /// Sull'iPhone senza il giornale di «Prisma ovunque» che scrive (§7.3.4).
+    static let solaLetturaTelefono = "sola lettura: i passi si segnano dal Mac, o da qui se sul Mac è acceso «Lavora anche con il Mac spento»"
     static let tuttoInOrdine = "Tutto in ordine"
 
     /// Il passo nel dettaglio: «Fatto il 3 novembre · segnato a mano», «Fatto · riconosciuto dal numero di contratto».

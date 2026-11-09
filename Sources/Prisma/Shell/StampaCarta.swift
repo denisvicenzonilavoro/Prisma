@@ -281,6 +281,18 @@ enum StampaCarta {
         presenta(UIActivityViewController(activityItems: [daCondividere], applicationActivities: nil))
     }
 
+    /// Il foglio di condivisione per le cose date al cliente («Luce» giro 15): tutti i file insieme e, senza il consenso a
+    /// WhatsApp segnato nel dossier, senza l'estensione di WhatsApp (CLAUDE.md › Dati e privacy).
+    @MainActor
+    static func condividiAlCliente(_ urls: [URL], consensoWhatsApp: Bool) {
+        guard !urls.isEmpty else { return }
+        let foglio = UIActivityViewController(activityItems: urls, applicationActivities: nil)
+        if !consensoWhatsApp {
+            foglio.excludedActivityTypes = [UIActivity.ActivityType(rawValue: "net.whatsapp.WhatsApp.ShareExtension")]
+        }
+        presenta(foglio)
+    }
+
     /// Stampa con AirPrint un file del dispositivo (PDF o immagine di un documento).
     @MainActor
     static func stampa(file url: URL) {

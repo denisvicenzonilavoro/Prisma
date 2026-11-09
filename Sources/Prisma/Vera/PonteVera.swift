@@ -132,6 +132,9 @@ struct StatoPonte: Codable, Equatable {
 
     /// Il Mac riceve le schede del copilota e i testi inquadrati.
     var riceveMessaggiNuovi: Bool { (versione ?? 1) >= 2 }
+
+    /// Il Mac riceve la carta d'identità e la nota vocale (protocollo 3, «Luce» giro 13).
+    var riceveCartaENota: Bool { (versione ?? 1) >= 3 }
 }
 
 // MARK: - Il fornitore del telefono

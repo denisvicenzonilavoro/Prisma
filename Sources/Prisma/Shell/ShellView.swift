@@ -134,6 +134,17 @@ struct CorpoShell: View {
                                                        removal: .opacity.animation(Tema.Apple.Moto.Storia.animazioneChiude)))
                 }
 
+                // «Luce» giro 14: le carte della notte, sopra barra, finestre e dock (CarteNotte.swift, solo sul Mac)
+                #if os(macOS)
+                if sistema.sovrapposizione == .notte {
+                    CarteNotte(notte: stato.notte)
+                        .frame(width: geo.size.width, height: geo.size.height)
+                        .transition(modoIstantanea ? AnyTransition.identity
+                            : AnyTransition.asymmetric(insertion: .opacity.animation(Tema.Apple.Moto.Notte.animazioneApre),
+                                                       removal: .opacity.animation(Tema.Apple.Moto.Notte.animazioneChiude)))
+                }
+                #endif
+
                 if sistema.bloccato {
                     // L'uscita ha una curva sua: nelle istantanee e nelle prove la schermata se ne va di colpo
                     SchermataBenvenuto()
@@ -156,12 +167,14 @@ struct CorpoShell: View {
 
                 if let testo = stato.avviso {
                     let posto = postoAvviso(misura: geo.size, area: area)
-                    VistaAvviso(testo: testo, sfera: stato.avvisoDiVera)
+                    VistaAvviso(testo: testo, sfera: stato.avvisoDiVera, azione: stato.azioneAvviso?.titolo,
+                                esegui: { stato.eseguiAzioneAvviso() })
                         .padding(.horizontal, Misure.Avvisi.margineLato)
                         .frame(width: posto.width, height: posto.height, alignment: .bottom)
                         .offset(x: posto.minX, y: posto.minY)
                         .transition(transizioneAvviso)
-                        .allowsHitTesting(false)
+                        // Con il pulsante («Annulla») l'avviso riceve i clic; senza, lascia passare tutto
+                        .allowsHitTesting(stato.azioneAvviso != nil)
                 }
             }
             .coordinateSpace(name: ShellView.spazioShell)
@@ -325,6 +338,18 @@ struct CorpoShell: View {
             // sopra barra, finestre e dock. Osserva solo il suo stato: la cascata dei campi non ridisegna la shell
             StratoInquadra(inquadra: stato.inquadra)
                 .frame(width: misura.width, height: misura.height)
+                .opacity(nascosti ? 0 : 1)
+            // «Luce» giro 13: la scena del nuovo cliente (ScenaNuovoCliente.swift) e «Come funziona» della nota vocale
+            // (NotaVocaleArrivo.swift), sopra barra, finestre e dock
+            StratoNuovoCliente(nuovoCliente: stato.nuovoCliente, aperta: sistema.sovrapposizione == .scena(.cartaIdentita))
+                .frame(width: misura.width, height: misura.height)
+                .opacity(nascosti ? 0 : 1)
+            StratoComeFunzionaNota(aperta: sistema.sovrapposizione == .scena(.notaVocale))
+                .frame(width: misura.width, height: misura.height)
+                .opacity(nascosti ? 0 : 1)
+            // La scheda «Arriva sul Mac» della nota vocale: in alto a destra sotto la barra, come le notifiche
+            StratoNotaVocaleArrivo(notaVocale: stato.notaVocale)
+                .frame(width: misura.width, height: misura.height, alignment: .topTrailing)
                 .opacity(nascosti ? 0 : 1)
             #endif
 

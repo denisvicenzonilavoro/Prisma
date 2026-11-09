@@ -56,6 +56,9 @@ struct ImpostazioniOvunque: Codable, Equatable {
     var ultimoErrore: String?
     /// Dimensione e data dei file della cartella all'ultimo controllo (il controllo all'attivazione le confronta).
     var impronteCartella: [String: String] = [:]
+    /// «Porta anche i potenziali clienti» (Mac, «Luce» giro 12, decisione 44): spento di base. Spento, l'istantanea dello
+    /// spazio non contiene i potenziali clienti (dati di persone che non sono clienti).
+    var potenzialiNelloSpazio = false
 
     init() {}
 
@@ -63,6 +66,7 @@ struct ImpostazioniOvunque: Codable, Equatable {
         case acceso, modificheDaiDispositivi, ruolo, idDispositivo, nomeDispositivo, segnalibro, percorso, generazioneChiave
         case generazione, vistoFinoA, lamport, prossimoSeq, improntaIstantanea, ultimaIstantanea, ultimoControllo, ultimoErrore
         case impronteCartella
+        case potenzialiNelloSpazio
     }
 
     /// Lettura tollerante: ogni campo illeggibile prende il valore di base (lo spazio resta spento, mai acceso per errore).
@@ -85,6 +89,7 @@ struct ImpostazioniOvunque: Codable, Equatable {
         ultimoControllo = (try? c.decodeIfPresent(Date.self, forKey: .ultimoControllo)) ?? nil
         ultimoErrore = (try? c.decodeIfPresent(String.self, forKey: .ultimoErrore)) ?? nil
         impronteCartella = ((try? c.decodeIfPresent([String: String].self, forKey: .impronteCartella)) ?? nil) ?? [:]
+        potenzialiNelloSpazio = ((try? c.decodeIfPresent(Bool.self, forKey: .potenzialiNelloSpazio)) ?? nil) ?? false
     }
 
     /// Un id nuovo per questo archivio nello spazio.
@@ -112,6 +117,9 @@ enum EntitaOvunque: String, Codable, CaseIterable {
     case sessioneCopilota
     /// Posizioni inquadrate dall'iPhone: bozze da confermare sul Mac (`DatiPrisma.inquadratureDaConfermare`).
     case inquadratura
+    /// I passi segnati dall'iPhone sulle pratiche dopo la firma (`DatiPrisma.pratiche`, solo `passi` e `conclusaIl`;
+    /// «Luce» §7.3.4): la pratica nasce e si chiude sul Mac.
+    case pratica
 
     /// Il nome per l'utente («una nota», «due attività»), al singolare.
     var nome: String {
@@ -123,6 +131,7 @@ enum EntitaOvunque: String, Codable, CaseIterable {
         case .eventoVita: return "evento della linea della vita"
         case .sessioneCopilota: return "scheda del copilota"
         case .inquadratura: return "posizione inquadrata"
+        case .pratica: return "pratica"
         }
     }
 }

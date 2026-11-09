@@ -51,6 +51,12 @@ locale sul Mac del 7-8 novembre 2026. Le regole vincolanti restano in `CLAUDE.md
 |---|---|---|
 | `luce/unione-8-10` | Luce giri 8-10: Sala (lettera dal futuro, Lancia l'anno, Quanto vale avermi accanto), Studio › Spese (chilometri, spese e scadenze), Pratiche › Moduli (compila da solo); ognuno con revisione avversaria e correzioni | compila in debug sul Mac e le prove dei singoli giri erano verdi; manca la build completa con tutte le prove (la fa il workflow al primo push) |
 | `vera/completa` | Vera, le lacune del controllo di completezza: «Le 25 novità di Vera» (pannello del template), fase 4 documentata, il cliente in 30 secondi a voce e dalla scheda, lascia cadere qui verso Posizioni e anagrafica, sintesi del resoconto, istantanee di memoria, pollici e filo lungo, ragiona a passi su altre richieste, valutazione manuale della palestra (`Vera/Valutazione/`) | sintassi controllata nel cloud; manca la build completa con le prove (al primo push) |
+| `luce/giro-13-iphone` | Luce giro 13 «Dall'iPhone al Mac»: nuovo cliente in 10 secondi (carta d'identità letta sull'iPhone o trascinata sul Mac, codice fiscale «coerente (comune non controllato)», solo in memoria fino a «Crea il dossier») e la nota vocale (dettata sull'iPhone, coda cifrata, proposte confermate sul Mac); ponte versione 3 | scritto nel cloud, solo controllo della sintassi: manca la build con tutte le prove e lo sguardo alle istantanee 840-847, 770-774 e iOS 75, 775-777; aperto da `luce/unione-8-10` (senza i giri 11 e 12) |
+| `luce/giro-14-stanotte` | Luce giro 14 «Stanotte Prisma ha lavorato»: il lavoro della notte (finestra serale, solo alla corrente e con Prisma aperto e non in uso, `NSBackgroundActivityScheduler`; prima i lavori senza Qwen, poi al più 10 bozze di Vera una alla volta), le carte del mattino da approvare con un gesto (approva, più tardi, annulla), pulsante «☾ Stanotte» con il pallino, Impostazioni › Vera › Stanotte (spento di base) | scritto nel cloud, solo controllo della sintassi: manca la build con tutte le prove (`--prova-calcoli`, `--prova-vera`, `--prova-backup`, `--prova-ovunque`) e lo sguardo alle istantanee 760-767 (e 400, 410, 500, 616, 719 che cambiano per il pulsante e la vetrina); aperto da `main` con i giri 8-13 |
+| `luce/giro-15-cliente` | Luce giro 15 «Cose date al cliente»: il Prisma del cliente (PDF protetto da password, copia leggibile nei Documenti; il file HTML cifrato con il lettore JavaScript è costruito e provato con Node ma resta spento, «sperimentale»), il film del piano (MP4 di 20 secondi, foglio di condivisione), la capsula del tempo (sigillata, chiave nel Portachiavi e nei soli backup protetti), il biglietto dei traguardi condivisibile («Mostra la cifra» spento di base) e Pratiche › Sinistri (la spedizione, «Così lo vede …», aggiornamento in Messaggi, sollecito in Mail, iPhone in sola lettura); Novità accese, `CLAUDE.md` con l'eccezione delle uscite e l'elenco del backup, vetrina 400 | scritto nel cloud, solo controllo della sintassi: manca la build con tutte le prove (anche il passo Node del lettore e `--prova-film`) e lo sguardo alle istantanee 620-623, 644-648, 653-657, 730, 735, 830-835, iOS 836, `anteprime/file-cliente`, `anteprime/film` e 400 |
+| `luce/giro-16-realta` | Luce giro 16 «Realtà aumentata e tavolo a doppio senso»: Sala › La realtà aumentata (cristallo in RealityKit sul Mac in anteprima, ARKit su iPhone e iPad, ripiego sul tavolo virtuale, scatto su fondo neutro nel dossier), prova di fattibilità `--prova-realta`, protocollo del tavolo versione 2 (rischio, Lancia l'anno, disegno, capsula, scatto dall'iPad; conferma delle cifre), «▣ Mostra sul tavolo» acceso | scritto nel cloud sopra i giri 8-13 (senza 14 e 15), solo controllo della sintassi: manca la build con tutte le prove (prima `--prova-realta` su Mac, simulatore e `iphoneos`) e lo sguardo alle istantanee 630-636, 695 e iOS 56-59, 70-74; la capsula sull'iPad è collegata nell'integrazione: «Scrivi sull'iPad» accanto a «✉︎ Sigilla la capsula» (`Shell/SalaCapsula.swift`, `ScriviCapsulaSullIPad`, solo con l'iPad collegato), attesa con «Annulla» (`TavoloMac.annullaTestoCapsula`, `capsulaInAttesa`); il testo dell'iPad si sigilla subito sul Mac con l'apertura scelta (stesso `sigillaCapsula`, chiave nel Portachiavi), senza passare da campo, schermo o registri; prova 6b in `--prova-tavolo`. Unito in `luce/integrazione-11-16` con i giri 14 e 15: `ProvaRealta` usa `MetalPrisma.device()` (`ShaderTela` lo usava già) e nel workflow `--prova-realta` gira con `PRISMA_SENZA_METAL=1` |
+| `luce/completa-pratiche` | Completezza di Pratiche, Smontaggio, Radar e imprenditori (§7.1-7.3, §8.2, §8.3, §9.3): tappa 5 della proposta con i moduli compilati, sostituzione «costi più bassi» (istantanea 806), «Presenta a …» al tavolo o in sala con la proposta segnata presentata, «Annulla» nel toast della bozza (`AzioneAvviso`), riquadri 3-5 cliccabili; «Aggiorna anche il dossier» nei moduli; «Dopo la firma» sull'iPhone con «segna il passo» dal giornale (`EntitaOvunque.pratica`, iOS 824) e «Apri i moduli»; Smontaggio con la proposta di sostituzione in Pratiche, Inquadra per l'estratto conto e il documento nel dossier (`Documento.costiTrovati`); radar con «Portafoglio modello» nel dossier, doppio clic, Tab/Invio e «Prepara la proposta» che apre la bozza; key man e welfare nella proposta, l'azienda sull'iPhone (iOS 77, 78; Mac 809) | scritto nel cloud, solo controllo della sintassi: manca la build con tutte le prove (`--prova-calcoli`, `--prova-backup`, `--prova-ovunque`) e lo sguardo alle istantanee 801-809 e iOS 77, 78, 808, 824 |
+| `luce/completa-clienti` | Lacune del controllo di completezza per §8.1 e §9.1-9.2: «Condizioni nella Biblioteca» nella scheda del prodotto, il gruppo «Biblioteca» in «Cerca ovunque» (aperto sulla pagina trovata), «Cerca nella Biblioteca» proposto da Vera (app e scrivania, solo Mac) sotto le risposte su condizioni o normativa, l'avviso «C'è anche un'edizione più vecchia» (e «più recente», proposta in più) per lo stesso prodotto; nella scena del nuovo cliente lo stato «È un potenziale cliente» (riconoscimento per nome, «presentata da Sofia» con il genere dalla carta o «su presentazione di» se non si sa, `presentatoDa` e `PotenzialeCliente.clienteId` alla creazione), «Diventa cliente» che apre la scena con il nome già scritto (chiusa senza dossier la scheda torna in «Proposta»; «Scrivi a mano» passa il potenziale al modulo), Potenziali e Passaparola in sola lettura sull'iPad (`potenzialiInSolaLettura`). Lo stato «potenziale» è calcolato (`potenzialeDaCarta`, come «già in Prisma») invece del caso `FaseNuovoCliente.potenziale(String)` della specifica: stessa resa, nessuno switch toccato | scritto nel cloud, solo controllo della sintassi: manca la build con le prove (`--prova-calcoli`: Passaparola, Carta d'identità, Biblioteca; `--prova-vera`: Trova la pagina; promemoria) e lo sguardo alle istantanee 848, 849, 878, 879 (chiare e scure) e iOS 76-potenziali-ipad, 76-passaparola-ipad |
 | `vera/fase-4` | Vera, fase 4: funzioni 3, 4, 5, 7, 14, 15, 17, 20, collegate a chat, viste e archivio | due giri di revisione con correzioni, prove verdi in debug sul Mac (db982bc); contiene già `main` con il giro 0; si unisce in main solo con build verde e il via dell'utente |
 
 
@@ -99,6 +105,8 @@ del backup in `CLAUDE.md`, revisione avversaria, correzioni, unione solo con bui
   (https://claude.ai/artifact/EauRU1ohEGjHj4zvTomDvb).
 - «Misura Vera» con Ollama vero.
 - Controllo finale: tutte le voci del pannello Novità accese, `CLAUDE.md` aggiornato con le eccezioni approvate.
+  Dal giro 15 sono accese anche il Prisma del cliente, il film del piano, la capsula del tempo e il sinistro; l'eccezione
+  delle cose date al cliente è in `CLAUDE.md` › Dati e privacy.
 
 ## Dati che servono dall'utente
 
@@ -112,6 +120,138 @@ inventa):
 - **Impostazioni › Studio:** aliquote delle provvigioni Alleanza.
 - **Spese:** km di andata e ritorno per cliente, dati fiscali, €/km e scadenze (da verificare con il commercialista).
 - **Moduli:** i PDF veri dei moduli del canale indipendente; per Alleanza serve prima l'approvazione della compagnia.
+  Per il nuovo cliente servono anche «Informativa privacy» e «Adeguata verifica» dei due canali (giro 13).
+- **Clienti: potenziali, passaparola e campagne (Luce giro 12, branch `luce/giro-12-clienti`):**
+  1. dopo quanti mesi cancellare i potenziali «non interessati» e quelli senza informativa (oggi nessuna
+     cancellazione automatica, solo «Elimina» a mano; decisione 39);
+  2. il testo dell'informativa ai terzi (art. 14 GDPR): Prisma registra solo la data;
+  3. le soglie delle campagne (`RegoleCampagne`): età 40/50/60, scadenze entro 6 mesi, fondo fermo da 12 mesi,
+     90 giorni per lo stesso bisogno, 30 giorni fra due campagne, 30 minuti di appuntamento;
+  4. l'elenco dei gruppi (famiglia senza protezione, scadenze nel mese, età tonde, fondo fermo, previdenza assente,
+     liquidità ferma): altri dai bisogni esistenti (successione, tutela del mutuo)?;
+  5. il momento giusto per chiedere una presentazione: 7 e 180 giorni vanno bene? Gli anniversari contano (oggi no)?;
+  6. la tile «Probabile entro fine anno» o «Valore pesato del percorso»?;
+  7. la colonna «Presentato da» nell'import CSV dei clienti?;
+  8. i potenziali in «Prisma ovunque» spenti di base vanno bene?;
+  9. le frasi fisse dei messaggi di campagna e della richiesta di presentazione (`Motori/ModelliMessaggi.swift`) da
+     rileggere;
+  10. il via per il commit di `Vera/Istruzioni/messaggi.md` (sezioni «Campagna» e «Richiesta di presentazione»);
+  11. con Messaggi fra le app riservate il biglietto del traguardo non si mostra più da Messaggi in modalità cliente
+      (l'istantanea 734 mostra l'avviso): va bene, o serve un'altra strada (dossier o Sala)?;
+  12. la quota del passaparola usa «Cliente dal» se scritto, altrimenti la data della scheda (con la nota): va bene?
+- **Giro 13, nuovo cliente e nota vocale** (domande aperte, con la proposta seguita fra parentesi):
+  1. Codici catastali dei comuni: approvi una tabella (Agenzia delle Entrate o ISTAT, ~200 KB nelle risorse, da
+     aggiornare a mano)? Quale fonte e licenza? (Oggi no: «✓ coerente (comune non controllato)».)
+  2. Copia del documento d'identità per l'adeguata verifica: va conservata? Per quale canale e con quali regole?
+     (L'interruttore nella scheda resta spento; solo per foto o PDF trascinati sul Mac.)
+  3. Nota vocale con Prisma ovunque: le note dettate lontano dal Mac possono passare dal giornale cifrato su iCloud
+     Drive? (Oggi no: restano cifrate sull'iPhone, al più 20.)
+  4. Invio automatico della nota dopo 3 secondi con «Annulla»? (Oggi no: si manda con il tocco ✓.)
+  5. Consegna in background delle note (`BGAppRefreshTask`)? (Oggi no, decisione 33.)
+  6. La cittadinanza nei moduli (un nuovo dato dei moduli)? (Oggi solo nel dossier.)
+  7. I testi di `Supporto/iOS/Info.plist` per fotocamera, microfono e riconoscimento vanno bene?
+  8. Il messaggio nato da una nota («mandarle il confronto…») è non commerciale? (Proposta seguita: sì, non serve il
+     consenso commerciale.)
+- **Giro 14, Stanotte** (domande aperte, con la scelta seguita fra parentesi):
+  1. Il lavoro della notte acceso di base o spento? E l'ora di inizio? (Spento: lo accendi in Impostazioni › Vera ›
+     Stanotte; dalle 22:00 alle 6:00.)
+  2. Quali tipi di carta preparare? (Tutti; uno per uno si spengono nelle Impostazioni.)
+  3. «Documento» approvato crea anche l'attività «Chiedere il documento nuovo»? (Sì.) «Domani» va nella nota
+     dell'appuntamento o in un'attività? (Nella nota: riga «Da portare: …», tolta identica con «Annulla».)
+  4. Il testo della bozza di richiesta del documento d'identità (`ModelliMessaggi`, tipo nuovo `documentoIdentita`, non
+     commerciale): «il tuo documento d'identità scade il …: quando ti è comodo, mi mandi una copia di quello nuovo?» va bene?
+  5. Notifica di macOS al mattino «Stanotte ho preparato N cose» (spenta di base, senza nomi né cifre): va bene il testo?
+  6. Aprire Prisma all'accesso al Mac (`SMAppService`) o un risveglio programmato (`pmset`, lo imposti tu)? (No: Prisma
+     non cambia nulla del sistema; il controllo statico del workflow lo vieta.)
+  7. Carte anche su iPhone/iPad («Le trovi sul Mac»)? (No in questo giro: le carte e le impostazioni restano fuori da
+     «Prisma ovunque».)
+  8. La partenza consigliata dalla stima in linea d'aria del Territorio, con «(stima)»: va bene? (Sì; senza partenza
+     del Territorio nessun orario e nessun km.)
+  9. Campagne di notte: una per notte, il gruppo più grande, con il modello fisso, niente Qwen? (Sì.) Qwen solo per le
+     bozze dei messaggi singoli (al più 10).
+  10. Tetti: 6 fascicoli, 3 riesami, documenti entro 30 giorni, riesami entro 14 giorni, «da ieri» al più 7 giorni:
+      vanno bene?
+  11. La memoria di Qwen 3.5 4B di notte va misurata sul tuo Mac con `ollama ps` (stima 3-3,5 GB, non scritta nel codice).
+  12. Il saluto finale usa il nome di Impostazioni › Profilo (`nomeUtente`): va bene?
+  13. Il lavoro parte solo con Prisma non in uso (bloccato o in secondo piano): se lavori fino a tardi parte quando
+      lasci il Mac. Va bene?
+  14. Di notte il MacBook alla corrente dorme quando lo schermo si spegne, salvo l'opzione di sistema «Evita lo stop
+      automatico quando lo schermo è spento». Prisma non la cambia: vuoi attivarla tu, o va bene che di solito sia
+      «Prepara adesso» al mattino? (Prisma non tocca le impostazioni di energia.)
+  15. Il fascicolo e il riesame nascono come PDF solo all'approvazione (di notte si preparano la scelta dei report e la
+      carta: niente PDF in memoria con 8 GB); per farli Prisma cambia per un attimo il cliente attivo e lo rimette. Se
+      il fascicolo dell'incontro è già nei Documenti non si rifà. Va bene, o serve un PDF già pronto al mattino?
+  16. Il titolo della borsa è «La borsa di oggi» (al mattino è il giorno dell'incontro), non «La borsa di domani» del
+      template: va bene? Le carte dei moduli di prova stanno su Sofia (la proposta di Giulia è Alleanza e i moduli
+      Alleanza non si compilano).
+  17. Le bozze di Vera della notte diventano carte solo se le scrive Qwen e passano la verifica delle cifre; il modello
+      fisso resta in Messaggi (non diventa una carta «messaggio»). Va bene?
+
+- **Giro 15, cose date al cliente** (branch `luce/giro-15-cliente`; domande aperte, con la proposta seguita fra
+  parentesi):
+  1. Avvertenze del file del cliente e del film (e di Alleanza, se servono): quali testi? (Segnaposto «Stime basate su
+     ipotesi, non garanzie di risultato.» e avviso nel palco › Impostazioni › Sala.)
+  2. Logo Alleanza nei materiali dati al cliente: Alleanza lo permette? (Solo nome e colore del canale, mai il logo.)
+  3. File per il browser (HTML cifrato): quando la prova su iPhone e Android veri è fatta, si accende «Prepara anche il
+     file per il browser» in Impostazioni › Sala? (Spento: esce solo il PDF protetto.)
+  4. Password di tre parole e un numero («Lago-Vela-Pino-27»): va bene da dettare al cliente? (Sì; scritta a mano
+     almeno 12 caratteri, mai con nome, cognome, data di nascita o codice fiscale.)
+  5. Nome del file con il solo nome di battesimo («Il-Prisma-di-Giulia.pdf»): va bene? (Sì.)
+  6. Chiave delle capsule nei backup protetti da password (decisione 42, «approvazione esplicita»): confermi? (Attiva
+     solo con i backup protetti; con i backup in chiaro l'avviso in Impostazioni › Archivio.)
+  7. Riga dell'informativa privacy per la capsula, il consenso a WhatsApp e gli aggiornamenti del sinistro: quali
+     testi? (Nessun testo inventato: Prisma registra solo il consenso e la data.)
+  8. Film: il formato 16:9 va bene o serve quadrato o verticale per il telefono? Se sul runner manca il codificatore
+     H.264, `--prova-film` scrive «AVVISO» e la build resta verde: va bene? (Sì, 16:9 e verde con l'avviso; sul Mac M1
+     il codificatore c'è.)
+  9. Sinistri: fasi per tipo (vita, malattia), documenti richiesti per tipo e compagnia, indirizzi dei sinistri,
+     compagnie che vogliono il portale; soglia del sinistro fermo. (Cinque fasi di base più «Respinto»; documenti per
+     tipo e indirizzi vuoti finché non li scrivi in Impostazioni › Pratiche; soglia **14 giorni, da confermare**.)
+  10. Sinistri dall'iPhone: si possono segnare fase e fatti dal giornale di Prisma ovunque, con testi brevi
+      (decisione 36)? (Oggi sola lettura.)
+  11. Biglietto dei traguardi: la frase scritta da Prisma dice ancora «Vera la riscriverà con un prossimo
+      aggiornamento»; serve «Riscrivi con Vera»? (Oggi frase modificabile a mano nel pannello del traguardo.)
+  12. «Disegna il tuo futuro» nel file del cliente come immagine? (Oggi no: entra solo come obiettivo salvato.)
+  13. WhatsApp senza consenso: se il menu di condivisione di macOS non permette di toglierlo (alcune estensioni non
+      passano dal delegato), basta l'avviso sotto il pulsante? (Sì: avviso, e la traccia nel dossier registra la via.)
+  14. «Riscrivi con Vera» per la frase del biglietto richiede istruzioni, schema e prova nuovi di Vera: si fa in un
+      giro di Vera? (Proposta: sì, fuori da questo giro.)
+  15. Il blocco «Il tuo sinistro» nel file del cliente: si accende per file, e solo per i sinistri con gli
+      aggiornamenti accesi; va bene che l'avviso dopo «Aggiorna …» ricordi di rifare il file? (Sì.)
+
+  Dati di prova dichiarati del giro (solo nei clienti di prova e nelle istantanee, mai dati veri): la password
+  «Lago-Vela-Pino-27» (istantanea 623) e «Prova-Lettore-Node-42» (prova Node); la dimensione del file pronto mostrata
+  nella 621 (non è misurata); un film senza file per Giulia (620); nel film di Giulia un versamento mensile di 553 €
+  aggiunto solo nella prova e nelle istantanee (nei dati di prova non ne ha, e la scena «Ogni mese» si salterebbe);
+  le capsule di Giulia, Marco, Laura e Sofia cifrate con la chiave di prova pubblica (non apre capsule vere); i
+  sinistri di Marco («Infortunio di Pietro»), Sofia (pagato 3.400 €) e Giulia (senza polizza collegata).
+
+- **Giro 16, realtà aumentata e tavolo a doppio senso** (domande aperte, con la proposta seguita fra parentesi):
+  1. Scala: 1 unità = 16 cm (cristallo di circa 13 cm di lato, alto 14-35 cm) va bene su un tavolo vero? (Seguita:
+     16 cm, da provare con l'iPad.)
+  2. Scatto con la stanza: lo si vuole mai? (Seguita: interruttore in Impostazioni › Sala spento e conferma a ogni
+     scatto.)
+  3. Scatto sull'iPhone o sull'iPad da soli: va bene che non salvi nulla finché non si è al tavolo? (Seguita: sì;
+     l'alternativa sarebbe una coda cifrata come la nota vocale, decisione a parte.)
+  4. Testo del permesso della fotocamera in `Supporto/iOS/Info.plist` (unito a quello del giro 13): «Prisma usa la
+     fotocamera per inquadrare polizze e documenti, per leggere la carta d'identità di un cliente nuovo e per mostrare
+     il patrimonio sul tavolo in realtà aumentata… Le immagini restano sul dispositivo e non si salvano, tranne lo
+     scatto del cristallo che fai tu.» Va bene?
+  5. Conferma delle cifre sul tavolo (decisione 49): una volta per cliente per sessione del tavolo basta, o a ogni
+     invio? (Seguita: una volta.)
+  6. Risultato del gioco del rischio sull'iPad: il cliente vede il profilo emerso ma non il confronto con il
+     dichiarato. Va bene? (Seguita: sì, il confronto resta al consulente sul Mac.)
+  7. Capsula sull'iPad (D-C4): appena c'è il giro 15, il cliente scrive sull'iPad, conferma il sigillo sull'iPad e il
+     Mac sigilla subito senza mostrare il testo. (Seguita: così; il genere e i messaggi sono pronti e provati, il
+     pulsante «Scrivi sull'iPad» è collegato nell'integrazione 11-16.)
+  8. Occlusione delle persone: resta spenta? (Seguita: spenta.)
+  9. «Mostra sul tavolo» per prisma di luce, lettera e giornata come immagine ferma del palco (decisione 111): basta,
+     o servono scene vive anche lì? (Seguita: immagine; per la lettera il foglio impaginato già visto sul palco.)
+  10. Conferma delle cifre e pannello «Al tavolo»: i comandi che esistono già nel pannello (macchina del tempo, linea
+      della vita, famiglia, pagine) restano senza conferma perché il consulente li sceglie uno per uno; la conferma
+      vale per le esperienze della Sala. Va bene? (Seguita: sì.)
+  11. Testi nuovi rivolti al cliente sull'iPad (avvisi della realtà aumentata, «Lancia l'anno», la frase dopo la
+      pensione del disegno, l'aiuto della capsula, in `TestiRealta`): sono testi di prova da rileggere.
 
 ## Regole da non dimenticare
 

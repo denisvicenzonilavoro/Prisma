@@ -53,7 +53,66 @@ enum ProvaTrovaPaginaVera {
         controlla(TrovaPaginaVera.leggi("niente JSON", passi: passi, domanda: domanda) == nil, "Biblioteca: un JSON guasto si scarta")
 
         qwenFinto(passi: passi, frase: frase, controlla)
+        collegamenti(s, controlla)
         stato(s, frase: frase, controlla)
+    }
+
+    /// §8.1.5.2 punto 6: «Cerca nella Biblioteca» da Vera, il gruppo «Biblioteca» di «Cerca ovunque» e «Condizioni nella
+    /// Biblioteca» dalla scheda del prodotto (con i sei fac-simile già caricati).
+    private static func collegamenti(_ s: StatoShell, _ controlla: (Bool, String) -> Void) {
+        let noti = s.dati.clienti.map { ClienteNoto(id: $0.id, nome: $0.nome) }
+        let condizioni = ["Il riscatto nei primi anni ha penali?", "Quanto si deduce del fondo pensione?",
+                          "Se Marco non paga la temporanea?", "Cosa dice la norma sul recesso?", "Ci sono carenze nella temporanea?"]
+        let altre = ["Quanto ha Marco?", "Fammi un riepilogo del cliente", "Prepara il prossimo incontro",
+                     "Il riscatto della polizza di Marco"]
+        controlla(condizioni.allSatisfy { TrovaPaginaVera.proponeBiblioteca($0, clienti: noti) }
+                    && !altre.contains { TrovaPaginaVera.proponeBiblioteca($0, clienti: noti) },
+                  "Biblioteca: Vera propone «Cerca nella Biblioteca» solo per le domande su condizioni o normativa")
+        #if os(macOS)
+        let domanda = MessaggioVera(autore: .utente, testo: "Il riscatto nei primi anni ha penali?")
+        let risposta = MessaggioVera(autore: .vera, testo: "Risposta di prova.")
+        controlla(s.domandaPerBiblioteca(in: [domanda, risposta]) == domanda.testo
+                    && s.domandaPerBiblioteca(in: [domanda]) == nil
+                    && s.domandaPerBiblioteca(in: [MessaggioVera(autore: .utente, testo: "Quanto ha Marco?"), risposta]) == nil,
+                  "Biblioteca: la proposta va sotto l'ultima risposta di Vera, con la domanda dell'utente")
+        let vuota = StatoShell(persistente: false)
+        controlla(vuota.domandaPerBiblioteca(in: [domanda, risposta]) == nil,
+                  "Biblioteca: senza documenti nella Biblioteca Vera non propone di cercarci")
+        s.cercaNellaBiblioteca(domanda.testo, subito: true)
+        controlla(s.appAttiva == .biblioteca && s.trovaPagina.risultato?.passo?.pagina == 14,
+                  "Biblioteca: «Cerca nella Biblioteca» apre la Biblioteca con la stessa ricerca (pagina 14)")
+
+        // «Cerca ovunque»: il gruppo Biblioteca nei titoli e nel testo, aperto sulla pagina trovata
+        let sezioni = MotoreRicerca.cerca("riscatto penali", in: s)
+        let gruppo = sezioni.first { $0.gruppo == .biblioteca }
+        if let primo = gruppo?.risultati.first, case .biblioteca(let id, let pagina) = primo.destinazione {
+            controlla(pagina >= 1 && primo.estratto?.hasPrefix("pag. \(pagina):") == true,
+                      "Cerca ovunque: il gruppo «Biblioteca» trova il testo delle pagine e ricorda la pagina (\(pagina))")
+            s.vai(a: primo.destinazione)
+            controlla(s.appAttiva == .biblioteca && s.trovaPagina.aperta == PaginaAperta(documentoId: id, pagina: pagina),
+                      "Cerca ovunque: il risultato della Biblioteca apre il documento a quella pagina")
+        } else {
+            controlla(false, "Cerca ovunque: il gruppo «Biblioteca» trova «riscatto penali» nei fac-simile")
+        }
+        let titolo = MotoreRicerca.cerca("temporanea caso morte", in: s).first { $0.gruppo == .biblioteca }?.risultati.first
+        controlla(titolo?.destinazione == DestinazioneRicerca.biblioteca(s.biblioteca.tutti.first(where: { $0.titolo.hasPrefix("Temporanea") })?.id ?? "", pagina: 1),
+                  "Cerca ovunque: un titolo della Biblioteca si apre alla prima pagina")
+
+        // «Condizioni nella Biblioteca» dalla scheda del prodotto collegato
+        if let prodotto = s.dati.prodotti.first, let doc = s.biblioteca.tutti.first(where: { $0.titolo.hasPrefix("Piano rivalutabile") }) {
+            controlla(s.condizioniInBiblioteca(prodotto.id) == nil, "Prodotti: senza documento collegato niente «Condizioni nella Biblioteca»")
+            s.collegaProdottoBiblioteca(doc.id, prodotto: prodotto.id)
+            s.apri(.prodotti)
+            s.apriCondizioniInBiblioteca(prodotto.id)
+            controlla(s.condizioniInBiblioteca(prodotto.id)?.id == doc.id && s.appAttiva == .biblioteca
+                        && s.trovaPagina.aperta == PaginaAperta(documentoId: doc.id, pagina: 1),
+                      "Prodotti: «Condizioni nella Biblioteca» apre il documento collegato")
+            s.collegaProdottoBiblioteca(doc.id, prodotto: nil)
+        } else {
+            controlla(false, "Prodotti: servono un prodotto e il fac-simile del piano rivalutabile")
+        }
+        s.tornaAllaRisposta()
+        #endif
     }
 
     private static func isNonVerificata(_ e: EsitoTrovaPagina?) -> Bool {

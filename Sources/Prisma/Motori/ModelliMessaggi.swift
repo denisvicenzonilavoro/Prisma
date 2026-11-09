@@ -219,6 +219,33 @@ enum ModelliMessaggi {
                    "Grazie, resto a disposizione per qualsiasi chiarimento."]
                 : ["per completare il modulo\(modulo) mi servono ancora questi dati: \(cosa). Mandameli quando ti è comodo, nel modo che preferisci.",
                    "Grazie, scrivimi pure per qualsiasi cosa."]
+        case .documentoIdentita:
+            // Il documento d'identità in scadenza («Luce» giro 14, «Stanotte»): la data scritta, mai il numero del documento
+            let doc = v(.documento).map { minuscolaIniziale($0) } ?? "documento d'identità"
+            let quando = v(.scadenza).map { (o.inRitardo ? " è scaduto " : " scade ") + il($0) } ?? (o.inRitardo ? " è scaduto" : " è in scadenza")
+            return lei
+                ? ["il suo \(doc)\(quando): quando le è comodo, mi manda una copia di quello nuovo? Mi serve per tenere in ordine la sua pratica.",
+                   "Grazie, resto a disposizione per qualsiasi chiarimento."]
+                : ["il tuo \(doc)\(quando): quando ti è comodo, mi mandi una copia di quello nuovo? Mi serve per tenere in ordine la tua pratica.",
+                   "Grazie, scrivimi pure per qualsiasi cosa."]
+        case .notaVocale:
+            // Detto nella nota vocale («Luce» giro 13): solo la cosa promessa, nessuna cifra in più
+            let cosa = v(.occasione) ?? (lei ? "quanto ci eravamo detti" : "quanto ci eravamo detti")
+            return lei
+                ? ["le scrivo come ci eravamo detti: le mando \(cosa).", "Resto a disposizione per qualsiasi chiarimento."]
+                : ["ti scrivo come ci eravamo detti: ti mando \(cosa).", "Scrivimi pure per qualsiasi dubbio."]
+        case .sinistro:
+            // L'aggiornamento del sinistro («Luce» giro 15, decisione 11): titolo, fase e ultimo fatto scritti dal
+            // consulente; mai referti, diagnosi, numeri di polizza o importi (l'importo pagato solo se acceso)
+            let titolo = v(.sinistro).map { " «\($0)»" } ?? ""
+            let fase = v(.faseSinistro).map { "«\($0)»" } ?? "in corso"
+            var parti = [lei ? "la aggiorno sul sinistro\(titolo): adesso siamo alla fase \(fase)."
+                             : "ti aggiorno sul sinistro\(titolo): adesso siamo alla fase \(fase)."]
+            if let f = v(.ultimoFatto) { parti[0] += " " + frase(f) }
+            if let p = v(.importoPagato) { parti[0] += lei ? " L'importo pagato è di \(p)." : " Ti hanno pagato \(p)." }
+            parti.append(lei ? "La terrò aggiornata a ogni passo. Resto a disposizione per qualsiasi chiarimento."
+                             : "Ti tengo aggiornato a ogni passo: per qualsiasi dubbio scrivimi pure.")
+            return parti
         case .traguardo:
             // Un traguardo da festeggiare: il fatto, mai una cifra in più né una proposta (decisione 87)
             let cosa = v(.traguardo).map { " («\(minuscolaIniziale($0))»)" } ?? ""
@@ -227,6 +254,31 @@ enum ModelliMessaggi {
                    "Un caro saluto."]
                 : ["oggi è un giorno da ricordare\(cosa) e volevo farti i miei complimenti. Grazie per la fiducia di questi anni.",
                    "Un abbraccio."]
+        case .campagna:
+            // Una campagna («Luce» giro 12): un messaggio per una persona sola, con il suo bisogno e gli orari liberi veri
+            // dell'Agenda; mai nomi d'altri, mai «abbiamo scritto a tutti»
+            let bisogno = v(.bisogno).map { ": \(minuscolaIniziale(frase($0)))" } ?? "."
+            var parti = [lei
+                ? "riguardando la sua situazione ho notato una cosa che varrebbe la pena di esaminare insieme\(bisogno) Le andrebbe di incontrarci per una mezz'ora?"
+                : "guardando il tuo piano ho notato una cosa che vale la pena sistemare insieme\(bisogno) Ti va di vederci per una mezz'ora?"]
+            if let orari = v(.appuntamentiProposti) {
+                parti.append(lei ? "Per esempio: \(frase(orari)) Se nessuno di questi orari le è comodo, me ne indichi pure un altro."
+                                 : "Per esempio: \(frase(orari)) Se non ti va bene nessuno, dimmi tu quando.")
+            } else {
+                parti.append(lei ? "Mi faccia sapere quando le è più comodo." : "Dimmi tu quando ti è comodo.")
+            }
+            return parti
+        case .richiestaPresentazione:
+            // La richiesta di presentazione (decisione 17): grazie per un fatto, poi una richiesta leggera. Mai cifre, mai
+            // nomi d'altri clienti, mai incentivi né pressione
+            let fatto = v(.traguardo).map { " («\(minuscolaIniziale($0))»)" } ?? ""
+            return lei
+                ? ["volevo ringraziarla per la fiducia: il passo di questi giorni\(fatto) è un bel risultato, e averlo raggiunto insieme mi fa piacere.",
+                   "Le faccio una richiesta semplice, senza nessun impegno: se conosce qualcuno a cui potrebbe servire un aiuto come quello che ho dato a lei, sarei felice di conoscerlo.",
+                   "Un cordiale saluto e grazie ancora."]
+                : ["volevo dirti grazie per la fiducia: il passo di questi giorni\(fatto) è un bel risultato, e averlo raggiunto insieme mi fa piacere.",
+                   "Ti faccio una richiesta semplice, senza nessun impegno: se conosci qualcuno a cui potrebbe servire una mano come quella che ho dato a te, sarei felice di conoscerlo.",
+                   "Grazie ancora."]
         }
     }
 
@@ -291,9 +343,31 @@ enum ModelliMessaggi {
         case .datiMancanti:
             let cosa = v(.datiModulo) ?? "alcuni dati"
             return (["per completare il modulo mi servono ancora: \(cosa)."], ["Mandameli quando ti è comodo."])
+        case .notaVocale:
+            let cosa = v(.occasione) ?? "quanto ci eravamo detti"
+            return (["come d'accordo, ti mando \(cosa)."], ["A presto."])
+        case .documentoIdentita:
+            let quando = v(.scadenza).map { (o.inRitardo ? " è scaduto " : " scade ") + il($0) } ?? " è in scadenza"
+            return (["il tuo documento d'identità\(quando): mi mandi una copia di quello nuovo?"], ["Grazie!"])
+        case .sinistro:
+            let titolo = v(.sinistro).map { " «\($0)»" } ?? ""
+            let fase = v(.faseSinistro).map { "«\($0)»" } ?? "in corso"
+            var facoltative: [String] = []
+            if let f = v(.ultimoFatto) { facoltative.append(frase(f)) }
+            if let p = v(.importoPagato) { facoltative.append("Pagati \(p).") }
+            return (["il sinistro\(titolo) è alla fase \(fase)."], facoltative)
         case .traguardo:
             let cosa = v(.traguardo).map { " («\(minuscolaIniziale($0))»)" } ?? ""
             return (["oggi è un giorno da ricordare\(cosa): complimenti!"], ["Grazie per la fiducia."])
+        case .campagna:
+            let bisogno = v(.bisogno).map { ": \(minuscolaIniziale(frase($0)))" } ?? "."
+            var facoltative: [String] = []
+            if let orari = v(.appuntamentiProposti) { facoltative.append("Per esempio: \(frase(orari))") }
+            return (["guardando il tuo piano ho notato una cosa da sistemare insieme\(bisogno) Ci vediamo per una mezz'ora?"],
+                    facoltative)
+        case .richiestaPresentazione:
+            return (["grazie per la fiducia di questi giorni!"],
+                    ["Se conosci qualcuno a cui potrebbe servire una mano come quella che ho dato a te, sarei felice di conoscerlo."])
         }
     }
 

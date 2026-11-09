@@ -175,7 +175,7 @@ private struct TelefonoInquadra: View {
     /// La scritta in basso: «Inquadra il documento», «Riconosco i dati…», «✓ Fatto».
     private var scritta: String {
         switch inquadra.fase {
-        case .attesa: return "Inquadra il documento"
+        case .attesa: return inquadra.perSmontaggio ? "Inquadra l'estratto conto o il rendiconto" : "Inquadra il documento"
         case .trascina: return "Trascina la foto sul Mac"
         case .lettura: return "Riconosco i dati…"
         case .illeggibile: return "Riprova con più luce"
@@ -275,8 +275,8 @@ private struct SchedaInquadraMac: View {
 
     private var titolo: String {
         switch inquadra.fase {
-        case .attesa: return "Aspetto il documento…"
-        case .trascina: return "Trascina la polizza"
+        case .attesa: return inquadra.perSmontaggio ? "Aspetto l'estratto conto…" : "Aspetto il documento…"
+        case .trascina: return inquadra.perSmontaggio ? "Trascina l'estratto conto o il rendiconto" : "Trascina la polizza"
         case .lettura: return "Sto leggendo…"
         case .illeggibile: return "Non riesco a leggere il documento"
         case .letto:
@@ -288,6 +288,9 @@ private struct SchedaInquadraMac: View {
     private var frase: String? {
         switch inquadra.fase {
         case .attesa:
+            if inquadra.perSmontaggio {
+                return "Inquadra l'estratto conto o il rendiconto con l'iPhone (Prisma › Posizioni › Inquadra): le righe arrivano allo Smontaggio, cifrate in rete locale. Oppure trascina qui una foto o un PDF."
+            }
             return "Sull’iPhone apri Prisma › Posizioni › Inquadra: il testo letto arriva qui, cifrato in rete locale. Oppure trascina qui una foto o un PDF."
         case .trascina:
             return "L’iPhone non è collegato: attiva «iPhone e iPad» in Impostazioni › Vera, oppure trascina qui una foto o un PDF. Prisma lo legge sul Mac e non lo salva."

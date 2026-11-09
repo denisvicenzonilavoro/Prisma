@@ -408,3 +408,103 @@ enum MotoreBiblioteca {
         }
     }
 }
+
+// MARK: - Edizioni e prodotti (§8.1.6 punto 3, §8.1.5.2 punto 6)
+
+extension MotoreBiblioteca {
+    private static let mesi = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto",
+                               "settembre", "ottobre", "novembre", "dicembre"]
+
+    /// L'edizione scritta come un numero da confrontare (aaaammgg; mese e giorno a 0 se mancano): «ed. 03/2026» →
+    /// 20260300, «aggiornato al 1° ottobre 2026» → 20261001, «12/05/2025» → 20250512, «2024» → 20240000. Un'edizione
+    /// che non dice una data: nil (non si confronta, mai indovinata).
+    static func chiaveEdizione(_ edizione: String) -> Int? {
+        let t = edizione.lowercased()
+        func numero(_ r: NSTextCheckingResult, _ i: Int, in s: NSString) -> Int? {
+            guard r.range(at: i).location != NSNotFound else { return nil }
+            return Int(s.substring(with: r.range(at: i)))
+        }
+        let s = t as NSString
+        let tutto = NSRange(location: 0, length: s.length)
+        func valida(_ a: Int, _ m: Int, _ g: Int) -> Int? {
+            guard (1900...2200).contains(a), (0...12).contains(m), (0...31).contains(g) else { return nil }
+            return a * 10_000 + m * 100 + g
+        }
+        // 12/05/2025, 12.05.2025, 12/05/25
+        if let re = try? NSRegularExpression(pattern: #"\b([0-9]{1,2})[/.]([0-9]{1,2})[/.]([0-9]{2,4})\b"#),
+           let r = re.firstMatch(in: t, range: tutto),
+           let g = numero(r, 1, in: s), let m = numero(r, 2, in: s), var a = numero(r, 3, in: s) {
+            if a < 100 { a += 2000 }
+            return valida(a, m, g)
+        }
+        // 03/2026
+        if let re = try? NSRegularExpression(pattern: #"\b([0-9]{1,2})[/.]([0-9]{4})\b"#),
+           let r = re.firstMatch(in: t, range: tutto), let m = numero(r, 1, in: s), let a = numero(r, 2, in: s) {
+            return valida(a, m, 0)
+        }
+        // 1° ottobre 2026, ottobre 2026
+        let nomi = mesi.joined(separator: "|")
+        if let re = try? NSRegularExpression(pattern: #"(?:\b([0-9]{1,2})°?\s+)?\b("# + nomi + #")\s+([0-9]{4})\b"#),
+           let r = re.firstMatch(in: t, range: tutto), let a = numero(r, 3, in: s) {
+            let mese = (mesi.firstIndex(of: s.substring(with: r.range(at: 2))) ?? -1) + 1
+            return valida(a, mese, numero(r, 1, in: s) ?? 0)
+        }
+        // 2024
+        if let re = try? NSRegularExpression(pattern: #"\b(19[0-9]{2}|2[01][0-9]{2})\b"#),
+           let r = re.firstMatch(in: t, range: tutto), let a = numero(r, 1, in: s) {
+            return valida(a, 0, 0)
+        }
+        return nil
+    }
+
+    /// Gli altri documenti dello stesso prodotto con un'edizione diversa.
+    static func altreEdizioni(_ d: DocumentoBiblioteca, tra documenti: [DocumentoBiblioteca]) -> [DocumentoBiblioteca] {
+        guard let prodotto = d.prodottoId else { return [] }
+        let mia = d.edizione.trimmingCharacters(in: .whitespaces).lowercased()
+        return documenti.filter { x in
+            x.id != d.id && x.prodottoId == prodotto && x.edizione.trimmingCharacters(in: .whitespaces).lowercased() != mia
+        }
+    }
+
+    /// L'avviso sotto l'edizione della risposta (§8.1.6 punto 3): se lo stesso prodotto ha un documento di un'edizione
+    /// più vecchia, «C'è anche un'edizione più vecchia: …»; se ce n'è una più recente lo dice per prima (la risposta può
+    /// essere superata); se le date non si confrontano, «C'è anche un'altra edizione: …». Nessun prodotto collegato: nil.
+    static func avvisoEdizione(_ d: DocumentoBiblioteca, tra documenti: [DocumentoBiblioteca]) -> String? {
+        let altre = altreEdizioni(d, tra: documenti)
+        guard !altre.isEmpty else { return nil }
+        func nome(_ x: DocumentoBiblioteca) -> String { "«\(x.titoloBreve)»" + (x.edizione.isEmpty ? "" : " (\(x.edizione))") }
+        guard let mia = chiaveEdizione(d.edizione) else {
+            return "C'è anche un'altra edizione: " + altre.map(nome).joined(separator: ", ") + "."
+        }
+        let chiavi = altre.map { ($0, chiaveEdizione($0.edizione)) }
+        let recenti = chiavi.filter { ($0.1 ?? Int.min) > mia }.map(\.0)
+        if !recenti.isEmpty {
+            return "C'è un'edizione più recente: " + recenti.map(nome).joined(separator: ", ") + ". Controlla che la risposta valga ancora."
+        }
+        let vecchie = chiavi.filter { ($0.1 ?? Int.max) < mia }.map(\.0)
+        if !vecchie.isEmpty {
+            return "C'è anche un'edizione più vecchia: " + vecchie.map(nome).joined(separator: ", ") + "."
+        }
+        return "C'è anche un'altra edizione: " + altre.map(nome).joined(separator: ", ") + "."
+    }
+
+    /// Il documento da aprire con «Condizioni nella Biblioteca» dalla scheda di un prodotto: fra quelli collegati, prima
+    /// condizioni e set informativi, poi l'edizione più recente, poi l'ultimo importato. Gli illeggibili restano fuori.
+    static func condizioniDelProdotto(_ prodottoId: String, tra documenti: [DocumentoBiblioteca]) -> DocumentoBiblioteca? {
+        let collegati = documenti.filter { $0.prodottoId == prodottoId && !$0.illeggibile }
+        func peso(_ d: DocumentoBiblioteca) -> Int {
+            switch d.genereVisto {
+            case .condizioni: return 0
+            case .setInformativo: return 1
+            case .kid, .notaInformativa: return 2
+            case .circolare, .normativa, .altro: return 3
+            }
+        }
+        return collegati.min { a, b in
+            if peso(a) != peso(b) { return peso(a) < peso(b) }
+            let ka = chiaveEdizione(a.edizione) ?? Int.min, kb = chiaveEdizione(b.edizione) ?? Int.min
+            if ka != kb { return ka > kb }
+            return a.importatoIl > b.importatoIl
+        }
+    }
+}

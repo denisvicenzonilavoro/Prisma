@@ -13,9 +13,11 @@ import Foundation
 // - traguardo: il primo traguardo della settimana non ancora festeggiato (MotoreTraguardi);
 // - anno = dal 1° gennaio a oggi: famiglie protette (una per cliente, con posizioni di protezione entrate nell'anno) e
 //   capitale assicurato se scritto; patrimonio seguito e variazione da inizio anno (MotoreAndamentoPortafoglio; nil
-//   al primo anno: «Da quest'anno in Prisma»); clienti nuovi dalla data d'inserimento (il passaparola non c'è ancora:
-//   nessuna riga); i chilometri non ci sono ancora (giro 9): nessuna pagina e NESSUN paragone senza la tabella
-//   approvata dall'utente (decisione 72); il momento dell'anno è il traguardo più importante, con la frase fissa.
+//   al primo anno: «Da quest'anno in Prisma»); clienti nuovi dalla data d'inserimento, con quanti dal passaparola
+//   («Luce» giro 12: nil, e nessuna riga, se nessun cliente dell'archivio ha «Presentato da»); i chilometri dai giri
+//   di Studio › Spese (MotoreChilometri, giro 9: km noti dal 1° gennaio a oggi, «almeno» se qualche giro è da
+//   completare; senza km, niente pagina) e NESSUN paragone senza la tabella approvata dall'utente (decisione 72): al suo
+//   posto «in media N km a settimana»; il momento dell'anno è il traguardo più importante, con la frase fissa.
 // Motore puro: riceve i dati, `oggi` e il calendario.
 
 /// Un giorno della pagina «In arrivo».
@@ -196,8 +198,16 @@ enum MotoreStorie {
         }
 
         // Clienti nuovi (dalla data d'inserimento in Prisma)
-        let nuovi = dati.clienti.filter { $0.creatoIl >= inizio && $0.creatoIl < fine }.count
-        if nuovi > 0 { pagine.append(.nuoviClienti(numero: nuovi, daPassaparola: nil)) }
+        let delAnno = dati.clienti.filter { $0.creatoIl >= inizio && $0.creatoIl < fine }
+        let nuovi = delAnno.count
+        // Il passaparola («Luce» giro 12): senza nessun presentatore nell'archivio il dato non c'è (nil, nessuna riga)
+        let idClienti = Set(dati.clienti.map(\.id))
+        func presentato(_ c: Cliente) -> Bool { c.presentatoDa.map { idClienti.contains($0) && $0 != c.id } ?? false }
+        let passaparola: Int? = dati.clienti.contains(where: presentato) ? delAnno.filter(presentato).count : nil
+        if nuovi > 0 { pagine.append(.nuoviClienti(numero: nuovi, daPassaparola: passaparola)) }
+
+        // I chilometri (Studio › Spese, giro 9): solo se ce ne sono
+        if let km = chilometri(dati: dati, da: inizio, a: fine, cal: cal) { pagine.append(km) }
 
         // Il momento dell'anno
         if let t = MotoreTraguardi.momento(MotoreTraguardi.calcola(dati: dati, da: inizio, a: fine, oggi: oggi, cal: cal)) {
@@ -206,6 +216,28 @@ enum MotoreStorie {
 
         pagine.append(.grazie)
         return pagine
+    }
+
+    /// La pagina dei chilometri: i km noti dei giri di Studio › Spese dal giorno `da` (incluso) al giorno `a` (escluso),
+    /// mese per mese; `stima` = qualche giro è ancora da completare (la cifra è «almeno»). nil senza km. Il paragone solo
+    /// dalla tabella approvata (decisione 72), altrimenti la media a settimana.
+    static func chilometri(dati: DatiPrisma, da inizio: Date, a fine: Date, cal: Calendar = .current) -> PaginaStoria? {
+        guard fine > inizio else { return nil }
+        var mese = MotoreChilometri.inizioMese(inizio, cal)
+        var giri: [MotoreChilometri.Giro] = []
+        while mese < fine {
+            giri += MotoreChilometri.giri(mese: mese, appuntamenti: dati.appuntamenti, impostazioni: dati.impostazioni.studio.spese,
+                                          kmClienti: dati.kmClienti, visiteTolte: dati.speseStudio.visiteTolte, calendario: cal)
+                .filter { $0.giorno >= inizio && $0.giorno < fine }
+            guard let dopo = cal.date(byAdding: .month, value: 1, to: mese) else { break }
+            mese = dopo
+        }
+        let km = MotoreChilometri.decimo(giri.map(\.kmNoti).reduce(0, +))
+        guard km > 0 else { return nil }
+        let giorni = max(1, cal.dateComponents([.day], from: inizio, to: fine).day ?? 1)
+        let settimane = max(1, Double(giorni) / 7)
+        return .chilometri(km: km, paragone: TestiStorie.paragoneKm(km, settimane: settimane),
+                           stima: giri.contains { $0.km == nil })
     }
 
     /// Il nome del consulente per la prima pagina dell'anno: nome e cognome dei dati per le fatture, altrimenti il nome

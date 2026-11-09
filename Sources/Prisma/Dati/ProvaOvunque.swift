@@ -118,8 +118,15 @@ enum ProvaOvunque {
             try provaSpaziLuce()
             try provaAziende()
             try provaRacconti()
+            try provaScattoRealta()
             try provaSpese()
+            try provaTerritorio()
+            try provaPraticheOvunque()
             try provaModuliIban()
+            try provaLuceClienti()
+            try provaNoteInArrivo()
+            try provaNotteOvunque()
+            try controllaGiro15()
             try provaSpazio(radice: radice)
             print("Prova di Prisma ovunque riuscita")
             return 0
@@ -266,6 +273,27 @@ enum ProvaOvunque {
                       "le impostazioni della Sala non tornano uguali dall'istantanea dello spazio")
     }
 
+    /// «Luce» giro 16 (decisione 27): un documento con lo scatto della realtà aumentata resta sul Mac (non entra
+    /// nell'istantanea), gli altri documenti sì; l'interruttore dello scatto con la stanza va con le altre impostazioni.
+    private static func provaScattoRealta() throws {
+        var dati = DatiPrisma.demo()
+        guard let c = dati.clienti.first else { throw Fallita(motivo: "i dati di prova non hanno clienti") }
+        var scatto = Documento(clienteId: c.id, titolo: "Il cristallo · prova ovunque", tipo: .report)
+        scatto.id = "doc-scatto-ovunque"
+        scatto.scattoRealta = ScattoRealta(anno: 2_029, esploso: false, conStanza: true, origine: .ipad)
+        var altro = Documento(clienteId: c.id, titolo: "Report di prova ovunque", tipo: .report)
+        altro.id = "doc-altro-ovunque"
+        dati.documenti += [scatto, altro]
+        dati.impostazioni.sala.scattoConStanza = true
+        let istantanea = SpazioOvunque.datiIstantanea(dati)
+        try controlla(!istantanea.documenti.contains { $0.id == scatto.id || $0.scattoRealta != nil },
+                      "lo scatto della realtà aumentata entra nell'istantanea di Prisma ovunque")
+        try controlla(istantanea.documenti.contains { $0.id == altro.id }, "gli altri documenti non entrano più nell'istantanea")
+        let chiaro = try JSONOvunque.codificatore().encode(istantanea)
+        let letto = try JSONOvunque.decodificatore().decode(DatiPrisma.self, from: chiaro)
+        try controlla(letto.impostazioni.sala.scattoConStanza, "l'interruttore dello scatto con la stanza non torna uguale dallo spazio")
+    }
+
     private static func provaAziende() throws {
         var dati = DatiPrisma.demo()
         guard let i = dati.clienti.firstIndex(where: { !$0.elencoAziende.isEmpty }) else {
@@ -322,6 +350,72 @@ enum ProvaOvunque {
         }
     }
 
+    /// Territorio («Luce» giro 11, decisione 44): la posizione a mano del cliente e le impostazioni del Territorio entrano
+    /// nell'istantanea cifrata e ne tornano uguali; la conferma di un appuntamento proposto dal Territorio, fatta sul
+    /// dispositivo, arriva al Mac (`daConfermare` è fra i campi sincronizzati dell'appuntamento).
+    private static func provaTerritorio() throws {
+        var dati = DatiPrisma.demo()
+        guard !dati.clienti.isEmpty else { throw Fallita(motivo: "nessun cliente nei dati di prova") }
+        dati.clienti[0].luogo = LuogoManuale(coordinata: Coordinata(lat: 44.5, lon: 11.35), nota: "Posizione di prova")
+        dati.impostazioni.territorio.fattoreStrada = 1.5
+        let istantanea = SpazioOvunque.datiIstantanea(dati)
+        try controlla(istantanea.clienti[0].luogo == dati.clienti[0].luogo && istantanea.impostazioni.territorio.fattoreStrada == 1.5,
+                      "la posizione a mano o le impostazioni del Territorio non entrano nell'istantanea di Prisma ovunque")
+        let letta = try JSONOvunque.decodificatore().decode(DatiPrisma.self, from: JSONOvunque.codificatore().encode(istantanea))
+        try controlla(letta.clienti[0].luogo == dati.clienti[0].luogo && letta.impostazioni.territorio == dati.impostazioni.territorio,
+                      "la posizione a mano o le impostazioni del Territorio non tornano uguali dall'istantanea")
+        try controlla(CampiOvunque.regole(.appuntamento).campi.contains("daConfermare"),
+                      "la conferma dell'appuntamento proposto dal Territorio non si sincronizza")
+        var mac = DatiPrisma.demo()
+        guard let i = mac.appuntamenti.indices.first else { throw Fallita(motivo: "nessun appuntamento nei dati di prova") }
+        mac.appuntamenti[i].daConfermare = true
+        var dispositivo = mac
+        dispositivo.appuntamenti[i].daConfermare = nil
+        let differenze = RegistroOvunque.differenze(da: mac, a: dispositivo)
+        try controlla(differenze.count == 1 && differenze.first?.campo == "daConfermare",
+                      "confermare sul dispositivo non registra un'operazione sulla conferma dell'appuntamento")
+        if let d = differenze.first {
+            let op = OperazioneOvunque(id: "op-conferma", dispositivo: "ipad-prova", lamport: 1, seq: 1, data: Date(), base: 1,
+                                       entita: d.entita, entitaId: d.entitaId, tipo: d.tipo, campo: d.campo, prima: d.prima, dopo: d.dopo)
+            let esito = MotoreUnioneOvunque.applica(op, a: &mac)
+            try controlla(mac.appuntamenti[i].daConfermare == nil,
+                          "la conferma fatta sul dispositivo non arriva sul Mac (esito \(esito))")
+        }
+    }
+
+    /// Le pratiche dopo la firma sull'iPhone («Luce» §7.3.4, decisione 44): entrano nell'istantanea; un passo segnato sul
+    /// dispositivo diventa un'operazione del giornale sui soli passi (e sulla chiusura) e il Mac la unisce; le note scritte
+    /// sul dispositivo non viaggiano, e le pratiche non si creano né si eliminano dal giornale.
+    private static func provaPraticheOvunque() throws {
+        var mac = DatiPrisma.demo()
+        guard let i = mac.pratiche.indices.first else { throw Fallita(motivo: "nessuna pratica nei dati di prova") }
+        let originale = mac
+        let istantanea = SpazioOvunque.datiIstantanea(mac)
+        try controlla(istantanea.pratiche == mac.pratiche, "le pratiche non entrano nell'istantanea di Prisma ovunque")
+        let regole = CampiOvunque.regole(.pratica)
+        try controlla(regole.campi == ["passi", "conclusaIl"] && !regole.creabile && !regole.eliminabile,
+                      "dal giornale le pratiche si devono poter cambiare solo nei passi")
+        var dispositivo = mac
+        var p = dispositivo.pratiche[i]
+        let passo = PassoPratica.allCases.first { p.segno($0) == nil } ?? .consegnata
+        MotorePratiche.segna(passo, fatto: true, il: ora(3), pratica: &p, dati: dispositivo)
+        p.note = (p.note ?? []) + [NotaPratica(data: ora(3), testo: "Nota scritta sul telefono")]
+        dispositivo.pratiche[i] = p
+        let differenze = RegistroOvunque.differenze(da: mac, a: dispositivo)
+        try controlla(!differenze.isEmpty && differenze.allSatisfy { $0.entita == .pratica && $0.tipo == .modificaCampo
+                        && ($0.campo == "passi" || $0.campo == "conclusaIl") },
+                      "segnare un passo sul dispositivo non registra un'operazione sui passi della pratica (o porta altro)")
+        for (k, d) in differenze.enumerated() {
+            let op = OperazioneOvunque(id: "op-passo-\(k)", dispositivo: idTelefono, lamport: k + 1, seq: k + 1, data: ora(3), base: 1,
+                                       entita: d.entita, entitaId: d.entitaId, tipo: d.tipo, campo: d.campo, prima: d.prima, dopo: d.dopo)
+            let esito = MotoreUnioneOvunque.applica(op, a: &mac)
+            try controlla(mac.pratiche[i].segno(passo) == dispositivo.pratiche[i].segno(passo) || d.campo != "passi",
+                          "il passo segnato sul dispositivo non arriva sul Mac (esito \(esito))")
+        }
+        try controlla(mac.pratiche[i].segno(passo)?.fatto == true, "il passo segnato sul dispositivo non arriva sul Mac")
+        try controlla(mac.pratiche[i].note == originale.pratiche[i].note, "le note della pratica non devono arrivare dal giornale")
+    }
+
     /// «Compila da solo» («Luce» giro 10, decisioni 40 e 44): l'IBAN dei clienti e i moduli compilati non entrano mai
     /// nell'istantanea dello spazio (nemmeno con l'interruttore dell'IBAN acceso); il luogo di nascita sì, cifrato come il
     /// resto dell'anagrafica. I modelli di modulo stanno in Moduli/, fuori dall'archivio.
@@ -349,6 +443,150 @@ enum ProvaOvunque {
                       "il luogo di nascita non torna dall'istantanea o l'IBAN è tornato")
         // L'archivio del Mac li tiene
         try controlla(dati.clienti[i].iban == iban && dati.documenti.contains { $0.id == d.id }, "l'istantanea ha toccato l'archivio del Mac")
+    }
+
+    /// «Luce» giro 12 (decisione 44): campagne e presentatori vanno nello spazio; i potenziali clienti solo con
+    /// «Porta anche i potenziali clienti» acceso; l'archivio del Mac non cambia; sul dispositivo arrivano solo se c'erano.
+    private static func provaLuceClienti() throws {
+        var dati = DatiPrisma.demo()
+        var p = PotenzialeCliente(id: "pot-ovunque", nome: "Potenziale Riservato 8K2W", creatoIl: ora(0))
+        p.patrimonioStimato = 90_000
+        dati.potenziali = [p]
+        dati.campagne = [Campagna(id: "campagna-ovunque", gruppoId: "protezioneFamiglia", gruppoTipo: .protezioneFamiglia,
+                                  titolo: "Famiglia senza protezione", avviataIl: ora(0), tono: .cordiale, canale: .mail,
+                                  clienti: ["giulia"], appuntamenti: [], messaggi: [])]
+        if dati.clienti.count > 1 {
+            dati.clienti[1].presentatoDa = dati.clienti[0].id
+            dati.clienti[1].presentatoIl = ora(0)
+        }
+        // Interruttore spento (di base): niente potenziali, nemmeno un nome nel JSON
+        try controlla(!dati.impostazioni.ovunque.potenzialiNelloSpazio, "l'interruttore dei potenziali è acceso di base")
+        let spento = SpazioOvunque.datiIstantanea(dati)
+        let chiaro = try JSONOvunque.codificatore().encode(spento)
+        let testo = String(decoding: chiaro, as: UTF8.self)
+        try controlla(spento.potenziali.isEmpty && !testo.contains("Potenziale Riservato 8K2W"),
+                      "con l'interruttore spento i potenziali clienti sono nell'istantanea dello spazio")
+        try controlla(spento.campagne == dati.campagne, "le campagne non entrano nell'istantanea dello spazio")
+        try controlla(spento.clienti.map(\.presentatoDa) == dati.clienti.map(\.presentatoDa),
+                      "chi ha presentato i clienti non entra nell'istantanea dello spazio")
+        try controlla(!spento.impostazioni.ovunque.potenzialiNelloSpazio, "l'interruttore del Mac è nell'istantanea")
+        // Interruttore acceso: i potenziali vanno
+        dati.impostazioni.ovunque.potenzialiNelloSpazio = true
+        let acceso = SpazioOvunque.datiIstantanea(dati)
+        try controlla(acceso.potenziali == dati.potenziali, "con l'interruttore acceso i potenziali non entrano nell'istantanea")
+        // L'archivio del Mac li tiene
+        try controlla(dati.potenziali.count == 1 && dati.campagne.count == 1, "l'istantanea ha toccato l'archivio del Mac")
+        // Sul dispositivo arrivano solo se c'erano
+        let ist = IstantaneaOvunque(generazione: 1, mac: idMac, nomeMac: "Mac di prova", scrittaIl: ora(1), vistoFinoA: [:],
+                                    lamport: 1, modificheAmmesse: true, dati: spento)
+        let locale = DatiPrisma.demo()
+        let senza = SincroniaOvunque.accogli(ist, in: locale).dati
+        try controlla(senza.potenziali.isEmpty && senza.campagne == dati.campagne,
+                      "sul dispositivo arrivano potenziali che lo spazio non aveva (o non arrivano le campagne)")
+        let ist2 = IstantaneaOvunque(generazione: 2, mac: idMac, nomeMac: "Mac di prova", scrittaIl: ora(2), vistoFinoA: [:],
+                                     lamport: 2, modificheAmmesse: true, dati: acceso)
+        try controlla(SincroniaOvunque.accogli(ist2, in: locale).dati.potenziali == dati.potenziali,
+                      "sul dispositivo non arrivano i potenziali dello spazio")
+    }
+
+    /// La nota vocale e il nuovo cliente («Luce» giro 13, decisione 44): le note dettate sull'iPhone non entrano mai
+    /// nell'istantanea dello spazio e il dispositivo, accogliendola, tiene le sue (vuote); la cittadinanza del cliente invece
+    /// passa, cifrata come il luogo di nascita.
+    private static func provaNoteInArrivo() throws {
+        var dati = DatiPrisma.demo()
+        guard let i = dati.clienti.firstIndex(where: { $0.id == "giulia" }) else { throw Fallita(motivo: "manca Giulia nei dati di prova") }
+        dati.clienti[i].cittadinanza = "Italiana"
+        dati.noteInArrivo = [NotaVocaleDiProva.inArrivo(dati, oggi: ora(0))]
+        let istantanea = SpazioOvunque.datiIstantanea(dati)
+        try controlla(istantanea.noteInArrivo.isEmpty, "le note dettate sull'iPhone entrano nell'istantanea di Prisma ovunque")
+        let chiaro = try JSONOvunque.codificatore().encode(istantanea)
+        try controlla(!String(decoding: chiaro, as: UTF8.self).contains("mandarle il confronto"),
+                      "il testo di una nota dettata è nell'istantanea di Prisma ovunque")
+        let letto = try JSONOvunque.decodificatore().decode(DatiPrisma.self, from: chiaro)
+        try controlla(letto.clienti.first { $0.id == "giulia" }?.cittadinanza == "Italiana", "la cittadinanza non torna dall'istantanea")
+        var telefono = DatiPrisma.demo()
+        telefono.noteInArrivo = []
+        let ist = IstantaneaOvunque(generazione: 1, mac: "mac-prova", nomeMac: "Mac", scrittaIl: Date(), vistoFinoA: [:], lamport: 0,
+                                    modificheAmmesse: true, dati: istantanea)
+        try controlla(SincroniaOvunque.accogli(ist, in: telefono).dati.noteInArrivo.isEmpty,
+                      "accogliendo l'istantanea il dispositivo riceve note dettate")
+        try controlla(dati.noteInArrivo.count == 1, "l'istantanea ha toccato le note dell'archivio del Mac")
+    }
+
+    /// «Stanotte» («Luce» giro 14): le carte della notte e le sue impostazioni non entrano mai nell'istantanea dello spazio,
+    /// e il dispositivo, accogliendola, tiene le sue (le carte non vanno su iPhone/iPad).
+    private static func provaNotteOvunque() throws {
+        var dati = DatiPrisma.demo()
+        dati.notti = [NotteDiProva.notte(dati, oggi: ora(0))]
+        dati.impostazioni.notte.attivo = true
+        let istantanea = SpazioOvunque.datiIstantanea(dati)
+        try controlla(istantanea.notti.isEmpty, "le carte della notte entrano nell'istantanea di Prisma ovunque")
+        try controlla(istantanea.impostazioni.notte == ImpostazioniNotte(), "le impostazioni di «Stanotte» entrano nell'istantanea")
+        let chiaro = try JSONOvunque.codificatore().encode(istantanea)
+        try controlla(!String(decoding: chiaro, as: UTF8.self).contains(NotteDiProva.prefisso),
+                      "una carta della notte è nell'istantanea di Prisma ovunque")
+        var telefono = DatiPrisma.demo()
+        telefono.notti = []
+        let ist = IstantaneaOvunque(generazione: 1, mac: "mac-prova", nomeMac: "Mac", scrittaIl: Date(), vistoFinoA: [:], lamport: 0,
+                                    modificheAmmesse: true, dati: istantanea)
+        try controlla(SincroniaOvunque.accogli(ist, in: telefono).dati.notti.isEmpty,
+                      "accogliendo l'istantanea il dispositivo riceve carte della notte")
+        try controlla(dati.notti.count == 1, "l'istantanea ha toccato le notti dell'archivio del Mac")
+    }
+
+    /// Le cose date al cliente («Luce» giro 15, decisione 44): capsule e uscite non entrano nell'istantanea; i sinistri
+    /// entrano senza descrizione, numero, stime, importo e file dei documenti; il dispositivo, accogliendola, tiene le
+    /// sue capsule e uscite (vuote); l'archivio del Mac non cambia.
+    private static func controllaGiro15() throws {
+        var dati = DatiPrisma.demo()
+        let capsula = CapsulaTempo(id: "capsula-ovunque", clienteId: "giulia", apertura: .data(ora(600)),
+                                   titoloObiettivo: "Obiettivo riservato 3H8T", sigillataIl: ora(0),
+                                   sigillo: Data("sigillo di prova 5M2X".utf8), chiaveId: "chiave-prova")
+        let uscita = UscitaCliente(id: "uscita-ovunque", clienteId: "giulia", genere: .biglietto, quando: ora(1),
+                                   descrizione: "Biglietto riservato 9P4K", via: "AirDrop", documentoId: nil, protetto: false)
+        var sinistro = Sinistro(id: "sinistro-ovunque", clienteId: "giulia", titolo: "Furto di prova", apertoIl: ora(2))
+        sinistro.descrizione = "Descrizione riservata 6W1R"
+        sinistro.numeroSinistro = "SIN-PROVA-4417"
+        sinistro.stimaMinima = 1_234
+        sinistro.stimaMassima = 1_876
+        sinistro.pagato = 1_543
+        sinistro.fase = .perizia
+        sinistro.eventi = [EventoSinistro(id: "ev-1", data: ora(3), testo: "Denuncia fatta", fase: .denuncia)]
+        sinistro.documenti = [DocumentoSinistro(id: "doc-1", titolo: "Denuncia", ricevutoIl: ora(3), documentoId: "doc-riservato-2Q7V")]
+        dati.capsule = [capsula]
+        dati.uscite = [uscita]
+        dati.sinistri = [sinistro]
+        let istantanea = SpazioOvunque.datiIstantanea(dati)
+        try controlla(istantanea.capsule.isEmpty && istantanea.uscite.isEmpty,
+                      "le capsule del tempo o le uscite entrano nell'istantanea di Prisma ovunque")
+        let chiaro = try JSONOvunque.codificatore().encode(istantanea)
+        let testo = String(decoding: chiaro, as: UTF8.self)
+        for segreto in ["Obiettivo riservato 3H8T", "Biglietto riservato 9P4K", "Descrizione riservata 6W1R", "SIN-PROVA-4417",
+                        "doc-riservato-2Q7V"] {
+            try controlla(!testo.contains(segreto), "«\(segreto)» è nell'istantanea di Prisma ovunque")
+        }
+        let letto = try JSONOvunque.decodificatore().decode(DatiPrisma.self, from: chiaro)
+        guard let s = letto.sinistri.first(where: { $0.id == sinistro.id }) else {
+            throw Fallita(motivo: "il sinistro non entra nell'istantanea di Prisma ovunque")
+        }
+        try controlla(s.titolo == sinistro.titolo && s.fase == .perizia && s.eventi == sinistro.eventi && s.documenti.count == 1,
+                      "il sinistro non torna con titolo, fase, fatti e documenti dall'istantanea")
+        try controlla(s.descrizione.isEmpty && s.numeroSinistro == nil && s.stimaMinima == nil && s.stimaMassima == nil
+                      && s.pagato == nil && s.documenti.allSatisfy { $0.documentoId == nil },
+                      "il sinistro entra nell'istantanea con descrizione, numero, stime, importo o file")
+        // L'archivio del Mac non cambia
+        try controlla(dati.capsule == [capsula] && dati.uscite == [uscita] && dati.sinistri == [sinistro],
+                      "l'istantanea ha toccato capsule, uscite o sinistri dell'archivio del Mac")
+        // Sul dispositivo: capsule e uscite restano le sue
+        var telefono = DatiPrisma.demo()
+        telefono.capsule = []
+        telefono.uscite = []
+        let ist = IstantaneaOvunque(generazione: 1, mac: idMac, nomeMac: "Mac di prova", scrittaIl: ora(4), vistoFinoA: [:],
+                                    lamport: 1, modificheAmmesse: true, dati: istantanea)
+        let accolto = SincroniaOvunque.accogli(ist, in: telefono).dati
+        try controlla(accolto.capsule.isEmpty && accolto.uscite.isEmpty,
+                      "accogliendo l'istantanea il dispositivo riceve capsule o uscite")
+        try controlla(accolto.sinistri.map(\.id).contains(sinistro.id), "il dispositivo non riceve i sinistri dello spazio")
     }
 
     private static func provaSpaziLuce() throws {

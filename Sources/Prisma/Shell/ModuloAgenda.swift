@@ -80,6 +80,18 @@ struct ModuloAppuntamento: View {
                         .labelsHidden()
                         .frame(width: Tema.Apple.Studio.Spese.Moduli.sceltaPresso)
                     }
+                    // Proposto dal Territorio con «＋ Aggiungi … al giro» («Luce» giro 11): si conferma qui
+                    if bozza.daConfermare == true {
+                        CampoModulo(etichetta: "Da confermare") {
+                            HStack(spacing: Tema.Apple.Territorio.Pannello.spazio) {
+                                Text("Proposto dal Territorio: da confermare")
+                                    .font(Tipo.campoValore)
+                                    .foregroundColor(Colori.Rubrica.testo)
+                                Button("Conferma") { bozza.daConfermare = nil }
+                                    .buttonStyle(.apple)
+                            }
+                        }
+                    }
                     if !nuovo {
                         CampoModulo(etichetta: "Stato") {
                             Toggle("Incontro concluso", isOn: Binding(get: { bozza.stato == .concluso },

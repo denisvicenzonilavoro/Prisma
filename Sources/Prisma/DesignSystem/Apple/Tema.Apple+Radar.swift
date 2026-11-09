@@ -77,6 +77,10 @@ extension Tema.Apple.Posizioni {
         static let spessoreAnello: CGFloat = 2
         static let anelloGrande: CGFloat = 22
         static let anelloPiccolo: CGFloat = 14
+        /// Il punto scelto con Tab (§8.3.4 «Tastiera»): anello bianco pieno 2,5 a 27 dal centro, attorno a quello arancio.
+        static let anelloTastiera: CGFloat = 27
+        static let spessoreAnelloTastiera: CGFloat = 2.5
+        static let coloreAnelloTastiera = Color.white.opacity(0.9)
         /// «Proposta pronta» (decisione 2): anello tratteggiato verde e un trattino verso dove andrebbe il punto.
         static let tratteggioProposta: [CGFloat] = [3, 3]
         static let anelloProposta = verdeRadar

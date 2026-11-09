@@ -104,6 +104,34 @@ struct DatiPrisma: Codable, Equatable {
     /// «Tre livelli» (17): le spiegazioni per te, per il cliente e in una pagina, con le cifre di Prisma da cui nascono.
     /// Restano sul Mac (non entrano in Prisma ovunque).
     var spiegazioniTreLivelli: [SpiegazioneTreLivelli] = []
+    /// Clienti › Potenziali («Luce» giro 12, versione 27, PotenzialeCliente.swift): i potenziali clienti con fonte, stima
+    /// facoltativa, probabilità e data scritte dall'utente, informativa e consenso al contatto. Un elenco a sé, non
+    /// clienti (decisione 94). In «Prisma ovunque» solo con `ImpostazioniOvunque.potenzialiNelloSpazio`.
+    var potenziali: [PotenzialeCliente] = []
+    /// Messaggi › Campagne («Luce» giro 12, versione 27, Campagna.swift): lo storico delle campagne avviate (i testi sono
+    /// messaggi del cliente in `messaggi`).
+    var campagne: [Campagna] = []
+    /// Le note dettate sull'iPhone e arrivate sul Mac (versione 27, «Luce» giro 13, `Dati/NotaInArrivo.swift`): il testo, il
+    /// cliente e le proposte da confermare. Sezione «ovunque» della cartella a pezzi, nei backup, mai in «Prisma ovunque»;
+    /// le decise si tolgono dopo 30 giorni.
+    var noteInArrivo: [NotaInArrivo] = []
+    /// «Stanotte Prisma ha lavorato» (versione 27, «Luce» giro 14, `Dati/LavoroNotte.swift`): le notti di lavoro con le
+    /// carte preparate e il loro materiale (ultime 14). Sezione «relazione» della cartella a pezzi, nei backup, mai in
+    /// «Prisma ovunque».
+    var notti: [NotteDiLavoro] = []
+    /// Le capsule del tempo (versione 27, «Luce» giro 15, `Dati/CapsulaTempo.swift`): solo il testo sigillato e cifrato,
+    /// mai in chiaro. Nel file del cliente della cartella a pezzi e nei backup; mai in «Prisma ovunque».
+    var capsule: [CapsulaTempo] = []
+    /// I sinistri (versione 27, «Luce» giro 15, `Dati/Sinistro.swift`): fasi, fatti brevi, documenti e stime. Sezione
+    /// «pratiche» della cartella a pezzi, nei backup; in «Prisma ovunque» limitati (`SpazioOvunque.sinistroPerOvunque`).
+    var sinistri: [Sinistro] = []
+    /// La traccia delle cose date al cliente (versione 27, «Luce» giro 15, `Dati/UscitaCliente.swift`): data, cosa, via,
+    /// mai la password né il contenuto. Nel file del cliente e nei backup; mai in «Prisma ovunque».
+    var uscite: [UscitaCliente] = []
+    /// Le lettere dal futuro conservate (versione 27, «Sala: racconti», §3.1.5 punto 5, `Dati/LetteraFuturo.swift`): solo
+    /// quelle aggiunte al Prisma del cliente o salvate in PDF, l'ultima per cliente e versione. Nel file del cliente e nei
+    /// backup; mai in «Prisma ovunque» (D-L8).
+    var lettere: [LetteraFuturo] = []
     var clienteAttivoId: String
     var impostazioni: Impostazioni
 
@@ -178,8 +206,9 @@ struct DatiPrisma: Codable, Equatable {
     ///     Giro 8 («Sala: racconti senza uscita»): l'inizio del rapporto con il cliente (`Cliente.clienteDal`),
     ///     l'indennizzo stimato per evento delle polizze (`Posizione.indennizzoStimato`) e le impostazioni della Sala
     ///     (`Impostazioni.sala`: eventi di Lancia l'anno con probabilità e fonte, anni della partita, avvertenze e titolo
-    ///     del valore approvati), tutti letti con tolleranza. Le lettere dal futuro e le partite di Lancia l'anno non si
-    ///     salvano.
+    ///     del valore approvati), tutti letti con tolleranza. Le partite di Lancia l'anno non si salvano; le lettere dal
+    ///     futuro si salvano solo quando il consulente le conserva (`lettere`, «Aggiungi al Prisma» o PDF, lette con
+    ///     tolleranza: l'ultima per cliente e versione; mai in «Prisma ovunque»).
     ///     Giro 9: chilometri, spese e scadenze del consulente (`speseStudio`: spese con gli scontrini, scadenze, corsi di
     ///     aggiornamento e le visite tenute dei clienti eliminati `visiteTolte`, letti con tolleranza), le loro impostazioni (`Impostazioni.studio.spese`: partenza,
     ///     correzioni dei giri, ore richieste per anno, nomi nel pacchetto spenti) e dove si
@@ -193,6 +222,21 @@ struct DatiPrisma: Codable, Equatable {
     ///     Vera, fase 5: le versioni di «Vera su misura» con l'esame (`ImpostazioniVera.suMisura`), il tipo di motore
     ///     esterno (`ImpostazioniVera.motoreEsterno`, non collegato) e, nella memoria cifrata, id, modalità ed esclusione
     ///     degli esempi approvati; tutti letti con tolleranza.
+    ///     Giro 11: la posizione a mano del cliente (`Cliente.luogo`), l'appuntamento da confermare
+    ///     (`Appuntamento.daConfermare`) e le impostazioni del Territorio (`Impostazioni.territorio`), letti con
+    ///     tolleranza. Le tabelle dei comuni e dei confini sono risorse, non archivio.
+    ///     Giro 12: i potenziali clienti (`potenziali`) e lo storico delle campagne (`campagne`), nella sezione
+    ///     «relazione», chi ha presentato il cliente e quando (`Cliente.presentatoDa`, `Cliente.presentatoIl`) e i
+    ///     messaggi `campagna` e `richiestaPresentazione`, tutti letti con tolleranza (un potenziale senza id o nome e
+    ///     una campagna senza id si scartano; un Prisma di prima salta i messaggi con i tipi nuovi).
+    ///     Giro 13: le note dettate sull'iPhone (`noteInArrivo`, con le proposte da confermare, lette con tolleranza:
+    ///     una nota illeggibile si scarta) e la cittadinanza del cliente (`Cliente.cittadinanza`).
+    ///     Giro 14: il lavoro della notte (`notti`, ultime 14, lette con tolleranza) e le sue impostazioni
+    ///     (`Impostazioni.notte`).
+    ///     Giro 15: le capsule del tempo (`capsule`, solo il sigillo cifrato), i sinistri (`sinistri`, sezione «pratiche»),
+    ///     la traccia delle cose date al cliente (`uscite`), lo stato del Prisma del cliente (`Cliente.prismaCliente`), il
+    ///     consenso a WhatsApp (`Consensi.whatsapp`) e le avvertenze del file e del film con l'interruttore dell'HTML
+    ///     (`ImpostazioniSala`), tutti letti con tolleranza (un elemento illeggibile si scarta).
     static let versioneAttuale = 27
 
     init(clienti: [Cliente], appuntamenti: [Appuntamento], attivita: [Attivita], posizioni: [Posizione],
@@ -242,6 +286,11 @@ struct DatiPrisma: Codable, Equatable {
         TraguardiDiProva.applica(&d)
         // Chilometri, spese e scadenze («Luce» giro 9): spese, corsi e scadenze non fiscali, segnati «dati di prova»
         SpeseDiProva.applica(&d)
+        // I potenziali clienti («Luce» giro 12): gli otto del template, segnati «dati di prova»
+        PotenzialiDiProva.applica(&d)
+        // Le cose date al cliente («Luce» giro 15): capsule del tempo e sinistri, segnati «dati di prova»
+        CapsuleDiProva.applica(&d)
+        SinistriDiProva.applica(&d)
         return d
     }
 
@@ -263,6 +312,11 @@ struct DatiPrisma: Codable, Equatable {
         case promesse, confrontiDocumenti, coperture
         case speseStudio, kmClienti
         case routine, tagliando, sussurriChiusi, spiegazioniTreLivelli
+        case potenziali, campagne
+        case noteInArrivo
+        case notti
+        case capsule, sinistri, uscite
+        case lettere
     }
 
     /// Lettura tollerante: gli archivi delle versioni precedenti non hanno tutte le sezioni.
@@ -337,6 +391,19 @@ struct DatiPrisma: Codable, Equatable {
         tagliando = ((try? c.decodeIfPresent(StatoTagliando.self, forKey: .tagliando)) ?? nil) ?? StatoTagliando()
         sussurriChiusi = ((try? c.decodeIfPresent(ElencoTollerante<SussurroChiuso>.self, forKey: .sussurriChiusi)) ?? nil)?.elementi ?? []
         spiegazioniTreLivelli = ((try? c.decodeIfPresent(ElencoTollerante<SpiegazioneTreLivelli>.self, forKey: .spiegazioniTreLivelli)) ?? nil)?.elementi ?? []
+        // Potenziali clienti e campagne (versione 27, giro 12): un elemento illeggibile si scarta, gli altri restano
+        potenziali = ((try? c.decodeIfPresent(ElencoTollerante<PotenzialeCliente>.self, forKey: .potenziali)) ?? nil)?.elementi ?? []
+        campagne = ((try? c.decodeIfPresent(ElencoTollerante<Campagna>.self, forKey: .campagne)) ?? nil)?.elementi ?? []
+        // Le note dall'iPhone (versione 27, giro 13): una nota illeggibile si scarta, le altre restano
+        noteInArrivo = ((try? c.decodeIfPresent(ElencoTollerante<NotaInArrivo>.self, forKey: .noteInArrivo)) ?? nil)?.elementi ?? []
+        // Le notti di lavoro (versione 27, giro 14): una notte illeggibile si scarta, le altre restano
+        notti = ((try? c.decodeIfPresent(ElencoTollerante<NotteDiLavoro>.self, forKey: .notti)) ?? nil)?.elementi ?? []
+        // Le cose date al cliente (versione 27, giro 15): un elemento illeggibile si scarta, gli altri restano
+        capsule = ((try? c.decodeIfPresent(ElencoTollerante<CapsulaTempo>.self, forKey: .capsule)) ?? nil)?.elementi ?? []
+        sinistri = ((try? c.decodeIfPresent(ElencoTollerante<Sinistro>.self, forKey: .sinistri)) ?? nil)?.elementi ?? []
+        uscite = ((try? c.decodeIfPresent(ElencoTollerante<UscitaCliente>.self, forKey: .uscite)) ?? nil)?.elementi ?? []
+        // Le lettere dal futuro conservate (versione 27): una lettera illeggibile si scarta, le altre restano
+        lettere = ((try? c.decodeIfPresent(ElencoTollerante<LetteraFuturo>.self, forKey: .lettere)) ?? nil)?.elementi ?? []
         clienteAttivoId = try c.decodeIfPresent(String.self, forKey: .clienteAttivoId) ?? (clienti.first?.id ?? "")
         impostazioni = try c.decodeIfPresent(Impostazioni.self, forKey: .impostazioni) ?? Impostazioni()
     }
@@ -396,6 +463,14 @@ struct DatiPrisma: Codable, Equatable {
         try metti(tagliando, .tagliando)
         try metti(sussurriChiusi, .sussurriChiusi)
         try metti(spiegazioniTreLivelli, .spiegazioniTreLivelli)
+        try metti(potenziali, .potenziali)
+        try metti(campagne, .campagne)
+        try metti(noteInArrivo, .noteInArrivo)
+        try metti(notti, .notti)
+        try metti(capsule, .capsule)
+        try metti(sinistri, .sinistri)
+        try metti(uscite, .uscite)
+        try metti(lettere, .lettere)
         try metti(clienteAttivoId, .clienteAttivoId)
         try metti(impostazioni, .impostazioni)
     }
@@ -470,8 +545,8 @@ struct Impostazioni: Codable, Equatable {
     /// Le pratiche dopo la firma: dopo quanti giorni senza un passo nuovo una pratica è ferma (Impostazioni › Pratiche).
     /// Versione 27 («Luce» giro 3), letta con tolleranza: senza, 7 giorni.
     var pratiche = ImpostazioniPratiche()
-    /// «La tua settimana, il tuo anno» (versione 27, «Luce» giro 5): l'apertura da sola del lunedì (accesa di base) e
-    /// la settimana e l'anno già visti. Letta con tolleranza.
+    /// «La tua settimana, il tuo anno» (versione 27, «Luce» giro 5): la settimana e l'anno già visti (l'apertura da
+    /// sola del lunedì non c'è più, decisione 128: resta solo il campo, spento). Letta con tolleranza.
     var storie = ImpostazioniStorie()
     /// I traguardi festeggiati (versione 27, «Luce» giro 5): tipi spenti, anniversari, festeggiati e scartati. Letta
     /// con tolleranza.
@@ -490,6 +565,13 @@ struct Impostazioni: Codable, Equatable {
     /// in Mail o in Messaggi e corretto da lui. Solo regole, mai testi. Fuori da `vera` di proposito (ogni cambio di
     /// `vera` fa ripartire Vera e il ponte, e Prisma ovunque azzera `vera`). Letto con tolleranza: senza, il profilo vuoto.
     var stileVera = ProfiloStile()
+    /// Impostazioni › Territorio (versione 27, «Luce» giro 11): stima delle distanze (fattore strada, velocità, minuti
+    /// minimi), deviazione e visita breve del giro, zone dell'utente, attenzioni che accendono l'anello e partenza.
+    /// Letta con tolleranza: senza, i valori di base dichiarati «stima». Non entra nei calcoli in cache.
+    var territorio = ImpostazioniTerritorio()
+    /// Impostazioni › Vera › «Stanotte» (versione 27, «Luce» giro 14): il lavoro della notte, spento di base, l'ora di
+    /// inizio, le bozze di Vera, i tipi di carta e la notifica del mattino (spenta). Letta con tolleranza: senza, spento.
+    var notte = ImpostazioniNotte()
 
     init() {}
 
@@ -509,6 +591,8 @@ struct Impostazioni: Codable, Equatable {
         case palestra
         case sala
         case tagliando, stileVera
+        case territorio
+        case notte
     }
 
     init(from decoder: Decoder) throws {
@@ -570,6 +654,10 @@ struct Impostazioni: Codable, Equatable {
         // Tagliando dei dati e profilo di stile (versione 27, Vera fase 4): senza o illeggibili, i valori di base
         tagliando = ((try? c.decodeIfPresent(ImpostazioniTagliando.self, forKey: .tagliando)) ?? nil) ?? ImpostazioniTagliando()
         stileVera = ((try? c.decodeIfPresent(ProfiloStile.self, forKey: .stileVera)) ?? nil) ?? ProfiloStile()
+        // Territorio (versione 27, giro 11): senza o illeggibile, i valori di base
+        territorio = ((try? c.decodeIfPresent(ImpostazioniTerritorio.self, forKey: .territorio)) ?? nil) ?? ImpostazioniTerritorio()
+        // Stanotte (versione 27, giro 14): senza o illeggibile, spento
+        notte = ((try? c.decodeIfPresent(ImpostazioniNotte.self, forKey: .notte)) ?? nil) ?? ImpostazioniNotte()
     }
 }
 

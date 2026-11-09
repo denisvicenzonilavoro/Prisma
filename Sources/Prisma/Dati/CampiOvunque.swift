@@ -90,7 +90,7 @@ enum CampiOvunque {
                           creabile: true, eliminabile: true, conCliente: true)
         case .appuntamento:
             return Regole(campi: ["clienteId", "titolo", "inizio", "durataMinuti", "luogo", "note", "stato", "tipo", "canale", "posizioneId",
-                                  "presso"],
+                                  "presso", "daConfermare"],
                           servizio: [], creabile: true, eliminabile: true, conCliente: true)
         case .bisogni:
             // Il profilo dei bisogni non si crea né si elimina: c'è con il cliente (id = id del cliente)
@@ -105,6 +105,9 @@ enum CampiOvunque {
                           creabile: true, eliminabile: false, conCliente: true)
         case .inquadratura:
             return Regole(campi: ["clienteId"], servizio: [], creabile: true, eliminabile: true, conCliente: true)
+        case .pratica:
+            // Solo i passi segnati (e la chiusura che ne segue): note, sollecito e nascita restano del Mac
+            return Regole(campi: ["passi", "conclusaIl"], servizio: [], creabile: false, eliminabile: false, conCliente: false)
         }
     }
 
@@ -127,6 +130,7 @@ enum CampiOvunque {
         case .eventoVita: return dizionari(d.eventiVita, c)
         case .sessioneCopilota: return dizionari(d.sessioniCopilota.map(senzaTrascrizione), c)
         case .inquadratura: return dizionari(d.inquadratureDaConfermare, c)
+        case .pratica: return dizionari(d.pratiche, c)
         case .bisogni:
             var r: [String: [String: Any]] = [:]
             for cliente in d.clienti {
@@ -147,6 +151,7 @@ enum CampiOvunque {
         case .sessioneCopilota:
             return d.sessioniCopilota.first { $0.id == id }.map(senzaTrascrizione).flatMap { JSONOvunque.dizionario($0, con: c) }
         case .inquadratura: return d.inquadratureDaConfermare.first { $0.id == id }.flatMap { JSONOvunque.dizionario($0, con: c) }
+        case .pratica: return d.pratiche.first { $0.id == id }.flatMap { JSONOvunque.dizionario($0, con: c) }
         case .bisogni: return d.clienti.first { $0.id == id }.flatMap { JSONOvunque.dizionario($0.bisogni, con: c) }
         }
     }
@@ -160,6 +165,7 @@ enum CampiOvunque {
         case .appuntamento: return metti(json, id: id, in: &d.appuntamenti)
         case .eventoVita: return metti(json, id: id, in: &d.eventiVita)
         case .inquadratura: return metti(json, id: id, in: &d.inquadratureDaConfermare)
+        case .pratica: return metti(json, id: id, in: &d.pratiche)
         case .bisogni:
             guard let i = d.clienti.firstIndex(where: { $0.id == id }),
                   let profilo = JSONOvunque.decodifica(ProfiloBisogni.self, da: json) else { return false }
@@ -203,7 +209,7 @@ enum CampiOvunque {
         case .eventoVita: return via(&d.eventiVita)
         case .sessioneCopilota: return via(&d.sessioniCopilota)
         case .inquadratura: return via(&d.inquadratureDaConfermare)
-        case .bisogni: return false
+        case .pratica, .bisogni: return false
         }
     }
 

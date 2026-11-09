@@ -1705,8 +1705,29 @@ enum Istantanee {
         tutteLeScene += sceneAzienda
         // «Luce», giro 9: Studio › Spese, chilometri, spese e scadenze (Shell/IstantaneeSpese.swift)
         tutteLeScene += sceneSpese
+        // «Luce», giro 11: Territorio, il tuo territorio (Shell/IstantaneeTerritorio.swift)
+        tutteLeScene += sceneTerritorio
         // «Luce», giro 6: Biblioteca · Trova la pagina (Shell/IstantaneeBiblioteca.swift)
         tutteLeScene += sceneBiblioteca
+        // «Luce», giro 12: Clienti › Potenziali e Passaparola (Shell/IstantaneeClientiLuce.swift)
+        tutteLeScene += scenePotenziali
+        // «Luce», giro 12: Messaggi › Campagne (Shell/IstantaneeCampagne.swift)
+        tutteLeScene += sceneCampagne
+        // «Luce», giro 13: nuovo cliente in 10 secondi (Shell/IstantaneeNuovoCliente.swift) e la nota vocale
+        // (Shell/IstantaneeNotaVocale.swift)
+        tutteLeScene += sceneNuovoCliente
+        tutteLeScene += sceneNotaVocale
+        // «Luce» giro 14: Stanotte Prisma ha lavorato (IstantaneeNotte.swift)
+        tutteLeScene += sceneNotte
+        // «Luce», giro 15: le cose date al cliente. Sala › Il Prisma del cliente, il film del piano, la capsula del tempo
+        // e Pratiche › Sinistri (Shell/IstantaneeSalaPrismaCliente.swift, IstantaneeSalaFilm.swift,
+        // IstantaneeSalaCapsula.swift, IstantaneePraticheSinistri.swift)
+        tutteLeScene += sceneSalaPrismaCliente
+        tutteLeScene += sceneSalaFilm
+        tutteLeScene += sceneSalaCapsula
+        tutteLeScene += scenePraticheSinistri
+        // «Luce», giro 16: la realtà aumentata e il tavolo a doppio senso (Shell/IstantaneeSalaRealta.swift)
+        tutteLeScene += sceneSalaRealta
         // Ripresa (PRISMA_ISTANTANEE_RIPRESA=1, solo il workflow): sulla GPU virtuale dei runner Metal può fermare il
         // processo su una scena. Prima di ogni scena se ne scrive il nome in `.in-corso`; il workflow, se il processo si
         // ferma, aggiunge quel nome a `.saltate` e riparte: le scene già scritte e quelle saltate non si rifanno.

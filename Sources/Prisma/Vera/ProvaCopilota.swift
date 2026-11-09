@@ -398,8 +398,23 @@ enum ProvaCopilota {
         let scambiata = BustaPonte(quando: adesso.timeIntervalSince1970, percorso: BustaPonte.copilota, corpo: try? JSONEncoder().encode(inquadratura))
         controlla(ArrivoPonte.leggi(troppe) == nil && ArrivoPonte.leggi(scambiata) == nil && inquadratura.campi.count == 2,
                   "Ponte: oltre i limiti, o con il corpo di un altro messaggio, il Mac non legge niente")
+        // «Luce» giro 13: la carta d'identità e la nota vocale (protocollo 3)
+        let carta = CartaIdentitaPonte(dispositivo: "iPhone di prova", quando: adesso, righe: CartaIdentitaFacSimile.righe())
+        let nota = NotaVocalePonte(id: "nota-prova-ponte", testo: NotaVocaleDiProva.testo, quando: adesso, durata: 12, dispositivo: "iPhone di prova")
+        let bustaCarta = BustaPonte.apri((try? ArrivoPonte.cartaIdentita(carta).busta(k)) ?? Data(), k)
+        controlla(bustaCarta?.versione == 3 && bustaCarta?.percorso == BustaPonte.carta && bustaCarta.flatMap(ArrivoPonte.leggi) == .cartaIdentita(carta),
+                  "Ponte, carta: il testo della carta si sigilla e si riapre uguale (protocollo 3)")
+        let cartaScambiata = BustaPonte(quando: adesso.timeIntervalSince1970, percorso: BustaPonte.carta, corpo: try? JSONEncoder().encode(nota))
+        let cartaEnorme = CartaIdentitaPonte(dispositivo: "iPhone di prova", quando: adesso,
+                                             righe: Array(repeating: RigaLetta(testo: "riga"), count: PonteVera.massimoRighe + 1))
+        let cartaTroppa = BustaPonte(quando: adesso.timeIntervalSince1970, percorso: BustaPonte.carta, corpo: try? JSONEncoder().encode(cartaEnorme))
+        controlla(ArrivoPonte.leggi(cartaScambiata) == nil && ArrivoPonte.leggi(cartaTroppa) == nil,
+                  "Ponte, carta: con il corpo di una nota o oltre i limiti il Mac non legge niente")
+        let bustaNota = BustaPonte.apri((try? ArrivoPonte.notaVocale(nota).busta(k)) ?? Data(), k)
+        controlla(bustaNota?.percorso == BustaPonte.nota && bustaNota.flatMap(ArrivoPonte.leggi) == .notaVocale(nota),
+                  "Ponte, nota: la nota dettata si sigilla e si riapre uguale")
         #if os(macOS)
-        server(codice: codice, arrivo: arrivo, inquadratura: inquadratura, controlla)
+        server(codice: codice, arrivo: arrivo, inquadratura: inquadratura, carta: carta, nota: nota, controlla)
         #endif
         // Sul Mac: senza consenso le schede dell'iPad non entrano; con il consenso entrano come proposte
         let s = StatoShell(persistente: false)
@@ -424,11 +439,27 @@ enum ProvaCopilota {
         controlla(documento?.campi.contains { $0.chiave == .premio && !$0.confermato } == true && s.inquadratureInArrivo.isEmpty
                   && s.dati.posizioni == posizioni,
                   "Ponte, inquadra: il documento nasce con i dati da confermare, Posizioni non cambia")
+        // «Luce» giro 13: la carta d'identità arriva sul Mac solo in memoria, senza nome nelle notifiche
+        let clienti = s.dati.clienti
+        controlla(s.riceviDalPonte(.cartaIdentita(carta)).accettato && s.carteInArrivo.count == 1 && s.dati.clienti == clienti,
+                  "Ponte, carta: la carta dall'iPhone aspetta sul Mac, nessun cliente creato da solo")
+        let avviso = MotoreNotifiche.calcola(s).first { $0.id == "carta-iphone-\(carta.id)" }
+        controlla(avviso != nil && !(avviso?.titolo ?? "").contains("Marchi") && !(avviso?.dettaglio ?? "").contains("Elena")
+                  && !(avviso?.titolo ?? "").uppercased().contains("MARCHI"),
+                  "Ponte, carta: la notifica interna non dice il nome della persona (decisione 25)")
+        let archivio = String(decoding: (try? JSONEncoder().encode(s.dati.istantanea)) ?? Data(), as: UTF8.self)
+        controlla(!archivio.contains("MARCHI") && !archivio.contains("MRCLNE90D43A944S"),
+                  "Ponte, carta: il testo della carta non entra nell'archivio")
+        s.blocca(animato: false)
+        controlla(s.carteInArrivo.isEmpty, "Ponte, carta: al blocco di Prisma le carte in arrivo si scartano")
+        controlla(!s.riceviDalPonte(.cartaIdentita(carta)).accettato && s.carteInArrivo.isEmpty,
+                  "Ponte, carta: con Prisma bloccato la carta è rifiutata (si rimanda dall'iPhone)")
     }
 
     #if os(macOS)
     /// Il server vero del Mac su 127.0.0.1, con il telefono che manda le schede e il testo inquadrato.
-    private static func server(codice: String, arrivo: ArrivoPonte, inquadratura: InquadraturaPonte, _ controlla: (Bool, String) -> Void) {
+    private static func server(codice: String, arrivo: ArrivoPonte, inquadratura: InquadraturaPonte, carta: CartaIdentitaPonte,
+                               nota: NotaVocalePonte, _ controlla: (Bool, String) -> Void) {
         let configurazione = URLSessionConfiguration.ephemeral
         configurazione.protocolClasses = [ServerFinto.self]
         let finta = URLSession(configuration: configurazione)
@@ -464,10 +495,15 @@ enum ProvaCopilota {
             return (risposta as? HTTPURLResponse)?.statusCode ?? 0
         }
         controlla(codiceRisposta == 400 && raccolta.elenco.count == 2, "Ponte: un messaggio nuovo malformato è rifiutato (400)")
+        // «Luce» giro 13: il server conosce i percorsi nuovi (senza, risponderebbe 404 = «aggiorna Prisma sul Mac»)
+        let (cartaArrivata, notaArrivata) = aspetta { (await ipad.manda(.cartaIdentita(carta)), await ipad.manda(.notaVocale(nota))) }
+        controlla(cartaArrivata.accettato && raccolta.elenco.contains(.cartaIdentita(carta)) && stato?.riceveCartaENota == true,
+                  "Ponte, carta: l'iPhone manda al Mac il testo della carta e il Mac lo riceve")
+        controlla(notaArrivata.accettato && raccolta.elenco.last == .notaVocale(nota), "Ponte, nota: l'iPhone manda la nota dettata e il Mac la riceve")
         // Il Mac senza destinatario (Prisma non pronto): ricevuta rifiutata
         server.consegnaArrivi(nil)
         let senza = aspetta { await ipad.manda(arrivo) }
-        controlla(!senza.accettato && raccolta.elenco.count == 2, "Ponte: se Prisma sul Mac non è pronto la ricevuta lo dice")
+        controlla(!senza.accettato && raccolta.elenco.count == 4, "Ponte: se Prisma sul Mac non è pronto la ricevuta lo dice")
     }
     #endif
 

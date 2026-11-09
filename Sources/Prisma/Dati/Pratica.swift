@@ -143,15 +143,29 @@ struct ImpostazioniPratiche: Codable, Equatable, Hashable {
     /// «Conserva l'IBAN nel dossier» (Impostazioni › Moduli, «Luce» giro 10, decisione 40): spento di base. Spento, gli
     /// IBAN non si salvano nell'anagrafica (si scrivono solo sul modulo compilato).
     var conservaIban: Bool?
+    /// Pratiche › Sinistri («Luce» giro 15, §7.4): oltre quanti giorni senza un fatto nuovo un sinistro aperto è «fermo».
+    /// nil = 14 (proposta, da confermare con l'utente).
+    var giorniSinistroFermo: Int?
+    /// Gli indirizzi dei sinistri delle compagnie, scritti dall'utente (per «Sollecita la compagnia»; «solo dal portale»
+    /// trasforma il pulsante in un promemoria). nil = nessuno.
+    var indirizziSinistri: [IndirizzoCompagnia]?
+    /// Gli elenchi dei documenti richiesti per tipo di sinistro, scritti dall'utente. nil = nessuno.
+    var documentiPerSinistro: [DocumentiSinistro]?
 
     static let giorniFermaPredefiniti = 7
+    static let giorniSinistroFermoPredefiniti = 14
+    static let giorniSinistroFermoMinimi = 1
+    static let giorniSinistroFermoMassimi = 120
     /// I limiti del campo in Impostazioni (vuoto non ammesso: almeno un giorno).
     static let giorniFermaMinimi = 1
     static let giorniFermaMassimi = 90
 
     init() {}
 
-    private enum CodingKeys: String, CodingKey { case giorniFerma, conservaIban }
+    private enum CodingKeys: String, CodingKey {
+        case giorniFerma, conservaIban
+        case giorniSinistroFermo, indirizziSinistri, documentiPerSinistro
+    }
 
     /// Illeggibile, minore di 1 o fuori misura: torna 7.
     init(from decoder: Decoder) throws {
@@ -160,8 +174,46 @@ struct ImpostazioniPratiche: Codable, Equatable, Hashable {
         giorniFerma = g.flatMap { (Self.giorniFermaMinimi...Self.giorniFermaMassimi).contains($0) ? $0 : nil }
             ?? Self.giorniFermaPredefiniti
         conservaIban = (try? c.decodeIfPresent(Bool.self, forKey: .conservaIban)) ?? nil
+        let s = (try? c.decodeIfPresent(Int.self, forKey: .giorniSinistroFermo)) ?? nil
+        giorniSinistroFermo = s.flatMap { (Self.giorniSinistroFermoMinimi...Self.giorniSinistroFermoMassimi).contains($0) ? $0 : nil }
+        indirizziSinistri = ((try? c.decodeIfPresent(ElencoTollerante<IndirizzoCompagnia>.self, forKey: .indirizziSinistri)) ?? nil)?.elementi
+        documentiPerSinistro = ((try? c.decodeIfPresent(ElencoTollerante<DocumentiSinistro>.self, forKey: .documentiPerSinistro)) ?? nil)?.elementi
     }
+
+    /// I giorni della soglia del sinistro fermo (14 se l'utente non li ha scelti).
+    var sogliaSinistroFermo: Int { giorniSinistroFermo ?? Self.giorniSinistroFermoPredefiniti }
 
     /// L'interruttore dell'IBAN acceso.
     var ibanConservato: Bool { conservaIban == true }
+}
+
+/// L'indirizzo dei sinistri di una compagnia, scritto dall'utente in Impostazioni › Pratiche («Luce» giro 15, D4.3).
+/// «Solo dal portale»: la compagnia vuole i solleciti dal suo portale, il pulsante diventa un promemoria (un'attività).
+struct IndirizzoCompagnia: Codable, Equatable, Hashable, Identifiable {
+    var id: String
+    var compagnia: String
+    var email: String
+    var soloPortale: Bool
+
+    init(id: String = "compagnia-\(UUID().uuidString.prefix(8).lowercased())", compagnia: String = "", email: String = "",
+         soloPortale: Bool = false) {
+        self.id = id
+        self.compagnia = compagnia
+        self.email = email
+        self.soloPortale = soloPortale
+    }
+}
+
+/// I documenti richiesti per un tipo di sinistro, scritti dall'utente in Impostazioni › Pratiche («Luce» giro 15, D4.5):
+/// il menu «Tipo» del nuovo sinistro precompila con questi l'elenco dei documenti.
+struct DocumentiSinistro: Codable, Equatable, Hashable, Identifiable {
+    var id: String
+    var tipo: String
+    var documenti: [String]
+
+    init(id: String = "tipo-sinistro-\(UUID().uuidString.prefix(8).lowercased())", tipo: String = "", documenti: [String] = []) {
+        self.id = id
+        self.tipo = tipo
+        self.documenti = documenti
+    }
 }

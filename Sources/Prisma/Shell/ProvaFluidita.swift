@@ -399,6 +399,21 @@ enum ProvaFluidita {
                 }, verifica: { stato.provaFuoco.vista == vista && stato.portafoglio == portafoglio }),
             ])
         }
+        if stato.appConsentita(.territorio) {
+            // Territorio (giro 11): la mappa di Oggi, il passaggio al giro di domani e la chiusura (la tabella dei comuni
+            // si carica all'apertura e si libera alla chiusura)
+            let vistaTerritorio = stato.vistaTerritorio
+            s.misura(banco, [
+                PassoFluidita(nome: "Luce · apri Territorio", azione: { stato.apriTerritorio(.oggi) },
+                              verifica: { stato.appAttiva == .territorio && stato.vistaTerritorio == .oggi }),
+                PassoFluidita(nome: "Luce · il giro di domani", azione: { stato.vistaTerritorio = .giro },
+                              verifica: { stato.appAttiva == .territorio && stato.vistaTerritorio == .giro }),
+                PassoFluidita(nome: "Luce · chiudi Territorio", azione: {
+                    stato.chiudi(.territorio)
+                    stato.vistaTerritorio = vistaTerritorio
+                }, verifica: { !stato.aperta(.territorio) }),
+            ])
+        }
         if MetalPrisma.spento {
             // Sul runner di GitHub (PRISMA_SENZA_METAL=1) l'apertura della Biblioteca fermava il processo con
             // un'asserzione di Metal della GPU virtuale: il passo si salta lì e resta sul Mac dell'utente
@@ -410,6 +425,24 @@ enum ProvaFluidita {
                 PassoFluidita(nome: "Luce · chiudi la Biblioteca", azione: { stato.chiudi(.biblioteca) },
                               verifica: { !stato.aperta(.biblioteca) }),
             ])
+        }
+        // Stanotte (giro 14): le otto carte della notte di prova (dati di prova dichiarati, id «notte-prova-») si aprono
+        // sopra la scrivania e si richiudono; le notti tornano quelle di prima. Mai in modalità cliente (lì non si aprono)
+        if MetalPrisma.spento {
+            // Sul runner di GitHub (PRISMA_SENZA_METAL=1) le carte della notte (velo .ultraThinMaterial, alone radiale e
+            // ombre doppie, composti da SwiftUI con Metal) rischiano la stessa asserzione della GPU virtuale di radar e
+            // Biblioteca: il passo si salta lì e resta sul Mac dell'utente
+            print("PASSO fluidità · Luce · carte della notte saltate (senza Metal sul runner)")
+        } else if !stato.inModoCliente, stato.presentazione == nil {
+            let notti = stato.dati.notti
+            s.prepara(banco) { stato.dati.notti = [NotteDiProva.notte(stato.dati.istantanea, oggi: Date(), cal: Calendar.current)] }
+            s.misura(banco, [
+                PassoFluidita(nome: "Luce · apri le carte della notte", azione: { stato.apriNotte() },
+                              verifica: { stato.sovrapposizione == .notte && !stato.notte.pila.isEmpty }),
+                PassoFluidita(nome: "Luce · chiudi le carte della notte", azione: { stato.chiudiSovrapposizione(animato: false) },
+                              verifica: { stato.sovrapposizione == nil }),
+            ])
+            s.prepara(banco) { stato.dati.notti = notti }
         }
     }
 

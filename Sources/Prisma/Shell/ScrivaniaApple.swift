@@ -315,10 +315,22 @@ private struct TestataScrivania: View {
         return "\(parola), \(stato.nomeUtente)."
     }
 
-    /// «▶︎ La tua settimana» (con l'invito del lunedì, giro 5) e «⌕ Cerca ovunque» (versione «Luce», §1.2.1). «Nuovo cliente» è nella testata di Clienti;
-    /// «☾ Stanotte» resta nascosto finché non c'è il lavoro della notte (giro 14, decisione 30).
+    /// «☾ Stanotte» con il pallino delle carte da decidere (giro 14, solo sul Mac, mai in modalità cliente), «▶︎ La tua
+    /// settimana» (con l'invito del lunedì, giro 5) e «⌕ Cerca ovunque» (versione «Luce», §1.2.1). «Nuovo cliente» è nella
+    /// testata di Clienti.
     private var pulsanti: some View {
         HStack(spacing: Tema.Apple.Scrivania.Saluto.spazioPulsanti) {
+            #if os(macOS)
+            if !stato.inModoCliente {
+                Button {
+                    stato.apriNotte()
+                } label: {
+                    Label(TestiNotte.pulsanteScrivania, systemImage: "moon")
+                }
+                .overlay(alignment: .topTrailing) { PallinoNotte(numero: stato.carteDaDecidere) }
+                .help(TestiNotte.aiutoPulsante)
+            }
+            #endif
             // Il lunedì, finché la storia della settimana non è vista: l'invito (giro 5, StoriaLuce.swift)
             if stato.invitoSettimana() {
                 let i = Tema.Apple.Storia.Invito.self
@@ -349,6 +361,29 @@ private struct TestataScrivania: View {
         .fixedSize()
     }
 }
+
+#if os(macOS)
+/// Il pallino del pulsante «Stanotte»: il numero delle carte da decidere, come quello delle notifiche (nulla con zero).
+private struct PallinoNotte: View {
+    let numero: Int
+
+    private typealias P = Tema.Apple.Notte.Pallino
+
+    var body: some View {
+        if numero > 0 {
+            Text("\(numero)")
+                .carattereApple(P.carattere)
+                .foregroundColor(P.testo)
+                .padding(.horizontal, P.paddingOrizzontale)
+                .frame(minWidth: P.lato, minHeight: P.lato)
+                .background(Capsule().fill(P.fondo))
+                .offset(x: P.scostamento, y: -P.scostamento)
+                .allowsHitTesting(false)
+                .accessibilityLabel(Text(TestiNotte.cose(numero) + " da decidere"))
+        }
+    }
+}
+#endif
 
 // MARK: - Cornice comune dei riquadri
 

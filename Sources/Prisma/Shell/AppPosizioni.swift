@@ -78,6 +78,14 @@ struct AppPosizioni: View {
         // La scheda del tema: angoli tondi e filo da 0,5 pt (il contenuto si taglia prima del contorno)
         .clipShape(forma)
         .overlay { forma.strokeBorder(Colori.Analisi.kpiBordo, lineWidth: Tema.Misura.filo).allowsHitTesting(false) }
+        // Dalla storia dell'anno («Apri ›» delle famiglie protette): l'area da filtrare, consumata subito
+        .onChange(of: stato.areaPosizioniDaAprire, initial: true) { _, nuova in
+            guard let nuova else { return }
+            area = nuova
+            filtroStato = .inEssere
+            filtroCanale = nil
+            stato.areaPosizioniDaAprire = nil
+        }
         .sheet(item: $modulo, onDismiss: { fuocoPosizione = nil }) { p in
             ModuloPosizione(bozza: p, nuova: !stato.posizioni.contains { $0.id == p.id }) { stato.salvaPosizione($0) }
                 .environment(\.fuocoModulo, fuocoPosizione)

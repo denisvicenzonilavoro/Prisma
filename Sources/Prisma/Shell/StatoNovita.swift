@@ -224,6 +224,12 @@ extension StatoShell {
             apriStoria(.settimana)
             return
         }
+        if voce == .stanotte {
+            // Le carte della notte sopra la scrivania (giro 14, CarteNotte.swift); in modalità cliente dice perché no
+            mostraScrivania()
+            apriNotte()
+            return
+        }
         guard let app = voce.app else {
             mostraScrivania()
             if let avviso = voce.avvisoInArrivo { mostraAvviso(avviso) }
@@ -264,6 +270,18 @@ extension StatoShell {
         } else if voce == .imprenditori {
             // Il dossier del primo cliente con un'azienda, sulla scheda «L'azienda» (giro 7, DossierAzienda.swift)
             apriClientiImprenditori()
+        } else if voce == .passaparola {
+            // Clienti › Passaparola (giro 12, ClientiPassaparola.swift)
+            apriPassaparola()
+        } else if voce == .campagne {
+            // Messaggi › Campagne sul primo gruppo (giro 12, MessaggiCampagne.swift)
+            apriCampagne(nil)
+        } else if voce == .nuovoCliente {
+            // Clienti, poi la scena della carta d'identità (giro 13, NuovoClienteShell.swift)
+            apriNuovoClienteDaNovita()
+        } else if voce == .notaVocale {
+            // Incontri, poi «Come funziona» della nota vocale (giro 13, NotaVocaleShell.swift)
+            apriNotaVocaleDaNovita()
         } else if app == .studio {
             apriStudio(.cruscotto)
         } else {

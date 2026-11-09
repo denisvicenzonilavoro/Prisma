@@ -22,6 +22,10 @@ enum DestinazioneTelefono: Hashable {
     case appuntamento(String)
     /// Le posizioni di un'area (rawValue di AreaPosizione) con il filtro di Posizioni.
     case area(String, filtro: String)
+    /// I potenziali clienti, in sola lettura («Luce» giro 12, PotenzialiTelefono.swift).
+    case potenziali
+    /// I sinistri, in sola lettura («Luce» giro 15, SinistriTelefono.swift).
+    case sinistri
 }
 
 /// Il file che l'iPad chiede di scegliere con `.fileImporter` (`StatoShell.sceltaFileMobile`): sul Mac sono
@@ -193,6 +197,29 @@ final class StatoMobile: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] coperta in self?.acquaCoperta = coperta }
             .store(in: &abbonamenti)
+        // «Luce» giro 13: la nota vocale. L'azione rapida dall'icona apre «Una nota veloce» (AzioneRapidaMobile.swift);
+        // le note in partenza si consegnano all'apertura e al ritorno in primo piano (niente ricerca continua del Mac)
+        guard persistente else { return }
+        NotificationCenter.default.publisher(for: .prismaNotaVeloce)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.apriNotaVeloce() }
+            .store(in: &abbonamenti)
+        NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.stato.leggiNoteInPartenza()
+                self?.stato.consegnaNoteInPartenza()
+            }
+            .store(in: &abbonamenti)
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.stato.leggiNoteInPartenza()
+            self.stato.consegnaNoteInPartenza()
+            if AzioneRapidaMobile.notaVeloceInAttesa {
+                AzioneRapidaMobile.notaVeloceInAttesa = false
+                self.apriNotaVeloce()
+            }
+        }
     }
 
     // MARK: - App aperta (iPhone e iPad)

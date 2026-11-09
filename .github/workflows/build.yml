@@ -98,7 +98,83 @@ jobs:
           done
           codesign --force --deep --sign - "$APP"
 
+      - name: Privacy del Territorio
+        run: |
+          # «Luce» giro 11 (decisioni 20 e 21): niente rete, geocodifica, percorsi, MapKit o CoreLocation nel Territorio
+          if grep -nE 'URLSession|URLRequest|NWConnection|CLGeocoder|MKDirections|import MapKit|import CoreLocation' \
+              Sources/Prisma/Motori/MotoreTerritorio.swift Sources/Prisma/Motori/TabellaTerritorio.swift \
+              Sources/Prisma/Shell/*Territorio*.swift Sources/Prisma/Dati/Territorio.swift; then
+            echo "::error::Il Territorio non deve usare la rete, servizi di mappe o la posizione del dispositivo"
+            exit 1
+          fi
+
+      - name: Privacy della notte
+        run: |
+          # «Luce» giro 14 (decisioni 30, 31, 101): la notte non va in rete, non usa Timer, non apre Prisma all'accesso
+          # né cambia il risveglio del Mac, non scarica Mercato
+          if grep -nE 'URLSession|URLRequest|NWConnection|ClienteMercato|aggiornaMercato|SMAppService|pmset|\bTimer\b' \
+              Sources/Prisma/Motori/MotoreNotte.swift Sources/Prisma/Motori/TestiNotte.swift \
+              Sources/Prisma/Motori/EsecutoreBozzeNotte.swift Sources/Prisma/Dati/LavoroNotte.swift \
+              Sources/Prisma/Shell/*Notte*.swift Sources/Prisma/Shell/AlimentazioneMac.swift; then
+            echo "::error::Il lavoro della notte non deve usare la rete, Timer, SMAppService o pmset"
+            exit 1
+          fi
+
+      - name: Privacy delle cose date al cliente
+        run: |
+          # «Luce» giro 15 (decisione 1, CLAUDE.md › Dati e privacy): Prisma non passa numeri a WhatsApp e non usa la rete
+          # per le cose date al cliente: spedisce il consulente dal foglio di condivisione del sistema
+          if grep -rnE 'wa\.me|whatsapp://|api\.whatsapp' Sources/Prisma; then
+            echo "::error::Niente indirizzi di WhatsApp nel codice: si condivide solo dal foglio di sistema"
+            exit 1
+          fi
+          # I file che non esistono ancora (parti del giro non scritte) si saltano; quelli che ci sono si controllano tutti
+          FILE_USCITE=$(ls Sources/Prisma/Shell/FoglioCondivisione.swift Sources/Prisma/Shell/UsciteCliente.swift \
+              Sources/Prisma/Dati/FilePrismaCliente.swift Sources/Prisma/Shell/*Film*.swift Sources/Prisma/Dati/*Capsul*.swift \
+              Sources/Prisma/Dati/Sinistro.swift Sources/Prisma/Dati/*PrismaCliente*.swift Sources/Prisma/Motori/*PrismaCliente*.swift \
+              Sources/Prisma/Shell/*PrismaCliente*.swift Sources/Prisma/Motori/*Film*.swift Sources/Prisma/Motori/*Capsul*.swift \
+              Sources/Prisma/Shell/*Capsul*.swift Sources/Prisma/Motori/*Sinistr*.swift Sources/Prisma/Shell/*Sinistr*.swift \
+              Sources/Prisma/iOS/*Sinistr*.swift Sources/Prisma/Shell/EsportaBiglietto.swift 2>/dev/null || true)
+          if [ -n "$FILE_USCITE" ] && grep -nE 'URLSession|URLRequest|NWConnection' $FILE_USCITE; then
+            echo "::error::Le cose date al cliente non devono usare la rete"
+            exit 1
+          fi
+
+      - name: "Prisma del cliente: lettore del file (Node, solo prova)"
+        run: |
+          # «Luce» giro 15 (decisioni 3 e 109): il lettore JavaScript del file del cliente non usa la rete; Prisma scrive un
+          # file di prova (contenuto e password di prova) e Node, solo qui e mai nell'app, lo apre con il lettore vero
+          if grep -nE 'fetch\(|XMLHttpRequest|WebSocket|sendBeacon|import\(|https?://' Sources/Prisma/Risorse/PrismaCliente/lettore.js; then
+            echo "::error::Il lettore del Prisma del cliente non deve usare la rete"; exit 1
+          fi
+          node --version
+          PRISMA_SENZA_METAL=1 "Prisma.app/Contents/MacOS/Prisma" --prova-file-cliente "$PWD/file-cliente"
+          node Supporto/prova-file-cliente.mjs "$PWD/file-cliente"
+
+      - name: Privacy della realtà aumentata
+        run: |
+          # «Luce» giro 16 (decisioni 26 e 27): niente Rullino, niente mappe del mondo salvate, niente rete propria
+          if grep -nE 'UIImageWriteToSavedPhotosAlbum|PHPhotoLibrary|import Photos|ARWorldMap|getCurrentWorldMap|URLSession|URLRequest' \
+              Sources/Prisma/Motori/MotoreRealtaAumentata.swift Sources/Prisma/Shell/*Realta*.swift \
+              Sources/Prisma/iOS/RealtaAumentataMobile.swift Sources/Prisma/DesignSystem/CristalloFermo.swift; then
+            echo "::error::La realtà aumentata non deve salvare nel Rullino, salvare mappe del mondo o usare la rete"
+            exit 1
+          fi
+          # In tutto Sources: nessun file, nemmeno futuro, salva nel Rullino
+          if grep -rnE 'UIImageWriteToSavedPhotosAlbum|PHPhotoLibrary|import Photos|PHAssetChangeRequest' Sources/Prisma; then
+            echo "::error::Prisma non salva nel Rullino"
+            exit 1
+          fi
+          if grep -n 'NSPhotoLibraryAddUsageDescription\|NSPhotoLibraryUsageDescription' Supporto/iOS/Info.plist; then
+            echo "::error::Prisma non chiede l'accesso al Rullino"
+            exit 1
+          fi
+
       - name: Verifica Prisma.app
+        # Tutte le prove senza Metal (fermo-immagine): sulla GPU virtuale del runner Metal ferma il processo con
+        # un'asserzione interna («Target device architecture is nil»). Sul Mac dell'utente la variabile non c'è.
+        env:
+          PRISMA_SENZA_METAL: "1"
         run: |
           APP=Prisma.app
           set -e
@@ -151,6 +227,11 @@ jobs:
           # Prova del tavolo con l'iPad: Mac e iPad nello stesso processo su 127.0.0.1 (abbinamento, pagine, cursore,
           # presa visione nel PDF, caduta della connessione con la schermata neutra)
           "$APP/Contents/MacOS/Prisma" --prova-tavolo
+          # Prova di fattibilità della realtà aumentata: il cristallo in RealityKit (MeshDescriptor, materiali, vista virtuale)
+          # senza fotocamera; senza Metal (PRISMA_SENZA_METAL=1, come per la fluidità: sulla GPU virtuale del runner Metal
+          # può fermare il processo con un'asserzione) la parte RealityKit si salta e resta il fermo-immagine; RealityKit
+          # e la vista virtuale restano provati sul Mac dell'utente e nel simulatore
+          PRISMA_SENZA_METAL=1 "$APP/Contents/MacOS/Prisma" --prova-realta
           # Prova dei prospetti: cifre, impaginazione A4 e PDF
           "$APP/Contents/MacOS/Prisma" --prova-prospetti
           # Prova di carico: 200 clienti, velocità e memoria (il Mac dell'utente ha 8 GB)
@@ -163,6 +244,9 @@ jobs:
           # Prova di Prisma ovunque: due archivi e una cartella locale che finge iCloud Drive (ritardi, file non scaricato,
           # copia «nome 2», file troncato, conflitti da decidere, passphrase sbagliata e cambiata, niente dati in chiaro)
           "$APP/Contents/MacOS/Prisma" --prova-ovunque
+          # Il film del piano («Luce» giro 15): il video dei dati di prova (senza il codificatore H.264 sul runner un
+          # avviso, la build resta verde)
+          PRISMA_SENZA_METAL=1 "$APP/Contents/MacOS/Prisma" --prova-film
           codesign --verify --deep --strict --verbose=2 "$APP"
           echo "Prisma.app verificata"
 
@@ -269,6 +353,9 @@ jobs:
               # La tabella della fluidità accanto alle schermate: si confrontano due commit senza leggere i log
               cp fluidita.md anteprime/fluidita.md 2>/dev/null || true
               "Prisma.app/Contents/MacOS/Prisma" --prova-prospetti "$PWD/anteprime/prospetti" > /dev/null || true
+              # Le cose date al cliente («Luce» giro 15): le pagine del Prisma del cliente e i fotogrammi del film
+              "Prisma.app/Contents/MacOS/Prisma" --prova-file-cliente "$PWD/anteprime/file-cliente" > /dev/null || true
+              "Prisma.app/Contents/MacOS/Prisma" --prova-film "$PWD/anteprime/film" > /dev/null || true
               # Alcune schermate con il testo «molto grande» (Impostazioni → Dimensione del testo)
               "Prisma.app/Contents/MacOS/Prisma" --istantanee "$PWD/anteprime/testo-grande" --metodo "$metodo" --testo 1.2 \
                 --solo 1-scrivania,5-clienti-panoramica,8-posizioni-dettaglio,11-agenda,11a-agenda-mese,65-portafoglio,220-avvio-benvenuto,222-introduzione,225-guida-posizioni,234-posizioni-finestra-stretta > /dev/null || true
@@ -441,7 +528,7 @@ jobs:
       - name: iPad · prove
         if: always() && steps.avvio-ipad.outcome == 'success'
         timeout-minutes: 10
-        run: bash Supporto/iOS/prove.sh "$PAD" verifica-risorse
+        run: bash Supporto/iOS/prove.sh "$PAD" verifica-risorse prova-realta
 
       # Più scene che sull'iPhone (tutte le app, in verticale e in orizzontale): 92 istantanee, fino a 35 min sui runner Intel lenti
       - name: iPad · istantanee

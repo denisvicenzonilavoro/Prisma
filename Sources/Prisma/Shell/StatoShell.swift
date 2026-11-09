@@ -100,6 +100,8 @@ enum VoceConfronto: Hashable {
     private(set) var avviso: String?
     /// L'avviso è il commiato di Vera (con la sfera): dopo un pulsante della mini finestra.
     private(set) var avvisoDiVera = false
+    /// Il pulsante dell'avviso («Annulla» dopo una creazione rapida): vale finché l'avviso resta in vista.
+    private(set) var azioneAvviso: AzioneAvviso?
     var schermoIntero = false
     var schedaImpostazioni: SchedaImpostazioni = .panoramica
     var schedaCliente: SchedaCliente = .panoramica
@@ -109,6 +111,16 @@ enum VoceConfronto: Hashable {
     /// «Luce»: la scheda di Pratiche e la vista di Territorio (StatoSala.swift).
     var schedaPratiche: SchedaPratiche = .proposta
     var vistaTerritorio: VistaTerritorio = .oggi
+    /// «Luce» giro 12: la vista di Clienti (Rubrica, Potenziali, Passaparola) e quella di Messaggi (Messaggi, Campagne)
+    /// (StatoClientiLuce.swift).
+    var vistaClienti: VistaClienti = .rubrica
+    var vistaMessaggi: VistaMessaggi = .messaggi
+    /// Il potenziale per cui si apre il modulo del nuovo cliente (Clienti › Potenziali, arrivo in «Cliente»): lo legge
+    /// AppClienti, che apre `ModuloCliente` già compilato.
+    var richiestaClienteDaPotenziale: String?
+    /// «Scrivi a mano» dalla scena del nuovo cliente aperta per un potenziale (§9.1-9.2): il modulo della bozza, salvato,
+    /// collega la scheda al dossier; annullato, la riporta in «Proposta» (lo legge AppClienti con `bozzaNuovoCliente`).
+    var potenzialeDellaBozza: String?
     /// Da dove si apre Messaggi (cliente, occasione, messaggio salvato): la scrivono le altre app con `preparaMessaggio`,
     /// l'app Messaggi la prende con `prendiRichiestaMessaggi()` (CollegamentiMessaggi.swift).
     var richiestaMessaggi: RichiestaMessaggi?
@@ -155,6 +167,11 @@ enum VoceConfronto: Hashable {
     /// Pratiche › Proposta («Luce» giro 3): il bisogno scelto, la sequenza delle cinque tappe, le scelte di prodotto
     /// (StatoPraticheProposta.swift). Un oggetto a parte: la sequenza non pubblica StatoShell. Non si salva.
     let praticheProposta = StatoPraticheProposta()
+    /// Clienti › Potenziali e Passaparola («Luce» giro 12, StatoClientiLuce.swift): scheda trascinata, ambasciatore
+    /// evidenziato, modulo aperto. Un oggetto a parte: non pubblica StatoShell. Non si salva.
+    let potenziali = StatoPotenziali()
+    /// Messaggi › Campagne («Luce» giro 12): gruppo scelto, esclusi, orari tolti, tono e canale. Non si salva.
+    let campagne = StatoCampagne()
     /// Mercato (giro 7, StatoMercato.swift): il campo e il risultato della ricerca per ISIN, lo scaricamento in corso, il
     /// foglio aperto. Un oggetto a parte: scrivere nel campo non pubblica StatoShell. Non si salva.
     let sessioneMercato = SessioneMercato()
@@ -170,17 +187,43 @@ enum VoceConfronto: Hashable {
     /// Inquadra e capisci: la scena del Mac (velo, iPhone disegnato, scheda «Prisma sul Mac») e la schermata della
     /// fotocamera sull'iPhone (StatoInquadra.swift). Un oggetto a parte: la cascata dei campi non pubblica StatoShell.
     let inquadra = StatoInquadra()
+    /// «Nuovo cliente in 10 secondi» («Luce» giro 13, StatoNuovoCliente.swift): la scena della carta d'identità sul Mac e
+    /// la schermata della fotocamera sull'iPhone. Solo in memoria: chiudere, bloccare o il riposo del Mac scartano tutto.
+    let nuovoCliente = StatoNuovoCliente()
+    /// La nota vocale («Luce» giro 13, NotaVocaleArrivo.swift): la scheda «Arriva sul Mac» mostrata e la voce in modifica.
+    /// Non si salva (le note stanno in `dati.noteInArrivo`).
+    let notaVocale = StatoNotaVocaleMac()
+    /// La schermata «Una nota veloce» di iPhone e iPad («Luce» giro 13, StatoNotaVocaleTelefono.swift): il testo dettato,
+    /// l'onda e le note in partenza. Sul Mac non si usa. Non si salva (la coda cifrata sta sul telefono).
+    let notaTelefono = StatoNotaVocaleTelefono()
+    /// Le carte d'identità arrivate dall'iPhone e non ancora usate («Luce» giro 13): **solo in memoria** (decisione 25),
+    /// mai nell'archivio né nei backup; si scartano al blocco di Prisma e al riposo del Mac.
+    var carteInArrivo: [CartaIdentitaPonte] = []
+    /// La nota arrivata con Prisma bloccato: allo sblocco si mostra la scheda «Arriva sul Mac».
+    @ObservationIgnored var notaInAttesaSblocco: String?
+    /// L'abbonamento allo sblocco per la nota in attesa è già fatto.
+    @ObservationIgnored var sbloccoNoteOsservato = false
+    /// iPhone e iPad: la schermata «Una nota veloce» è aperta (Incontri, azione rapida dall'icona; «Luce» giro 13).
+    var notaVeloceAperta = false
     /// La Sala di «Luce» (StatoSala.swift): l'esperienza sul palco, osservata solo dalla Sala.
     let sala = StatoSala()
+    /// Pratiche › Sinistri («Luce» giro 15): la scheda dei sinistri, a parte come la Sala.
+    let sinistri = StatoSinistri()
     /// La storia della settimana e dell'anno di «Luce» (giro 5, StoriaLuce.swift): le pagine e quella in corso,
     /// osservate solo dalla storia. Non si salva.
     let storia = StatoStoria()
+    /// «Stanotte Prisma ha lavorato» («Luce» giro 14, StatoNotte.swift): la pila delle carte di questa apertura, il
+    /// registro delle decisioni e il lavoro in corso, osservati solo dalle carte. Le notti si salvano in `dati.notti`.
+    let notte = StatoNotte()
     /// La palestra della trattativa (Studio › Palestra, «Luce» giro 5, StatoPalestra.swift): un oggetto a parte, ogni
     /// parola di Vera ridisegna solo la conversazione. Non si salva (solo l'esito, in `dati.impostazioni.palestra`).
     let palestra = StatoPalestra()
     /// Studio › Spese («Luce» giro 9, StatoSpese.swift): il mese scelto, la spesa appena inquadrata, il foglio aperto e
     /// il pacchetto per il commercialista. Non si salva.
     let studioSpese = StatoSpese()
+    /// Territorio («Luce» giro 11, StatoTerritorio.swift): la tabella dei comuni in memoria mentre Territorio è aperto, la
+    /// luce puntata, i filtri, l'anno della crescita, il giorno del giro e la modalità «Sposta». Non si salva.
+    let territorio = StatoTerritorio()
     /// Prisma ovunque (giro 8, StatoOvunque.swift): lo stato della pagina Impostazioni › iPhone e iPad, la chiave dello
     /// spazio in memoria e i lavori della sincronizzazione. Un oggetto a parte: i pallini e i controlli non pubblicano
     /// StatoShell. Non si salva (le impostazioni dello spazio stanno in `dati.impostazioni.ovunque`).
@@ -191,6 +234,9 @@ enum VoceConfronto: Hashable {
     var richiestaNuovaPosizione: StatoPosizione?
     /// Il pulsante "Nuovo cliente" dell'intestazione chiede alla rubrica di aprire il modulo.
     var richiestaNuovoCliente = false
+    /// «Scrivi a mano» dalla scena del nuovo cliente («Luce» giro 13): la bozza con i dati letti, che Clienti apre nel
+    /// modulo (si consuma appena letta).
+    var bozzaNuovoCliente: Cliente?
     /// Completezza dei dati: chiede a Clienti o Posizioni di aprire il modulo su un campo (si consuma appena letta).
     var richiestaCompletamento: RichiestaCompletamento?
     /// Completezza dei dati: il campo dell'Analisi 360 da evidenziare (si toglie lasciando quell'area).
@@ -258,6 +304,9 @@ enum VoceConfronto: Hashable {
     var prodottoSelezionato: String?
     var filtroCanaleProdotti: Canale?
     var filtroAreaProdotti: AreaPosizione?
+    /// «Apri ›» delle famiglie protette nella storia dell'anno (§5.2.4): l'area con cui aprire Posizioni (Portafoglio di
+    /// tutti i clienti); la consuma `AppPosizioni` appena la legge.
+    var areaPosizioniDaAprire: AreaPosizione?
     var obiettivoSelezionato: String?
 
     // Note
@@ -569,6 +618,8 @@ enum VoceConfronto: Hashable {
         avviaSalvataggio()
         #if os(macOS)
         avviaBackupAutomatico()
+        // Stanotte («Luce» giro 14): il pianificatore di macOS controlla la finestra serale (niente Timer)
+        avviaPianificatoreNotte()
         // Le cartelle di lavoro di un pacchetto per il commercialista interrotto (Studio › Spese, «Luce» giro 9)
         DispatchQueue.global(qos: .utility).async { PacchettoCommercialista.pulisciAvanzi() }
         #elseif os(iOS)
@@ -578,6 +629,11 @@ enum VoceConfronto: Hashable {
         applicaImpostazioniVera()
         DiagnosticaVoce.osservatore = { [weak self] riga in self?.passaggioVoce = riga }
         aggiornaElencoBackup()
+        // La nota vocale («Luce» giro 13): via le note decise da più di 30 giorni; allo sblocco la scheda in attesa
+        if !caricati.solaLettura { potaNoteInArrivo() }
+        // Stanotte («Luce» giro 14): ultime 14 notti, le «in corso» lasciate a metà diventano «interrotte»
+        if !caricati.solaLettura { potaNotti() }
+        osservaSbloccoNote()
         // Promemoria del Mac: solo qui, con l'archivio sul disco (mai nelle istantanee e nelle prove)
         avviaPromemoria()
         // «Le routine» programmate di Vera: un controllo ogni dieci minuti, solo con Prisma aperto (CollegaRoutineShell.swift)
@@ -841,11 +897,14 @@ enum VoceConfronto: Hashable {
             spese.visiteTolte.append(contentsOf: tolte)
             dati.speseStudio = spese
         }
+        let appuntamentiTolti = Set(dati.appuntamenti.filter { $0.clienteId == id }.map(\.id))
         dati.appuntamenti.removeAll { $0.clienteId == id }
         dati.attivita.removeAll { $0.clienteId == id }
         dati.posizioni.removeAll { $0.clienteId == id }
         dati.simulazioni.removeAll { $0.clienteId == id }
         dati.analisi[id] = nil
+        // Stanotte («Luce» giro 14): le carte del cliente se ne vanno con lui (una sola assegnazione, solo se serve)
+        if let notti = NotteDiLavoro.togliCliente(id, appuntamenti: appuntamentiTolti, da: dati.notti) { dati.notti = notti }
         // Le partite del gioco del rischio della Sala («Luce» giro 4)
         dati.partiteRischio.removeAll { $0.clienteId == id }
         // Vera, fase 3: promesse, confronti e coperture del cliente
@@ -884,6 +943,19 @@ enum VoceConfronto: Hashable {
         // Studio › Spese («Luce» giro 9): i km del cliente se ne vanno con lui; le spese restano del consulente, senza il
         // legame al cliente tolto
         dati.kmClienti[id] = nil
+        // La nota vocale («Luce» giro 13): le note del cliente se ne vanno con lui, e il suo id esce dai candidati
+        // (una sola assegnazione, solo se serve)
+        if dati.noteInArrivo.contains(where: { $0.clienteId == id || $0.candidati.contains(id) }) {
+            var note = dati.noteInArrivo.filter { $0.clienteId != id }
+            for i in note.indices where note[i].candidati.contains(id) { note[i].candidati.removeAll { $0 == id } }
+            dati.noteInArrivo = note
+        }
+        // Le cose date al cliente («Luce» giro 15): capsule del tempo, sinistri e traccia delle uscite se ne vanno con lui
+        if dati.capsule.contains(where: { $0.clienteId == id }) { dati.capsule.removeAll { $0.clienteId == id } }
+        if dati.sinistri.contains(where: { $0.clienteId == id }) { dati.sinistri.removeAll { $0.clienteId == id } }
+        if dati.uscite.contains(where: { $0.clienteId == id }) { dati.uscite.removeAll { $0.clienteId == id } }
+        // Le lettere dal futuro conservate se ne vanno con lui
+        if dati.lettere.contains(where: { $0.clienteId == id }) { dati.lettere.removeAll { $0.clienteId == id } }
         if dati.speseStudio.spese.contains(where: { $0.clienteId == id }) {
             var spese = dati.speseStudio
             for i in spese.spese.indices where spese.spese[i].clienteId == id { spese.spese[i].clienteId = nil }
@@ -1668,7 +1740,7 @@ enum VoceConfronto: Hashable {
     /// Lo stesso documento archiviato di nuovo nello stesso giorno sostituisce la copia di prima (se richiesto).
     @discardableResult
     func archiviaPDF(_ pdf: Data, titolo: String, tipo: Documento.Tipo, cliente: String, posizioneId: String? = nil,
-                     modulo: CompilazioneModulo? = nil, sostituisci: Bool = true) -> String? {
+                     modulo: CompilazioneModulo? = nil, scattoRealta: ScattoRealta? = nil, sostituisci: Bool = true) -> String? {
         // Solo lo stesso documento: stesso cliente, stesso titolo, stessa proposta (un modulo per un'altra proposta resta)
         if sostituisci, let vecchio = dati.documenti.first(where: { $0.clienteId == cliente && $0.titolo == titolo && $0.posizioneId == posizioneId
             && Calendar.current.isDateInToday($0.importatoIl) }) {
@@ -1677,6 +1749,7 @@ enum VoceConfronto: Hashable {
         var d = Documento(clienteId: cliente, titolo: titolo, tipo: tipo)
         d.posizioneId = posizioneId
         d.modulo = modulo
+        d.scattoRealta = scattoRealta
         d.importatoIl = Appuntamento.alMinuto(Date())
         d.lettura = .letto
         let pagine = StampaCarta.testo(pdf)
@@ -2235,6 +2308,12 @@ enum VoceConfronto: Hashable {
         Task {
             let d = await MotoreLocale.verificaDispositivo(vera)
             DispatchQueue.main.async { if self.disponibilitaLocale != d { self.disponibilitaLocale = d } }
+            #if os(iOS)
+            // «Luce» giro 13: il ponte ha trovato il Mac (anche con Qwen non pronto): partono le note in partenza
+            if vera.ponte.abbinato, d.motivo != PonteVera.macNonTrovato {
+                await MainActor.run { self.consegnaNoteInPartenza() }
+            }
+            #endif
         }
     }
 
@@ -3024,6 +3103,8 @@ enum VoceConfronto: Hashable {
             .sink { [weak self] _ in
                 // La finestra sparisce subito; poi si finisce di salvare (niente, se i dati non sono cambiati)
                 NSApplication.shared.windows.forEach { $0.orderOut(nil) }
+                // Le copie da spedire delle cose date al cliente («Luce» giro 15) non restano dopo la chiusura
+                CartellaUscite.svuota()
                 self?.salvaOra()
             }
             .store(in: &abbonamenti)
@@ -3098,6 +3179,8 @@ enum VoceConfronto: Hashable {
             self.controllaBackupAutomatico()
             // Il tagliando dei dati: il controllo saltato nella notte e il prossimo turno
             self.avviaTagliando()
+            // Stanotte («Luce» giro 14): il controllo al risveglio
+            self.controllaNotte()
         }
         ripresaLavori = lavoro
         DispatchQueue.main.asyncAfter(deadline: .now() + attesa, execute: lavoro)
@@ -3573,6 +3656,32 @@ enum VoceConfronto: Hashable {
         }
         // E i moduli fac-simile («Luce» giro 10)
         togliEsempiModuli()
+        // Il giro di prova del Territorio («Luce» giro 11): appuntamenti e attività con il prefisso (anche se il cliente
+        // è rimasto) e la partenza di prova; le posizioni a mano dei clienti di prova se ne vanno con loro
+        let p = TerritorioDiProva.prefisso
+        if dati.appuntamenti.contains(where: { $0.id.hasPrefix(p) }) { dati.appuntamenti.removeAll { $0.id.hasPrefix(p) } }
+        if dati.attivita.contains(where: { $0.id.hasPrefix(p) }) { dati.attivita.removeAll { $0.id.hasPrefix(p) } }
+        for i in dati.clienti.indices where dati.clienti[i].luogo?.nota == TerritorioDiProva.nota { dati.clienti[i].luogo = nil }
+        if dati.impostazioni.territorio.partenza?.nota == TerritorioDiProva.nota { dati.impostazioni.territorio.partenza = nil }
+        // I potenziali clienti di prova («Luce» giro 12)
+        var potenziali = dati.potenziali
+        PotenzialiDiProva.togli(&potenziali)
+        if potenziali != dati.potenziali { dati.potenziali = potenziali }
+        // E le note vocali di prova, se ce ne sono («Luce» giro 13)
+        if dati.noteInArrivo.contains(where: { $0.id.hasPrefix(NotaVocaleDiProva.prefisso) }) {
+            dati.noteInArrivo.removeAll { $0.id.hasPrefix(NotaVocaleDiProva.prefisso) }
+        }
+        // E le notti di prova di «Stanotte» («Luce» giro 14): le carte dei clienti di prova se ne vanno con loro
+        if dati.notti.contains(where: { $0.carte.contains { $0.id.hasPrefix(NotteDiProva.prefisso) } }) {
+            dati.notti = dati.notti.filter { !$0.carte.contains { $0.id.hasPrefix(NotteDiProva.prefisso) } }
+        }
+        // I sinistri e le capsule di prova («Luce» giro 15), anche se il cliente è rimasto
+        if dati.sinistri.contains(where: { $0.id.hasPrefix(SinistriDiProva.prefisso) }) {
+            dati.sinistri.removeAll { $0.id.hasPrefix(SinistriDiProva.prefisso) }
+        }
+        if dati.capsule.contains(where: { $0.diProva == true }) {
+            dati.capsule.removeAll { $0.diProva == true }
+        }
     }
 
     /// Torna ai dati di prova (con backup di sicurezza dello stato attuale): i 5 clienti del template,
@@ -3603,6 +3712,10 @@ enum VoceConfronto: Hashable {
                     demo.impostazioni = self.dati.impostazioni
                     // La tolleranza del radar di prova, se l'utente non ne ha scritta una
                     if demo.impostazioni.tolleranzaRadar == nil { demo.impostazioni.tolleranzaRadar = tolleranzaProva }
+                    // Il giro di prova del Territorio («Luce» giro 11, §0.7): senza la partenza, che resterebbe nelle
+                    // impostazioni dell'utente
+                    TerritorioDiProva.applica(&demo, giorno: TerritorioDiProva.giorno(da: Date(), orari: demo.impostazioni.orari),
+                                              conPartenza: false)
                     self.dati.carica(demo)
                     self.azzeraNote()
                     // I sei fac-simile della Biblioteca arrivano con i clienti di prova («Luce» giro 6)
@@ -3681,15 +3794,26 @@ enum VoceConfronto: Hashable {
 
     // MARK: - Avvisi
 
-    func mostraAvviso(_ testo: String, daVera: Bool = false) {
+    func mostraAvviso(_ testo: String, daVera: Bool = false, azione: AzioneAvviso? = nil) {
         lavoroAvviso?.cancel()
         avvisoDiVera = daVera
+        azioneAvviso = azione
         withAnimation(Animazioni.avviso) { avviso = testo }
         let lavoro = DispatchWorkItem { [weak self] in
+            self?.azioneAvviso = nil
             withAnimation(Animazioni.avviso) { self?.avviso = nil }
         }
         lavoroAvviso = lavoro
         DispatchQueue.main.asyncAfter(deadline: .now() + Animazioni.durataAvviso, execute: lavoro)
+    }
+
+    /// Il pulsante dell'avviso: esegue l'azione una volta e chiude l'avviso.
+    func eseguiAzioneAvviso() {
+        guard let a = azioneAvviso else { return }
+        azioneAvviso = nil
+        lavoroAvviso?.cancel()
+        withAnimation(Animazioni.avviso) { avviso = nil }
+        a.esegui()
     }
 
     func alternaSchermoIntero() {
@@ -3729,6 +3853,9 @@ enum SchedaImpostazioni: String, CaseIterable, Hashable, Identifiable {
     case sala
     /// I modelli di modulo di Pratiche › Moduli e «Conserva l'IBAN nel dossier» («Luce» giro 10, ImpostazioniModuliVista.swift).
     case moduli
+    /// La stima delle distanze, il giro, la partenza, le zone e l'anello arancio di Territorio («Luce» giro 11,
+    /// PaginaImpostazioniTerritorio.swift).
+    case territorio
     /// Dati di prova, confronto dei modelli, prove di promemoria e voce.
     case strumenti
 
@@ -3754,6 +3881,7 @@ enum SchedaImpostazioni: String, CaseIterable, Hashable, Identifiable {
         case .pratiche: return "Pratiche"
         case .sala: return "Sala"
         case .moduli: return "Moduli"
+        case .territorio: return "Territorio"
         case .strumenti: return "Strumenti"
         }
     }
@@ -3863,4 +3991,10 @@ extension StatoShell {
             controlla(TreLivelliVera.eUnaRichiesta(f), "Secondo giro: «\(f)» resta dei tre livelli")
         }
     }
+}
+
+/// Il pulsante di un avviso: «Annulla» dopo una creazione rapida (Pratiche › Proposta, §7.1.4).
+struct AzioneAvviso {
+    let titolo: String
+    let esegui: () -> Void
 }

@@ -67,6 +67,11 @@ extension StatoShell {
     /// schermata di benvenuto né durante la presentazione dei Prospetti.
     func apriSovrapposizione(_ s: SovrapposizioneLuce) {
         guard !bloccato, presentazione == nil else { return }
+        // «Luce» giro 13: la scena del nuovo cliente sostituita da un'altra non lascia i dati letti in memoria
+        if sistema.sovrapposizione == .scena(.cartaIdentita), s != .scena(.cartaIdentita) {
+            scartaCartaInUso()
+            svuotaNuovoCliente()
+        }
         withTransaction(Transaction(animation: nil)) {
             if sistema.pannelloNovita { sistema.pannelloNovita = false }
             if pannelloNotifiche { pannelloNotifiche = false }
@@ -84,6 +89,11 @@ extension StatoShell {
     /// aveva acceso la modalità cliente, la spegne.
     func chiudiSovrapposizione(animato: Bool = true) {
         guard let s = sistema.sovrapposizione else { return }
+        // «Luce» giro 13: chiudere la scena del nuovo cliente scarta tutto ciò che si è letto
+        if s == .scena(.cartaIdentita) {
+            scartaCartaInUso()
+            svuotaNuovoCliente()
+        }
         Movimenti.anima(Tema.Moto.Pannelli.chiusuraPresentazione, durata: Tema.Moto.Pannelli.durataChiusuraPresentazione,
                         animato: animato && persistente) {
             sistema.sovrapposizione = nil

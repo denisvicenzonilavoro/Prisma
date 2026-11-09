@@ -365,6 +365,7 @@ struct VeraScrivania: View {
         // Il quadro visivo va sotto l'ultima risposta di Vera: le cifre le calcola Prisma
         let ultima = elenco.last.flatMap { $0.autore == .vera ? $0 : nil }
         let quadro = stato.veraInCorso ? nil : ultima.flatMap { stato.quadroVera(per: $0, in: elenco, portafoglio: portafoglio) }
+        let domandaBiblioteca = stato.domandaPerBiblioteca(in: elenco)
         return ScrollViewReader { lettore in
             ScrollView {
                 VStack(spacing: m.spazioMessaggi) {
@@ -376,7 +377,9 @@ struct VeraScrivania: View {
                                   posizioneProposta: { stato.posizioneDaProposta($0, messaggio: msg.id) },
                                   apriAzione: { stato.apriAzioneVera($0) },
                                   annullaAzione: { stato.annullaAzioneVera($0, messaggio: msg.id) },
-                                  quadro: msg.id == ultima?.id ? quadro : nil)
+                                  quadro: msg.id == ultima?.id ? quadro : nil,
+                                  domandaBiblioteca: msg.id == ultima?.id ? domandaBiblioteca : nil,
+                                  cercaBiblioteca: { stato.cercaNellaBiblioteca($0) })
                             .id(msg.id)
                     }
                     if stato.veraInCorso {

@@ -46,7 +46,7 @@ struct AzioniSala: View {
             let varianti = PilloleClienti.varianti(stato.clienti, attivo: stato.clienteAttivo,
                                                    numeri: [t.pilloleMassime, t.pilloleMassime - 1, t.pilloleMinime])
             PilloleClienti(lunga: varianti[0], media: varianti[1], corta: varianti[2],
-                           scelto: stato.clienteAttivoId, scegli: { stato.clienteAttivoId = $0 })
+                           scelto: stato.clienteAttivoId, scegli: { stato.scegliClienteSala($0) })
                 .equatable()
         }
     }
@@ -73,6 +73,24 @@ private struct CorpoSala: View {
             EscSala(sistema: stato.sistema, palco: sala.esperienza != nil)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        // Il gioco del rischio a metà (§4.1.4): uscire o cambiare cliente perde le risposte già date
+        .confirmationDialog(TestiUscitaRischio.titoloLasciaRischio,
+                            isPresented: Binding(get: { sala.uscitaRischio != nil }, set: { if !$0 { sala.uscitaRischio = nil } }),
+                            titleVisibility: .visible) {
+            Button(TestiUscitaRischio.lasciaRischio, role: .destructive) { confermaUscita() }
+            Button(TestiUscitaRischio.continuaRischio, role: .cancel) { sala.uscitaRischio = nil }
+        } message: {
+            Text(sala.uscitaRischio == .torna ? TestiUscitaRischio.messaggioTornaRischio : TestiUscitaRischio.messaggioClienteRischio)
+        }
+    }
+
+    private func confermaUscita() {
+        let m = Tema.Apple.Moto.SalaEsperienze.self
+        if istantanea || sala.uscitaRischio != .torna {
+            stato.confermaUscitaRischio()
+        } else {
+            withAnimation(calmo ? Tema.Moto.dissolvenzaCalma : m.ritorno) { stato.confermaUscitaRischio() }
+        }
     }
 
     /// Dalla scheda al palco: la card cresce dalla scheda toccata (senza movimento con «Riduci movimento»).
@@ -92,6 +110,7 @@ private struct CorpoSala: View {
     /// Dal palco alla griglia: la card torna nella sua scheda.
     private func torna() {
         let m = Tema.Apple.Moto.SalaEsperienze.self
+        guard stato.puoTornareAllaSala() else { return }
         if istantanea {
             stato.tornaAllaSala()
         } else {
@@ -111,10 +130,12 @@ private struct EscSala: View {
         let _ = ContaCorpi.segna()
         let libera = sistema.appAttiva == .sala && !sistema.pannelloNovita && sistema.sovrapposizione == nil
             && !sistema.pannelloNotifiche && !sistema.pannelloRicerca && sistema.guida == nil && !sistema.bloccato
-            && stato.presentazione == nil && !stato.sala.dettaglioValoreAperto
+            && stato.presentazione == nil && !stato.sala.dettaglioValoreAperto && stato.sala.uscitaRischio == nil
         if libera {
             Button(palco ? "Torna alla Sala" : "Chiudi la Sala") {
                 if palco {
+                    // A metà del gioco del rischio chiede conferma (§4.1.4)
+                    guard stato.puoTornareAllaSala() else { return }
                     withAnimation(Tema.Apple.Moto.SalaEsperienze.ritorno) { stato.tornaAllaSala() }
                 } else {
                     stato.chiudi(.sala)
@@ -311,6 +332,13 @@ private struct PalcoSala: View {
                 .entrataCascata(0, base: Tema.Apple.Moto.Cascata.baseDentroApp)
             ContenutoPalco(esperienza: esperienza, cliente: cliente)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .overlay(alignment: .top) {
+                    #if os(macOS)
+                    // La conferma delle cifre sull'iPad (decisione 49), in testa al palco
+                    ConfermaCifreTavolo(esperienza: esperienza, cliente: cliente)
+                        .padding(.top, Tema.Apple.RealtaAumentata.CorniceiPad.origine.y)
+                    #endif
+                }
                 .matchedGeometryEffect(id: esperienza.id, in: spazio, isSource: false)
                 .superficieApple(Tema.Apple.SalaEsperienze.Scheda.superficie, raggio: Tema.Apple.SalaEsperienze.Scheda.raggio)
                 .clipShape(RoundedRectangle(cornerRadius: Tema.Apple.SalaEsperienze.Scheda.raggio, style: .continuous))
@@ -335,19 +363,25 @@ private struct PalcoSala: View {
             .lineLimit(1)
             Spacer(minLength: P.spazioTestata)
             HStack(spacing: P.spazioPulsanti) {
-                // Il tavolo e il Prisma del cliente non sono ancora pronti per nessuna esperienza (decisioni 7 e 111):
-                // i pulsanti restano spenti anche dove l'esperienza c'è già
+                // «▣ Mostra sul tavolo» (giro 16, decisioni 48 e 111): sul Mac osserva il tavolo; su iPhone e iPad il
+                // tavolo lato Mac non c'è. «✦ Aggiungi al Prisma» si accende con il giro 15 (decisione 7)
+                #if os(macOS)
                 if esperienza.mostraSulTavolo {
-                    Button { } label: { Text("▣ Mostra sul tavolo") }
-                        .buttonStyle(.apple)
-                        .disabled(!esperienza.disponibile || !EsperienzaSala.tavoloPronto)
-                        .help("Sull'iPad del tavolo: arriva con un prossimo aggiornamento")
+                    PulsanteMostraSulTavolo(tavolo: stato.tavolo, esperienza: esperienza, cliente: cliente)
                 }
+                #endif
                 if esperienza.aggiungeAlPrisma {
-                    Button { } label: { Text("✦ Aggiungi al Prisma di \(nome)") }
-                        .buttonStyle(.apple)
-                        .disabled(!esperienza.disponibile || !EsperienzaSala.prismaCliente.disponibile)
-                        .help("Nel file personale del cliente: arriva con «Il Prisma del cliente». Prisma non manda nulla da solo")
+                    // Giro 15: accende la voce nel file del cliente (Shell/StatoPrismaCliente.swift); il disegno entra
+                    // nel file solo come obiettivo salvato (decisione 7)
+                    let aggiunta = stato.voceAggiunta(esperienza, cliente: cliente)
+                    Button { stato.aggiungiAlPrismaCliente(esperienza, cliente: cliente) } label: {
+                        Text(aggiunta ? "✓ Nel Prisma di \(nome)" : "✦ Aggiungi al Prisma di \(nome)")
+                    }
+                    .buttonStyle(.apple)
+                    .disabled(esperienza == .disegna || !esperienza.disponibile || !EsperienzaSala.prismaCliente.disponibile)
+                    .help(esperienza == .disegna
+                          ? "Il disegno entra nel file quando lo salvi come obiettivo"
+                          : "Nel file personale del cliente (Il Prisma del cliente). Prisma non manda nulla da solo")
                 }
                 Button { stato.presentaEsperienza(esperienza) } label: { Text("▶︎ Presenta") }
                     .buttonStyle(.applePrimario)
@@ -398,6 +432,22 @@ struct ContenutoPalco: View {
         case .valoreConsulente:
             // Giro 8: Quanto vale avermi accanto (Shell/SalaValoreConsulente.swift)
             ValoreConsulenteVista(cliente: cliente, modificabile: !inSala)
+                .id(cliente.id)
+        case .prismaCliente:
+            // Giro 15: il Prisma del cliente (Shell/SalaPrismaCliente.swift)
+            PalcoPrismaCliente(cliente: cliente, inSala: inSala)
+                .id(cliente.id)
+        case .film:
+            // Giro 15: il film del piano (Shell/SalaFilm.swift)
+            FilmDelPiano(cliente: cliente, modificabile: !inSala)
+                .id(cliente.id)
+        case .capsula:
+            // Giro 15: la capsula del tempo (Shell/SalaCapsula.swift)
+            CapsulaDelTempo(cliente: cliente, modificabile: !inSala)
+                .id(cliente.id)
+        case .realtaAumentata:
+            // Giro 16: la realtà aumentata (Mac: Shell/SalaRealta.swift; iPhone e iPad: iOS/RealtaAumentataMobile.swift)
+            PalcoRealtaAumentata(cliente: cliente, inSala: inSala)
                 .id(cliente.id)
         default:
             InArrivoEsperienza(esperienza: esperienza, inSala: inSala)

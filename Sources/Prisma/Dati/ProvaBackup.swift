@@ -175,6 +175,14 @@ enum ProvaBackup {
             ProvaBackup.aggiungiRaccontiDiProva(&originale)
             // «Luce», giro 9: spese, scadenze, corsi, impostazioni dei km e luogo degli appuntamenti (ProvaBackupSpese.swift)
             ProvaBackup.aggiungiSpeseDiProva(&originale)
+            // «Luce», giro 11: posizione a mano, appuntamento da confermare e impostazioni del Territorio (ProvaBackupTerritorio.swift)
+            ProvaBackup.aggiungiTerritorioDiProva(&originale)
+            // «Luce», giro 12: potenziali clienti, presentatori, una campagna con le bozze (ProvaBackupLuceClienti.swift)
+            ProvaBackup.aggiungiLuceClientiDiProva(&originale)
+            // «Luce», giro 16: lo scatto della realtà aumentata nei Documenti e l'interruttore della stanza (ProvaBackupRealta.swift)
+            ProvaBackup.aggiungiRealtaDiProva(&originale)
+            // «Luce» §8.2: un documento entrato nel dossier dallo Smontaggio con le voci di costo (ProvaBackupSmontaggio.swift)
+            ProvaBackup.aggiungiSmontaggioDiProva(&originale)
             // Vera, fase 3: promesse, confronti, coperture e un resoconto (ProvaBackupFaseTreVera.swift)
             ProvaBackup.aggiungiFaseTreVeraDiProva(&originale)
             // Vera, fase 4: routine, orari dell'agenda, tagliando e scheda unita, voci chiuse del sussurro, mercato per i
@@ -311,6 +319,27 @@ enum ProvaBackup {
             }
             // Chilometri, spese e scadenze (versione 27, «Luce» giro 9), e un archivio senza (ProvaBackupSpese.swift)
             if let e = try verificaSpese(originale: originale, estratto: estratto.dati) {
+                print("ERRORE: \(e)")
+                return 1
+            }
+            // Posizione a mano, appuntamento da confermare e impostazioni del Territorio (versione 27, «Luce» giro 11),
+            // un archivio senza e la lettura tollerante (ProvaBackupTerritorio.swift)
+            if let e = try verificaTerritorio(originale: originale, estratto: estratto.dati) {
+                print("ERRORE: \(e)")
+                return 1
+            }
+            // Potenziali clienti, passaparola e campagne (versione 27, «Luce» giro 12), e un archivio della 26 (ProvaBackupLuceClienti.swift)
+            if let e = try verificaLuceClienti(originale: originale, estratto: estratto.dati) {
+                print("ERRORE: \(e)")
+                return 1
+            }
+            // Lo scatto della realtà aumentata e l'interruttore della stanza (versione 27, «Luce» giro 16) (ProvaBackupRealta.swift)
+            if let e = try verificaRealta(originale: originale, estratto: estratto.dati) {
+                print("ERRORE: \(e)")
+                return 1
+            }
+            // Le voci di costo dello Smontaggio nei Documenti (versione 27, «Luce» §8.2) (ProvaBackupSmontaggio.swift)
+            if let e = try verificaSmontaggio(originale: originale, estratto: estratto.dati) {
                 print("ERRORE: \(e)")
                 return 1
             }
@@ -628,6 +657,46 @@ enum ProvaBackup {
             }
             // «Compila da solo» di «Luce» (giro 10): la cartella Moduli/, luogo di nascita e IBAN, il modulo compilato (ProvaBackupModuli.swift)
             if let errore = try provaModuli(radice: radice) {
+                print("ERRORE: \(errore)")
+                return 1
+            }
+            // «Luce», giro 12: potenziali e campagne in relazione.json, il presentatore nel file del cliente (ProvaBackupLuceClienti.swift)
+            if let errore = try provaPezziLuceClienti(radice: radice) {
+                print("ERRORE: \(errore)")
+                return 1
+            }
+            // «Luce», giro 12: in modalità cliente Messaggi non si apre e Clienti torna alla Rubrica (ProvaBackupLuceClienti.swift)
+            if let errore = provaModoClienteLuce() {
+                print("ERRORE: \(errore)")
+                return 1
+            }
+            // La nota vocale e il nuovo cliente di «Luce» (giro 13): note dall'iPhone e cittadinanza (ProvaBackupNoteVocali.swift)
+            if let errore = try provaNoteVocali(radice: radice) {
+                print("ERRORE: \(errore)")
+                return 1
+            }
+            // «Stanotte» di «Luce» (giro 14): le notti di lavoro e le loro impostazioni (ProvaBackupNotte.swift)
+            if let errore = try provaNotte(radice: radice) {
+                print("ERRORE: \(errore)")
+                return 1
+            }
+            // Le cose date al cliente di «Luce» (giro 15): capsule, sinistri, uscite, stato del Prisma del cliente, consenso a
+            // WhatsApp e impostazioni nuove (ProvaBackupGiro15.swift); le chiavi delle capsule nei backup protetti
+            // (ProvaBackupCapsule.swift, 15c) e i sinistri con le loro impostazioni (ProvaBackupSinistri.swift, 15e)
+            if let errore = try provaGiro15(radice: radice) {
+                print("ERRORE: \(errore)")
+                return 1
+            }
+            // Le lettere dal futuro conservate («Aggiungi al Prisma» e PDF, §3.1.5) (ProvaBackupRacconti.swift)
+            if let errore = try provaLettere(radice: radice) {
+                print("ERRORE: \(errore)")
+                return 1
+            }
+            if let errore = try provaCapsule(radice: radice) {
+                print("ERRORE: \(errore)")
+                return 1
+            }
+            if let errore = try provaSinistri(radice: radice) {
                 print("ERRORE: \(errore)")
                 return 1
             }

@@ -382,6 +382,7 @@ struct AppVera: View {
         // La scheda dei calcoli va nell'ultima risposta di Vera: le cifre le calcola Prisma, mai Qwen
         let ultima = elenco.last.flatMap { $0.autore == .vera ? $0 : nil }
         let quadro = stato.veraInCorso ? nil : ultima.flatMap { stato.quadroVera(per: $0, in: elenco, portafoglio: portafoglio) }
+        let domandaBiblioteca = stato.domandaPerBiblioteca(in: elenco)
         let primoNuovo = nuoviDa.flatMap { $0.chiave == chiave ? $0.indice : nil } ?? Int.max
         return ScrollViewReader { lettore in
             ScrollView {
@@ -395,6 +396,8 @@ struct AppVera: View {
                                   apriAzione: { stato.apriAzioneVera($0) },
                                   annullaAzione: { stato.annullaAzioneVera($0, messaggio: msg.id) },
                                   quadro: msg.id == ultima?.id ? quadro : nil,
+                                  domandaBiblioteca: msg.id == ultima?.id ? domandaBiblioteca : nil,
+                                  cercaBiblioteca: { stato.cercaNellaBiblioteca($0) },
                                   nuova: i >= primoNuovo,
                                   avanza: { lettore.scrollTo(Self.fondo, anchor: .bottom) })
                             .id(msg.id)
@@ -749,6 +752,9 @@ struct NuvolaVera: View {
     var annullaAzione: (AzioneVera) -> Void = { _ in }
     /// La scheda dei calcoli di Prisma sotto il testo (solo l'ultima risposta).
     var quadro: QuadroVera? = nil
+    /// «Cerca nella Biblioteca» (§8.1.5.2 punto 6): la domanda su condizioni o normativa dell'ultima risposta.
+    var domandaBiblioteca: String? = nil
+    var cercaBiblioteca: (String) -> Void = { _ in }
     var nuova = false
     /// A ogni parola mostrata (la chat scorre in fondo).
     var avanza: (() -> Void)? = nil
@@ -763,7 +769,8 @@ struct NuvolaVera: View {
          posizioneProposta: @escaping (PropostaVera) -> Void = { _ in },
          apriAzione: @escaping (AzioneVera) -> Void = { _ in },
          annullaAzione: @escaping (AzioneVera) -> Void = { _ in },
-         quadro: QuadroVera? = nil, nuova: Bool = false, avanza: (() -> Void)? = nil) {
+         quadro: QuadroVera? = nil, domandaBiblioteca: String? = nil, cercaBiblioteca: @escaping (String) -> Void = { _ in },
+         nuova: Bool = false, avanza: (() -> Void)? = nil) {
         self.messaggio = messaggio
         self.nomeUtente = nomeUtente
         self.azioniCliente = azioniCliente
@@ -774,6 +781,8 @@ struct NuvolaVera: View {
         self.apriAzione = apriAzione
         self.annullaAzione = annullaAzione
         self.quadro = quadro
+        self.domandaBiblioteca = domandaBiblioteca
+        self.cercaBiblioteca = cercaBiblioteca
         self.nuova = nuova
         self.avanza = avanza
     }
@@ -922,6 +931,17 @@ struct NuvolaVera: View {
                     if let proposte = messaggio.proposte, !proposte.isEmpty {
                         elencoProposte(proposte)
                             .padding(.top, b.sopraScheda)
+                    }
+                    // Una domanda su condizioni o normativa: la stessa ricerca di «Trova la pagina», con la pagina
+                    if let d = domandaBiblioteca {
+                        VStack(alignment: .leading, spacing: b.spazioAzioni) {
+                            Text("Posso cercarlo anche nei documenti della tua Biblioteca, con la pagina da mostrare.")
+                                .carattereApple(b.nota)
+                                .foregroundColor(b.coloreNota)
+                                .fixedSize(horizontal: false, vertical: true)
+                            azione("Cerca nella Biblioteca", primaria: true) { cercaBiblioteca(d) }
+                        }
+                        .padding(.top, b.sopraAzioni)
                     }
                     azioni
                         .padding(.top, b.sopraAzioni)

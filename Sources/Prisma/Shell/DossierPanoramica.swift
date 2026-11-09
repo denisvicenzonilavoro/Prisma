@@ -45,6 +45,22 @@ struct PanoramicaDossierApple: View {
                 .entrataDossier(1)
             ProssimoIncontroApple(cliente: cliente, appuntamento: prossimo)
                 .entrataDossier(2)
+            // «Luce» §5.4.4 (proposta): i traguardi del cliente ancora da festeggiare, con «Festeggialo ›» verso Messaggi;
+            // Messaggi non si apre in modalità cliente, e il traguardo è un appunto del consulente
+            if !stato.inModoCliente {
+                let daFesteggiare = stato.traguardiDaFesteggiare(cliente: cliente.id)
+                if !daFesteggiare.isEmpty {
+                    DaFesteggiareApple(traguardi: daFesteggiare)
+                        .entrataDossier(2)
+                }
+            }
+            #if os(macOS)
+            // «Luce» giro 15: i sinistri del cliente (Pratiche › Sinistri); Pratiche non si apre in modalità cliente
+            if !stato.inModoCliente && stato.dati.sinistri.contains(where: { $0.clienteId == cliente.id }) {
+                SinistriDossierApple(cliente: cliente)
+                    .entrataDossier(2)
+            }
+            #endif
         }
         if let k = completezza {
             ColonneProporzionaliDossier(proporzione: p.proporzione, spazio: p.spazio, larghezzaMinima: p.larghezzaDueColonne) {
@@ -309,6 +325,43 @@ struct DaRicordareApple: View {
                     .carattereApple(p.nota)
                     .foregroundColor(p.coloreNota)
                     .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(p.paddingLaterali)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .superficieApple(p.superficie)
+    }
+}
+
+// MARK: - Da festeggiare
+
+/// «Da festeggiare»: i traguardi del cliente degli ultimi giorni non ancora festeggiati (MotoreTraguardi), ognuno con il
+/// perché e «Festeggialo ›», che apre Messaggi sul biglietto di quel traguardo.
+struct DaFesteggiareApple: View {
+    @Environment(StatoShell.self) var stato
+    let traguardi: [Traguardo]
+
+    var body: some View {
+        let _ = ContaCorpi.segna()
+        let p = Tema.Apple.Clienti.Panoramica.self
+        return VStack(alignment: .leading, spacing: p.sottoTitolo) {
+            Text(GruppoMessaggio.festeggiare.titolo)
+                .carattereApple(p.titolo)
+                .foregroundColor(p.coloreTitolo)
+            ForEach(traguardi) { t in
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(t.titolo)
+                        .carattereApple(p.nota)
+                        .foregroundColor(p.coloreNota)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(t.perche)
+                        .carattereApple(p.nota)
+                        .foregroundColor(p.notaVuota)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button(TestiStorie.festeggialo) { stato.apriTraguardo(t.id, clienteId: t.clienteId) }
+                        .buttonStyle(.appleSobrio)
+                }
             }
             Spacer(minLength: 0)
         }

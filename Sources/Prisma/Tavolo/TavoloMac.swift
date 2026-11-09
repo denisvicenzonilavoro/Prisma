@@ -11,6 +11,10 @@ import SwiftUI
 // famiglia (cifre già calcolate dai motori, minime, solo del cliente presente), un cursore da muovere (il Mac
 // ricalcola e rimanda il risultato), la richiesta di presa visione. La presa visione torna con il tratto e la data:
 // finisce in fondo al PDF del documento, archiviato nei Documenti del cliente.
+// Dal «Luce» giro 16 il tavolo va nei due sensi (decisioni 48, 49, 111, 113): «▣ Mostra sul tavolo» dal palco della Sala
+// manda la realtà aumentata, il gioco del rischio, Lancia l'anno, il disegno o l'immagine del palco; dall'iPad tornano,
+// sempre per ciò che è mostrato ora (stesso id), la risposta, il lancio, il tratto, il testo della capsula e lo scatto.
+// Le cifre di un cliente vanno sull'iPad solo dopo la conferma del consulente (una volta per cliente e per tavolo).
 // Il servizio ascolta in rete (NWListener, come ServerPonteVera) solo dopo «Apri il tavolo» e si spegne con «Chiudi
 // il tavolo». Il codice di abbinamento è quello del ponte di Vera (Impostazioni › Vera); il protocollo è in
 // ProtocolloTavolo.swift. Le viste (pulsante «Al tavolo», pannello, striscia della sala, pagina della presa visione)
@@ -159,7 +163,7 @@ final class AscoltoTavolo: @unchecked Sendable {
             return
         }
         switch c {
-        case .valoreCursore, .presaVisione: eventi?(.ricevuto(c))
+        case .valoreCursore, .presaVisione, .rispostaRischio, .lancioAnno, .tratto, .testoCapsula, .fotoRealta: eventi?(.ricevuto(c))
         default: break
         }
     }
@@ -211,6 +215,18 @@ final class TavoloMac: ObservableObject {
     /// Il documento dei Documenti con l'ultima presa visione archiviata.
     @Published private(set) var ultimaPresaVisione: String?
     @Published private(set) var avviso: String?
+    /// Ciò che arriva dall'iPad per l'esperienza mostrata (le viste della Sala lo ascoltano con `.dalTavolo`, giro 16).
+    let dallIPad = PassthroughSubject<ContenutoTavolo, Never>()
+    /// Il contenuto con il genere a doppio senso sull'iPad ora (nil = schermata neutra, pagina, cursore o presa visione).
+    @Published private(set) var mostraAttivo: MostraTavolo?
+    /// I clienti per cui il consulente ha confermato le cifre sull'iPad in questa sessione (decisione 49). Non salvato.
+    private(set) var cifreConfermate: Set<String> = []
+    /// La capsula aspetta il testo dall'iPad: chi lo riceve (la vista della capsula del giro 15).
+    private var testoCapsulaArrivato: ((String) -> Void)? {
+        didSet { if capsulaInAttesa != (testoCapsulaArrivato != nil) { capsulaInAttesa = testoCapsulaArrivato != nil } }
+    }
+    /// «Scrivi sull'iPad»: la capsula aspetta il testo del cliente (la vista mostra l'attesa e «Annulla»).
+    @Published private(set) var capsulaInAttesa = false
 
     private weak var stato: StatoShell?
     private var ascolto: AscoltoTavolo?
@@ -288,6 +304,7 @@ final class TavoloMac: ObservableObject {
         ascolto = nil
         abbonamento = nil
         azzera()
+        cifreConfermate = []
         collegamento = .spento
         pannello = false
     }
@@ -301,6 +318,8 @@ final class TavoloMac: ObservableObject {
         mostrato = nil
         clienteMostrato = nil
         dallaSala = false
+        mostraAttivo = nil
+        testoCapsulaArrivato = nil
         ascolto?.manda(.neutra)
     }
 
@@ -443,6 +462,7 @@ final class TavoloMac: ObservableObject {
         attesaPresaVisione = nil
         ricalcolo = calcola
         cursore = x
+        mostraAttivo = nil
         mostrato = "Cursore · versamento mensile"
         dallaSala = dallaSala || c.dallaSala
         ascolto?.manda(.cursore(x))
@@ -456,6 +476,7 @@ final class TavoloMac: ObservableObject {
         cursore = nil
         ricalcolo = nil
         attesaPresaVisione = r
+        mostraAttivo = nil
         mostrato = "Presa visione · \(d.titolo)"
         ascolto?.manda(.richiestaPresaVisione(r))
     }
@@ -484,6 +505,129 @@ final class TavoloMac: ObservableObject {
             AzioneTavolo(id: "neutra", titolo: "Schermata neutra", simbolo: "eye.slash", abilitata: pronto,
                          aiuto: "L'iPad non mostra più niente") { [weak self] in self?.schermataNeutra() },
         ]
+    }
+
+    // MARK: Il doppio senso (giro 16)
+
+    /// Il consulente conferma le cifre del cliente sull'iPad: vale finché il tavolo resta aperto (decisione 49).
+    func confermaCifre(_ cliente: String) {
+        guard !cliente.isEmpty else { return }
+        cifreConfermate.insert(cliente)
+    }
+
+    /// Prima di mandare cifre personali di questo cliente serve la conferma del consulente.
+    func cifreDaConfermare(_ cliente: String) -> Bool { !cifreConfermate.contains(cliente) }
+
+    /// L'id di ciò che si manda: lo stesso del contenuto attivo se è dello stesso genere e dello stesso cliente (così
+    /// l'iPad non perde lo stato e le sue risposte restano valide), altrimenti uno nuovo.
+    private func idMostra(_ genere: MostraTavolo.Genere, cliente: String) -> String {
+        if let m = mostraAttivo, m.genere == genere, clienteMostrato == cliente { return m.id }
+        return UUID().uuidString
+    }
+
+    /// Manda un contenuto a doppio senso e lo ricorda come attivo.
+    private func mostraAttiva(_ m: MostraTavolo, cliente: String, descrizione: String) {
+        let stesso = mostraAttivo?.id == m.id
+        let capsula = testoCapsulaArrivato
+        mostra(m, cliente: cliente, descrizione: descrizione, sala: false)
+        mostraAttivo = m
+        // Un aggiornamento della stessa capsula non dimentica chi aspetta il testo
+        if stesso { testoCapsulaArrivato = capsula }
+    }
+
+    /// «▣ Mostra sul tavolo» della realtà aumentata: gli strati e gli anni del cristallo; l'iPad lo costruisce da sé.
+    func mandaRealta(_ c: ContestoTavolo, ultimoScatto: String? = nil) {
+        guard collegato, let s = stato, let id = clientePresente(c), let cliente = s.cliente(id), cifreConfermate.contains(id) else { return }
+        let esito = CacheRealta.esito(cliente: cliente, posizioni: s.posizioniCliente(id), obiettivi: s.obiettiviCliente(id),
+                                      eventi: s.eventiVitaCliente(id), analisi: s.dati.analisi[id])
+        let idM = idMostra(.realtaAumentata, cliente: id)
+        let precedente = mostraAttivo?.id == idM ? mostraAttivo?.realta?.ultimoScatto : nil
+        var m = MostraTavolo(id: idM, genere: .realtaAumentata, titolo: EsperienzaSala.realtaAumentata.titolo, cliente: cliente.nome)
+        m.realta = MotoreRealtaAumentata.tavolo(esito, nome: TestiRealta.primoNome(cliente.nome),
+                                                scattoConStanza: s.dati.impostazioni.sala.scattoConStanza,
+                                                ultimoScatto: ultimoScatto ?? precedente)
+        mostraAttiva(m, cliente: id, descrizione: EsperienzaSala.realtaAumentata.titolo)
+    }
+
+    /// Il gioco del rischio sull'iPad: lo scenario in corso o il risultato. Scenari neutri: nessuna conferma serve.
+    func mandaRischio(_ c: ContestoTavolo, stato g: RischioTavolo) {
+        guard collegato, let s = stato, let id = clientePresente(c), let cliente = s.cliente(id) else { return }
+        var m = MostraTavolo(id: idMostra(.rischio, cliente: id), genere: .rischio, titolo: EsperienzaSala.giocoRischio.titolo,
+                             cliente: cliente.nome)
+        m.rischio = g
+        mostraAttiva(m, cliente: id, descrizione: "\(EsperienzaSala.giocoRischio.titolo) · \(min(g.indice + 1, g.totale)) di \(g.totale)")
+    }
+
+    /// Lancia l'anno sull'iPad: le due vite e l'ultima carta (cifre del cliente: serve la conferma).
+    func mandaLancia(_ c: ContestoTavolo, partita p: PartitaLanciaAnno, avvertenza: String) {
+        guard collegato, let s = stato, let id = clientePresente(c), let cliente = s.cliente(id), cifreConfermate.contains(id) else { return }
+        var m = MostraTavolo(id: idMostra(.lanciaAnno, cliente: id), genere: .lanciaAnno, titolo: EsperienzaSala.lanciaAnno.titolo,
+                             cliente: cliente.nome)
+        m.lancia = LanciaAnnoTavolo.da(p, nome: TestiRealta.primoNome(cliente.nome), avvertenza: avvertenza)
+        mostraAttiva(m, cliente: id, descrizione: "\(EsperienzaSala.lanciaAnno.titolo) · \(p.anni.count) di \(p.anniMassimi)")
+    }
+
+    /// Disegna il tuo futuro sull'iPad: la tela con gli assi e, quando c'è, il risultato disegnato dal Mac.
+    func mandaDisegno(_ c: ContestoTavolo, assi: AssiDisegno, ingresso: IngressoLineaVita, risultato: PaginaTavolo?, frase: String?) {
+        guard collegato, let s = stato, let id = clientePresente(c), let cliente = s.cliente(id), cifreConfermate.contains(id) else { return }
+        var m = MostraTavolo(id: idMostra(.disegno, cliente: id), genere: .disegno, titolo: EsperienzaSala.disegna.titolo,
+                             cliente: cliente.nome)
+        let gradini = 4
+        let etichette = (0...gradini).map { MotoreDisegno.etichettaAsse(assi.massimo * Double($0) / Double(gradini)) }
+        m.disegno = DisegnoTavolo(etaOggi: assi.etaOggi, etaFine: assi.etaFine, etaPensione: ingresso.etaPensione,
+                                  etichetteAsse: etichette, risultato: risultato,
+                                  frase: frase.map { "\($0) \(TestiRealta.dopoPensioneDisegno)" })
+        mostraAttiva(m, cliente: id, descrizione: EsperienzaSala.disegna.titolo)
+    }
+
+    /// L'immagine ferma di un palco (decisione 111: prisma di luce, giornata della pensione), come una pagina.
+    @MainActor
+    func mandaImmagine(_ c: ContestoTavolo, titolo: String, png: Data, misura: CGSize) {
+        guard collegato, let s = stato, let id = clientePresente(c), let cliente = s.cliente(id), cifreConfermate.contains(id),
+              !png.isEmpty, png.count <= ProtocolloTavolo.massimoMessaggio else { return }
+        let pagina = PaginaTavolo(numero: 1, totale: 1, larghezza: Double(misura.width), altezza: Double(misura.height), png: png)
+        let m = MostraTavolo(id: UUID().uuidString, genere: .pagina, titolo: titolo, cliente: cliente.nome, pagine: [pagina])
+        mostra(m, cliente: id, descrizione: titolo, sala: c.dallaSala)
+    }
+
+    /// La capsula del tempo scritta sull'iPad (D-C4): il testo arriva una volta sola a `riceve` e l'iPad torna neutro.
+    /// La vista della capsula (`Shell/SalaCapsula.swift`, «Scrivi sull'iPad») lo sigilla subito con `sigillaCapsula`: il
+    /// testo non si mostra sul Mac, non va in nessun campo né registro.
+    func chiediTestoCapsula(_ c: ContestoTavolo, capsula: CapsulaTavolo, riceve: @escaping (String) -> Void) {
+        guard collegato, let s = stato, let id = clientePresente(c), let cliente = s.cliente(id) else { return }
+        var m = MostraTavolo(id: idMostra(.capsula, cliente: id), genere: .capsula, titolo: EsperienzaSala.capsula.titolo,
+                             cliente: cliente.nome)
+        m.capsula = capsula
+        mostraAttiva(m, cliente: id, descrizione: EsperienzaSala.capsula.titolo)
+        testoCapsulaArrivato = riceve
+    }
+
+    /// «Annulla» dell'attesa della capsula (o la vista che si chiude): non aspetta più il testo e, se l'iPad mostra
+    /// ancora la capsula, torna alla schermata neutra (il campo dell'iPad si svuota). Un testo che arriva dopo si ignora.
+    func annullaTestoCapsula() {
+        guard testoCapsulaArrivato != nil else { return }
+        testoCapsulaArrivato = nil
+        if mostraAttivo?.genere == .capsula { schermataNeutra() }
+    }
+
+    /// Lo scatto arrivato dall'iPad: il foglio nei Documenti del cliente mostrato, poi l'avviso sull'iPad.
+    @MainActor
+    private func archiviaScatto(_ f: FotoRealtaTavolo) {
+        guard let s = stato, let m = mostraAttivo, m.id == f.id, m.genere == .realtaAumentata, let id = clienteMostrato,
+              let cliente = s.cliente(id) else { return }
+        guard f.immagine.count <= ProtocolloTavolo.massimoFoto, let immagine = ProtocolloTavolo.immagine(f.immagine) else {
+            avviso = TestiRealta.scattoGuasto
+            return
+        }
+        if f.conStanza && !s.dati.impostazioni.sala.scattoConStanza {
+            avviso = TestiRealta.stanzaNonPermessa
+            return
+        }
+        guard s.archiviaScattoRealta(immagine, cliente: id, anno: f.anno, esploso: f.esploso, conStanza: f.conStanza,
+                                     origine: .ipad) != nil else { return }
+        let testo = TestiRealta.fotoSalvata(cliente.nome)
+        avviso = testo
+        mandaRealta(ContestoTavolo(documento: nil, pagina: 0, clienteId: id), ultimoScatto: testo)
     }
 
     // MARK: Le prove e le istantanee
@@ -541,6 +685,24 @@ final class TavoloMac: ObservableObject {
         case .presaVisione(let p):
             guard let r = attesaPresaVisione, r.id == p.id else { return }
             Task { @MainActor [weak self] in self?.archiviaPresaVisione(p, richiesta: r) }
+        case .rispostaRischio(let x):
+            guard let m = mostraAttivo, m.id == x.id, m.genere == .rischio else { return }
+            dallIPad.send(c)
+        case .lancioAnno(let x):
+            guard let m = mostraAttivo, m.id == x.id, m.genere == .lanciaAnno else { return }
+            dallIPad.send(c)
+        case .tratto(let x):
+            guard let m = mostraAttivo, m.id == x.id, m.genere == .disegno, x.valido() else { return }
+            dallIPad.send(c)
+        case .testoCapsula(let x):
+            guard let m = mostraAttivo, m.id == x.id, m.genere == .capsula, let riceve = testoCapsulaArrivato else { return }
+            // Una volta sola; sul Mac va solo a chi lo sigilla (mai a schermo né nei registri), sull'iPad non resta
+            testoCapsulaArrivato = nil
+            riceve(String(x.testo.prefix(ProtocolloTavolo.massimoTestoCapsula)))
+            schermataNeutra()
+        case .fotoRealta(let x):
+            guard let m = mostraAttivo, m.id == x.id, m.genere == .realtaAumentata else { return }
+            Task { @MainActor [weak self] in self?.archiviaScatto(x) }
         default:
             break
         }
@@ -588,6 +750,9 @@ final class TavoloMac: ObservableObject {
         attesaPresaVisione = nil
         mostrato = descrizione
         dallaSala = sala
+        // Un contenuto qualsiasi toglie il doppio senso; `mostraAttiva` lo rimette per i suoi generi
+        mostraAttivo = nil
+        testoCapsulaArrivato = nil
         ascolto?.manda(.mostra(m))
     }
 
@@ -599,6 +764,8 @@ final class TavoloMac: ObservableObject {
     }
 
     private func azzera() {
+        mostraAttivo = nil
+        testoCapsulaArrivato = nil
         mostrato = nil
         cursore = nil
         ricalcolo = nil
@@ -696,6 +863,22 @@ final class TavoloMac: ObservableObject {
                     RigaRisultatoTavolo(etichetta: "Guadagno netto", cifra: ProtocolloTavolo.cifra(e.guadagnoNetto)),
                     RigaRisultatoTavolo(etichetta: "In euro di oggi", cifra: ProtocolloTavolo.cifra(e.reale))],
             nota: "Una stima con un rendimento del \(Formati.percentuale(q.rendimento)) l'anno: non è una previsione né una garanzia.")
+    }
+}
+
+extension View {
+    /// Ascolta ciò che arriva dall'iPad del tavolo per l'esperienza mostrata (Mac; su iOS il gemello non fa nulla).
+    func dalTavolo(_ azione: @escaping (ContenutoTavolo) -> Void) -> some View {
+        modifier(AscoltaTavolo(azione: azione))
+    }
+}
+
+private struct AscoltaTavolo: ViewModifier {
+    @Environment(StatoShell.self) var stato
+    let azione: (ContenutoTavolo) -> Void
+
+    func body(content: Content) -> some View {
+        content.onReceive(stato.tavolo.dallIPad.receive(on: DispatchQueue.main)) { azione($0) }
     }
 }
 

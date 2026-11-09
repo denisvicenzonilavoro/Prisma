@@ -469,11 +469,18 @@ extension StatoShell {
         }
         // Gli effetti in corso finiscono di colpo (dopo il cambio animato: mai prima, nello stesso giro)
         annullaEffetti()
+        // La crescita del Territorio che sta passando gli anni si ferma («Luce» giro 11)
+        territorio.fermaCrescita()
         // Dalla schermata di blocco si torna sempre a Prisma completo (e la finestra esce dal tutto schermo)
         chiudiPresentazione()
         // Il blocco (anche quando il Mac va a riposo) chiude le sovrapposizioni di «Luce»: storia, notte, scena del
         // telefono, presentazione di un'esperienza (decisione 53)
         chiudiSovrapposizione(animato: movimento)
+        // Le carte d'identità arrivate dall'iPhone si scartano sempre, anche senza la scena aperta («Luce» giro 13,
+        // decisione 25); il riposo del Mac passa da qui
+        scartaCarteInArrivo()
+        // Le copie da spedire delle cose date al cliente si tolgono al blocco («Luce» giro 15)
+        CartellaUscite.svuota()
         guard movimento else {
             diColpo(implicite: false) {
                 fermaVoce()

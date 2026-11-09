@@ -69,12 +69,38 @@ struct PaginaImpostazioniSala: View {
                 riga("La lettera dal futuro", \.avvertenzaLettera, segnaposto: ImpostazioniSala.segnapostoAvvertenza)
                 riga("Lancia l’anno", \.avvertenzaLancia, segnaposto: ImpostazioniSala.segnapostoAvvertenza)
                 riga("Quanto vale avermi accanto", \.avvertenzaValore, segnaposto: ImpostazioniSala.segnapostoAvvertenza)
-                riga("Titolo del valore ({valore}, {periodo})", \.titoloValore, segnaposto: ImpostazioniSala.titoloValoreDiProva,
-                     ultima: true)
+                // Giro 15: le avvertenze delle cose date al cliente (decisione 56)
+                riga("Il Prisma del cliente", \.avvertenzaFile, segnaposto: ImpostazioniSala.segnapostoAvvertenza)
+                riga("Il film del piano", \.avvertenzaFilm, segnaposto: ImpostazioniSala.segnapostoAvvertenza)
+                riga("Titolo del valore ({valore}, {periodo})", \.titoloValore, segnaposto: ImpostazioniSala.titoloValoreDiProva)
+                // Giro 15, decisione 3: l'HTML cifrato resta spento finché la prova su iPhone e Android veri non passa
+                RigaImpostazione(titolo: "Prepara anche il file per il browser",
+                                 sottotitolo: "Sperimentale: da provare prima su iPhone e Android veri",
+                                 aiuto: "Spento, il Prisma del cliente esce solo come PDF protetto da password. Acceso, Prisma prepara "
+                                    + "anche un file HTML cifrato che si apre nel browser con la stessa password, senza rete.",
+                                 ultima: true) {
+                    Toggle(isOn: Binding(get: { stato.dati.impostazioni.sala.fileHtmlAcceso },
+                                         set: { acceso in modifica { $0.htmlSperimentale = acceso ? true : nil } })) { EmptyView() }
+                        .toggleStyle(.appleSenzaEtichetta)
+                        .disabled(stato.solaLettura)
+                }
             }
             .cascataImpostazioni(3)
             NotaImpostazioni("Le avvertenze e il titolo sono comunicazioni al cliente: scrivile o approvale tu (OCF per "
                              + "l’indipendente, Alleanza per l’agenzia). Finché restano vuote si vede il segnaposto dichiarato.")
+            GruppoImpostazioni(titolo: "La realtà aumentata") {
+                RigaImpostazione(titolo: TestiRealta.scattoConStanzaTitolo,
+                                 sottotitolo: "Di base lo scatto è solo il cristallo su fondo neutro",
+                                 aiuto: TestiRealta.scattoConStanzaAiuto, ultima: true) {
+                    Toggle(isOn: Binding(get: { sala.scattoConStanza },
+                                         set: { v in modifica { $0.scattoConStanza = v } })) { EmptyView() }
+                        .toggleStyle(.appleSenzaEtichetta)
+                        .disabled(stato.solaLettura)
+                }
+            }
+            .cascataImpostazioni(4)
+            NotaImpostazioni("Le immagini della fotocamera restano sull’iPhone e sull’iPad, in memoria: mai nel Rullino. Lo "
+                             + "scatto arriva nel dossier del cliente solo dal tavolo con il Mac, mai da Prisma ovunque.")
         }
     }
 

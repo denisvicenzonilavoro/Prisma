@@ -13,7 +13,9 @@ import Foundation
 ///       Clienti/<id>-<impronta>.json   un file per cliente: anagrafica e ciò che è solo suo
 ///       Clienti/senza-cliente.json     gli elementi che nominano un cliente che non c'è più (mai persi)
 ///       agenda.json, attivita.json, conversazioni.json, prodotti.json, spazi.json, pratiche.json,
-///       mercato.json, ovunque.json, studio.json, routine.json, vera.json      le sezioni comuni
+///       mercato.json, ovunque.json, studio.json, routine.json, vera.json,
+///       relazione.json                               le sezioni comuni (relazione: potenziali clienti e campagne,
+///                                                    «Luce» giro 12, e le notti di lavoro, giro 14)
 ///
 /// La divisione (`pezzo(_:)`, uno `switch` completo su tutte le chiavi di `DatiPrisma`):
 /// - nell'indice solo ciò che è piccolo e serve subito (le impostazioni danno aspetto, misura del testo e nome della
@@ -58,20 +60,27 @@ enum ArchivioPezzi {
         case .clienti, .posizioni, .simulazioni, .analisi, .incontri, .obiettivi, .documenti, .valutazioni, .commenti,
              .note, .fotografie, .schedeAdeguatezza, .confrontiTFR, .parcelle, .raccomandazioni, .messaggi, .eventiVita,
              .sessioniCopilota, .partiteRischio, .promesse, .confrontiDocumenti, .coperture, .kmClienti,
-             .sussurriChiusi, .spiegazioniTreLivelli:
+             .sussurriChiusi, .spiegazioniTreLivelli, .capsule, .uscite, .lettere:
             return .cliente
         case .appuntamenti: return .sezione("agenda")
         case .attivita: return .sezione("attivita")
         case .conversazioni: return .sezione("conversazioni")
         case .prodotti: return .sezione("prodotti")
         case .spazi: return .sezione("spazi")
-        case .pratiche: return .sezione("pratiche")
+        // «Luce» giro 15: i sinistri stanno con le pratiche (una sezione esistente: un archivio di prima non ha un file
+        // «mancante» nell'indice)
+        case .pratiche, .sinistri: return .sezione("pratiche")
         case .mercato: return .sezione("mercato")
-        case .giornaleOvunque, .conflittiOvunque, .arriviOvunque, .inquadratureDaConfermare: return .sezione("ovunque")
+        // Le note dall'iPhone («Luce» giro 13) stanno con le altre cose arrivate dai dispositivi: una sezione esistente,
+        // così un archivio di prima non ha un file «mancante» nell'indice
+        case .giornaleOvunque, .conflittiOvunque, .arriviOvunque, .inquadratureDaConfermare, .noteInArrivo: return .sezione("ovunque")
         case .famiglie, .ocf, .portafogliModello, .speseStudio: return .sezione("studio")
         // Vera, fase 4: le routine del consulente e i loro lanci; i dati di Vera (il tagliando dei dati)
         case .routine: return .sezione("routine")
         case .tagliando: return .sezione("vera")
+        // «Luce» giro 12: i potenziali clienti (non sono clienti: niente file per cliente) e lo storico delle campagne;
+        // giro 14: le notti di lavoro (leggere; non «studio», che ha le tabelle importate e si riscriverebbe a ogni carta)
+        case .potenziali, .campagne, .notti: return .sezione("relazione")
         }
     }
 
@@ -111,6 +120,9 @@ enum ArchivioPezzi {
         .dizionario(.kmClienti, \.kmClienti),
         .elenco(.sussurriChiusi, \.sussurriChiusi),
         .elenco(.spiegazioniTreLivelli, \.spiegazioniTreLivelli),
+        .elenco(.capsule, \.capsule),
+        .elenco(.uscite, \.uscite),
+        .elenco(.lettere, \.lettere),
     ]
 
     /// Un archivio vuoto, base di ogni pezzo (le impostazioni di base si costruiscono una volta sola).
@@ -194,6 +206,14 @@ enum ArchivioPezzi {
         case .tagliando: return a.tagliando == b.tagliando
         case .sussurriChiusi: return a.sussurriChiusi == b.sussurriChiusi
         case .spiegazioniTreLivelli: return a.spiegazioniTreLivelli == b.spiegazioniTreLivelli
+        case .potenziali: return a.potenziali == b.potenziali
+        case .campagne: return a.campagne == b.campagne
+        case .noteInArrivo: return a.noteInArrivo == b.noteInArrivo
+        case .notti: return a.notti == b.notti
+        case .capsule: return a.capsule == b.capsule
+        case .sinistri: return a.sinistri == b.sinistri
+        case .uscite: return a.uscite == b.uscite
+        case .lettere: return a.lettere == b.lettere
         case .clienteAttivoId: return a.clienteAttivoId == b.clienteAttivoId
         case .impostazioni: return a.impostazioni == b.impostazioni
         }
@@ -245,6 +265,14 @@ enum ArchivioPezzi {
         case .tagliando: b.tagliando = a.tagliando
         case .sussurriChiusi: b.sussurriChiusi = a.sussurriChiusi
         case .spiegazioniTreLivelli: b.spiegazioniTreLivelli = a.spiegazioniTreLivelli
+        case .potenziali: b.potenziali = a.potenziali
+        case .campagne: b.campagne = a.campagne
+        case .noteInArrivo: b.noteInArrivo = a.noteInArrivo
+        case .notti: b.notti = a.notti
+        case .capsule: b.capsule = a.capsule
+        case .sinistri: b.sinistri = a.sinistri
+        case .uscite: b.uscite = a.uscite
+        case .lettere: b.lettere = a.lettere
         case .clienteAttivoId: b.clienteAttivoId = a.clienteAttivoId
         case .impostazioni: b.impostazioni = a.impostazioni
         }
@@ -294,6 +322,9 @@ extension ConfrontoDocumenti: DelCliente { var idClientePezzo: String { clienteI
 extension CoperturaPolizza: DelCliente { var idClientePezzo: String { clienteId } }
 extension SussurroChiuso: DelCliente { var idClientePezzo: String { clienteId } }
 extension SpiegazioneTreLivelli: DelCliente { var idClientePezzo: String { clienteId } }
+extension CapsulaTempo: DelCliente { var idClientePezzo: String { clienteId } }
+extension UscitaCliente: DelCliente { var idClientePezzo: String { clienteId } }
+extension LetteraFuturo: DelCliente { var idClientePezzo: String { clienteId } }
 
 /// Una corsa dell'ordine di un elenco: `quanti` elementi di fila del gruppo `gruppo`. Su disco è `["giulia", 3]`.
 struct Corsa: Codable, Equatable {
@@ -538,10 +569,11 @@ extension ArchivioPezzi {
         case "spazi": return "gli spazi di lavoro"
         case "pratiche": return "le pratiche"
         case "mercato": return "i dati di Mercato"
-        case "ovunque": return "Prisma ovunque"
+        case "ovunque": return "Prisma ovunque e le note arrivate dall’iPhone"
         case "studio": return "lo studio (portafogli modello, famiglie, esame OCF)"
         case "routine": return "le routine di Vera"
         case "vera": return "i dati di Vera (il tagliando dei dati)"
+        case "relazione": return "i potenziali clienti, le campagne e il lavoro della notte"
         default: return "la sezione «\(nome)»"
         }
     }
@@ -1020,10 +1052,11 @@ final class ScrittorePezzi {
             guard let p = pezzi[g], let f = file[g] else { continue }
             lavori.append((ArchivioPezzi.nomeClienti + "/" + f, PezzoDaScrivere(dati: p, chiavi: ArchivioPezzi.chiaviCliente, generazione: generazione)))
         }
-        // Anche le sezioni che l'indice di prima non cita (nate in una versione dopo, come «routine» e «vera» della fase 4
-        // di Vera): l'indice nuovo le cita tutte, quindi il loro file va scritto anche se il contenuto non è cambiato
-        for sez in ArchivioPezzi.sezioni where !s.indice.sezioni.contains(sez.nome)
-            || sez.chiavi.contains(where: { !ArchivioPezzi.uguale($0, dati, s.dati) }) {
+        // Una sezione si scrive se è cambiata o se l'indice di prima non la cita ancora (archivio di un Prisma di prima,
+        // sezione nuova come «routine» e «vera» della fase 4 di Vera o «relazione» del giro 12 di «Luce»): `nuovoIndice`
+        // elenca sempre tutte le sezioni, e una sezione citata senza file risulterebbe mancante alla riapertura.
+        for sez in ArchivioPezzi.sezioni
+        where !s.indice.sezioni.contains(sez.nome) || sez.chiavi.contains(where: { !ArchivioPezzi.uguale($0, dati, s.dati) }) {
             lavori.append((ArchivioPezzi.nomeFileSezione(sez.nome), PezzoDaScrivere(dati: dati, chiavi: sez.chiavi, generazione: generazione)))
         }
         var indice = nuovoIndice(dati, file: file, ordini: ordini, generazione: generazione)

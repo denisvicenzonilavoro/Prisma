@@ -101,6 +101,8 @@ private struct CorpoImpostazioniOvunque: View {
                     .entrataCascata(2, base: base)
                 rigaModificheDaiDispositivi
                     .entrataCascata(3, base: base)
+                rigaPotenziali
+                    .entrataCascata(3, base: base)
                 rigaInAttesa
                     .entrataCascata(4, base: base)
                 if ovunque.modificheAperte {
@@ -256,6 +258,22 @@ private struct CorpoImpostazioniOvunque: View {
                                 : "Copia di sola lettura: lo ha scelto il Mac. Le modifiche fatte qui non arrivano al Mac.") {
                 StatoRigaApple(testo: o.modificheDaiDispositivi ? "Ammesse" : "Sola lettura",
                                tono: o.modificheDaiDispositivi ? .ok : .neutro)
+            }
+        }
+    }
+
+    /// «Luce» giro 12 (decisione 44): i potenziali clienti nello spazio solo se l'utente lo sceglie (spento di base).
+    @ViewBuilder private var rigaPotenziali: some View {
+        if suMac {
+            let si = Binding<Bool>(get: { o.potenzialiNelloSpazio },
+                                   set: { stato.impostaPotenzialiOvunque($0) })
+            RigaImpostazione(titolo: "Porta anche i potenziali clienti",
+                             sottotitolo: o.potenzialiNelloSpazio
+                                ? "I potenziali clienti (persone che non sono ancora clienti) vanno su iPhone e iPad, cifrati."
+                                : "Spento: i potenziali clienti restano sul Mac.") {
+                Toggle(isOn: si) { EmptyView() }
+                    .toggleStyle(.appleSenzaEtichetta)
+                    .accessibilityLabel("Porta anche i potenziali clienti")
             }
         }
     }

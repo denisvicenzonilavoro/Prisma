@@ -925,6 +925,10 @@ struct RigaEventoAgenda: View {
                         if concluso {
                             EtichettaStato(testo: "✓ Concluso", colore: Colori.Agenda.conclusoTesto, fondo: Colori.Agenda.conclusoFondo)
                         }
+                        // Proposto dal Territorio con «＋ Aggiungi … al giro» e non ancora confermato («Luce» giro 11)
+                        if evento.daConfermare == true {
+                            Pillola(testo: "Da confermare", tono: .attenzione)
+                        }
                         if let c = canale {
                             EtichettaCanale(canale: c, compatta: true)
                         }
@@ -1061,6 +1065,18 @@ struct DettaglioAppuntamento: View {
                     VoceDettaglio(etichetta: "Dove") { valore(evento.luogo.isEmpty ? "Luogo da definire" : evento.luogo) }
                     VoceDettaglio(etichetta: "Durata") { valore("\(evento.durataMinuti) minuti") }
                     VoceDettaglio(etichetta: "Tipo") { valore(evento.tipo.nome) }
+                    // Proposto dal Territorio («Luce» giro 11): «Conferma in Agenda» porta qui, con l'appuntamento scelto
+                    if evento.daConfermare == true {
+                        VoceDettaglio(etichetta: "Da confermare") {
+                            HStack(spacing: Misure.AgendaImpaginazione.spazioCliente) {
+                                Pillola(testo: "Proposto dal Territorio", tono: .attenzione)
+                                Button("Conferma") { stato.confermaAppuntamento(evento.id) }
+                                    .buttonStyle(.apple)
+                                    .fixedSize()
+                                    .help("Conferma l'appuntamento proposto dal Territorio")
+                            }
+                        }
+                    }
                     VoceDettaglio(etichetta: "Canale") {
                         if let c = canale {
                             EtichettaCanale(canale: c, compatta: true)

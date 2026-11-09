@@ -473,6 +473,14 @@ extension StatoShell {
         u.esitiRoutine = spostaTagliando(\DatiVivi.routine.esiti, id: \.id, cliente: \.clienteId, da: Optional(dId), a: Optional(pId))
         // Studio › Spese («Luce» giro 9): le spese legate alla doppia passano sulla principale
         u.speseStudio = spostaTagliando(\DatiVivi.speseStudio.spese, id: \.id, cliente: \.clienteId, da: Optional(dId), a: Optional(pId))
+        // «Luce» giri 12-15: capsule del tempo, sinistri, traccia delle uscite, lettere conservate, note dall'iPhone e il
+        // potenziale da cui il cliente è nato
+        u.capsule = spostaTagliando(\DatiVivi.capsule, id: \.id, cliente: \.clienteId, da: dId, a: pId)
+        u.sinistri = spostaTagliando(\DatiVivi.sinistri, id: \.id, cliente: \.clienteId, da: dId, a: pId)
+        u.uscite = spostaTagliando(\DatiVivi.uscite, id: \.id, cliente: \.clienteId, da: dId, a: pId)
+        u.lettere = spostaTagliando(\DatiVivi.lettere, id: \.id, cliente: \.clienteId, da: dId, a: pId)
+        u.noteInArrivo = spostaTagliando(\DatiVivi.noteInArrivo, id: \.id, cliente: \.clienteId, da: Optional(dId), a: Optional(pId))
+        u.potenziali = spostaTagliando(\DatiVivi.potenziali, id: \.id, cliente: \.clienteId, da: Optional(dId), a: Optional(pId))
         // Le pratiche seguono la loro posizione (non hanno un cliente proprio): passano con le posizioni.
         // Analisi 360 e confronto TFR (una voce per cliente): passano solo se la principale non ne ha una sua
         if dati.analisi[pId] == nil, let an = dati.analisi[dId] {
@@ -519,6 +527,10 @@ extension StatoShell {
         if (nuovo.luogoNascita ?? "").trimmingCharacters(in: .whitespaces).isEmpty, let l = doppia.luogoNascita, !l.isEmpty {
             nuovo.luogoNascita = l
             u.riempiti["luogoNascita"] = l
+        }
+        if (nuovo.cittadinanza ?? "").trimmingCharacters(in: .whitespaces).isEmpty, let cit = doppia.cittadinanza, !cit.isEmpty {
+            nuovo.cittadinanza = cit
+            u.riempiti["cittadinanza"] = cit
         }
         if nuovo.iban == nil, let i = doppia.iban { nuovo.iban = i; u.ibanPreso = true }
         // I canali della doppia (le sue posizioni Alleanza o indipendenti ora sono qui)
@@ -606,6 +618,20 @@ extension StatoShell {
                 restanoLa.append("professione")
             }
         }
+        // «Luce» giri 11 e 12: la posizione sulla mappa messa a mano e chi ha presentato il cliente (con la data)
+        if let l = doppia.luogo {
+            if nuovo.luogo == nil { nuovo.luogo = l; anag.luogo = l }
+            else if nuovo.luogo != l { restanoLa.append("posizione sulla mappa") }
+        }
+        if let chi = doppia.presentatoDa, chi != pId {
+            if nuovo.presentatoDa == nil {
+                nuovo.presentatoDa = chi
+                anag.presentatoDa = chi
+                if nuovo.presentatoIl == nil, let il = doppia.presentatoIl { nuovo.presentatoIl = il; anag.presentatoIl = il }
+            } else if nuovo.presentatoDa != chi {
+                restanoLa.append("chi l'ha presentato")
+            }
+        }
         if anag != AnagraficaUnione() { u.anagrafica = anag }
         var diversi: [String] = []
         if !doppia.telefono.isEmpty, !principale.telefono.isEmpty, TagliandoVera.telefono(doppia.telefono) != TagliandoVera.telefono(principale.telefono) {
@@ -625,6 +651,11 @@ extension StatoShell {
         var elenco = dati.clienti
         elenco[ip] = nuovo
         elenco[id].unitaIn = pId
+        // Il passaparola («Luce» giro 12): chi era stato presentato dalla doppia ora risulta presentato dalla principale
+        for i in elenco.indices where elenco[i].presentatoDa == dId && elenco[i].id != pId {
+            elenco[i].presentatoDa = pId
+            u.presentati.append(elenco[i].id)
+        }
         dati.clienti = elenco
         if clienteAttivoId == dId { clienteAttivoId = pId }
         aggiornaEsitoTagliando()
@@ -678,6 +709,12 @@ extension StatoShell {
         _ = spostaTagliando(\DatiVivi.spiegazioniTreLivelli, id: \.id, cliente: \.clienteId, da: p, a: d, soli: Set(u.spiegazioniTreLivelli))
         _ = spostaTagliando(\DatiVivi.routine.esiti, id: \.id, cliente: \.clienteId, da: Optional(p), a: Optional(d), soli: Set(u.esitiRoutine))
         _ = spostaTagliando(\DatiVivi.speseStudio.spese, id: \.id, cliente: \.clienteId, da: Optional(p), a: Optional(d), soli: Set(u.speseStudio))
+        _ = spostaTagliando(\DatiVivi.capsule, id: \.id, cliente: \.clienteId, da: p, a: d, soli: Set(u.capsule))
+        _ = spostaTagliando(\DatiVivi.sinistri, id: \.id, cliente: \.clienteId, da: p, a: d, soli: Set(u.sinistri))
+        _ = spostaTagliando(\DatiVivi.uscite, id: \.id, cliente: \.clienteId, da: p, a: d, soli: Set(u.uscite))
+        _ = spostaTagliando(\DatiVivi.lettere, id: \.id, cliente: \.clienteId, da: p, a: d, soli: Set(u.lettere))
+        _ = spostaTagliando(\DatiVivi.noteInArrivo, id: \.id, cliente: \.clienteId, da: Optional(p), a: Optional(d), soli: Set(u.noteInArrivo))
+        _ = spostaTagliando(\DatiVivi.potenziali, id: \.id, cliente: \.clienteId, da: Optional(p), a: Optional(d), soli: Set(u.potenziali))
         if u.kmSpostati, dati.kmClienti[d] == nil, let km = dati.kmClienti[p] {
             var x = dati.kmClienti
             x[d] = km
@@ -720,6 +757,7 @@ extension StatoShell {
             case "dataNascita": if let n = c.dataNascita, RegistroStrumenti.isoData(n) == valore { c.dataNascita = nil }
             case "clienteDal": if let n = c.clienteDal, RegistroStrumenti.isoData(n) == valore { c.clienteDal = nil }
             case "luogoNascita": if c.luogoNascita == valore { c.luogoNascita = nil }
+            case "cittadinanza": if c.cittadinanza == valore { c.cittadinanza = nil }
             default: break
             }
         }
@@ -734,6 +772,11 @@ extension StatoShell {
             if let v = an.statoCivile, c.statoCivile == v { c.statoCivile = nil }
             if let v = an.aziende, c.aziende == v { c.aziende = an.aziendePrima }
             if let v = an.professione, c.professione == v { c.professione = an.professionePrima ?? "" }
+            if let v = an.luogo, c.luogo == v { c.luogo = nil }
+            if let v = an.presentatoDa, c.presentatoDa == v {
+                c.presentatoDa = nil
+                if let il = an.presentatoIl, c.presentatoIl == il { c.presentatoIl = nil }
+            }
         }
         if u.ibanPreso, c.iban != nil, c.iban == dati.clienti[id].iban { c.iban = nil }
         c.canali.removeAll { u.canaliAggiunti.contains($0) }
@@ -748,6 +791,9 @@ extension StatoShell {
         var elenco = dati.clienti
         elenco[ip] = c
         elenco[id].unitaIn = nil
+        for i in elenco.indices where u.presentati.contains(elenco[i].id) && elenco[i].presentatoDa == u.principale {
+            elenco[i].presentatoDa = u.doppione
+        }
         dati.clienti = elenco
         aggiornaEsitoTagliando()
         return true
@@ -909,6 +955,15 @@ private struct UnioneTagliando: Codable {
     var kmSpostati = false
     /// L'IBAN preso dalla doppia (il valore non si scrive qui: resta solo nel dossier).
     var ibanPreso = false
+    /// «Luce» giri 12-15: gli elementi del cliente passati sulla principale.
+    var capsule: [String] = []
+    var sinistri: [String] = []
+    var uscite: [String] = []
+    var lettere: [String] = []
+    var noteInArrivo: [String] = []
+    var potenziali: [String] = []
+    /// I clienti presentati dalla doppia, ora presentati dalla principale (passaparola).
+    var presentati: [String] = []
     /// Le voci per cliente passate sulla principale (che non ne aveva una sua).
     var analisiSpostata = false
     var confrontoTFRSpostato = false
@@ -936,7 +991,8 @@ private struct UnioneTagliando: Codable {
     var elementiSpostati: Int {
         let elenchi = [posizioni, documenti, appuntamenti, attivita, note, messaggi, incontri, obiettivi, simulazioni, valutazioni,
                        commenti, fotografie, schedeAdeguatezza, parcelle, eventiVita, sessioniCopilota, partiteRischio, promesse,
-                       confrontiDocumenti, coperture, sussurriChiusi, spiegazioniTreLivelli, esitiRoutine, messaggiVera, speseStudio]
+                       confrontiDocumenti, coperture, sussurriChiusi, spiegazioniTreLivelli, esitiRoutine, messaggiVera, speseStudio,
+                       capsule, sinistri, uscite, lettere, noteInArrivo, potenziali]
         return elenchi.reduce(0) { $0 + $1.count } + (analisiSpostata ? 1 : 0) + (confrontoTFRSpostato ? 1 : 0) + (kmSpostati ? 1 : 0)
     }
 
@@ -945,7 +1001,7 @@ private struct UnioneTagliando: Codable {
              valutazioni, commenti, fotografie, schedeAdeguatezza, parcelle, eventiVita, sessioniCopilota, partiteRischio, promesse,
              confrontiDocumenti, coperture, sussurriChiusi, spiegazioniTreLivelli, esitiRoutine, analisiSpostata, confrontoTFRSpostato,
              messaggiVera, riempiti, canaliAggiunti, consensiPrima, consensiDopo, conformitaUnita, conformitaPrima, conformitaDopo, rigaNota,
-             anagrafica, speseStudio, kmSpostati, ibanPreso
+             anagrafica, speseStudio, kmSpostati, ibanPreso, capsule, sinistri, uscite, lettere, noteInArrivo, potenziali, presentati
     }
 
     init(from decoder: Decoder) throws {
@@ -978,6 +1034,13 @@ private struct UnioneTagliando: Codable {
         esitiRoutine = elenco(.esitiRoutine)
         messaggiVera = elenco(.messaggiVera)
         speseStudio = elenco(.speseStudio)
+        capsule = elenco(.capsule)
+        sinistri = elenco(.sinistri)
+        uscite = elenco(.uscite)
+        lettere = elenco(.lettere)
+        noteInArrivo = elenco(.noteInArrivo)
+        potenziali = elenco(.potenziali)
+        presentati = elenco(.presentati)
         kmSpostati = ((try? c.decodeIfPresent(Bool.self, forKey: .kmSpostati)) ?? nil) ?? false
         ibanPreso = ((try? c.decodeIfPresent(Bool.self, forKey: .ibanPreso)) ?? nil) ?? false
         analisiSpostata = ((try? c.decodeIfPresent(Bool.self, forKey: .analisiSpostata)) ?? nil) ?? false
@@ -1009,6 +1072,10 @@ private struct AnagraficaUnione: Codable, Equatable {
     var aziendePrima: [AziendaCliente]?
     var professione: String?
     var professionePrima: String?
+    /// «Luce» giri 11 e 12: la posizione sulla mappa e chi ha presentato il cliente (con la data).
+    var luogo: LuogoManuale?
+    var presentatoDa: String?
+    var presentatoIl: Date?
 }
 
 /// Un nome stabile per una voce chiusa del sussurro (non ha un id suo): la chiave e il momento della chiusura, al

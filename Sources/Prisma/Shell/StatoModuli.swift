@@ -19,7 +19,7 @@ import CoreGraphics
     var posizioneId: String?
     /// La compilazione in corso: un'anteprima, finché non si salva.
     var anteprima: AnteprimaCompilazione?
-    /// I valori scritti a mano in questa compilazione (non cambiano il dossier).
+    /// I valori scritti a mano in questa compilazione (non cambiano il dossier, salvo «Aggiorna anche il dossier»).
     var correzioni: [String: String] = [:]
     /// Cresce a ogni «Compila»: riparte la scrittura dei campi.
     var giro = 0
@@ -220,7 +220,11 @@ extension StatoShell {
     /// Le fonti della compilazione: anagrafica, scheda fiscale, documento, la proposta, i dati del consulente.
     func fonteModulo(_ c: Cliente, _ m: ModelloModulo, oggi: Date = Date()) -> FonteCompilazione {
         let proposte = proposteModulo(c, m)
-        let p = proposte.first { $0.id == moduli.posizioneId } ?? proposte.first
+        // La posizione scelta (anche una firmata, da «Apri i moduli» della pratica), se è del cliente e del canale
+        let scelta = moduli.posizioneId.flatMap { id in
+            dati.posizioni.first { $0.id == id && $0.clienteId == c.id && (m.canale == nil || $0.canale == m.canale) }
+        }
+        let p = scelta ?? proposte.first
         let f = dati.impostazioni.studio.fatturazione
         let consulente = [f.nome, f.cognome].map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }.joined(separator: " ")
         return FonteCompilazione(cliente: c, posizione: p, prodotto: p?.prodottoId.flatMap { id in dati.prodotti.first { $0.id == id } },
@@ -302,6 +306,42 @@ extension StatoShell {
         moduli.correzioni[campoId] = t.isEmpty ? nil : t
         moduli.inModifica = nil
         moduli.anteprima = CompilatoreModuli.anteprima(m, fonte: fonteModulo(c, m), correzioni: moduli.correzioni)
+    }
+
+    /// La casella si può riportare nel dossier («Aggiorna anche il dossier»): dato strutturato, IBAN solo se conservato.
+    func campoAggiornabileModulo(_ campo: ModelloModulo.Campo) -> Bool {
+        guard !solaLettura, let d = campo.dato, CompilatoreModuli.aggiornabile(d) else { return false }
+        return d != .iban || dati.impostazioni.pratiche.ibanConservato
+    }
+
+    /// Il valore che il dossier ha oggi per una casella (per la conferma «da … a …»), nil se manca.
+    func valoreDossierModulo(_ campo: ModelloModulo.Campo) -> String? {
+        guard let d = campo.dato, let m = moduli.modelloScelto, let c = clienteModulo else { return nil }
+        return CompilatoreModuli.valore(d, fonteModulo(c, m))
+    }
+
+    /// «Aggiorna anche il dossier», dopo la conferma: il valore corretto entra nel dossier del cliente (o nella proposta,
+    /// per beneficiari e numero di contratto) e la casella torna a leggere il dossier. false se il valore non si riporta.
+    @discardableResult
+    func aggiornaDossierDaModulo(_ campoId: String, _ testo: String) -> Bool {
+        guard !solaLettura, let m = moduli.modelloScelto, let campo = m.campi.first(where: { $0.id == campoId }), let d = campo.dato,
+              let c = clienteModulo, let i = dati.clienti.firstIndex(where: { $0.id == c.id }) else { return false }
+        var cliente = dati.clienti[i]
+        let prima = fonteModulo(c, m).posizione
+        var posizione = prima
+        guard CompilatoreModuli.aggiornaDossier(d, testo: testo, cliente: &cliente, posizione: &posizione,
+                                                conservaIban: dati.impostazioni.pratiche.ibanConservato) else {
+            mostraAvviso("Questo valore resta solo nel modulo: il dossier non lo può prendere così.")
+            return false
+        }
+        if cliente != dati.clienti[i] { dati.clienti[i] = cliente }
+        if let posizione, posizione != prima { salvaPosizione(posizione) }
+        // La casella ora legge il dossier: la correzione a mano non serve più
+        moduli.correzioni[campoId] = nil
+        moduli.inModifica = nil
+        moduli.anteprima = CompilatoreModuli.anteprima(m, fonte: fonteModulo(c, m), correzioni: moduli.correzioni)
+        mostraAvviso("Dossier di \(Self.nomeDiBattesimo(c)) aggiornato: \(d.nomeInFrase).")
+        return true
     }
 
     /// «Lo scrivo io»: apre la casella del primo dato che manca (o di quello dato).

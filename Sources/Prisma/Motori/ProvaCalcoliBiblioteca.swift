@@ -13,6 +13,7 @@ enum ProvaCalcoliBiblioteca {
         ricerca(verifica)
         frase(verifica)
         parametri(verifica)
+        edizioni(verifica)
     }
 
     private static func parole(_ verifica: VerificaCalcoli) {
@@ -108,5 +109,61 @@ enum ProvaCalcoliBiblioteca {
                       MotoreBiblioteca.avvisoParametri("I contributi sono deducibili fino a 5.300 euro l'anno.") == nil)
         verifica.vero("Biblioteca: senza parlare di deducibilità nessun avviso",
                       MotoreBiblioteca.avvisoParametri("Il capitale minimo è di 2.000 euro.") == nil)
+    }
+
+    // MARK: - Edizioni e prodotti (§8.1.6 punto 3, §8.1.5.2 punto 6)
+
+    /// Un documento di prova collegato (o no) a un prodotto, con la sua edizione.
+    private static func documento(_ id: String, edizione: String, prodotto: String?, genere: GenereBiblioteca = .condizioni,
+                                  importato: Date = AiutiProva.data(2026, 3, 2)) -> DocumentoBiblioteca {
+        var d = DocumentoBiblioteca(titolo: "Prodotto di prova \(id) · Condizioni", sigla: "", edizione: edizione, file: "\(id).txt")
+        d.id = id
+        d.prodottoId = prodotto
+        d.genere = genere
+        d.pagine = 3
+        d.testo = "\(id).txt"
+        d.importatoIl = importato
+        return d
+    }
+
+    private static func edizioni(_ verifica: VerificaCalcoli) {
+        verifica.vero("Biblioteca: le edizioni si leggono come date da confrontare (mese/anno, giorno/mese/anno, a parole, anno)",
+                      MotoreBiblioteca.chiaveEdizione("fac-simile, ed. 03/2026") == 20260300
+                        && MotoreBiblioteca.chiaveEdizione("Edizione 12/05/2025") == 20250512
+                        && MotoreBiblioteca.chiaveEdizione("aggiornato al 1° ottobre 2026") == 20261001
+                        && MotoreBiblioteca.chiaveEdizione("importato il 9 novembre 2026") == 20261109
+                        && MotoreBiblioteca.chiaveEdizione("Raccolta 2024") == 20240000)
+        verifica.vero("Biblioteca: un'edizione senza data non si confronta (mai indovinata)",
+                      MotoreBiblioteca.chiaveEdizione("ultima versione") == nil && MotoreBiblioteca.chiaveEdizione("") == nil
+                        && MotoreBiblioteca.chiaveEdizione("ed. 13/2026") == nil)
+
+        let nuova = documento("nuova", edizione: "ed. 03/2026", prodotto: "prod-prova")
+        let vecchia = documento("vecchia", edizione: "ed. 07/2024", prodotto: "prod-prova")
+        let altroProdotto = documento("altro", edizione: "ed. 01/2020", prodotto: "prod-altro")
+        let senzaProdotto = documento("libero", edizione: "ed. 01/2019", prodotto: nil)
+        let stessa = documento("kid", edizione: "ed. 03/2026", prodotto: "prod-prova", genere: .kid)
+        let tutti = [nuova, vecchia, altroProdotto, senzaProdotto, stessa]
+        let dallaNuova = MotoreBiblioteca.avvisoEdizione(nuova, tra: tutti)
+        verifica.vero("Biblioteca: la risposta dalla nuova edizione avvisa «c'è anche un'edizione più vecchia» (con quale)",
+                      dallaNuova?.hasPrefix("C'è anche un'edizione più vecchia") == true && dallaNuova?.contains("ed. 07/2024") == true
+                        && dallaNuova?.contains("01/2020") == false)
+        let dallaVecchia = MotoreBiblioteca.avvisoEdizione(vecchia, tra: tutti)
+        verifica.vero("Biblioteca: la risposta dalla vecchia edizione dice che ce n'è una più recente",
+                      dallaVecchia?.hasPrefix("C'è un'edizione più recente") == true && dallaVecchia?.contains("ed. 03/2026") == true)
+        verifica.vero("Biblioteca: senza prodotto collegato, o con la stessa edizione, nessun avviso",
+                      MotoreBiblioteca.avvisoEdizione(senzaProdotto, tra: tutti) == nil
+                        && MotoreBiblioteca.avvisoEdizione(altroProdotto, tra: tutti) == nil
+                        && MotoreBiblioteca.altreEdizioni(stessa, tra: tutti).map(\.id) == ["vecchia"])
+        let senzaData = documento("senza-data", edizione: "versione del cliente", prodotto: "prod-prova")
+        verifica.vero("Biblioteca: edizioni che non si confrontano: «c'è anche un'altra edizione»",
+                      MotoreBiblioteca.avvisoEdizione(senzaData, tra: [senzaData, nuova])?.hasPrefix("C'è anche un'altra edizione") == true)
+
+        verifica.vero("Prodotti: «Condizioni nella Biblioteca» apre le condizioni dell'edizione più recente, non il KID",
+                      MotoreBiblioteca.condizioniDelProdotto("prod-prova", tra: tutti)?.id == "nuova"
+                        && MotoreBiblioteca.condizioniDelProdotto("prod-nessuno", tra: tutti) == nil)
+        var illeggibile = documento("scansione", edizione: "ed. 01/2027", prodotto: "prod-prova")
+        illeggibile.testo = nil
+        verifica.vero("Prodotti: un documento illeggibile non si apre da «Condizioni nella Biblioteca»",
+                      MotoreBiblioteca.condizioniDelProdotto("prod-prova", tra: tutti + [illeggibile])?.id == "nuova")
     }
 }

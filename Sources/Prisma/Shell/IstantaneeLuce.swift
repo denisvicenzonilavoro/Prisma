@@ -69,14 +69,21 @@ extension Istantanee {
         case "619-glifi-luce": return AnyView(TavolaGlifiIstantanea())
         // «Luce» giro 5: il biglietto del traguardo da solo (IstantaneeTraguardi.swift)
         case "735-biglietto-traguardo": return tavolaBiglietto()
+        // «Luce» giro 15: lo stesso PNG con «Mostra la cifra» acceso
+        case "735-biglietto-traguardo-con-cifra": return tavolaBiglietto(conCifra: true)
         default: return nil
         }
     }
 
     /// La misura della scena: alcune vogliono la finestra minima.
     static func misuraLuce(_ nome: String) -> CGSize? {
-        nome.hasSuffix("-stretta") ? dimensioneStretta : nil
+        // «Stanotte» (giro 14): la finestra stretta ma alta, perché il registro sotto i comandi stia nell'istantanea
+        if nome == "766-notte-stretta" { return dimensioneStrettaAlta }
+        return nome.hasSuffix("-stretta") ? dimensioneStretta : nil
     }
+
+    /// La finestra alla larghezza minima ma alta (766: le carte della notte con il registro sotto i comandi).
+    static let dimensioneStrettaAlta = CGSize(width: 1100, height: 1000)
 }
 
 /// Le icone nell'ordine del dock (Scrivania e le quindici app) su fondo chiaro e su fondo scuro.

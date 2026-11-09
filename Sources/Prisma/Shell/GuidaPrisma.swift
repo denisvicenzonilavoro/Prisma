@@ -63,7 +63,7 @@ enum GuidaTesti {
                 inBreve: "Le schede delle persone che segui",
                 passi: ["Scegli il cliente nella rubrica a sinistra, oppure «Nuovo cliente» (o «Importa…» da Contatti ed Excel).",
                         "Completa la scheda: Prisma segna i dati che mancano e dice a che cosa servono.",
-                        "Da qui vai alle sue Posizioni o prepara il prossimo incontro."],
+                        "Da qui vai alle sue Posizioni o prepara il prossimo incontro; in «Potenziali» e «Passaparola» segui chi non è ancora cliente e chi ti ha presentato chi."],
                 parole: [.dossier, .riesame, .profiloRischio, .antiriciclaggio])
         case .posizioni:
             return AiutoApp(
@@ -175,7 +175,7 @@ enum GuidaTesti {
                 inBreve: "Vera prepara i messaggi, tu li spedisci",
                 passi: ["A sinistra scegli un'occasione: «Da mandare oggi» o «Questa settimana», con il perché adesso.",
                         "Scegli il tono (Cordiale, Formale, Breve) e il canale (Mail o Messaggi): Vera scrive, tu correggi il testo se serve.",
-                        "«Apri in Mail» o «Apri in Messaggi» lo apre già compilato; «Salva nel dossier» lo tiene nel dossier del cliente."],
+                        "«Apri in Mail» o «Apri in Messaggi» lo apre già compilato; in «Campagne» Prisma prepara una bozza per ogni cliente con lo stesso bisogno, e le apri tu una alla volta."],
                 parole: [.canale])
         case .mercato:
             return AiutoApp(
@@ -200,7 +200,7 @@ enum GuidaTesti {
                 inBreve: "I clienti nella tua zona",
                 passi: ["Apri Territorio dal dock.",
                         "Scegli «Oggi», «La crescita» o «Il giro di domani» in alto.",
-                        "Un clic su un cliente apre il suo dossier."],
+                        "Punta una luce per sapere chi è; un clic apre il dossier."],
                 parole: [])
         case .pratiche:
             return AiutoApp(
@@ -353,8 +353,10 @@ extension StatoShell {
             apriGuida(.introduzione(0))
         } else {
             proponiNovitaDopoSblocco()
-            // «Luce» giro 5: il lunedì la storia della settimana si apre da sola, una volta (StoriaLuce.swift)
-            proponiStoriaDopoSblocco()
+            // «Luce» giro 14: le carte della notte si aprono da sole una volta (prima della storia: vince la notte)
+            proponiNotteDopoSblocco()
+            // «Luce» giro 5: il lunedì la storia della settimana NON si apre da sola (decisione 128): la scrivania mostra
+            // l'invito «La tua settimana è pronta» (StoriaLuce.swift, `invitoSettimana`)
             // «Le routine» programmate rimaste indietro mentre Prisma era bloccata o chiusa (CollegaRoutineShell.swift)
             controllaRoutineDovute()
         }

@@ -8,6 +8,8 @@ import SwiftUI
 /// compatta, che scorre tutto insieme. Il testo lo scrive Qwen del Mac attraverso il ponte in rete locale; se il Mac
 /// non risponde resta il testo di Prisma e Vera lo dice. Prisma non spedisce mai: Mail e Messaggi si aprono già
 /// compilati.
+/// Un traguardo da festeggiare («Luce» §5.4.4) non apre il compositore: il pannello del traguardo in colonna, con il
+/// biglietto in alto e le tre azioni sotto (`PannelloTraguardo(compatto: true)`).
 @MainActor
 struct MessaggiTelefono: View {
     @Environment(StatoShell.self) var stato
@@ -45,7 +47,17 @@ struct MessaggiTelefono: View {
         .onDisappear { sessione.ferma() }
     }
 
+    @ViewBuilder
     private func pannello(_ o: OccasioneMessaggio, cliente c: Cliente, richiesta: RichiestaIstantaneaMessaggi?) -> some View {
+        if o.tipo == .traguardo {
+            PannelloTraguardo(occasione: o, cliente: c, base: Tema.Apple.Messaggi.Moto.baseApertura, compatto: true)
+                .id(o.id)
+        } else {
+            compositore(o, cliente: c, richiesta: richiesta)
+        }
+    }
+
+    private func compositore(_ o: OccasioneMessaggio, cliente c: Cliente, richiesta: RichiestaIstantaneaMessaggi?) -> some View {
         let tono: Binding<TonoMessaggio> = richiesta.map { r in Binding.constant(r.tono) } ?? $sessione.tono
         let canale: Binding<CanaleMessaggio> = richiesta.map { r in Binding.constant(r.canale) } ?? $sessione.canale
         let fisso: TestoScrittoMessaggio? = scatto

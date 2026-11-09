@@ -113,8 +113,20 @@ struct ImpostazioniSala: Codable, Equatable {
     var avvertenzaValore: String?
     /// Il titolo di «Quanto vale avermi accanto», con {valore} e {periodo} (nil = il testo di prova del template).
     var titoloValore: String?
+    /// Le avvertenze del Prisma del cliente e del film del piano («Luce» giro 15, decisione 56; nil = il segnaposto).
+    var avvertenzaFile: String?
+    var avvertenzaFilm: String?
+    /// «Prepara anche il file per il browser» (giro 15, decisione 3): l'HTML cifrato resta spento finché la prova su
+    /// iPhone e Android veri non passa. nil = spento.
+    var htmlSperimentale: Bool?
+    /// «Lo scatto può comprendere la stanza» (Impostazioni › Sala, «Luce» giro 16, decisione 27): spento di base; acceso,
+    /// sull'iPad del tavolo si può mandare anche la foto con la stanza, con la conferma a ogni scatto.
+    var scattoConStanza = false
 
     init() {}
+
+    /// L'HTML cifrato del Prisma del cliente si prepara solo con l'interruttore sperimentale acceso.
+    var fileHtmlAcceso: Bool { htmlSperimentale == true }
 
     /// Il segnaposto dichiarato della decisione 56: resta finché l'utente non scrive l'avvertenza.
     static let segnapostoAvvertenza = "Stime basate su ipotesi, non garanzie di risultato."
@@ -126,6 +138,8 @@ struct ImpostazioniSala: Codable, Equatable {
 
     private enum CodingKeys: String, CodingKey {
         case eventiAnno, anniPartita, avvertenzaLettera, avvertenzaLancia, avvertenzaValore, titoloValore
+        case avvertenzaFile, avvertenzaFilm, htmlSperimentale
+        case scattoConStanza
     }
 
     init(from decoder: Decoder) throws {
@@ -141,6 +155,10 @@ struct ImpostazioniSala: Codable, Equatable {
         avvertenzaLancia = testo(.avvertenzaLancia)
         avvertenzaValore = testo(.avvertenzaValore)
         titoloValore = testo(.titoloValore)
+        avvertenzaFile = testo(.avvertenzaFile)
+        avvertenzaFilm = testo(.avvertenzaFilm)
+        htmlSperimentale = (try? c.decodeIfPresent(Bool.self, forKey: .htmlSperimentale)) ?? nil
+        scattoConStanza = ((try? c.decodeIfPresent(Bool.self, forKey: .scattoConStanza)) ?? nil) ?? false
     }
 
     /// Un testo dell'utente o il segnaposto, con il segno se è il segnaposto.

@@ -149,7 +149,11 @@ enum MotoreDaFare {
 
     // MARK: - Il nastro
 
-    static func calcola(_ x: Ingressi) -> NastroDaFare {
+    static func calcola(_ x: Ingressi) -> NastroDaFare { nastro(voci(x)) }
+
+    /// Tutte le voci, senza il limite per gruppo del nastro (Territorio, «Luce» giro 11: l'anello arancio guarda tutti i
+    /// clienti con qualcosa da fare). Non ordinate e con eventuali doppioni: li toglie `nastro(_:)`.
+    static func voci(_ x: Ingressi) -> [VoceDaFare] {
         let cal = Calendar.current
         let inizio = cal.startOfDay(for: x.oggi)
         let visibili = Set(x.clienti.map(\.id))
@@ -270,7 +274,7 @@ enum MotoreDaFare {
                 fatto: .segna, anello: nil, tipoIncontro: .analisi))
         }
 
-        return nastro(voci)
+        return voci
     }
 
     /// Le voci divise nei gruppi e ordinate (data, tipo, cliente), al più `massimoPerGruppo` per gruppo.

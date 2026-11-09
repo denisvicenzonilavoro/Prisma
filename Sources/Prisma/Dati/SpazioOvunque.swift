@@ -138,6 +138,23 @@ enum SpazioOvunque {
 
     // MARK: - Istantanea (solo il Mac la scrive)
 
+    /// Il sinistro come va nello spazio («Luce» giro 15, decisione 44): titolo, fase, date, fatti e documenti; via la
+    /// descrizione, il numero di sinistro, le stime, l'importo pagato e i file dei documenti (`documentoId`).
+    static func sinistroPerOvunque(_ s: Sinistro) -> Sinistro {
+        var x = s
+        x.descrizione = ""
+        x.numeroSinistro = nil
+        x.stimaMinima = nil
+        x.stimaMassima = nil
+        x.pagato = nil
+        x.documenti = x.documenti.map { d in
+            var e = d
+            e.documentoId = nil
+            return e
+        }
+        return x
+    }
+
     /// L'archivio come va nell'istantanea: senza conversazioni di Vera, senza trascrizioni del copilota, senza le impostazioni
     /// del Mac (Vera, spazio) e senza giornale. I documenti (file) non ci sono: il telefono vede i dati estratti.
     static func datiIstantanea(_ d: DatiPrisma) -> DatiPrisma {
@@ -150,6 +167,18 @@ enum SpazioOvunque {
         x.speseStudio = ArchivioSpese()
         x.kmClienti = [:]
         x.impostazioni.studio.spese = ImpostazioniSpese()
+        // Le note dettate sull'iPhone restano sul Mac (decisione 44, «Luce» giro 13)
+        x.noteInArrivo = []
+        // Le carte della notte e le sue impostazioni restano sul Mac («Luce» giro 14: le carte non vanno su iPhone/iPad)
+        x.notti = []
+        x.impostazioni.notte = ImpostazioniNotte()
+        // Le cose date al cliente («Luce» giro 15, decisione 44): le capsule del tempo e la traccia delle uscite restano
+        // sul Mac; i sinistri entrano limitati (titolo, fase, fatti e documenti senza file)
+        x.capsule = []
+        x.uscite = []
+        // Le lettere dal futuro conservate restano sul Mac (D-L8, decisione 44)
+        x.lettere = []
+        x.sinistri = x.sinistri.map(SpazioOvunque.sinistroPerOvunque)
         // L'IBAN dei clienti e i moduli compilati restano sul Mac (decisioni 40 e 44; i modelli stanno in Moduli/, fuori
         // dall'archivio)
         x.clienti = x.clienti.map { c in
@@ -157,8 +186,16 @@ enum SpazioOvunque {
             d.iban = nil
             return d
         }
-        x.documenti = x.documenti.filter { $0.tipo != .modulo && $0.modulo == nil }
+        // Lo scatto della realtà aumentata resta sul Mac («Luce» giro 16, decisione 27)
+        x.documenti = x.documenti.filter { $0.tipo != .modulo && $0.modulo == nil && $0.scattoRealta == nil }
+        // La posizione a mano del cliente (`Cliente.luogo`) e le impostazioni del Territorio (`Impostazioni.territorio`)
+        // restano nell'istantanea («Luce» giro 11, decisione 44): l'iPad fa la stessa stima, ma non le modifica (non
+        // sono campi sincronizzati)
         x.giornaleOvunque = []
+        // I potenziali clienti (persone che non sono clienti) vanno nello spazio solo con «Porta anche i potenziali
+        // clienti» acceso (decisione 44, «Luce» giro 12): va letto prima che le impostazioni dello spazio si azzerino.
+        // Le campagne e chi ha presentato ogni cliente restano.
+        if !d.impostazioni.ovunque.potenzialiNelloSpazio { x.potenziali = [] }
         x.impostazioni.ovunque = ImpostazioniOvunque()
         x.impostazioni.vera = ImpostazioniVera()
         x.sessioniCopilota = x.sessioniCopilota.map(CampiOvunque.senzaTrascrizione)
@@ -477,6 +514,11 @@ enum SincroniaOvunque {
         nuovo.partiteRischio = locale.partiteRischio
         nuovo.speseStudio = locale.speseStudio
         nuovo.kmClienti = locale.kmClienti
+        nuovo.noteInArrivo = locale.noteInArrivo
+        nuovo.notti = locale.notti
+        nuovo.capsule = locale.capsule
+        nuovo.uscite = locale.uscite
+        nuovo.lettere = locale.lettere
         // Vera, fase 4: ciò che l'istantanea non porta resta quello del dispositivo
         nuovo.routine.esiti = locale.routine.esiti
         // Le routine sono del Mac (non passano dal giornale), ma un lancio fatto qui non torna «dovuto» per
@@ -490,6 +532,7 @@ enum SincroniaOvunque {
         var imp = nuovo.impostazioni
         imp.vera = mie.vera
         imp.studio.spese = mie.studio.spese
+        imp.notte = mie.notte
         imp.aspetto = mie.aspetto
         imp.dimensioneTesto = mie.dimensioneTesto
         imp.sfondoAnimato = mie.sfondoAnimato

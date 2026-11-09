@@ -413,6 +413,8 @@ struct ModuloCliente: View {
     @State var confermaEliminazione = false
     /// «Conserva l'IBAN nel dossier» acceso (Impostazioni › Moduli, «Luce» giro 10): solo allora c'è il campo dell'IBAN.
     var conservaIban = false
+    /// I clienti per «Presentato da» («Luce» giro 12, Clienti › Passaparola). Vuoto = la riga non compare.
+    var rubrica: [Cliente] = []
     @State private var testoIban: String?
 
     private var valido: Bool { !bozza.nome.trimmingCharacters(in: .whitespaces).isEmpty }
@@ -440,12 +442,32 @@ struct ModuloCliente: View {
                             bozza.luogoNascita = $0.trimmingCharacters(in: .whitespaces).isEmpty ? nil : $0
                         })).textFieldStyle(.roundedBorder)
                     }
+                    // «Luce» giro 13: la cittadinanza (letta dalla carta d'identità o scritta a mano)
+                    CampoModulo(etichetta: "Cittadinanza") {
+                        TextField("Per esempio Italiana", text: Binding(get: { bozza.cittadinanza ?? "" }, set: {
+                            bozza.cittadinanza = $0.trimmingCharacters(in: .whitespaces).isEmpty ? nil : $0
+                        })).textFieldStyle(.roundedBorder)
+                    }
                     CampoModulo(etichetta: "Codice fiscale") {
                         TextField("", text: $bozza.codiceFiscale).textFieldStyle(.roundedBorder)
                     }
                     // «Luce» giro 8: da quando è cominciata la consulenza (Sala › Quanto vale avermi accanto)
                     CampoModulo(etichetta: "Cliente dal") {
                         CampoDataFacoltativa(data: $bozza.clienteDal, predefinita: Date())
+                    }
+                    // «Luce» giro 12: chi l'ha presentato (l'albero del passaparola)
+                    if !rubrica.isEmpty {
+                        CampoModulo(etichetta: "Presentato da") {
+                            MenuTendina(selezione: $bozza.presentatoDa,
+                                        opzioni: [(String?.none, "Nessuno")]
+                                            + rubrica.filter { $0.id != bozza.id }.map { (Optional($0.id), $0.nome) },
+                                        larghezza: 220)
+                        }
+                        if bozza.presentatoDa != nil {
+                            CampoModulo(etichetta: "Presentato il") {
+                                CampoDataFacoltativa(data: $bozza.presentatoIl, predefinita: Date())
+                            }
+                        }
                     }
                     CampoModulo(etichetta: "Professione") {
                         TextField("", text: $bozza.professione).textFieldStyle(.roundedBorder)
@@ -625,6 +647,14 @@ struct ModuloCliente: View {
                         Toggle("Consenso alle comunicazioni commerciali", isOn: Binding(
                             get: { bozza.consensi.marketing },
                             set: { bozza.consensi.marketing = $0; bozza.consensi.dataMarketing = Appuntamento.alMinuto(Date()) }
+                        ))
+                        .stileCasella()
+                    }
+                    CampoModulo(etichetta: "WhatsApp") {
+                        // «Luce» giro 15, decisione 1: senza questo consenso WhatsApp non compare nel foglio di condivisione
+                        Toggle("Accetta comunicazioni con WhatsApp", isOn: Binding(
+                            get: { bozza.consensi.whatsapp == true },
+                            set: { bozza.consensi.whatsapp = $0; bozza.consensi.dataWhatsapp = Appuntamento.alMinuto(Date()) }
                         ))
                         .stileCasella()
                     }

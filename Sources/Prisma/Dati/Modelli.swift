@@ -85,6 +85,22 @@ struct Cliente: Identifiable, Codable, Hashable {
     /// La scheda in cui questa è stata unita da «Unisci le schede» del tagliando dei dati (versione 27, Vera fase 4): l'id
     /// della scheda principale. nil = scheda normale. La scheda unita non si cancella: resta in archivio, segnata così.
     var unitaIn: String?
+    /// La posizione sulla mappa messa a mano dal consulente (versione 27, «Luce» giro 11): vince sul comune
+    /// dell'indirizzo. nil = la posizione viene dal comune (`MotoreTerritorio.luoghi`). Entra nei backup e nello spazio
+    /// cifrato di «Prisma ovunque» con il cliente, ma non si modifica dal dispositivo.
+    var luogo: LuogoManuale?
+    /// Chi ha presentato il cliente (l'id di un altro cliente; versione 27, «Luce» giro 12, Clienti › Passaparola). nil =
+    /// nessuno o non scritto. Un id che non è più in archivio si ignora (il cliente va al primo livello dell'albero).
+    var presentatoDa: String?
+    /// Quando è stato presentato (versione 27, «Luce» giro 12). nil = data non scritta.
+    var presentatoIl: Date?
+    /// La cittadinanza («Italiana»; versione 27, «Luce» giro 13): letta dalla carta d'identità o scritta a mano. nil = non
+    /// inserita. Va nei backup e, come il luogo di nascita, in «Prisma ovunque» con il cliente.
+    var cittadinanza: String?
+    /// Il Prisma del cliente (versione 27, «Luce» giro 15, `Dati/PrismaCliente.swift`): quando è uscito l'ultimo file, fino
+    /// a quando vale, quali voci aveva, le voci aggiunte dopo e l'impronta del film esportato. Mai la password né il
+    /// contenuto. nil = nessun file ancora.
+    var prismaCliente: StatoPrismaCliente?
 
     init(id: String, nome: String, iniziali: String, tinta: TintaAvatar, tema: String, email: String,
          telefono: String, preferito: Bool, nota: String, creatoIl: Date) {
@@ -129,6 +145,10 @@ struct Cliente: Identifiable, Codable, Hashable {
         case clienteDal
         case luogoNascita, iban
         case unitaIn
+        case luogo
+        case presentatoDa, presentatoIl
+        case cittadinanza
+        case prismaCliente
     }
 
     /// Lettura tollerante: i campi aggiunti nelle versioni successive possono mancare.
@@ -175,6 +195,18 @@ struct Cliente: Identifiable, Codable, Hashable {
         iban = ((try? c.decodeIfPresent(String.self, forKey: .iban)) ?? nil).flatMap { IBAN.valido($0) ? IBAN.pulito($0) : nil }
         // Scheda unita dal tagliando (versione 27, Vera fase 4): illeggibile o vuoto = scheda normale
         unitaIn = ((try? c.decodeIfPresent(String.self, forKey: .unitaIn)) ?? nil).flatMap { $0.isEmpty ? nil : $0 }
+        // Posizione a mano (versione 27, giro 11): illeggibile o fuori scala = dal comune dell'indirizzo
+        luogo = ((try? c.decodeIfPresent(LuogoManuale.self, forKey: .luogo)) ?? nil).flatMap { $0.coordinata.valida ? $0 : nil }
+        // Passaparola (versione 27, giro 12): vuoto, illeggibile o sé stesso = nessuno
+        let idLetto = id
+        presentatoDa = ((try? c.decodeIfPresent(String.self, forKey: .presentatoDa)) ?? nil)
+            .flatMap { $0.isEmpty || $0 == idLetto ? nil : $0 }
+        presentatoIl = (try? c.decodeIfPresent(Date.self, forKey: .presentatoIl)) ?? nil
+        // Cittadinanza (versione 27, giro 13): vuota o illeggibile = non inserita
+        cittadinanza = ((try? c.decodeIfPresent(String.self, forKey: .cittadinanza)) ?? nil)
+            .flatMap { $0.trimmingCharacters(in: .whitespaces).isEmpty ? nil : $0 }
+        // Il Prisma del cliente (versione 27, giro 15): illeggibile = nessun file ancora
+        prismaCliente = (try? c.decodeIfPresent(StatoPrismaCliente.self, forKey: .prismaCliente)) ?? nil
     }
 
     /// Le aziende registrate (vuoto se nessuna).
@@ -377,6 +409,11 @@ struct Consensi: Codable, Hashable {
     var marketing = false
     /// Quando il cliente ha dato (o tolto) il consenso commerciale (dalla versione 22).
     var dataMarketing: Date?
+    /// «Accetta comunicazioni con WhatsApp» (versione 27, «Luce» giro 15, decisione 1): senza, WhatsApp non compare nel
+    /// foglio di condivisione. nil = non segnato (vale come no).
+    var whatsapp: Bool?
+    /// Quando il consenso a WhatsApp è stato dato (o tolto).
+    var dataWhatsapp: Date?
 }
 
 /// Tipo di appuntamento: aiuta a capire a che punto è la relazione con il cliente.
@@ -421,10 +458,13 @@ struct Appuntamento: Identifiable, Codable, Hashable {
     /// Dove si è svolto: dal cliente, in studio, altrove («Luce» giro 9, decisione 100, versione 27). nil = non indicato:
     /// Prisma non lo indovina dal testo di `luogo`, e per i chilometri la visita resta da chiedere («Dove eri?»).
     var presso: LuogoIncontro?
+    /// Proposto dal Territorio («＋ Aggiungi … al giro», «Luce» giro 11, versione 27) e non ancora confermato in Agenda.
+    /// nil = confermato (tutti gli appuntamenti di prima). Si sincronizza con «Prisma ovunque».
+    var daConfermare: Bool?
 
     init(id: String, clienteId: String, titolo: String, inizio: Date, durataMinuti: Int, luogo: String,
          note: String, stato: Stato, tipo: TipoAppuntamento = .altro, canale: Canale? = nil, posizioneId: String? = nil,
-         presso: LuogoIncontro? = nil) {
+         presso: LuogoIncontro? = nil, daConfermare: Bool? = nil) {
         self.id = id
         self.clienteId = clienteId
         self.titolo = titolo
@@ -437,6 +477,7 @@ struct Appuntamento: Identifiable, Codable, Hashable {
         self.canale = canale
         self.posizioneId = posizioneId
         self.presso = presso
+        self.daConfermare = daConfermare
     }
 
     var fine: Date { inizio.addingTimeInterval(TimeInterval(durataMinuti * 60)) }
@@ -477,6 +518,8 @@ struct Appuntamento: Identifiable, Codable, Hashable {
         posizioneId = try c.decodeIfPresent(String.self, forKey: .posizioneId)
         // «Luce» giro 9 (versione 27): gli archivi di prima non l'hanno; un valore sconosciuto = non indicato
         presso = (try? c.decodeIfPresent(LuogoIncontro.self, forKey: .presso)) ?? nil
+        // «Luce» giro 11 (versione 27): gli archivi di prima non l'hanno; un valore illeggibile = confermato
+        daConfermare = (try? c.decodeIfPresent(Bool.self, forKey: .daConfermare)) ?? nil
     }
 }
 

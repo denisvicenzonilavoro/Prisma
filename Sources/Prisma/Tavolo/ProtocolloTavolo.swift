@@ -7,6 +7,9 @@ import Network
 import UniformTypeIdentifiers
 
 // Il tavolo con l'iPad: sul Mac guida il consulente, l'iPad davanti al cliente mostra solo ciò che il Mac sceglie.
+// Dal «Luce» giro 16 il tavolo va nei due sensi (decisione 48): per ciò che il Mac mostra (stesso `id`) dall'iPad
+// tornano anche la risposta al gioco del rischio, il lancio di Lancia l'anno, il tratto del disegno (punti normalizzati),
+// il testo della capsula e lo scatto della realtà aumentata. Niente si salva sull'iPad.
 // Qui il protocollo, comune al Mac (TavoloMac.swift) e all'iPad (`ClienteTavolo`, senza viste):
 // - rete locale e basta: il Mac ascolta (NWListener) e si annuncia con Bonjour su «_prisma-tavolo._tcp»;
 //   l'iPad lo trova (o si collega a un indirizzo dato) e apre una connessione TCP che resta aperta;
@@ -26,13 +29,21 @@ enum ProtocolloTavolo {
     /// La porta del tavolo (quella di Vera è 47620).
     static let porta: UInt16 = 47_621
     /// La versione dei messaggi: un contenuto che questa versione non conosce si ignora, non chiude il tavolo.
-    static let versione = 1
+    static let versione = 2
     /// Il sale della chiave del tavolo (il codice è lo stesso del ponte di Vera).
     static let sale = "Prisma · Tavolo · 1"
     /// Il messaggio più grande (un prospetto intero in PNG sta ben sotto).
     static let massimoMessaggio = 24 * 1_024 * 1_024
     /// Il PNG più grande del tratto della presa visione.
     static let massimoTratto = 2 * 1_024 * 1_024
+    /// L'immagine più grande dello scatto della realtà aumentata (giro 16, decisione 27).
+    static let massimoFoto = 4 * 1_024 * 1_024
+    /// Il lato lungo dello scatto con la stanza in pixel (una foto della fotocamera dell'iPad in PNG pieno supera i 4 MB).
+    static let latoFoto = 1_600
+    /// I punti al massimo di un tratto del disegno sull'iPad (decisione 113).
+    static let massimiPuntiTratto = 2_000
+    /// Il testo più lungo della capsula scritta sull'iPad (caratteri).
+    static let massimoTestoCapsula = 4_000
     /// Le pagine al massimo in un solo messaggio (un prospetto lungo si manda a pagine).
     static let massimePagine = 24
     /// Un messaggio più vecchio (o più nuovo) di così non vale, come le buste del ponte di Vera.
@@ -92,6 +103,32 @@ enum ProtocolloTavolo {
         return dati as Data
     }
 
+    /// Il JPEG di un'immagine (lo scatto con la stanza: in memoria, mai su disco).
+    static func jpeg(_ immagine: CGImage, qualita: Double) -> Data? {
+        let dati = NSMutableData()
+        guard let destinazione = CGImageDestinationCreateWithData(dati as CFMutableData, UTType.jpeg.identifier as CFString, 1, nil)
+        else { return nil }
+        let opzioni = [kCGImageDestinationLossyCompressionQuality as String: min(1, max(0, qualita))] as CFDictionary
+        CGImageDestinationAddImage(destinazione, immagine, opzioni)
+        guard CGImageDestinationFinalize(destinazione) else { return nil }
+        return dati as Data
+    }
+
+    /// L'immagine con il lato lungo al più `lato` pixel (la stessa se è già più piccola).
+    static func riduci(_ immagine: CGImage, lato: Int) -> CGImage? {
+        let w = immagine.width, h = immagine.height
+        let lungo = max(w, h)
+        guard lungo > lato, lato > 0 else { return immagine }
+        let f = Double(lato) / Double(lungo)
+        let nw = max(1, Int((Double(w) * f).rounded())), nh = max(1, Int((Double(h) * f).rounded()))
+        guard let spazio = CGColorSpace(name: CGColorSpace.sRGB),
+              let c = CGContext(data: nil, width: nw, height: nh, bitsPerComponent: 8, bytesPerRow: 0, space: spazio,
+                                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        c.interpolationQuality = .high
+        c.draw(immagine, in: CGRect(x: 0, y: 0, width: nw, height: nh))
+        return c.makeImage()
+    }
+
     /// L'immagine di un PNG (nil se non è un'immagine).
     static func immagine(_ png: Data) -> CGImage? {
         guard !png.isEmpty, let sorgente = CGImageSourceCreateWithData(png as CFData, nil),
@@ -138,7 +175,8 @@ struct MessaggioTavolo: Codable, Equatable, Sendable {
 }
 
 /// Che cosa dice un messaggio. Dal Mac: benvenuto, mostra, cursore, richiesta di presa visione, neutra.
-/// Dall'iPad: saluto, valore del cursore, presa visione. Da tutte e due: battito e fine.
+/// Dall'iPad: saluto, valore del cursore, presa visione e (giro 16) risposta al rischio, lancio, tratto, testo della
+/// capsula e scatto, sempre per ciò che il Mac mostra. Da tutte e due: battito e fine.
 enum ContenutoTavolo: Codable, Equatable, Sendable {
     /// iPad → Mac, il primo messaggio: il nome dell'iPad.
     case ciao(SalutoTavolo)
@@ -160,12 +198,22 @@ enum ContenutoTavolo: Codable, Equatable, Sendable {
     case fine
     /// Ci sono ancora.
     case battito
+    /// iPad → Mac: la risposta del cliente a uno scenario del gioco del rischio (giro 16).
+    case rispostaRischio(RispostaRischioTavolo)
+    /// iPad → Mac: il cliente lancia un anno (un tocco = un anno).
+    case lancioAnno(LancioAnnoTavolo)
+    /// iPad → Mac: il tratto del disegno, in punti normalizzati.
+    case tratto(TrattoTavolo)
+    /// iPad → Mac: il testo della capsula (si sigilla sul Mac).
+    case testoCapsula(TestoCapsulaTavolo)
+    /// iPad → Mac: lo scatto della realtà aumentata (PNG o JPEG).
+    case fotoRealta(FotoRealtaTavolo)
 
     /// I contenuti che solo il Mac può mandare.
     var delMac: Bool {
         switch self {
         case .benvenuto, .mostra, .cursore, .richiestaPresaVisione, .neutra, .fine, .battito: return true
-        case .ciao, .valoreCursore, .presaVisione: return false
+        case .ciao, .valoreCursore, .presaVisione, .rispostaRischio, .lancioAnno, .tratto, .testoCapsula, .fotoRealta: return false
         }
     }
 
@@ -173,6 +221,7 @@ enum ContenutoTavolo: Codable, Equatable, Sendable {
     var dellIPad: Bool {
         switch self {
         case .ciao, .valoreCursore, .presaVisione, .fine, .battito: return true
+        case .rispostaRischio, .lancioAnno, .tratto, .testoCapsula, .fotoRealta: return true
         case .benvenuto, .mostra, .cursore, .richiestaPresaVisione, .neutra: return false
         }
     }
@@ -196,6 +245,16 @@ struct MostraTavolo: Codable, Equatable, Sendable {
         case famiglia
         /// La linea della vita: il patrimonio da oggi a 90 anni con gli eventi e la pensione (giro 4).
         case lineaVita
+        /// La realtà aumentata: gli strati e il patrimonio per anno; l'iPad costruisce il cristallo da sé (giro 16).
+        case realtaAumentata
+        /// Il gioco del rischio: lo scenario in corso o il risultato; il cliente risponde dall'iPad (decisione 48).
+        case rischio
+        /// Lancia l'anno: le due vite e l'ultima carta; il cliente lancia dall'iPad.
+        case lanciaAnno
+        /// Disegna il tuo futuro: la tela con gli assi; il cliente disegna con il dito (decisione 113).
+        case disegno
+        /// La capsula del tempo: il cliente scrive sull'iPad (collegata dal giro 15, D-C4).
+        case capsula
     }
 
     var id: String
@@ -210,6 +269,12 @@ struct MostraTavolo: Codable, Equatable, Sendable {
     var nelTempo: NelTempoTavolo?
     var famiglia: FamigliaTavolo?
     var lineaVita: LineaVitaTavolo?
+    // Giro 16: i contenuti dei generi a doppio senso (un iPad vecchio non li conosce e ignora il messaggio)
+    var realta: RealtaTavolo? = nil
+    var rischio: RischioTavolo? = nil
+    var lancia: LanciaAnnoTavolo? = nil
+    var disegno: DisegnoTavolo? = nil
+    var capsula: CapsulaTavolo? = nil
 }
 
 /// Una pagina già impaginata sul Mac: il PNG del foglio (sempre chiaro, su carta bianca).
@@ -382,6 +447,146 @@ struct PresaVisioneTavolo: Codable, Equatable, Sendable {
     var tratto: Data
     /// Secondi dal 1970.
     var data: Double
+}
+
+// MARK: - Il doppio senso (giro 16, decisioni 48, 49 e 113)
+
+/// Il cristallo della realtà aumentata: il nome di battesimo, gli strati e il patrimonio anno per anno fino alla
+/// pensione. Niente identificativi, niente posizioni: solo ciò che il cristallo mostra.
+struct RealtaTavolo: Codable, Equatable, Sendable {
+    var nome: String
+    /// Dal basso: Azionario, Obbligazionario, Gestione separata, Liquidità (solo > 0).
+    var strati: [StratoRealtaTavolo]
+    /// Da oggi alla pensione (vuoto senza data di nascita).
+    var anni: [AnnoRealtaTavolo]
+    var totaleOggi: Double
+    var stimata: Bool
+    /// nil se gli anni ci sono; altrimenti la frase della data di nascita.
+    var motivoSenzaAnni: String?
+    /// La foto con la stanza è permessa (`ImpostazioniSala.scattoConStanza`).
+    var scattoConStanza: Bool
+    /// L'ultimo scatto archiviato sul Mac («Foto salvata nel dossier di …»), nil prima.
+    var ultimoScatto: String?
+}
+
+struct StratoRealtaTavolo: Codable, Equatable, Sendable {
+    /// `ComposizioneInvestimenti360.Classe.rawValue`: l'iPad sceglie il colore dal tema.
+    var classe: String
+    var nome: String
+    /// 0…1.
+    var quota: Double
+    var valoreOggi: Double
+}
+
+struct AnnoRealtaTavolo: Codable, Equatable, Sendable {
+    var anno: Int
+    var eta: Int
+    var totale: Double
+}
+
+/// Il gioco del rischio sull'iPad: uno scenario (testo, punti, risposte) o il risultato. Niente nomi né cifre del
+/// cliente: lo scenario 1 resta neutro (decisione 49).
+struct RischioTavolo: Codable, Equatable, Sendable {
+    /// 0…n−1; n = il risultato.
+    var indice: Int
+    var totale: Int
+    var scenario: ScenarioRischio?
+    var avvertenza: String
+    var testiDiProva: Bool
+    /// Solo nel risultato: la propensione emersa (`ProfiloInvestitore.Propensione.rawValue`), il punteggio e il massimo.
+    var emerso: String?
+    var punteggio: Int?
+    var massimo: Int?
+}
+
+struct RispostaRischioTavolo: Codable, Equatable, Sendable {
+    /// `MostraTavolo.id`.
+    var id: String
+    /// `ScenarioRischio.id`.
+    var scenario: String
+    /// 0…2.
+    var scelta: Int
+    var secondi: Double
+}
+
+/// Lancia l'anno sull'iPad: le due vite (valori a fine anno già calcolati), l'ultima carta, se si può ancora lanciare.
+struct LanciaAnnoTavolo: Codable, Equatable, Sendable {
+    var nome: String
+    var annoCorrente: Int
+    var anniLanciati: Int
+    var anniMassimi: Int
+    var serieCon: [Double]
+    var serieSenza: [Double]
+    var valoreCon: Double
+    var valoreSenza: Double
+    var ultimaCarta: CartaLanciaTavolo?
+    var finita: Bool
+    var avvertenza: String
+}
+
+struct CartaLanciaTavolo: Codable, Equatable, Sendable {
+    var anno: Int
+    var titolo: String
+    var fraseCon: String
+    var fraseSenza: String
+    /// `EventoAnno.Tono.rawValue`.
+    var tono: String
+}
+
+/// Un tocco = un anno (il lancio di dieci anni resta solo sul Mac).
+struct LancioAnnoTavolo: Codable, Equatable, Sendable {
+    var id: String
+}
+
+/// La tela del disegno sull'iPad: gli assi già scritti; il risultato torna come PNG disegnato dal Mac.
+struct DisegnoTavolo: Codable, Equatable, Sendable {
+    var etaOggi: Int
+    var etaFine: Int
+    var etaPensione: Int
+    /// Le etichette dell'asse dei valori, dal basso.
+    var etichetteAsse: [String]
+    var risultato: PaginaTavolo?
+    /// La frase del risultato con quella sul dopo pensione (decisione 113).
+    var frase: String?
+}
+
+/// Un punto del tratto: 0…1 nell'area del grafico, y = 0 in basso.
+struct PuntoTavolo: Codable, Equatable, Sendable {
+    var x: Double
+    var y: Double
+}
+
+struct TrattoTavolo: Codable, Equatable, Sendable {
+    var id: String
+    var punti: [PuntoTavolo]
+
+    /// I punti sono validi (0…1, finiti, da 2 a `massimiPuntiTratto`): la stessa regola sul Mac e sull'iPad.
+    func valido() -> Bool {
+        guard punti.count >= 2, punti.count <= ProtocolloTavolo.massimiPuntiTratto else { return false }
+        return punti.allSatisfy { $0.x.isFinite && $0.y.isFinite && (0...1).contains($0.x) && (0...1).contains($0.y) }
+    }
+}
+
+/// La capsula sull'iPad: per chi e quando si apre, già scritti dal Mac. Il testo non torna mai indietro dal Mac.
+struct CapsulaTavolo: Codable, Equatable, Sendable {
+    var nome: String
+    var siApre: String
+    var aiuto: String
+}
+
+struct TestoCapsulaTavolo: Codable, Equatable, Sendable {
+    var id: String
+    var testo: String
+}
+
+/// Lo scatto del cristallo: l'immagine, se comprende la stanza, anno ed esploso (per il foglio nel dossier).
+struct FotoRealtaTavolo: Codable, Equatable, Sendable {
+    var id: String
+    /// PNG (cristallo su fondo neutro) o JPEG (foto con la stanza), lato lungo al più `latoFoto`.
+    var immagine: Data
+    var conStanza: Bool
+    var anno: Int
+    var esploso: Bool
 }
 
 // MARK: - Il canale cifrato (comune al Mac e all'iPad)
@@ -597,6 +802,7 @@ final class CanaleTavolo: @unchecked Sendable {
 ///     tavolo.collega(codice: codice, host: "192.168.1.20", porta: ProtocolloTavolo.porta)
 ///     tavolo.mandaValore(350, cursore: cursore.id)
 ///     tavolo.mandaPresaVisione(richiesta: richiesta.id, tratto: png)
+///     tavolo.mandaLancio(mostra: m.id)                              // giro 16: il doppio senso
 ///     tavolo.chiudi()
 final class ClienteTavolo: @unchecked Sendable {
     enum Collegamento: Equatable, Sendable {
@@ -728,6 +934,54 @@ final class ClienteTavolo: @unchecked Sendable {
             guard case .collegato = _collegamento, case .presaVisione(let r) = _schermo, r.id == id,
                   !tratto.isEmpty, tratto.count <= ProtocolloTavolo.massimoTratto else { return }
             canale?.manda(.presaVisione(PresaVisioneTavolo(id: id, tratto: tratto, data: data.timeIntervalSince1970)))
+        }
+    }
+
+    // MARK: Il doppio senso (giro 16): sempre e solo per ciò che il Mac mostra ora (stesso id, stesso genere)
+
+    /// La risposta del cliente allo scenario mostrato.
+    func mandaRispostaRischio(_ r: RispostaRischioTavolo) {
+        coda.async { [self] in
+            guard case .collegato = _collegamento, case .mostra(let m) = _schermo, m.id == r.id, m.genere == .rischio,
+                  (0...2).contains(r.scelta), r.secondi.isFinite, r.secondi >= 0 else { return }
+            canale?.manda(.rispostaRischio(r))
+        }
+    }
+
+    /// Il cliente lancia un anno.
+    func mandaLancio(mostra id: String) {
+        coda.async { [self] in
+            guard case .collegato = _collegamento, case .mostra(let m) = _schermo, m.id == id, m.genere == .lanciaAnno,
+                  m.lancia?.finita == false else { return }
+            canale?.manda(.lancioAnno(LancioAnnoTavolo(id: id)))
+        }
+    }
+
+    /// Il tratto del disegno (solo se valido).
+    func mandaTratto(_ t: TrattoTavolo) {
+        coda.async { [self] in
+            guard case .collegato = _collegamento, case .mostra(let m) = _schermo, m.id == t.id, m.genere == .disegno,
+                  t.valido() else { return }
+            canale?.manda(.tratto(t))
+        }
+    }
+
+    /// Il testo della capsula, tagliato al massimo e non vuoto.
+    func mandaTestoCapsula(_ testo: String, mostra id: String) {
+        coda.async { [self] in
+            let pulito = String(testo.trimmingCharacters(in: .whitespacesAndNewlines).prefix(ProtocolloTavolo.massimoTestoCapsula))
+            guard case .collegato = _collegamento, case .mostra(let m) = _schermo, m.id == id, m.genere == .capsula,
+                  !pulito.isEmpty else { return }
+            canale?.manda(.testoCapsula(TestoCapsulaTavolo(id: id, testo: pulito)))
+        }
+    }
+
+    /// Lo scatto della realtà aumentata (non vuoto, entro `massimoFoto`).
+    func mandaFotoRealta(_ f: FotoRealtaTavolo) {
+        coda.async { [self] in
+            guard case .collegato = _collegamento, case .mostra(let m) = _schermo, m.id == f.id, m.genere == .realtaAumentata,
+                  !f.immagine.isEmpty, f.immagine.count <= ProtocolloTavolo.massimoFoto else { return }
+            canale?.manda(.fotoRealta(f))
         }
     }
 

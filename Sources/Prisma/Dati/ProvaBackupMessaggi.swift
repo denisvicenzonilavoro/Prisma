@@ -42,7 +42,11 @@ extension ProvaBackup {
     /// Restituisce il motivo dell'errore (nil = tutto bene).
     static func verificaMessaggi(originale: DatiPrisma, estratto: DatiPrisma) throws -> String? {
         // 1. Dal backup tornano uguali
-        guard originale.messaggi.count == 2, originale.impostazioni.messaggi != ImpostazioniMessaggi() else {
+        // Solo i due messaggi di questa prova: dal giro 12 di «Luce» l'archivio di prova ha anche le bozze di una campagna e
+        // una richiesta di presentazione (ProvaBackupLuceClienti.swift), che si controllano là
+        guard originale.messaggi.filter({ $0.id.hasPrefix("messaggio-prova-") }).count == 2,
+              originale.messaggi.first?.id == "messaggio-prova-mail",
+              originale.impostazioni.messaggi != ImpostazioniMessaggi() else {
             return "l'archivio di prova non ha messaggi ai clienti né impostazioni dei messaggi"
         }
         guard estratto.messaggi == originale.messaggi, estratto.impostazioni.messaggi == originale.impostazioni.messaggi,

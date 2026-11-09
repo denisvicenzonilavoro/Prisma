@@ -3,7 +3,8 @@ import SwiftUI
 // Le tre app di lavoro della versione «Luce» (Design/template-luce-specifica.md §1.2): Territorio, Pratiche e
 // Biblioteca. Nel giro 1 (le fondamenta) hanno la testata del template (titolo, occhiello, segmentati) e lo stato
 // sobrio «arriva con un prossimo aggiornamento» con la novità che vivrà nella scheda scelta; il contenuto arriva con i
-// loro giri (Pratiche 3 e 10, Biblioteca 6, Territorio 11). La Sala sta in AppSala.swift.
+// loro giri (Pratiche 3 e 10, Biblioteca 6, Territorio 11). Il contenuto di Territorio sta in AppTerritorio.swift, la
+// Sala in AppSala.swift.
 
 /// Territorio: i segmenti «Oggi · La crescita · Il giro di domani» nella testata.
 struct AzioniTerritorio: View {
@@ -27,26 +28,6 @@ struct AzioniPratiche: View {
     }
 }
 
-/// Il contenuto di Territorio (giro 11): per ora lo stato «in arrivo».
-struct AppTerritorio: View {
-    @Environment(StatoShell.self) var stato
-
-    var body: some View {
-        let _ = ContaCorpi.segna()
-        InArrivoAppLuce(app: .territorio, glifo: .mappa, titolo: stato.vistaTerritorio.titolo,
-                        frase: frase(stato.vistaTerritorio),
-                        nota: "Senza mandare gli indirizzi a nessun servizio: comuni e distanze si calcolano sul Mac.")
-    }
-
-    private func frase(_ v: VistaTerritorio) -> String {
-        switch v {
-        case .oggi: return "I tuoi clienti come luci sulla mappa della tua zona."
-        case .crescita: return "Come si è allargata la tua clientela, anno dopo anno."
-        case .giro: return "Il giro di domani, con chi è lungo la strada."
-        }
-    }
-}
-
 /// Il contenuto di Pratiche (giri 3 e 10): per ora lo stato «in arrivo» della scheda scelta.
 struct AppPratiche: View {
     @Environment(StatoShell.self) var stato
@@ -62,6 +43,9 @@ struct AppPratiche: View {
         } else if stato.schedaPratiche == .moduli {
             // «Luce», giro 10: «Compila da solo» (Shell/PraticheModuli.swift)
             PraticheModuli()
+        } else if stato.schedaPratiche == .sinistri {
+            // «Luce», giro 15: il sinistro come una spedizione (Shell/PraticheSinistri.swift)
+            PraticheSinistri()
         } else {
             let n = stato.schedaPratiche.novita
             InArrivoAppLuce(app: .pratiche, glifo: n.glifo, titolo: n.titolo, frase: n.frase + ".",

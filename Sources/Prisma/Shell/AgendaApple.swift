@@ -729,6 +729,13 @@ struct ImpegnoGiornataApple: View {
                     .carattereApple(g.quando)
                     .foregroundColor(g.coloreQuando)
                     .lineLimit(1)
+                // Proposto dal Territorio con «＋ Aggiungi … al giro» e non ancora confermato («Luce» giro 11)
+                if evento.daConfermare == true {
+                    Text("da confermare")
+                        .carattereApple(g.quando)
+                        .foregroundColor(Tema.Apple.Territorio.Giro.titoloSuggerimento)
+                        .lineLimit(1)
+                }
                 Spacer(minLength: 0)
                 if let canale, larghezza >= g.larghezzaConCanale {
                     EtichettaCanaleApple(canale: canale, compatta: true)

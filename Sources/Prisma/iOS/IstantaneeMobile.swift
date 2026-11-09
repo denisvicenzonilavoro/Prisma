@@ -60,6 +60,22 @@ enum IstantaneeMobile {
         ]
         if iPad {
             elenco += [
+                // «Luce» giro 3: la proposta che si costruisce da sola sull'iPad come sul Mac (§7.1.4), costruita fino in
+                // fondo sul primo bisogno dei clienti di prova che arriva a «Proposta pronta»
+                Scena(nome: "808-pratiche-proposta-ipad", orizzontale: true) { m in
+                    m.stato.schedaPratiche = .proposta
+                    m.apri(.pratiche)
+                    m.stato.moduli.carica()
+                    guard let b = m.stato.bisogniProposta().first(where: { m.stato.propostaCostruita($0)?.pronta == true }) else { return }
+                    m.stato.scegliBisognoProposta(b.id)
+                    m.stato.costruisciProposta(b, animato: false)
+                },
+                // «Luce» §9.3.7: il dossier di Marco sull'iPad, scheda «L'azienda» in sola lettura (azienda di prova)
+                Scena(nome: "77-azienda-ipad", orizzontale: true) { m in
+                    m.stato.clienteAttivoId = "marco"
+                    m.stato.schedaCliente = .azienda
+                    m.apri(.clienti)
+                },
                 Scena(nome: "8-simulazioni") { m in m.apri(.simulazioni) },
                 Scena(nome: "9-vera", attesaInPiu: IstantaneeMobile.attesaScrivania) { m in m.apri(.vera) },
                 Scena(nome: "10-impostazioni-archivio") { m in
@@ -183,6 +199,21 @@ enum IstantaneeMobile {
                 Scena(nome: "51-tavolo-cursore", attesaInPiu: IstantaneeMobile.attesaScrivania) { m in IstantaneeTavoloiPad.cursore(m) },
                 Scena(nome: "52-tavolo-presa-visione") { m in IstantaneeTavoloiPad.presaVisione(m) },
                 Scena(nome: "53-tavolo-neutro") { m in IstantaneeTavoloiPad.neutra(m) },
+                // «Luce» giro 16: il tavolo a doppio senso (rischio, Lancia l'anno, disegno, capsula, realtà aumentata)
+                Scena(nome: "56-tavolo-rischio") { m in IstantaneeTavoloiPad.rischio(m) },
+                Scena(nome: "57-tavolo-lancia-anno") { m in IstantaneeTavoloiPad.lancia(m) },
+                Scena(nome: "58-tavolo-disegno") { m in IstantaneeTavoloiPad.disegno(m) },
+                Scena(nome: "59-tavolo-capsula") { m in IstantaneeTavoloiPad.capsula(m) },
+                Scena(nome: "74-ar-tavolo") { m in IstantaneeTavoloiPad.realta(m) },
+                // «Luce» giro 16: Sala › La realtà aumentata a tutto schermo, con il ripiego disegnato (nel simulatore
+                // non c'è la fotocamera): il cristallo sul tavolo virtuale, l'esploso, la fotocamera negata
+                Scena(nome: "70-ar-ipad", orizzontale: true) { m in IstantaneeMobile.realta(m, ScenaRealtaDiProva()) },
+                Scena(nome: "71-ar-ipad-esploso", orizzontale: true) { m in
+                    IstantaneeMobile.realta(m, ScenaRealtaDiProva(allaPensione: true, esploso: true))
+                },
+                Scena(nome: "73-ar-non-disponibile", orizzontale: true) { m in
+                    IstantaneeMobile.realta(m, ScenaRealtaDiProva(fotocameraNegata: true))
+                },
                 // «Luce», giro 1: il dock dell'iPad in verticale con le app del Mac fino a Prospetti, più Sala e Vera
                 // (13 elementi, decisione 121); Biblioteca, Mercato, Studio e Impostazioni in «Tutte le app»
                 Scena(nome: "55-dock-ipad-luce", attesaInPiu: IstantaneeMobile.attesaScrivania) { m in m.mostraHome() },
@@ -199,6 +230,16 @@ enum IstantaneeMobile {
                 Scena(nome: "581-copilota-orizzontale", orizzontale: true) { m in IstantaneeMobile.copilota(m) },
                 Scena(nome: "582-copilota-attesa-mac", orizzontale: true) { m in
                     IstantaneeMobile.copilota(m, attesa: true)
+                },
+                // «Luce» giro 12 (§9.2.4): Potenziali e Passaparola sull'iPad, in sola lettura (l'iPad è una copia: niente
+                // «+ Potenziale», trascinamento, «Diventa cliente» né «Prepara la richiesta»), con i potenziali di prova
+                Scena(nome: "76-potenziali-ipad", orizzontale: true) { m in
+                    m.stato.vistaClienti = .potenziali
+                    m.apri(.clienti)
+                },
+                Scena(nome: "76-passaparola-ipad", orizzontale: true) { m in
+                    m.stato.vistaClienti = .passaparola
+                    m.apri(.clienti)
                 },
                 // Prisma ovunque (giro 8): l'iPad sulla copia cifrata con il Mac che non risponde, la pillola nella barra e
                 // Impostazioni › iPhone e iPad del dispositivo (dati di prova di Shell/IstantaneeOvunque.swift)
@@ -261,6 +302,31 @@ enum IstantaneeMobile {
                 // Messaggi (giro 3 di «Orizzonte»): il messaggio dell'occasione in alto, tono, canale e testo, le altre
                 // occasioni a un tocco nel menu «Occasioni»
                 Scena(nome: "497-messaggi") { m in IstantaneeMobile.messaggi(m) },
+                // «Luce» §5.4.4: il traguardo di Sofia (dati di prova di TraguardiDiProva) sull'iPhone, il biglietto in alto
+                // ridotto alla larghezza dello schermo e le tre azioni sotto
+                Scena(nome: "736-messaggi-traguardo-iphone") { m in IstantaneeMobile.traguardo(m) },
+                // «Luce» giro 16: la realtà aumentata sull'iPhone, in verticale: «Fine» e lo scatto spento con l'aiuto
+                Scena(nome: "72-ar-iphone") { m in IstantaneeMobile.realta(m, ScenaRealtaDiProva()) },
+                // «Luce» giro 12: i potenziali clienti in sola lettura (una cosa grande in alto, poi l'elenco per fase)
+                Scena(nome: "76-potenziali-iphone") { m in
+                    m.apri(.clienti)
+                    m.percorsoClienti = [.potenziali]
+                },
+                // «Luce» §7.3.4: «Dopo la firma» sull'iPhone con le quattro pratiche di prova (una ferma in alto, poi le
+                // aperte), in sola lettura: senza «Prisma ovunque» acceso i passi si segnano dal Mac
+                Scena(nome: "824-pratiche-iphone") { m in m.apri(.pratiche) },
+                // «Luce» §9.3.4: il dossier di Marco sull'iPhone con la riga «L'azienda» (nome e fatturato di prova)
+                Scena(nome: "78-azienda-iphone") { m in
+                    m.apri(.clienti)
+                    m.percorsoClienti = [.cliente("marco")]
+                },
+                // «Luce» giro 15: i sinistri in sola lettura (i tre sinistri di prova, ridotti come nell'istantanea di
+                // «Prisma ovunque»: niente descrizione, numeri, stime né importi)
+                Scena(nome: "836-sinistri-iphone") { m in
+                    m.stato.dati.sinistri = m.stato.dati.sinistri.map(SpazioOvunque.sinistroPerOvunque)
+                    m.apri(.clienti)
+                    m.percorsoClienti = [.sinistri]
+                },
                 // Mercato (giro 7): la prima tessera grande, le altre su due colonne, chi è toccato e gli avvisi
                 Scena(nome: "540-mercato") { m in IstantaneeMobile.mercato(m) },
                 // Inquadra e capisci (giro 5): la schermata della fotocamera a lettura finita, con il foglio di prova
@@ -269,6 +335,20 @@ enum IstantaneeMobile {
                     m.stato.clienteAttivoId = "giulia"
                     m.apri(.posizioni)
                 }, ritocco: { m in IstantaneeMobile.inquadra(m) }),
+                // «Luce» giro 13: la carta d'identità fac-simile (dati di prova dichiarati) letta sull'iPhone, con «Manda al Mac»
+                Scena(nome: "75-nuovo-cliente-iphone", prepara: { m in
+                    m.apri(.clienti)
+                }, ritocco: { m in IstantaneeMobile.cartaIdentita(m) }),
+                // «Luce» giro 13: la nota vocale (il testo del template, dati di prova): in ascolto, pronta, in coda
+                Scena(nome: "775-nota-iphone-ascolto", prepara: { m in
+                    m.apri(.incontri)
+                }, ritocco: { m in IstantaneeMobile.notaVocale(m, fase: .ascolto) }),
+                Scena(nome: "776-nota-iphone-pronta", prepara: { m in
+                    m.apri(.incontri)
+                }, ritocco: { m in IstantaneeMobile.notaVocale(m, fase: .fermata) }),
+                Scena(nome: "777-nota-iphone-in-coda", prepara: { m in
+                    m.apri(.incontri)
+                }, ritocco: { m in IstantaneeMobile.notaVocale(m, fase: .inCoda) }),
                 // Prisma ovunque (giro 8, dati di prova di Shell/IstantaneeOvunque.swift): il dossier di Giulia sulla copia
                 // cifrata con la pillola «Senza Mac» nella barra; Impostazioni › iPhone e iPad con l'ultima copia letta e
                 // le 3 modifiche da unire; la prima volta, con la scelta della cartella e la passphrase
@@ -319,10 +399,26 @@ enum IstantaneeMobile {
         m.apri(.messaggi)
     }
 
+    /// Il traguardo di Sofia in Messaggi (§5.4.4, 736): il pannello del traguardo in colonna, nello stato finale.
+    static func traguardo(_ m: StatoMobile) {
+        MessaggiDiProva.prepara(m.stato)
+        RichiestaIstantaneaMessaggi.chiedi(m.stato, tipo: .traguardo, cliente: "sofia")
+        m.apri(.messaggi)
+    }
+
     /// Mercato con i dati di prova dichiarati (MercatoDiProva): serie, fondo e BTP di prova, soglie e avvisi.
     static func mercato(_ m: StatoMobile) {
         MercatoDiProva.prepara(m.stato)
         m.apri(.mercato)
+    }
+
+    /// Sala › La realtà aumentata a tutto schermo («Luce» giro 16): il ripiego disegnato con lo stato di prova.
+    static func realta(_ m: StatoMobile, _ prova: ScenaRealtaDiProva) {
+        m.stato.clienteAttivoId = "giulia"
+        m.stato.sala.realtaIstantanea = prova
+        m.stato.sala.esperienza = .realtaAumentata
+        m.apri(.sala)
+        m.stato.sala.realtaAperta = true
     }
 
     /// Inquadra e capisci sull'iPhone: il foglio di prova (FoglioInquadraDiProva, dati dichiarati di prova) letto e
@@ -331,6 +427,45 @@ enum IstantaneeMobile {
         guard !m.stato.inquadra.telefonoAperto else { return }
         m.stato.inquadra.apriTelefono()
         m.stato.inquadra.mostra(righe: FoglioInquadraDiProva.righe(), origine: "", subito: true)
+    }
+
+    /// Nuovo cliente sull'iPhone («Luce» giro 13): la carta fac-simile (CartaIdentitaFacSimile, dati di prova dichiarati)
+    /// letta e tutta accesa, con «Manda al Mac». Nessuna foto, nessuna fotocamera nel simulatore.
+    static func cartaIdentita(_ m: StatoMobile) {
+        guard !m.stato.nuovoCliente.telefonoAperto else { return }
+        m.stato.nuovoCliente.apriTelefono()
+        m.stato.nuovoCliente.mostra(righe: CartaIdentitaFacSimile.righe(), origine: "", subito: true)
+    }
+
+    /// La nota vocale sull'iPhone («Luce» giro 13): la schermata «Una nota veloce» con il testo del template
+    /// (NotaVocaleDiProva, dati di prova dichiarati), l'onda ferma nella forma del template e, in coda, due note.
+    static func notaVocale(_ m: StatoMobile, fase: FaseNotaTelefono) {
+        guard !m.stato.notaVeloceAperta else { return }
+        let n = m.stato.notaTelefono
+        let livelli: [Float] = (0..<StatoNotaVocaleTelefono.livelliTenuti).map { i in Float(0.2 + 0.6 * abs(sin(Double(i) * 0.5))) }
+        var coda: [CodaNoteVocali.VoceCoda] = []
+        if fase == .inCoda {
+            let quando = Date(timeIntervalSinceReferenceDate: 815_000_000)
+            coda = [
+                CodaNoteVocali.VoceCoda(nota: NotaVocaleDiProva.ponte(quando: quando, id: NotaVocaleDiProva.prefisso + "coda-1")),
+                CodaNoteVocali.VoceCoda(nota: NotaVocalePonte(id: NotaVocaleDiProva.prefisso + "coda-2",
+                                                              testo: "Laura ha chiesto il riepilogo delle polizze: mandarlo entro venerdì.",
+                                                              quando: quando.addingTimeInterval(3_600), durata: 6,
+                                                              dispositivo: NotaVocaleDiProva.dispositivo), tentativi: 1,
+                                        ultimoMotivo: PonteVera.macNonTrovato),
+            ]
+        }
+        let riga: String
+        switch fase {
+        case .ascolto: riga = "Ascolto · sull’iPhone"
+        case .fermata: riga = "Pronta. Tocca ✓ per mandarla al Mac"
+        case .inCoda: riga = "Il Mac non è raggiungibile: la nota parte quando sarai in rete con il Mac"
+        case .mandata: riga = "✓ Nota mandata al Mac"
+        case .pronta: riga = ""
+        }
+        n.clienteSuggerito = "giulia"
+        n.preparaIstantanea(fase: fase, testo: NotaVocaleDiProva.testo, livelli: fase == .ascolto ? livelli : [], riga: riga, coda: coda)
+        m.stato.notaVeloceAperta = true
     }
 
     /// Attese: la prima scena (primo avvio, caratteri e icone da preparare) e le altre; lo scatto dello script.

@@ -1282,10 +1282,29 @@ enum ProvaCalcoli {
         // «Luce», giro 10: «Compila da solo» sui fac-simile di Prisma (campi AcroForm ed etichette del PDF piatto, compilazione,
         // rilettura, IBAN mod 97 e interruttore, nessuna risposta del cliente compilata, Vera che propone solo dati ammessi)
         ProvaCalcoliModuli.esegui(verificaEsterna)
+        // «Luce», giro 11: il Territorio (tabella di prova senza codici catastali, comune senza CAP, luoghi e sparpaglio,
+        // distanze stimate, giro e «Lungo la strada» a date fisse, criterio dell'anello, Oggi, crescita senza fattori,
+        // raggio della luce, proiezione, 200 clienti, voci di MotoreDaFare, ordine della partenza)
+        ProvaCalcoliTerritorio.esegui(verificaEsterna)
+        // «Luce», giro 12: potenziali e passaparola (totali con e senza stima/probabilità/data, albero a tre generazioni con
+        // ciclo, ambasciatori con «portato» e «in arrivo», momento giusto con consenso e 180 giorni) e le campagne (gruppi solo
+        // dai motori con ≥ 2 membri, consenso, recapito, 90 e 30 giorni, previdenza senza movimenti non valutata, testi senza altri
+        // clienti, bozze mai aperte da sole, spazi liberi)
+        ProvaCalcoliPassaparola.esegui(verificaEsterna)
+        ProvaCalcoliCampagne.esegui(verificaEsterna)
+        // «Luce», giro 13: nuovo cliente in 10 secondi (codice fiscale con controllo e omocodie, comune non controllato,
+        // zona a lettura ottica con le cifre 7-3-1, fronte, campi mai inventati, fronte e retro, doppioni, creazione)
+        ProvaCalcoliCartaIdentita.esegui(verificaEsterna)
+        // «Luce», giro 14: Stanotte Prisma ha lavorato (finestra, condizioni senza lo schermo, preparativi, ricalcolo con la
+        // fotografia, ordine con Qwen per ultimo, id stabili, carte di ieri, testi, memoria e ordine dei lavori, potatura)
+        ProvaCalcoliNotte.esegui(verificaEsterna)
         // «Luce», giro 4: il prisma di luce (quote per vista, canali distinti, obiettivi senza il 20% del template,
         // anni dalla linea della vita, geometria, shader) e «Disegna il tuo futuro» (versamento in più verificato)
         ProvaCalcoliLuce.esegui(verificaEsterna)
         ProvaCalcoliDisegno.esegui(verificaEsterna)
+        // «Luce», giro 16: la realtà aumentata (strati dalla composizione, anni fino alla pensione, maglia chiusa e
+        // orientata, crescita con il rimbalzo, passaggio dal tavolo, testi senza cifre inventate)
+        ProvaCalcoliRealta.esegui(verificaEsterna)
         // «Luce», giro 4: la Sala, una giornata della pensione (resto, priorità, voci senza importo, senza e con il piano)
         // e il gioco del rischio (soglie, confronto con il dichiarato, testi di prova dalla risorsa, partite incomplete)
         ProvaCalcoliSala.esegui(verificaEsterna)
@@ -1298,6 +1317,14 @@ enum ProvaCalcoli {
         // mutuo, studi, festeggiati e scartati, idea solo dalle note, «Da festeggiare», lettura tollerante)
         ProvaCalcoliStorie.esegui(verificaEsterna)
         ProvaCalcoliTraguardi.esegui(verificaEsterna)
+        // «Luce», giro 15: le cose date al cliente. La password (tre parole e un numero, elenco, rifiuti) e le prove delle
+        // parti (Prisma del cliente, film, capsule, biglietto, sinistri: ognuna sostituisce il corpo del suo file)
+        ProvaCalcoliPassword.esegui(verificaEsterna)
+        ProvaCalcoliPrismaCliente.esegui(verificaEsterna)
+        ProvaCalcoliFilm.esegui(verificaEsterna)
+        ProvaCalcoliCapsule.esegui(verificaEsterna)
+        ProvaCalcoliBiglietto.esegui(verificaEsterna)
+        ProvaCalcoliSinistri.esegui(verificaEsterna)
 
         // Giro 7: glossario e guida. Ogni chiave ha la sua voce, le etichette puntano a voci vere, ogni app ha 3 passi
         verifica("Glossario: voci per ogni chiave", Double(VoceGlossario.Chiave.allCases.filter { Glossario.voce($0) == nil }.count), 0)

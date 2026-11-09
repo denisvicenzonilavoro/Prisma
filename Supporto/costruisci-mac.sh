@@ -64,6 +64,7 @@ if [ "$PROVE" = 1 ]; then
   "$APP/Contents/MacOS/Prisma" --prova-calcoli
   "$APP/Contents/MacOS/Prisma" --prova-vera
   "$APP/Contents/MacOS/Prisma" --prova-ovunque
+  "$APP/Contents/MacOS/Prisma" --prova-film
   echo "✓ Prove superate"
 fi
 

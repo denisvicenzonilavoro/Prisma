@@ -125,8 +125,9 @@ final class ServerPonteVera: @unchecked Sendable {
             let memoria = busta.corpo.flatMap { String(data: $0, encoding: .utf8) } ?? e.restaInMemoria
             let ok = await fornitore.precarica(restaInMemoria: memoria.isEmpty ? e.restaInMemoria : memoria)
             await rispondi(c, ok ? 200 : 503, ok ? "pronto" : "non caricato")
-        case BustaPonte.copilota, BustaPonte.inquadra:
-            // Versione 2: un messaggio nuovo dall'iPad o dall'iPhone. Solo testo; chi lo riceve decide (consenso, conferma)
+        case BustaPonte.copilota, BustaPonte.inquadra, BustaPonte.carta, BustaPonte.nota:
+            // Versione 2: un messaggio nuovo dall'iPad o dall'iPhone. Solo testo; chi lo riceve decide (consenso, conferma).
+            // Versione 3 («Luce» giro 13): in più la carta d'identità e la nota vocale
             guard let arrivo = ArrivoPonte.leggi(busta) else { return await rispondi(c, 400, "messaggio non valido") }
             let ricevuta: RicevutaPonte
             if let f = destinatario() {

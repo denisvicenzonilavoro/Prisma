@@ -795,6 +795,15 @@ enum SchedeRicerca {
             if usata > 0 { aggiungi("Usata in", "\(usata) \(usata == 1 ? "posizione" : "posizioni")") }
             azione("Apri la scheda", "shippingbox", .apri)
 
+        case .biblioteca(let id, let pagina):
+            guard let d = stato.documentoBiblioteca(id) else { break }
+            s.sottotitolo = d.dettaglio
+            aggiungi("Edizione", d.edizione)
+            if pagina > 1 { aggiungi("Pagina", "\(pagina) di \(d.numeroPagine)") }
+            aggiungi("Altre edizioni", stato.avvisoEdizioneBiblioteca(d))
+            s.testo = r.estratto
+            azione(pagina > 1 ? "Apri a pagina \(pagina)" : "Apri il documento", "books.vertical", .apri)
+
         case .app(let app):
             if let a = r.azione {
                 s.sottotitolo = "Azione rapida"

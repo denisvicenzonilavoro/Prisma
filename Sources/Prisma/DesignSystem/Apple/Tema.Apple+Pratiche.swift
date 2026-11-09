@@ -116,6 +116,17 @@ extension Tema.Apple {
             static let anelloNeutro = C.binario
             /// Frase dei passi fermi e dei moduli in arrivo.
             static let frase = K(dimensione: 13, peso: .regular, interlinea: 1.35)
+            /// I moduli della proposta (`.prep` del template): pallino 20 con la spunta verde, nome 13, sotto la riga 11,5.
+            static let pallinoModulo: CGFloat = 20
+            static let bordoPallinoModulo: CGFloat = 2
+            static let trattoSpuntaModulo: CGFloat = 1.6
+            static let pallinoAcceso = C.verde
+            static let pallinoSpento = C.binario
+            static let spuntaModulo = Color.white
+            static let nomeModulo = K(dimensione: 13, peso: .regular)
+            static let rigaModulo = K(dimensione: 11.5, peso: .regular)
+            static let spazioModuli: CGFloat = 10
+            static let spazioPallino: CGFloat = 8
             /// La scelta del prodotto: al più quattro, ognuno in una riga con l'etichetta del canale.
             static let maxProdottiScelta = 4
             static let rigaScelta = Tema.Apple.Misura.padding(8, 10)
@@ -319,6 +330,11 @@ extension Tema.Apple {
             static let ritardoAnello = 0.08
             /// La linea della miniatura: 0,15 s poi 1,5 s (`Moto.Linea`).
             static let ritardoLinea = Tema.Apple.Moto.Linea.ritardoBase
+            /// Le spunte dei moduli della proposta: a 0,25 + k·0,26 s, ognuna in 0,4 s (molla).
+            static let baseSpunte = 0.25
+            static let passoSpunte = 0.26
+            static func ritardoSpunta(_ k: Int) -> Double { baseSpunte + Double(k) * passoSpunte }
+            static var animazioneSpunta: Animation { Tema.Apple.Moto.Curva.molla.animazione(durataNumero) }
             /// Il riquadro finale: 1,10 s dopo il quinto passo, 0,50 s da 14 più in basso e opacità 0 (uscita).
             enum Pronta {
                 static let ritardo = 1.10

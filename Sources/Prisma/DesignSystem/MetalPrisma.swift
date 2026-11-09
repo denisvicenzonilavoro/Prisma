@@ -1,5 +1,6 @@
 import Foundation
 import Metal
+import SwiftUI
 
 /// Il device Metal di Prisma (acqua della scrivania, prisma di luce, tele degli shader).
 ///
@@ -12,5 +13,29 @@ enum MetalPrisma {
 
     static func device() -> (any MTLDevice)? {
         spento ? nil : MTLCreateSystemDefaultDevice()
+    }
+}
+
+extension ImageRenderer {
+    /// L'immagine della vista. Di solito `cgImage`; con `PRISMA_SENZA_METAL=1` (le prove sul runner) la stessa vista si
+    /// disegna con CoreGraphics in una bitmap (`render`, la strada dei PDF), perché `cgImage` passa da Metal e la GPU
+    /// virtuale del runner ferma il processo.
+    @MainActor
+    var immaginePrisma: CGImage? {
+        guard MetalPrisma.spento else { return cgImage }
+        let fattore = scale
+        var risultato: CGImage?
+        render(rasterizationScale: fattore) { misura, disegna in
+            let w = Int((misura.width * fattore).rounded()), h = Int((misura.height * fattore).rounded())
+            guard w > 0, h > 0,
+                  let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: 0,
+                                      space: CGColorSpaceCreateDeviceRGB(),
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+            else { return }
+            ctx.scaleBy(x: fattore, y: fattore)
+            disegna(ctx)
+            risultato = ctx.makeImage()
+        }
+        return risultato
     }
 }

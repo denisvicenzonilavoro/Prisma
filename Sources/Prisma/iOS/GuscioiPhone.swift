@@ -139,6 +139,10 @@ struct AppTelefono: View {
         // Mercato (giro 7 di «Orizzonte»): la prima tessera grande, le altre e chi è toccato, gli avvisi a un tocco; in
         // sola lettura, i dati arrivano dal Mac (MercatoTelefono.swift)
         case .mercato: MercatoTelefono()
+        // Incontri sull'iPhone («Luce» giro 13): «Nota veloce» in alto e le note in partenza (NotaVocaleTelefono.swift)
+        case .incontri: IncontriTelefono().navigationTitle(app.titolo)
+        // Pratiche sull'iPhone («Luce» §7.3.4): «Dopo la firma» in sola lettura più «segna il passo» (PraticheTelefono.swift)
+        case .pratiche: PraticheTelefono()
         default:
             InArrivoMobile(app: app, titolo: "\(app.titolo) è sul Mac", testo: StatoShell.soloSulMacPerOra)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -189,6 +193,8 @@ extension View {
             case .appuntamento(let id): DettaglioAppuntamentoTelefono(appuntamentoId: id)
             case .area(let a, let filtro):
                 ElencoAreaTelefono(area: AreaPosizione(rawValue: a) ?? .investimento, filtro: FiltroPosizioniTelefono(chiave: filtro))
+            case .potenziali: PotenzialiTelefono()
+            case .sinistri: SinistriTelefono()
             }
         }
     }
@@ -369,6 +375,40 @@ private struct ClientiTelefono: View {
             .filter { cerca.isEmpty || $0.nome.localizedCaseInsensitiveContains(cerca) }
             .sorted { $0.nome.localizedCaseInsensitiveCompare($1.nome) == .orderedAscending }
         FondoTelefono {
+            // «Luce» giro 13: la cosa principale in alto, la carta d'identità del cliente nuovo (CartaIdentitaTelefono.swift)
+            if cerca.isEmpty { PulsanteNuovoClienteTelefono() }
+            // «Luce» giro 12: i potenziali clienti, in sola lettura (mai in modalità cliente)
+            if !stato.inModoCliente && cerca.isEmpty && !stato.dati.potenziali.isEmpty {
+                NavigationLink(value: DestinazioneTelefono.potenziali) {
+                    HStack(spacing: E.spazioRiga) {
+                        VStack(alignment: .leading, spacing: E.spazioTesto) {
+                            Text("Potenziali").carattereApple(E.nome).foregroundColor(E.coloreNome)
+                            Text(TestiPassaparola.tilePotenziali.lowercased() + " e passaparola")
+                                .carattereApple(E.dettaglio).foregroundColor(E.coloreDettaglio)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        ChevronTelefono()
+                    }
+                    .schedaTelefono(premibile: true)
+                }
+                .buttonStyle(.plain)
+            }
+            // «Luce» giro 15: i sinistri, in sola lettura (mai in modalità cliente)
+            if !stato.inModoCliente && cerca.isEmpty && !stato.sinistriVisibili.isEmpty {
+                NavigationLink(value: DestinazioneTelefono.sinistri) {
+                    HStack(spacing: E.spazioRiga) {
+                        VStack(alignment: .leading, spacing: E.spazioTesto) {
+                            Text("Sinistri").carattereApple(E.nome).foregroundColor(E.coloreNome)
+                            Text(TestiSinistri.titoloBarra.lowercased())
+                                .carattereApple(E.dettaglio).foregroundColor(E.coloreDettaglio)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        ChevronTelefono()
+                    }
+                    .schedaTelefono(premibile: true)
+                }
+                .buttonStyle(.plain)
+            }
             if elenco.isEmpty {
                 VuotoTelefono(testo: cerca.isEmpty ? "Nessun cliente: apri il backup del Mac dal centro di controllo." : "Nessun cliente con «\(cerca)».")
             }
@@ -382,6 +422,7 @@ private struct ClientiTelefono: View {
         }
         .navigationTitle("Clienti")
         .searchable(text: $cerca, prompt: "Cerca un cliente")
+        .cartaIdentitaTelefono(stato)
     }
 }
 
@@ -545,8 +586,34 @@ private struct SchedaClienteTelefono: View {
         .superficieApple(E.superficie, raggio: E.raggio)
     }
 
-    /// Sintesi: da fare (scadenze e attività aperte), obiettivi con la barra che si riempie, recapiti, nota.
+    /// Sintesi: l'azienda dei clienti imprenditori, da fare (scadenze e attività aperte), obiettivi con la barra che si
+    /// riempie, recapiti, nota.
     @ViewBuilder private func sintesi(_ c: Cliente) -> some View {
+        // «L'azienda» («Luce» §9.3.4): nome e fatturato, a un tocco le quattro aree come elenco (sola lettura)
+        let aziende = c.elencoAziende
+        if !aziende.isEmpty {
+            SezioneTelefono(titolo: "L'azienda")
+            ForEach(aziende) { a in
+                NavigationLink { AziendaTelefono(clienteId: c.id, aziendaId: a.id) } label: {
+                    HStack(spacing: E.spazioRiga) {
+                        VStack(alignment: .leading, spacing: E.spazioTesto) {
+                            Text(a.ragioneSociale)
+                                .carattereApple(E.nome)
+                                .foregroundColor(E.coloreNome)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Text(a.fatturato.map { "Fatturato \(TestiAzienda.fatturatoBreve($0))" + (a.annoFatturato.map { " nel \($0)" } ?? "") }
+                                 ?? "Fatturato da inserire")
+                                .carattereApple(E.dettaglio)
+                                .foregroundColor(E.coloreDettaglio)
+                        }
+                        Spacer(minLength: 0)
+                        ChevronTelefono()
+                    }
+                    .schedaTelefono(premibile: true)
+                }
+                .buttonStyle(.plain)
+            }
+        }
         let attivita = stato.attivitaAperte.filter { $0.clienteId == c.id }.sorted { $0.scadenza < $1.scadenza }
         let scadenze = stato.riepilogoPosizioniCliente(c.id).inScadenza
         if !attivita.isEmpty || !scadenze.isEmpty {
