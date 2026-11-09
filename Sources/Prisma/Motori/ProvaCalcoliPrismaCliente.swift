@@ -40,10 +40,12 @@ enum ProvaCalcoliPrismaCliente {
         let fino = AiutiProva.data(2027, 6, 15)
         let consulente = TestiPrismaCliente.consulente("Nome Prova")
 
-        func componi(_ voci: Set<VoceFilePrisma>, lettera: String? = "Cara Ottavia, ti scrivo dai tuoi 67 anni.",
-                     preparazione p: PreparazioneLineaVita = preparazione) -> ContenutoPrismaCliente {
-            CompositorePrismaCliente.componi(cliente: c, posizioni: [pos], obiettivi: [casa, senzaImporto, studi], preparazione: p,
-                                             voci: voci, lettera: lettera, film: nil, luce: nil, giornata: nil, sinistri: [],
+        let letteraDiProva = "Cara Ottavia, ti scrivo dai tuoi 67 anni."
+        func componi(_ voci: Set<VoceFilePrisma>, lettera: String? = nil, senzaLettera: Bool = false,
+                     preparazione altra: PreparazioneLineaVita? = nil) -> ContenutoPrismaCliente {
+            CompositorePrismaCliente.componi(cliente: c, posizioni: [pos], obiettivi: [casa, senzaImporto, studi],
+                                             preparazione: altra ?? preparazione,
+                                             voci: voci, lettera: senzaLettera ? nil : (lettera ?? letteraDiProva), film: nil, luce: nil, giornata: nil, sinistri: [],
                                              consulente: consulente, avvertenze: [ImpostazioniSala.segnapostoAvvertenza],
                                              validoFinoAl: fino, oggi: oggi, diProva: true)
         }

@@ -35,7 +35,7 @@ import SwiftUI
         let fino = Calendar(identifier: .gregorian).date(byAdding: .year, value: 1, to: Date()) ?? Date()
         let voci = stato.vociInizialiPrismaCliente(giulia)
         verifica("Voci iniziali con gli obiettivi", voci.contains(.obiettivi))
-        let contenuto = stato.contenutoPrismaCliente(giulia, voci: voci.union([.posizioni]).subtracting(stato.disponibilitaPrismaCliente(giulia).keys),
+        let contenuto = stato.contenutoPrismaCliente(giulia, voci: voci.union([.posizioni, .luce, .giornata]).subtracting(stato.disponibilitaPrismaCliente(giulia).keys),
                                                      validoFinoAl: fino, immagini: true)
         verifica("Contenuto con il nome di battesimo", contenuto.nomeBattesimo == "Giulia")
         verifica("Contenuto con gli obiettivi", contenuto.obiettivi?.isEmpty == false)
