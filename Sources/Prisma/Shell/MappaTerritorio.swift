@@ -32,6 +32,13 @@ private struct LucePosata {
     let indice: Int
 }
 
+/// L'inquadratura della mappa: i confini della proiezione e il margine (diverso nel giro), senza zoom e spostamento.
+private struct QuadroMappa: Equatable {
+    let proiezione: ProiezioneMappa
+    let margine: CGFloat
+    let giro: Bool
+}
+
 struct MappaTerritorio: View {
     let contenuto: ContenutoMappa
 
@@ -43,6 +50,10 @@ struct MappaTerritorio: View {
     @State private var nascitaFinita = true
     @State private var zoomBase: CGFloat?
     @State private var spostamentoBase: CGSize?
+    /// Il passaggio animato fra le inquadrature: da dove parte (nil = nessun passaggio), l'ultima chiesta, quando è cominciato.
+    @State private var quadroDa: QuadroMappa?
+    @State private var quadroMostrato: QuadroMappa?
+    @State private var inizioCambio = Date()
 
     private typealias T = Tema.Apple.Territorio
     private typealias L = Tema.Apple.Territorio.Luce
@@ -50,17 +61,47 @@ struct MappaTerritorio: View {
 
     var body: some View {
         let _ = ContaCorpi.segna()
+        let meta = quadroMeta()
+        Group {
+            if quadroDa != nil && !fermo {
+                // Il passaggio fra le inquadrature (0,6 s): un fotogramma per volta solo finché dura
+                TimelineView(.animation(minimumInterval: 1 / 60, paused: false)) { ctx in
+                    strati(quadro(meta, adesso: ctx.date))
+                }
+            } else {
+                strati(quadro(meta, adesso: nil))
+            }
+        }
+        .background(M.terra)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(etichettaAccessibile))
+        .task(id: entrataFinita) { await chiudiEntrata() }
+        .task(id: inizioNascita) { await chiudiNascita() }
+        .task(id: inizioCambio) { await chiudiCambio() }
+        .onAppear { if !fermo { quadroMostrato = meta } }
+        .onChange(of: meta) { nuovo in cambiaQuadro(nuovo) }
+        .onChange(of: contenuto.annoCrescita) { _ in
+            guard !fermo else { return }
+            inizioNascita = Date()
+            nascitaFinita = false
+        }
+    }
+
+    /// Tutti gli strati della mappa con una proiezione (e il suo margine) già decisa.
+    private func strati(_ q: (proiezione: ProiezioneMappa?, margine: CGFloat)) -> some View {
         GeometryReader { g in
             let misura = g.size
-            let proiezione = proiezioneAttuale()
-            let posate = posa(proiezione, misura)
+            let proiezione = q.proiezione
+            let margine = q.margine
+            let posate = posa(proiezione, margine, misura)
             ZStack(alignment: .topLeading) {
-                BaseMappa(contenuto: contenuto, proiezione: proiezione, misura: misura, posate: posate.map(\.luce))
+                BaseMappa(contenuto: contenuto, proiezione: proiezione, margine: margine, misura: misura,
+                          posate: posate.map(\.luce))
                 luci(posate, misura)
                 anelli(posate)
                 if contenuto.vista == .giro, let giro = contenuto.giro, let p = proiezione {
-                    StratoGiro(giro: giro, punti: giro.tappe.map { punto($0.coordinata, p, misura) },
-                               suggerimento: giro.suggerimenti.first.map { punto($0.coordinata, p, misura) })
+                    StratoGiro(giro: giro, punti: giro.tappe.map { punto($0.coordinata, p, margine, misura) },
+                               suggerimento: giro.suggerimenti.first.map { punto($0.coordinata, p, margine, misura) })
                         .id(giro.tappe.map(\.id).joined(separator: "|"))
                 }
                 if let id = stato.territorio.lucePuntata, let l = posate.first(where: { $0.luce.id == id }) {
@@ -84,19 +125,9 @@ struct MappaTerritorio: View {
                     if stato.territorio.lucePuntata != nil { stato.territorio.lucePuntata = nil }
                 }
             }
-            .gesture(gestoTocco(posate, proiezione, misura))
+            .gesture(gestoTocco(posate, proiezione, margine, misura))
             .simultaneousGesture(gestoZoom)
             .simultaneousGesture(gestoSpostamento)
-        }
-        .background(M.terra)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text(etichettaAccessibile))
-        .task(id: entrataFinita) { await chiudiEntrata() }
-        .task(id: inizioNascita) { await chiudiNascita() }
-        .onChange(of: contenuto.annoCrescita) { _ in
-            guard !fermo else { return }
-            inizioNascita = Date()
-            nascitaFinita = false
         }
     }
 
@@ -107,7 +138,9 @@ struct MappaTerritorio: View {
 
     // MARK: Proiezione
 
-    private func proiezioneAttuale() -> ProiezioneMappa? {
+    /// L'inquadratura che la vista chiede, senza zoom e spostamento: nel giro le tappe e i suggerimenti (con i clienti in
+    /// tutta Italia le tappe di Bologna sarebbero un punto), in Oggi e Crescita tutte le luci.
+    private func quadroMeta() -> QuadroMappa? {
         var punti: [Coordinata]
         if contenuto.vista == .giro, let g = contenuto.giro, !g.tappe.isEmpty {
             punti = g.tappe.map(\.coordinata) + g.suggerimenti.map(\.coordinata)
@@ -115,29 +148,71 @@ struct MappaTerritorio: View {
             punti = contenuto.luci.map(\.luogo.coordinata)
         }
         if punti.isEmpty, let g = contenuto.giro, let p = g.partenza { punti = [p] }
-        guard var p = ProiezioneMappa.adatta(punti) else { return nil }
-        p.zoom = stato.territorio.zoom
-        p.spostamento = stato.territorio.spostamento
-        return p
+        guard let p = ProiezioneMappa.adatta(punti) else { return nil }
+        let giro = contenuto.vista == .giro
+        return QuadroMappa(proiezione: p, margine: giro ? T.Giro.margineProiezione : M.margine, giro: giro)
     }
 
-    private var margine: CGFloat { contenuto.vista == .giro ? T.Giro.margineProiezione : M.margine }
+    /// La proiezione da disegnare adesso: durante il passaggio, a metà strada fra l'inquadratura di prima e quella nuova
+    /// (curva di uscita, 0,6 s); poi quella della vista, con lo zoom e lo spostamento dell'utente.
+    private func quadro(_ meta: QuadroMappa?, adesso: Date?) -> (proiezione: ProiezioneMappa?, margine: CGFloat) {
+        guard let meta else { return (nil, M.margine) }
+        var q = meta
+        if let adesso, let da = quadroDa { q = Self.mescola(da, meta, frazioneCambio(adesso)) }
+        var p = q.proiezione
+        p.zoom = stato.territorio.zoom
+        p.spostamento = stato.territorio.spostamento
+        return (p, q.margine)
+    }
+
+    private func frazioneCambio(_ adesso: Date) -> Double {
+        let t = adesso.timeIntervalSince(inizioCambio) / T.Moto.cambioProiezione
+        return Self.curva(T.Moto.curvaCambioProiezione, t)
+    }
+
+    private static func mescola(_ a: QuadroMappa, _ b: QuadroMappa, _ f: Double) -> QuadroMappa {
+        let f = min(1, max(0, f))
+        return QuadroMappa(proiezione: ProiezioneMappa.mescola(a.proiezione, b.proiezione, f),
+                           margine: a.margine + (b.margine - a.margine) * CGFloat(f), giro: b.giro)
+    }
+
+    /// L'inquadratura cambia: fra Oggi/Crescita e il giro si passa con un'animazione (§5.1.3); negli altri casi (dati
+    /// nuovi, un altro giorno del giro) e con calmo o nelle istantanee si salta subito.
+    private func cambiaQuadro(_ nuovo: QuadroMappa?) {
+        let prima = quadroMostrato
+        quadroMostrato = nuovo
+        guard !fermo, let prima, let nuovo, prima.giro != nuovo.giro else {
+            if quadroDa != nil { quadroDa = nil }
+            return
+        }
+        // Se un passaggio è ancora in corso si riparte dal punto in cui è arrivato
+        let adesso = Date()
+        let partenza = quadroDa.map { Self.mescola($0, prima, frazioneCambio(adesso)) } ?? prima
+        quadroDa = partenza
+        inizioCambio = adesso
+    }
+
+    private func chiudiCambio() async {
+        guard quadroDa != nil else { return }
+        try? await Task.sleep(nanoseconds: UInt64(T.Moto.cambioProiezione * 1_000_000_000))
+        if !Task.isCancelled { quadroDa = nil }
+    }
 
     /// Il punto sulla mappa: la proiezione lavora nell'area non coperta dal pannello.
-    private func punto(_ c: Coordinata, _ p: ProiezioneMappa, _ misura: CGSize) -> CGPoint {
+    private func punto(_ c: Coordinata, _ p: ProiezioneMappa, _ margine: CGFloat, _ misura: CGSize) -> CGPoint {
         let area = CGSize(width: max(1, misura.width - contenuto.coperto), height: misura.height)
         let q = p.punto(c, in: area, margine: margine)
         return CGPoint(x: q.x + contenuto.coperto, y: q.y)
     }
 
-    private func coordinata(_ q: CGPoint, _ p: ProiezioneMappa, _ misura: CGSize) -> Coordinata {
+    private func coordinata(_ q: CGPoint, _ p: ProiezioneMappa, _ margine: CGFloat, _ misura: CGSize) -> Coordinata {
         let area = CGSize(width: max(1, misura.width - contenuto.coperto), height: misura.height)
         return p.coordinata(CGPoint(x: q.x - contenuto.coperto, y: q.y), in: area, margine: margine)
     }
 
     // MARK: Luci
 
-    private func posa(_ proiezione: ProiezioneMappa?, _ misura: CGSize) -> [LucePosata] {
+    private func posa(_ proiezione: ProiezioneMappa?, _ margine: CGFloat, _ misura: CGSize) -> [LucePosata] {
         guard let p = proiezione else { return [] }
         let t = stato.territorio
         let nelGiro: Set<String> = contenuto.vista == .giro
@@ -154,7 +229,7 @@ struct MappaTerritorio: View {
             } else if let z = t.filtroZona, l.luogo.zona != z {
                 alfa = L.opacitaFuori
             }
-            r.append(LucePosata(luce: l, punto: punto(l.luogo.coordinata, p, misura), raggio: L.raggio(patrimonio: l.patrimonio),
+            r.append(LucePosata(luce: l, punto: punto(l.luogo.coordinata, p, margine, misura), raggio: L.raggio(patrimonio: l.patrimonio),
                                 alfa: alfa, indice: i))
         }
         return r
@@ -305,10 +380,11 @@ struct MappaTerritorio: View {
 
     // MARK: Interazioni
 
-    private func clic(_ q: CGPoint, _ posate: [LucePosata], _ proiezione: ProiezioneMappa?, _ misura: CGSize) {
+    private func clic(_ q: CGPoint, _ posate: [LucePosata], _ proiezione: ProiezioneMappa?, _ margine: CGFloat,
+                      _ misura: CGSize) {
         if stato.territorio.spostando {
             guard let p = proiezione else { return }
-            stato.fissaPosizione(coordinata(q, p, misura))
+            stato.fissaPosizione(coordinata(q, p, margine, misura))
             return
         }
         guard let l = luceSotto(q, posate) else {
@@ -327,9 +403,10 @@ struct MappaTerritorio: View {
     }
 
     /// Doppio clic: torna a vedere tutti; clic: dossier (⌥ clic: Posizioni) o, in «Sposta», il punto.
-    private func gestoTocco(_ posate: [LucePosata], _ proiezione: ProiezioneMappa?, _ misura: CGSize) -> some Gesture {
+    private func gestoTocco(_ posate: [LucePosata], _ proiezione: ProiezioneMappa?, _ margine: CGFloat,
+                            _ misura: CGSize) -> some Gesture {
         let doppio = SpatialTapGesture(count: 2).onEnded { _ in tornaATutti() }
-        let singolo = SpatialTapGesture().onEnded { v in clic(v.location, posate, proiezione, misura) }
+        let singolo = SpatialTapGesture().onEnded { v in clic(v.location, posate, proiezione, margine, misura) }
         return doppio.exclusively(before: singolo)
     }
 
@@ -411,6 +488,7 @@ struct MappaTerritorio: View {
 private struct BaseMappa: View {
     let contenuto: ContenutoMappa
     let proiezione: ProiezioneMappa?
+    let margine: CGFloat
     let misura: CGSize
     let posate: [LuceCliente]
 
@@ -425,7 +503,6 @@ private struct BaseMappa: View {
                                                      center: CGPoint(x: size.width * M.centroVignetta.x, y: size.height * M.centroVignetta.y),
                                                      startRadius: 0, endRadius: diagonale * M.raggioVignetta))
             guard let p = proiezione else { return }
-            let margine = contenuto.vista == .giro ? Tema.Apple.Territorio.Giro.margineProiezione : M.margine
             let area = CGSize(width: max(1, size.width - contenuto.coperto), height: size.height)
             func punto(_ lat: Double, _ lon: Double) -> CGPoint {
                 let q = p.punto(Coordinata(lat: lat, lon: lon), in: area, margine: margine)

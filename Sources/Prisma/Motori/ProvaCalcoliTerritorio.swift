@@ -410,6 +410,15 @@ enum ProvaCalcoliTerritorio {
         verifica.vero("Territorio: un solo punto non divide per zero (sta al centro)",
                       punto.map { $0.x.isFinite && $0.y.isFinite && abs($0.x - 550) < 0.01 && abs($0.y - 380) < 0.01 } ?? false)
         verifica.vero("Territorio: nessun punto, nessuna proiezione", ProiezioneMappa.adatta([]) == nil)
+        // Il passaggio fra le inquadrature (Oggi ↔ giro): agli estremi le due proiezioni, a metà la media
+        if let b = uno {
+            verifica.vero("Territorio: passaggio a 0 = la proiezione di prima",
+                          ProiezioneMappa.mescola(p, b, 0).minLat == p.minLat && ProiezioneMappa.mescola(p, b, 0).maxLon == p.maxLon)
+            verifica.vero("Territorio: passaggio a 1 = la proiezione nuova", ProiezioneMappa.mescola(p, b, 1) == b)
+            verifica("Territorio: passaggio a metà strada", ProiezioneMappa.mescola(p, b, 0.5).minLat, (p.minLat + b.minLat) / 2,
+                     tolleranza: 1e-9)
+            verifica.vero("Territorio: passaggio oltre 1 fermo alla proiezione nuova", ProiezioneMappa.mescola(p, b, 1.7) == b)
+        }
     }
 
     // MARK: 12. Prestazioni

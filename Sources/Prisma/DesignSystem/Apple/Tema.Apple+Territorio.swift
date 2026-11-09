@@ -252,7 +252,9 @@ extension Tema.Apple {
             static let pulsantiMassimi = 12
             static let rimonta = Tema.Apple.Studio.Moto.durataRimonta
             static let dissolvenzaCalma = 0.15
+            /// Il passaggio dell'inquadratura fra Oggi/Crescita (tutte le luci) e il giro (le tappe), curva di uscita.
             static let cambioProiezione = 0.6
+            static let curvaCambioProiezione = Tema.Apple.Moto.Curva.uscita
         }
     }
 }

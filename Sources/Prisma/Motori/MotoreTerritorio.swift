@@ -732,4 +732,17 @@ struct ProiezioneMappa: Equatable {
         let lat = latMedia - (Double(p.y) - Double(misura.height) / 2 - Double(spostamento.height)) / s
         return Coordinata(lat: lat, lon: lon)
     }
+
+    /// La proiezione a metà strada fra `a` e `b` (f = 0 → a, f = 1 → b): il passaggio animato fra l'inquadratura di
+    /// Oggi/Crescita (tutte le luci) e quella del giro (le tappe), §5.1.3. Zoom e spostamento vengono da `b`.
+    static func mescola(_ a: ProiezioneMappa, _ b: ProiezioneMappa, _ f: Double) -> ProiezioneMappa {
+        guard f < 1 else { return b }
+        let f = max(0, f)
+        func m(_ x: Double, _ y: Double) -> Double { x + (y - x) * f }
+        var p = ProiezioneMappa(minLat: m(a.minLat, b.minLat), maxLat: m(a.maxLat, b.maxLat),
+                                minLon: m(a.minLon, b.minLon), maxLon: m(a.maxLon, b.maxLon))
+        p.zoom = b.zoom
+        p.spostamento = b.spostamento
+        return p
+    }
 }
