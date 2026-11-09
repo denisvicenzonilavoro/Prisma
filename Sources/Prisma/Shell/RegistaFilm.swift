@@ -162,10 +162,10 @@ final class RegistaFilm: @unchecked Sendable {
         }
     }
 
-    /// true se l'errore dice che il codificatore H.264 non c'è (o non è disponibile su questa macchina).
+    /// true se l'errore dice che il codificatore H.264 non c'è su questa macchina.
     static func codificatoreMancante(_ errore: Error?) -> Bool {
         guard let e = errore as NSError?, e.domain == AVFoundationErrorDomain else { return false }
-        return [AVError.Code.encoderNotFound.rawValue, AVError.Code.encoderTemporarilyUnavailable.rawValue].contains(e.code)
+        return e.code == AVError.Code.encoderNotFound.rawValue
     }
 
     /// Un fotogramma nel pixel buffer del pool: contesto sRGB BGRA capovolto (origine in alto), disegno, aggiunta.
