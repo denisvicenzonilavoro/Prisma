@@ -20,6 +20,7 @@ extension ImageRenderer {
     /// L'immagine della vista. Di solito `cgImage`; con `PRISMA_SENZA_METAL=1` (le prove sul runner) la stessa vista si
     /// disegna con CoreGraphics in una bitmap (`render`, la strada dei PDF), perché `cgImage` passa da Metal e la GPU
     /// virtuale del runner ferma il processo.
+    @MainActor
     var immaginePrisma: CGImage? {
         guard MetalPrisma.spento else { return cgImage }
         let fattore = scale
