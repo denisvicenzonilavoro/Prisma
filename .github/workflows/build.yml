@@ -162,7 +162,9 @@ jobs:
           # Prova di carico: 200 clienti, velocità e memoria (il Mac dell'utente ha 8 GB)
           "$APP/Contents/MacOS/Prisma" --prova-carico
           # Prova della fluidità: tempi di apertura, chiusura, cambio app, blocco e aspetto (confronto prima/dopo)
-          "$APP/Contents/MacOS/Prisma" --prova-fluidita "$PWD/fluidita.md"
+          # Senza Metal (fermo-immagine): sulla GPU virtuale del runner Metal può fermare il processo con un'asserzione
+          # interna («Target device architecture is nil»). Sul Mac dell'utente la variabile non c'è.
+          PRISMA_SENZA_METAL=1 "$APP/Contents/MacOS/Prisma" --prova-fluidita "$PWD/fluidita.md"
           cat fluidita.md >> "$GITHUB_STEP_SUMMARY" || true
           # Prova di Prisma ovunque: due archivi e una cartella locale che finge iCloud Drive (ritardi, file non scaricato,
           # copia «nome 2», file troncato, conflitti da decidere, passphrase sbagliata e cambiata, niente dati in chiaro)
@@ -245,6 +247,9 @@ jobs:
       # Facoltative: se nessun metodo di disegno funziona sul runner, la build resta verde.
       - name: Anteprime (istantanee delle schermate)
         id: anteprime
+        # Le istantanee usano già il fermo-immagine: senza Metal la GPU virtuale del runner non può fermare il processo
+        env:
+          PRISMA_SENZA_METAL: "1"
         run: |
           for metodo in finestra livello renderer; do
             rm -rf anteprime && mkdir anteprime

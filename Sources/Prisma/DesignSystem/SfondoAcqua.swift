@@ -261,7 +261,7 @@ final class ProgrammaAcqua {
     private var inAttesa: [(MTLRenderPipelineState?) -> Void] = []
 
     private init() {
-        device = MTLCreateSystemDefaultDevice()
+        device = MetalPrisma.device()
     }
 
     /// Chiede il programma dal thread principale; la risposta arriva sul thread principale.
