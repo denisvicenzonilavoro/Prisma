@@ -24,6 +24,7 @@ extension StatoShell {
     }
 
     /// La lettera dal futuro per il file: solo «Con il piano» (decisione 7). La stesura vista sul palco se c'è,
+    /// altrimenti quella conservata con «Aggiungi al Prisma» (`DatiPrisma.lettere`, §3.1.5: resta dopo un riavvio),
     /// altrimenti la lettera di Prisma con la firma; nil senza scheda (data di nascita) o senza piano.
     func letteraPerIlFile(_ c: Cliente) -> String? {
         guard let s = schedaLettera(c), s.pianoPresente else { return nil }
@@ -31,7 +32,29 @@ extension StatoShell {
            !t.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return t
         }
+        if let l = LetteraFuturo.ultima(dati.lettere, cliente: c.id, versione: .conPiano) { return l.testo }
         return MotoreLettera.conFirma(MotoreLettera.fissa(s, .conPiano), s)
+    }
+
+    /// Conserva la lettera della versione (§3.1.4: «Aggiungi al Prisma» e il PDF): la stesura vista sul palco se c'è,
+    /// altrimenti la lettera di Prisma con la firma. Sostituisce la conservata dello stesso cliente e versione. nil
+    /// senza scheda (manca la data di nascita) o in sola lettura. La data al secondo, come si scrive nell'archivio (ISO 8601).
+    @discardableResult
+    func conservaLettera(_ c: Cliente, versione: VersioneLettera, oggi adesso: Date = Date()) -> LetteraFuturo? {
+        guard !solaLettura, let s = schedaLettera(c) else { return nil }
+        let oggi = Date(timeIntervalSinceReferenceDate: adesso.timeIntervalSinceReferenceDate.rounded(.down))
+        let stesura = sala.stesureLettera[c.id]?[versione]
+        let lettera: LetteraFuturo
+        if let st = stesura, !st.testo.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            lettera = LetteraFuturo(clienteId: c.id, scrittaIl: oggi, versione: versione, testo: st.testo, autore: st.autore,
+                                    modello: st.modello, cifre: LetteraFuturo.cifre(s, versione))
+        } else {
+            lettera = LetteraFuturo(clienteId: c.id, scrittaIl: oggi, versione: versione,
+                                    testo: MotoreLettera.conFirma(MotoreLettera.fissa(s, versione), s), autore: .modelloFisso,
+                                    cifre: LetteraFuturo.cifre(s, versione))
+        }
+        dati.lettere = LetteraFuturo.conserva(lettera, in: dati.lettere)
+        return lettera
     }
 
     /// Il prisma di luce si può mettere nel file: c'è almeno una posizione in essere da scomporre.
@@ -248,6 +271,8 @@ extension StatoShell {
             s.aggiunteDopoUltimoFile.remove(at: k)
         } else {
             s.aggiunteDopoUltimoFile = VoceFilePrisma.da(s.aggiunteDopoUltimoFile + [voce.rawValue]).map(\.rawValue)
+            // La lettera si conserva (§3.1.4): solo la «Con il piano» (decisione 7), così il file non la perde al riavvio
+            if e == .lettera { conservaLettera(cliente, versione: .conPiano) }
         }
         dati.clienti[i].prismaCliente = s
     }

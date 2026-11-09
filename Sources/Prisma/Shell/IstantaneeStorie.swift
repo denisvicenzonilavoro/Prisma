@@ -7,7 +7,8 @@ import Foundation
 /// - 710: pagina 1 della settimana; 711: gli incontri con gli avatar; 712: «In arrivo» con le colonne;
 /// - 713: il traguardo con l'anello e «Festeggialo ›»; 714: la settimana senza dati («Una settimana tranquilla»);
 /// - 715: il titolo dell'anno («2026» a 150); 716: il patrimonio con la linea; 717: i clienti nuovi con i pallini;
-/// - 718: il patrimonio al primo anno, senza percentuale; 719: la scrivania con l'invito «La tua settimana è pronta».
+/// - 718: il patrimonio al primo anno, senza percentuale; 719: la scrivania con l'invito «La tua settimana è pronta»;
+/// - 729: i chilometri dell'anno dai giri di Studio › Spese, con «in media N km a settimana» (nessun paragone).
 /// DATI DI PROVA DICHIARATI, solo dentro le scene: gli incontri di questa settimana (una firma il giovedì alle 16, una
 /// proposta, un'analisi), due parcelle emesse che scadono martedì e giovedì e le aliquote di prova di Studio; il
 /// traguardo è quello dei dati di prova (`TraguardiDiProva`). Le cifre le calcolano i motori.
@@ -35,6 +36,11 @@ extension Istantanee {
                 apriStoriaIstantanea(s, .anno, pagina: "patrimonio")
             }),
             ("719-scrivania-invito-settimana", { s in s.storia.invitoIstantanea = true }),
+            // I chilometri dell'anno dai giri di Studio › Spese (dati di prova della scena 780), con la media a settimana
+            ("729-storia-anno-chilometri", { s in
+                speseDiProvaScena(s)
+                apriStoriaIstantanea(s, .anno, pagina: "chilometri")
+            }),
             ("719-scrivania-invito-settimana-scuro", { s in s.storia.invitoIstantanea = true }),
         ]
     }

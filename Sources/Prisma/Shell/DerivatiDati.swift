@@ -543,6 +543,8 @@ extension DatiPrisma {
         b.capsule = a.capsule
         b.sinistri = a.sinistri
         b.uscite = a.uscite
+        // Le lettere dal futuro conservate non entrano in nessun calcolo in cache
+        b.lettere = a.lettere
         b.impostazioni.studio.spese = a.impostazioni.studio.spese
         return a == b
     }

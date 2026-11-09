@@ -127,6 +127,11 @@ enum VistaTerritorio: String, CaseIterable, Identifiable, Hashable {
     @ObservationIgnored var giornataConPiano = false
     /// Istantanee: il punto del gioco del rischio da disegnare (scenario e risposte già date). Non pubblicato.
     @ObservationIgnored var rischioIstantanea: PuntoGiocoRischio?
+    /// Il gioco del rischio sul palco ha già risposte e non è al risultato (§4.1.4): uscire dal palco o cambiare cliente
+    /// chiede conferma. Lo scrive `GiocoRischioVista` (solo quella del consulente). Non pubblicato.
+    @ObservationIgnored var rischioAMeta = false
+    /// La conferma in attesa per lasciare il gioco del rischio a metà (§4.1.4). Osservato: la Sala mostra il dialogo.
+    var uscitaRischio: UscitaRischio?
     /// La lettera dal futuro: la versione scelta resta finché si torna all'esperienza (§3.1.1). Non pubblicato.
     @ObservationIgnored var versioneLettera: VersioneLettera = .conPiano
     /// Solo istantanee: mostra l'avviso «Vera non è pronta» sotto il segmentato (642).
@@ -165,6 +170,12 @@ enum VistaTerritorio: String, CaseIterable, Identifiable, Hashable {
     var realtaAperta = false
 }
 
+/// Che cosa lascia a metà il gioco del rischio (§4.1.4): il ritorno alla griglia («‹ Sala» o Esc) o il cambio di cliente.
+enum UscitaRischio: Equatable {
+    case torna
+    case cliente(String)
+}
+
 /// Solo istantanee: lo stato della realtà aumentata da disegnare («Luce» giro 16).
 struct ScenaRealtaDiProva {
     /// nil = oggi; `allaPensione` = l'ultimo anno del cursore.
@@ -199,6 +210,35 @@ extension StatoShell {
     func tornaAllaSala() {
         guard sala.esperienza != nil else { return }
         sala.esperienza = nil
+    }
+
+    // MARK: Il gioco del rischio a metà (§4.1.4)
+
+    /// Lasciare il palco o cambiare cliente perderebbe le risposte già date al gioco del rischio.
+    var partitaRischioAMeta: Bool { sala.esperienza == .giocoRischio && sala.rischioAMeta }
+
+    /// Il cambio di cliente dalle pillole della Sala: a metà del gioco del rischio chiede prima conferma.
+    func scegliClienteSala(_ id: String) {
+        guard id != clienteAttivoId else { return }
+        if partitaRischioAMeta { sala.uscitaRischio = .cliente(id) } else { clienteAttivoId = id }
+    }
+
+    /// «‹ Sala» ed Esc dal palco: true se si può tornare subito; a metà del gioco del rischio chiede conferma (false).
+    func puoTornareAllaSala() -> Bool {
+        guard partitaRischioAMeta else { return true }
+        sala.uscitaRischio = .torna
+        return false
+    }
+
+    /// La conferma data: le risposte a metà si perdono e si fa ciò che era stato chiesto.
+    func confermaUscitaRischio() {
+        guard let u = sala.uscitaRischio else { return }
+        sala.uscitaRischio = nil
+        sala.rischioAMeta = false
+        switch u {
+        case .torna: tornaAllaSala()
+        case .cliente(let id): clienteAttivoId = id
+        }
     }
 
     /// Apre Pratiche sulla scheda data (dal pannello Novità, dalle altre app).

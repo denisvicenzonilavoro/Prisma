@@ -15,7 +15,9 @@ import SwiftUI
 ///   «In modalità cliente Messaggi non si apre…» invece del biglietto (domanda aperta per l'utente);
 /// - 735: il PNG vero del biglietto (`EsportaBiglietto.png`, il file che parte dal foglio di condivisione), senza la
 ///   cifra come di base; `735-biglietto-traguardo-con-cifra` lo stesso con «Mostra la cifra» acceso («Luce» giro 15).
-/// L'iPhone (736) non è in questo giro.
+/// L'iPhone (736, il biglietto in alto e le tre azioni sotto) è in iOS/IstantaneeMobile.swift.
+/// - 737: il dossier di Sofia con la riga «Da festeggiare» e «Festeggialo ›» nella panoramica (§5.4.4), chiaro e scuro;
+/// - 738: il pannello delle notifiche con la notifica interna del traguardo di Sofia (§5.4.4), chiaro e scuro.
 /// DATI DI PROVA DICHIARATI: i due traguardi di `TraguardiDiProva` (e quelli di `MessaggiDiProva` per le altre voci).
 extension Istantanee {
     nonisolated static var sceneTraguardi: [(nome: String, prepara: (StatoShell) -> Void)] {
@@ -44,6 +46,10 @@ extension Istantanee {
             // Disegnati da `tavolaLuce` (IstantaneeLuce.swift): il PNG vero del biglietto, senza e con la cifra
             ("735-biglietto-traguardo", { _ in }),
             ("735-biglietto-traguardo-con-cifra", { _ in }),
+            ("737-dossier-da-festeggiare", { s in s.apriCliente("sofia") }),
+            ("737-dossier-da-festeggiare-scuro", { s in s.apriCliente("sofia") }),
+            ("738-notifiche-traguardo", { s in s.alternaNotifiche() }),
+            ("738-notifiche-traguardo-scuro", { s in s.alternaNotifiche() }),
         ]
     }
 

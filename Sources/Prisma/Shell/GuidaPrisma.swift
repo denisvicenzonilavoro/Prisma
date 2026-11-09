@@ -355,8 +355,8 @@ extension StatoShell {
             proponiNovitaDopoSblocco()
             // «Luce» giro 14: le carte della notte si aprono da sole una volta (prima della storia: vince la notte)
             proponiNotteDopoSblocco()
-            // «Luce» giro 5: il lunedì la storia della settimana si apre da sola, una volta (StoriaLuce.swift)
-            proponiStoriaDopoSblocco()
+            // «Luce» giro 5: il lunedì la storia della settimana NON si apre da sola (decisione 128): la scrivania mostra
+            // l'invito «La tua settimana è pronta» (StoriaLuce.swift, `invitoSettimana`)
         }
     }
 }

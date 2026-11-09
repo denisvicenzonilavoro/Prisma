@@ -16,6 +16,11 @@ extension StatoShell {
         return tutti.filter { $0.clienteId == solo }
     }
 
+    /// I traguardi del cliente ancora da festeggiare (né festeggiati né scartati), per la riga del dossier (§5.4.4).
+    func traguardiDaFesteggiare(cliente id: String, oggi: Date = Date()) -> [Traguardo] {
+        traguardi(oggi: oggi).filter { $0.clienteId == id && $0.festeggiatoIl == nil }
+    }
+
     /// Il traguardo con quell'id (nil se non c'è più o è uscito dalla finestra).
     func traguardo(_ id: String, oggi: Date = Date()) -> Traguardo? {
         MotoreTraguardi.calcola(dati: datiTraguardi(), oggi: oggi).first { $0.id == id }

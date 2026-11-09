@@ -18,7 +18,11 @@ import SwiftUI
 //   ogni cifra a fine flusso. Se Qwen non è pronto resta la lettera fissa di Prisma, che compare una parola ogni 26 ms
 //   (`TestoProgressivo`), e Vera lo dice in arancio sotto il segmentato.
 // - Il foglio è carta calda (#FFFDF8) anche nello scuro; nel PDF («Salva la lettera in PDF…» dal menu del foglio) la
-//   carta è bianca (`Tema.Apple.Carta`). Niente esce dal Mac: «Mostra sul tavolo» e «Aggiungi al Prisma» arrivano dopo.
+//   carta è bianca (`Tema.Apple.Carta`). Niente esce dal Mac da solo: «▣ Mostra sul tavolo» manda il foglio all'iPad
+//   (Shell/SalaRealta.swift) e «✦ Aggiungi al Prisma» (Shell/StatoPrismaCliente.swift) mette la «Con il piano» nel file
+//   del cliente, che spedisce il consulente.
+// - Conservazione (§3.1.4-3.1.5): «Aggiungi al Prisma» e il PDF conservano la lettera in `DatiPrisma.lettere`
+//   (`LetteraFuturo`, l'ultima per cliente e versione, nel file del cliente e nei backup, mai in «Prisma ovunque»).
 // - Le due stesure si tengono in memoria finché il palco è aperto (anche in `StatoSala.stesureLettera`); cambiare versione
 //   ferma il flusso in corso. La presentazione non chiama mai Qwen: mostra la stesura già scritta sul palco, che il
 //   consulente ha visto, o la lettera fissa; aprendo la presentazione il flusso del palco si ferma (una richiesta sola).
@@ -303,6 +307,8 @@ struct LetteraDalFuturo: View {
         let avvertenza = ImpostazioniSala.avvertenza(stato.dati.impostazioni.sala.avvertenzaLettera).testo
         let d = PaginaLettera.documento(testo: testo, avvertenza: avvertenza, cliente: cliente.nome)
         guard let dati = StampaCarta.pdf(d) else { return }
+        // La lettera salvata in PDF si conserva (§3.1.5 punto 5), nella versione mostrata
+        stato.conservaLettera(cliente, versione: versione)
         StampaCarta.salva(dati, nome: StampaCarta.nomeFile(d))
     }
 

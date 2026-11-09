@@ -28,6 +28,24 @@ enum TestiStorie {
     /// La tabella dei paragoni dei chilometri: vuota finché l'utente non approva le distanze (decisione 72).
     static let paragoniKm: [(luogo: String, km: Double)] = []
 
+    /// Sotto i km dell'anno: «più o meno N volte {luogo}» solo da una voce della tabella approvata (la più lunga che ci
+    /// sta almeno una volta), altrimenti «in media N km a settimana» (§5.2.5).
+    static func paragoneKm(_ km: Double, settimane: Double, tabella: [(luogo: String, km: Double)] = paragoniKm) -> String {
+        if let voce = tabella.filter({ $0.km > 0 && km >= $0.km }).max(by: { $0.km < $1.km }) {
+            let volte = Int((km / voce.km).rounded(.down))
+            return volte == 1 ? "più o meno \(voce.luogo)" : "più o meno \(volte) volte \(voce.luogo)"
+        }
+        return mediaKm(km, settimane: settimane)
+    }
+
+    /// «in media 162 km a settimana» (all'unità).
+    static func mediaKm(_ km: Double, settimane: Double) -> String {
+        "in media \(FormatoCifra.migliaia((km / max(1, settimane)).rounded())) km a settimana"
+    }
+
+    /// «almeno» davanti ai km quando qualche giro è da completare.
+    static let almenoKm = "almeno"
+
     /// «Buongiorno, Denis.» o «Buongiorno.» senza nome.
     static func buongiorno(_ nome: String) -> String { nome.isEmpty ? "Buongiorno." : "Buongiorno, \(nome)." }
 

@@ -108,24 +108,6 @@ extension StatoShell {
         return dati.impostazioni.storie.ultimaSettimanaVista != MotoreStorie.lunedi(di: oggi, cal: cal)
     }
 
-    /// Dopo lo sblocco, il lunedì: la storia della settimana si apre da sola una volta (Impostazioni › Studio la
-    /// spegne), 1,7 s dopo lo sblocco come le novità, solo sul Mac, solo se nel frattempo non si è aperto altro e
-    /// se le novità non si stanno aprendo da sole (in quel caso la storia aspetta il prossimo sblocco).
-    func proponiStoriaDopoSblocco(oggi: Date = Date()) {
-        #if os(macOS)
-        guard persistente, !solaLettura, dati.impostazioni.storie.aperturaLunedi,
-              dati.impostazioni.novitaViste == NovitaLuce.versione, invitoSettimana(oggi: oggi) else { return }
-        let attesa = max(0, Tema.Apple.Moto.PannelloNovita.aperturaAutomatica - Tema.Moto.Sblocco.durataEntrata)
-        Movimenti.dopo(attesa) { [weak self] in
-            guard let self, !self.bloccato, self.presentazione == nil, !self.inModoCliente,
-                  self.sistema.guida == nil, !self.pannelloRicerca, !self.pannelloSpazi, !self.pannelloAppAperte,
-                  !self.sistema.pannelloNovita, self.sistema.sovrapposizione == nil,
-                  self.invitoSettimana() else { return }
-            self.apriStoria(.settimana)
-        }
-        #endif
-    }
-
     /// «Festeggialo ›»: chiude la storia e apre Messaggi sul traguardo di quel cliente.
     func festeggiaDallaStoria(_ traguardoId: String, clienteId: String) {
         chiudiSovrapposizione()
@@ -144,6 +126,12 @@ extension StatoShell {
         case .daChiamare(let id, _):
             clienteAttivoId = id
             apri(.clienti)
+        case .protette:
+            // Le famiglie protette → Posizioni filtrate (proposta della §5.2.4): il portafoglio di tutti i clienti, area
+            // protezione, posizioni attive
+            portafoglio = true
+            areaPosizioniDaAprire = .protezione
+            apri(.posizioni)
         default:
             break
         }

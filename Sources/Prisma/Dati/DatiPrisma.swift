@@ -115,6 +115,10 @@ struct DatiPrisma: Codable, Equatable {
     /// La traccia delle cose date al cliente (versione 27, «Luce» giro 15, `Dati/UscitaCliente.swift`): data, cosa, via,
     /// mai la password né il contenuto. Nel file del cliente e nei backup; mai in «Prisma ovunque».
     var uscite: [UscitaCliente] = []
+    /// Le lettere dal futuro conservate (versione 27, «Sala: racconti», §3.1.5 punto 5, `Dati/LetteraFuturo.swift`): solo
+    /// quelle aggiunte al Prisma del cliente o salvate in PDF, l'ultima per cliente e versione. Nel file del cliente e nei
+    /// backup; mai in «Prisma ovunque» (D-L8).
+    var lettere: [LetteraFuturo] = []
     var clienteAttivoId: String
     var impostazioni: Impostazioni
 
@@ -189,8 +193,9 @@ struct DatiPrisma: Codable, Equatable {
     ///     Giro 8 («Sala: racconti senza uscita»): l'inizio del rapporto con il cliente (`Cliente.clienteDal`),
     ///     l'indennizzo stimato per evento delle polizze (`Posizione.indennizzoStimato`) e le impostazioni della Sala
     ///     (`Impostazioni.sala`: eventi di Lancia l'anno con probabilità e fonte, anni della partita, avvertenze e titolo
-    ///     del valore approvati), tutti letti con tolleranza. Le lettere dal futuro e le partite di Lancia l'anno non si
-    ///     salvano.
+    ///     del valore approvati), tutti letti con tolleranza. Le partite di Lancia l'anno non si salvano; le lettere dal
+    ///     futuro si salvano solo quando il consulente le conserva (`lettere`, «Aggiungi al Prisma» o PDF, lette con
+    ///     tolleranza: l'ultima per cliente e versione; mai in «Prisma ovunque»).
     ///     Giro 9: chilometri, spese e scadenze del consulente (`speseStudio`: spese con gli scontrini, scadenze, corsi di
     ///     aggiornamento e le visite tenute dei clienti eliminati `visiteTolte`, letti con tolleranza), le loro impostazioni (`Impostazioni.studio.spese`: partenza,
     ///     correzioni dei giri, ore richieste per anno, nomi nel pacchetto spenti) e dove si
@@ -289,6 +294,7 @@ struct DatiPrisma: Codable, Equatable {
         case noteInArrivo
         case notti
         case capsule, sinistri, uscite
+        case lettere
     }
 
     /// Lettura tollerante: gli archivi delle versioni precedenti non hanno tutte le sezioni.
@@ -368,6 +374,8 @@ struct DatiPrisma: Codable, Equatable {
         capsule = ((try? c.decodeIfPresent(ElencoTollerante<CapsulaTempo>.self, forKey: .capsule)) ?? nil)?.elementi ?? []
         sinistri = ((try? c.decodeIfPresent(ElencoTollerante<Sinistro>.self, forKey: .sinistri)) ?? nil)?.elementi ?? []
         uscite = ((try? c.decodeIfPresent(ElencoTollerante<UscitaCliente>.self, forKey: .uscite)) ?? nil)?.elementi ?? []
+        // Le lettere dal futuro conservate (versione 27): una lettera illeggibile si scarta, le altre restano
+        lettere = ((try? c.decodeIfPresent(ElencoTollerante<LetteraFuturo>.self, forKey: .lettere)) ?? nil)?.elementi ?? []
         clienteAttivoId = try c.decodeIfPresent(String.self, forKey: .clienteAttivoId) ?? (clienti.first?.id ?? "")
         impostazioni = try c.decodeIfPresent(Impostazioni.self, forKey: .impostazioni) ?? Impostazioni()
     }
@@ -430,6 +438,7 @@ struct DatiPrisma: Codable, Equatable {
         try metti(capsule, .capsule)
         try metti(sinistri, .sinistri)
         try metti(uscite, .uscite)
+        try metti(lettere, .lettere)
         try metti(clienteAttivoId, .clienteAttivoId)
         try metti(impostazioni, .impostazioni)
     }
@@ -504,8 +513,8 @@ struct Impostazioni: Codable, Equatable {
     /// Le pratiche dopo la firma: dopo quanti giorni senza un passo nuovo una pratica è ferma (Impostazioni › Pratiche).
     /// Versione 27 («Luce» giro 3), letta con tolleranza: senza, 7 giorni.
     var pratiche = ImpostazioniPratiche()
-    /// «La tua settimana, il tuo anno» (versione 27, «Luce» giro 5): l'apertura da sola del lunedì (accesa di base) e
-    /// la settimana e l'anno già visti. Letta con tolleranza.
+    /// «La tua settimana, il tuo anno» (versione 27, «Luce» giro 5): la settimana e l'anno già visti (l'apertura da
+    /// sola del lunedì non c'è più, decisione 128: resta solo il campo, spento). Letta con tolleranza.
     var storie = ImpostazioniStorie()
     /// I traguardi festeggiati (versione 27, «Luce» giro 5): tipi spenti, anniversari, festeggiati e scartati. Letta
     /// con tolleranza.

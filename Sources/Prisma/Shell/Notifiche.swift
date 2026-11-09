@@ -38,6 +38,8 @@ enum MotoreNotifiche {
     static let giorniAvanti = 30
     static let giorniCompleanno = 7
     static let massimoPerGruppo = 8
+    /// L'inizio dell'id della notifica di un traguardo (il resto è l'id del traguardo).
+    static let prefissoTraguardo = "traguardo-"
 
     static func calcola(_ stato: StatoShell, oggi: Date = Date()) -> [Notifica] {
         let cal = Calendar.current
@@ -300,6 +302,15 @@ enum MotoreNotifiche {
                                    titolo: TestiCapsule.titoloNotifica(nome: TestiTraguardi.primoNome(n)),
                                    dettaglio: TestiCapsule.dettaglioNotifica, data: inizio))
         }
+        // «Luce» §5.4.4 (proposta): i traguardi da festeggiare, una notifica interna per traguardo (solo nel pannello di
+        // Prisma, mai nel Centro notifiche del Mac; in modalità cliente no: Messaggi non si apre). Il clic apre Messaggi
+        // sul biglietto
+        if !stato.inModoCliente {
+            for t in stato.traguardi(oggi: oggi) where t.festeggiatoIl == nil && nomi[t.clienteId] != nil {
+                elenco.append(Notifica(id: Self.prefissoTraguardo + t.id, gruppo: .oggi, app: .messaggi,
+                                       titolo: t.fraseBreve, dettaglio: t.perche, data: t.data))
+            }
+        }
         // Fine anno: clienti che possono ancora dedurre versando alla previdenza (negli ultimi due mesi dell'anno)
         let deducibili = stato.deducibiliFineAnno(oggi: oggi)
         if let primo = deducibili.first {
@@ -485,6 +496,13 @@ extension StatoShell {
             pannelloNotifiche = false
             testoRicerca = t
             cercaOvunque()
+            return
+        }
+        // «Luce» §5.4.4: il traguardo apre Messaggi sul suo biglietto
+        if n.id.hasPrefix(MotoreNotifiche.prefissoTraguardo) {
+            pannelloNotifiche = false
+            let id = String(n.id.dropFirst(MotoreNotifiche.prefissoTraguardo.count))
+            apriTraguardo(id, clienteId: traguardo(id)?.clienteId)
             return
         }
         // «Luce» giro 14: la voce di «Stanotte» apre le carte della notte

@@ -23,6 +23,9 @@ import SwiftUI
 // - L'idea per il regalo viene solo da una frase delle note del dossier; senza, «Nessuna idea dalle note» e «Annota»
 //   apre un campo per scriverla. È una nota privata del consulente: in modalità cliente la colonna destra non c'è.
 // - «Riduci movimento» e istantanee: cifra completa, anello pieno, niente coriandoli (BigliettoTraguardo).
+// - iPhone (§5.4.4, `compatto`, da iOS/MessaggiTelefono.swift): una sola colonna che scorre con la pagina, nella
+//   gerarchia di Design/iphone.html: il biglietto in alto, ridotto alla larghezza dello schermo, e sotto le tre azioni
+//   (condividi, telefonata, regalo). Niente tile della capsula: la Sala è solo sul Mac.
 // Valori in DesignSystem/Apple/Tema.Apple+Traguardi.swift.
 
 @MainActor
@@ -32,6 +35,8 @@ struct PannelloTraguardo: View {
     let cliente: Cliente
     var base: Double = Tema.Apple.Messaggi.Moto.baseApertura
     var primoIndice = 0
+    /// iPhone: una colonna sola, senza scorrimento proprio né superficie (li dà la pagina), biglietto ridotto.
+    var compatto = false
 
     @Environment(\.modoIstantanea) private var istantanea
     @State private var scrivendoIdea = false
@@ -52,7 +57,32 @@ struct PannelloTraguardo: View {
     var body: some View {
         let _ = ContaCorpi.segna()
         let traguardo = stato.traguardo(occasione.origine.riferimento)
-        return GeometryReader { geo in
+        if compatto {
+            colonnaCompatta(traguardo)
+        } else {
+            affiancato(traguardo)
+        }
+    }
+
+    /// iPhone: il biglietto in alto, le tre azioni sotto (la colonna destra resta fuori in modalità cliente).
+    private func colonnaCompatta(_ traguardo: Traguardo?) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            testata(traguardo)
+                .entrataCascata(primoIndice, base: base)
+            if let t = traguardo {
+                VStack(alignment: .leading, spacing: T.spazioColonne) {
+                    biglietto(t)
+                    if !stato.inModoCliente { colonna(t) }
+                }
+                .padding(.top, T.sottoTestata)
+                .entrataCascata(primoIndice + 1, base: base, sfocatura: false)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+    }
+
+    private func affiancato(_ traguardo: Traguardo?) -> some View {
+        GeometryReader { geo in
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
                     testata(traguardo)
@@ -107,8 +137,23 @@ struct PannelloTraguardo: View {
 
     private func biglietto(_ t: Traguardo) -> some View {
         VStack(alignment: .leading, spacing: F.spazio) {
-            BigliettoTraguardo(traguardo: t, firma: firma, mostraCifra: mostraCifra, frase: fraseModificata,
-                               suFrase: aperturaFrase)
+            if compatto {
+                // iPhone: lo stesso biglietto 560×420, ridotto alla larghezza disponibile (mai ingrandito)
+                Color.clear
+                    .aspectRatio(T.biglietto.width / T.biglietto.height, contentMode: .fit)
+                    .frame(maxWidth: T.biglietto.width)
+                    .overlay(alignment: .topLeading) {
+                        GeometryReader { g in
+                            BigliettoTraguardo(traguardo: t, firma: firma, mostraCifra: mostraCifra, frase: fraseModificata,
+                                               suFrase: aperturaFrase)
+                                .scaleEffect(min(1, g.size.width / T.biglietto.width), anchor: .topLeading)
+                                .frame(width: g.size.width, height: g.size.height, alignment: .topLeading)
+                        }
+                    }
+            } else {
+                BigliettoTraguardo(traguardo: t, firma: firma, mostraCifra: mostraCifra, frase: fraseModificata,
+                                   suFrase: aperturaFrase)
+            }
             if modificaFrase && fraseModificabile {
                 campoFrase(t)
             }
@@ -128,7 +173,7 @@ struct PannelloTraguardo: View {
                 .foregroundColor(F.coloreTesto)
                 .scrollContentBackground(.hidden)
                 .padding(F.padding)
-                .frame(width: T.biglietto.width, height: F.altezza)
+                .frame(maxWidth: T.biglietto.width, minHeight: F.altezza, maxHeight: F.altezza)
                 .background(forma.fill(F.fondo))
                 .overlay(forma.strokeBorder(F.bordo, lineWidth: F.spessoreBordo))
                 .accessibilityLabel(Text("Frase del biglietto"))
@@ -150,7 +195,7 @@ struct PannelloTraguardo: View {
                     .minimumScaleFactor(0.8)
             }
         }
-        .frame(width: T.biglietto.width, alignment: .leading)
+        .frame(maxWidth: T.biglietto.width, alignment: .leading)
     }
 
     // MARK: Testata
@@ -193,9 +238,11 @@ struct PannelloTraguardo: View {
             rigaBiglietto(t)
             rigaTelefonata(t)
             rigaRegalo(t)
-            // «Luce» giro 15: la capsula del tempo pronta per questo traguardo (compare solo se c'è)
-            TileCapsulaTraguardo(traguardo: t)
-                .padding(.top, T.sopraNotaFondo)
+            // «Luce» giro 15: la capsula del tempo pronta per questo traguardo (compare solo se c'è; la Sala è solo sul Mac)
+            if !compatto {
+                TileCapsulaTraguardo(traguardo: t)
+                    .padding(.top, T.sopraNotaFondo)
+            }
             Text(TestiTraguardi.notaColonna)
                 .carattereApple(T.notaFondo)
                 .foregroundColor(T.coloreNotaFondo)

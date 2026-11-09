@@ -18,7 +18,11 @@ import SwiftUI
 //   Il gioco non scrive mai `Cliente.profilo.propensione` (decisione 59): «Salva nel dossier» (con conferma) mette la
 //   partita nell'archivio, «Apri il profilo di …» porta al Profilo del dossier con l'avviso.
 // - Testi, risposte e soglie da `Risorse/Sala/gioco-rischio.json`, con l'etichetta «testi di prova» finché l'utente non
-//   li approva. Stato della partita locale (si azzera uscendo e cambiando cliente).
+//   li approva. Stato della partita locale (si azzera uscendo e cambiando cliente): a metà partita (risposte già date,
+//   risultato non ancora) «‹ Sala», Esc e il cambio di cliente con le pillole chiedono conferma (§4.1.4,
+//   `StatoSala.rischioAMeta` e `uscitaRischio`, dialogo in Shell/AppSala.swift).
+// - Tastiera (Mac, proposta della §4.1.4): A, B, C e 1, 2, 3 scelgono la risposta, solo quando le risposte sono
+//   visibili e nessuna è ancora scelta, con la Sala davanti (`ScorciatoieRischio`, pulsanti invisibili come la palestra).
 // - «Riduci movimento»: grafico già tracciato, numero finale, risposte già presenti, dissolvenza di 0,15 s. Istantanee:
 //   stato finale dello scenario (o del risultato) scelto da `StatoSala.rischioIstantanea`.
 
@@ -107,7 +111,18 @@ struct GiocoRischioVista: View {
         .dalTavolo { c in if case .rispostaRischio(let r) = c { rispondiDalTavolo(r) } }
         .onChange(of: fase) { _, _ in mandaAlTavolo() }
         .onChange(of: stato.sala.tavoloEsperienza) { _, _ in mandaAlTavolo() }
-        .onDisappear { stato.lasciaTavolo(.giocoRischio) }
+        // A metà partita uscire o cambiare cliente chiede conferma (§4.1.4): solo la vista del consulente lo dice
+        .onChange(of: aMeta, initial: true) { _, nuovo in if consulente { stato.sala.rischioAMeta = nuovo } }
+        .onDisappear {
+            stato.lasciaTavolo(.giocoRischio)
+            if consulente { stato.sala.rischioAMeta = false }
+        }
+    }
+
+    /// Ci sono risposte date e il risultato non è ancora arrivato.
+    private var aMeta: Bool {
+        guard !risposte.isEmpty, case .scenario(let i) = fase, let s = scenari else { return false }
+        return i < s.scenari.count
     }
 
     /// Lo scenario in corso o il risultato all'iPad (solo se il tavolo è per il gioco). Niente nomi né cifre del cliente.
@@ -236,6 +251,15 @@ struct GiocoRischioVista: View {
                 }
                 .frame(width: R.larghezzaRisposte, alignment: .leading)
                 .padding(.top, strade ? R.sopraRisposteStrade : R.sopraRisposte)
+                #if os(macOS)
+                .background {
+                    // A, B, C e 1, 2, 3 (§4.1.4): solo con le risposte visibili e nessuna scelta; la vista del palco
+                    // fuori dalla presentazione, quella della sala opaca durante (mai tutte e due)
+                    if visibili && scelta == nil && consulente == (stato.presentazione == nil) {
+                        ScorciatoieRischio(sistema: stato.sistema, quante: sc.risposte.count) { i in rispondi(sc, i) }
+                    }
+                }
+                #endif
             }
             .entrataCascata(2, base: Tema.Apple.Moto.Cascata.baseDentroApp)
             Spacer(minLength: 0)
@@ -495,3 +519,41 @@ struct GraficoScenarioRischio: View {
         }
     }
 }
+
+/// I testi della conferma per lasciare il gioco del rischio a metà (§4.1.4).
+enum TestiUscitaRischio {
+    static let titoloLasciaRischio = "Lasciare il gioco del rischio a metà?"
+    static let messaggioTornaRischio = "Le risposte date finora si perdono: il gioco non è salvato nel dossier."
+    static let messaggioClienteRischio = "Cambiando cliente le risposte date finora si perdono e il gioco riparte da capo per l’altro cliente."
+    static let lasciaRischio = "Lascia il gioco"
+    static let continuaRischio = "Continua il gioco"
+}
+
+#if os(macOS)
+/// Pulsanti invisibili, solo per i tasti: A/B/C e 1/2/3 scelgono la risposta (proposta della §4.1.4, come la palestra
+/// della trattativa). Solo con la Sala davanti e senza la ricerca aperta.
+private struct ScorciatoieRischio: View {
+    let sistema: StatoFinestre
+    let quante: Int
+    let scegli: (Int) -> Void
+
+    private static let lettere: [Character] = ["a", "b", "c"]
+    private static let cifre: [Character] = ["1", "2", "3"]
+
+    var body: some View {
+        if sistema.appAttiva == .sala && !sistema.pannelloRicerca {
+            HStack(spacing: 0) {
+                ForEach(0..<min(quante, Self.lettere.count), id: \.self) { i in
+                    Button("") { scegli(i) }
+                        .keyboardShortcut(KeyEquivalent(Self.lettere[i]), modifiers: [])
+                    Button("") { scegli(i) }
+                        .keyboardShortcut(KeyEquivalent(Self.cifre[i]), modifiers: [])
+                }
+            }
+            .frame(width: 0, height: 0)
+            .opacity(0)
+            .accessibilityHidden(true)
+        }
+    }
+}
+#endif

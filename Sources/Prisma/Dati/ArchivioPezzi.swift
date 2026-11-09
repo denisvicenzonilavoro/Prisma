@@ -60,7 +60,7 @@ enum ArchivioPezzi {
         case .clienti, .posizioni, .simulazioni, .analisi, .incontri, .obiettivi, .documenti, .valutazioni, .commenti,
              .note, .fotografie, .schedeAdeguatezza, .confrontiTFR, .parcelle, .raccomandazioni, .messaggi, .eventiVita,
              .sessioniCopilota, .partiteRischio, .promesse, .confrontiDocumenti, .coperture, .kmClienti,
-             .capsule, .uscite:
+             .capsule, .uscite, .lettere:
             return .cliente
         case .appuntamenti: return .sezione("agenda")
         case .attivita: return .sezione("attivita")
@@ -117,6 +117,7 @@ enum ArchivioPezzi {
         .dizionario(.kmClienti, \.kmClienti),
         .elenco(.capsule, \.capsule),
         .elenco(.uscite, \.uscite),
+        .elenco(.lettere, \.lettere),
     ]
 
     /// Un archivio vuoto, base di ogni pezzo (le impostazioni di base si costruiscono una volta sola).
@@ -203,6 +204,7 @@ enum ArchivioPezzi {
         case .capsule: return a.capsule == b.capsule
         case .sinistri: return a.sinistri == b.sinistri
         case .uscite: return a.uscite == b.uscite
+        case .lettere: return a.lettere == b.lettere
         case .clienteAttivoId: return a.clienteAttivoId == b.clienteAttivoId
         case .impostazioni: return a.impostazioni == b.impostazioni
         }
@@ -257,6 +259,7 @@ enum ArchivioPezzi {
         case .capsule: b.capsule = a.capsule
         case .sinistri: b.sinistri = a.sinistri
         case .uscite: b.uscite = a.uscite
+        case .lettere: b.lettere = a.lettere
         case .clienteAttivoId: b.clienteAttivoId = a.clienteAttivoId
         case .impostazioni: b.impostazioni = a.impostazioni
         }
@@ -306,6 +309,7 @@ extension ConfrontoDocumenti: DelCliente { var idClientePezzo: String { clienteI
 extension CoperturaPolizza: DelCliente { var idClientePezzo: String { clienteId } }
 extension CapsulaTempo: DelCliente { var idClientePezzo: String { clienteId } }
 extension UscitaCliente: DelCliente { var idClientePezzo: String { clienteId } }
+extension LetteraFuturo: DelCliente { var idClientePezzo: String { clienteId } }
 
 /// Una corsa dell'ordine di un elenco: `quanti` elementi di fila del gruppo `gruppo`. Su disco è `["giulia", 3]`.
 struct Corsa: Codable, Equatable {

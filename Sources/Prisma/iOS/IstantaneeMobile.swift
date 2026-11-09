@@ -276,6 +276,9 @@ enum IstantaneeMobile {
                 // Messaggi (giro 3 di «Orizzonte»): il messaggio dell'occasione in alto, tono, canale e testo, le altre
                 // occasioni a un tocco nel menu «Occasioni»
                 Scena(nome: "497-messaggi") { m in IstantaneeMobile.messaggi(m) },
+                // «Luce» §5.4.4: il traguardo di Sofia (dati di prova di TraguardiDiProva) sull'iPhone, il biglietto in alto
+                // ridotto alla larghezza dello schermo e le tre azioni sotto
+                Scena(nome: "736-messaggi-traguardo-iphone") { m in IstantaneeMobile.traguardo(m) },
                 // «Luce» giro 16: la realtà aumentata sull'iPhone, in verticale: «Fine» e lo scatto spento con l'aiuto
                 Scena(nome: "72-ar-iphone") { m in IstantaneeMobile.realta(m, ScenaRealtaDiProva()) },
                 // «Luce» giro 12: i potenziali clienti in sola lettura (una cosa grande in alto, poi l'elenco per fase)
@@ -359,6 +362,13 @@ enum IstantaneeMobile {
     static func messaggi(_ m: StatoMobile) {
         MessaggiDiProva.prepara(m.stato)
         RichiestaIstantaneaMessaggi.chiedi(m.stato, tipo: .riepilogoIncontro, cliente: "giulia")
+        m.apri(.messaggi)
+    }
+
+    /// Il traguardo di Sofia in Messaggi (§5.4.4, 736): il pannello del traguardo in colonna, nello stato finale.
+    static func traguardo(_ m: StatoMobile) {
+        MessaggiDiProva.prepara(m.stato)
+        RichiestaIstantaneaMessaggi.chiedi(m.stato, tipo: .traguardo, cliente: "sofia")
         m.apri(.messaggi)
     }
 

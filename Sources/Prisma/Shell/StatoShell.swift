@@ -299,6 +299,9 @@ enum VoceConfronto: Hashable {
     var prodottoSelezionato: String?
     var filtroCanaleProdotti: Canale?
     var filtroAreaProdotti: AreaPosizione?
+    /// «Apri ›» delle famiglie protette nella storia dell'anno (§5.2.4): l'area con cui aprire Posizioni (Portafoglio di
+    /// tutti i clienti); la consuma `AppPosizioni` appena la legge.
+    var areaPosizioniDaAprire: AreaPosizione?
     var obiettivoSelezionato: String?
 
     // Note
@@ -879,6 +882,8 @@ enum VoceConfronto: Hashable {
         if dati.capsule.contains(where: { $0.clienteId == id }) { dati.capsule.removeAll { $0.clienteId == id } }
         if dati.sinistri.contains(where: { $0.clienteId == id }) { dati.sinistri.removeAll { $0.clienteId == id } }
         if dati.uscite.contains(where: { $0.clienteId == id }) { dati.uscite.removeAll { $0.clienteId == id } }
+        // Le lettere dal futuro conservate se ne vanno con lui
+        if dati.lettere.contains(where: { $0.clienteId == id }) { dati.lettere.removeAll { $0.clienteId == id } }
         if dati.speseStudio.spese.contains(where: { $0.clienteId == id }) {
             var spese = dati.speseStudio
             for i in spese.spese.indices where spese.spese[i].clienteId == id { spese.spese[i].clienteId = nil }
