@@ -64,7 +64,7 @@ private struct PaginaCartaPrisma<Corpo: View>: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             Rectangle().fill(CT.filetto).frame(height: 1)
             HStack(alignment: .top, spacing: PG.spazio) {
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: PG.spazioStretto) {
                     Text(c.consulente)
                     ForEach(Array(c.avvertenze.enumerated()), id: \.offset) { _, a in Text(a) }
                     if c.diProva { Text("Dati di prova") }
@@ -89,7 +89,7 @@ private struct Copertina: View {
         VStack(alignment: .leading, spacing: PG.spazio) {
             LogoPrisma(colore: Tema.Colore.logoStampa)
                 .frame(height: PG.logo)
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: PG.spazioTitolo) {
                 Text("Il Prisma di").carattereApple(PG.sopratitolo).foregroundColor(CT.sopratitolo)
                 Text(c.nomeBattesimo).carattereApple(PG.titolo).foregroundColor(CT.testo)
                 Text("Valido fino al \(Formati.dataEstesa.string(from: c.validoFinoAl)). \(TestiPrismaCliente.fraseScadenza)")
@@ -100,7 +100,7 @@ private struct Copertina: View {
                 sezione("I tuoi obiettivi")
                 HStack(alignment: .top, spacing: PG.spazio) {
                     ForEach(Array(obiettivi.enumerated()), id: \.offset) { _, o in
-                        VStack(spacing: 6) {
+                        VStack(spacing: PG.spazioAnello) {
                             AnelloCarta(quota: o.quota, colore: Color(hex: o.coloreHex), misura: PG.anello, spessore: PG.spessoreAnello)
                             Text(o.titolo).carattereApple(PG.riga).foregroundColor(CT.testo)
                                 .multilineTextAlignment(.center)
@@ -196,7 +196,7 @@ private struct PaginaSinistri: View {
                     Text("Il tuo sinistro").carattereApple(PG.sopratitolo).foregroundColor(CT.sopratitolo)
                     Text(s.titolo).carattereApple(PG.titoloSezione).foregroundColor(CT.testo)
                     ForEach(Array(s.fasi.enumerated()), id: \.offset) { _, f in
-                        HStack(spacing: 8) {
+                        HStack(spacing: PG.spazioFase) {
                             Circle().fill(colore(f.stato)).frame(width: PG.fase, height: PG.fase)
                             Text(f.nome).carattereApple(PG.riga)
                                 .foregroundColor(f.stato == .futura ? CT.etichetta : CT.testo)
@@ -233,12 +233,12 @@ private struct PaginaPosizioni: View {
                 .padding(.bottom, PG.spazioRighe)
             ForEach(Array(posizioni.enumerated()), id: \.offset) { _, p in
                 HStack(alignment: .firstTextBaseline) {
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: PG.spazioStretto) {
                         Text(p.nome).carattereApple(PG.riga).foregroundColor(CT.testo)
                         Text(p.canale).carattereApple(PG.piede).foregroundColor(Color(hex: p.coloreCanaleHex))
                     }
                     Spacer()
-                    VStack(alignment: .trailing, spacing: 2) {
+                    VStack(alignment: .trailing, spacing: PG.spazioStretto) {
                         Text(Formati.euro(p.valore)).carattereApple(PG.rigaForte).foregroundColor(CT.testo)
                         Text(Formati.dataEstesa.string(from: p.data)).carattereApple(PG.piede).foregroundColor(CT.etichetta)
                     }

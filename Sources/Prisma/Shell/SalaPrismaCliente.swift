@@ -424,7 +424,7 @@ struct PalcoPrismaCliente: View {
             compito = nil
             switch esito {
             case .pronto(let pdf, let html, let dimensione, let documentoId):
-                withAnimation(calmo ? Animation.easeInOut(duration: 0.15)
+                withAnimation(calmo ? Tema.Moto.dissolvenzaCalma
                               : Tema.Apple.Moto.Curva.molla.animazione(Tema.Apple.Moto.PrismaCliente.FilePronto.durata)) {
                     fase = .pronto(pdf: pdf, html: html, dimensione: dimensione, documentoId: documentoId)
                 }
@@ -596,7 +596,7 @@ struct MiniPrisma: View {
                     if let p = contenuto.posizioni, !p.isEmpty { cardPosizioni(p).transition(transizione) }
                 }
                 .padding(M.margineCards)
-                .animation(calmo ? Animation.easeInOut(duration: 0.15)
+                .animation(calmo ? Tema.Moto.dissolvenzaCalma
                            : Tema.Apple.Moto.Curva.uscita.animazione(Tema.Apple.Moto.PrismaCliente.card), value: voci)
                 piede
             }
@@ -624,7 +624,7 @@ struct MiniPrisma: View {
             occhiello("I tuoi obiettivi")
             HStack(alignment: .top, spacing: 0) {
                 ForEach(Array(o.enumerated()), id: \.offset) { i, x in
-                    VStack(spacing: 6) {
+                    VStack(spacing: M.spazioAnello) {
                         Anello(frazione: x.quota, colore: Color(hex: x.coloreHex), misura: M.anello, spessore: M.spessoreAnello,
                                ritardo: Tema.Apple.Moto.Anello.ritardoFinestra + Double(i) * 0.12) { EmptyView() }
                         Text(x.titolo)
@@ -653,7 +653,7 @@ struct MiniPrisma: View {
                     .fill(C.lettera)
                     .frame(width: M.quadrato, height: M.quadrato)
                     .overlay(Image(systemName: "envelope.fill").font(M.glifo.font).foregroundColor(C.card))
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: M.spazioStretto) {
                     Text("Una lettera da te").carattereApple(M.titoloCard).foregroundColor(C.testo)
                     Text(contenuto.lineaVita.map { "scritta a \($0.etaProposta) anni" } ?? "dal tuo futuro")
                         .carattereApple(M.sottoCard).foregroundColor(C.testo2)
@@ -669,7 +669,7 @@ struct MiniPrisma: View {
             HStack(spacing: M.spazioCard) {
                 Circle().fill(M.cerchioFilm).frame(width: M.quadrato, height: M.quadrato)
                     .overlay(Text("▶︎").carattereApple(M.glifo).foregroundColor(M.testoFilm))
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: M.spazioStretto) {
                     Text("Il film del tuo piano").carattereApple(M.titoloCard).foregroundColor(M.testoFilm)
                     Text("venti secondi").carattereApple(M.sottoCard).foregroundColor(M.testoFilm.opacity(M.opacitaSottoFilm))
                 }
@@ -701,9 +701,9 @@ struct MiniPrisma: View {
         card {
             occhiello("Il tuo sinistro")
             Text(s.titolo).carattereApple(M.titoloCard).foregroundColor(C.testo)
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: M.spazioTitolo) {
                 ForEach(Array(s.fasi.enumerated()), id: \.offset) { _, f in
-                    HStack(spacing: 8) {
+                    HStack(spacing: M.spazioFase) {
                         Circle().fill(coloreFase(f.stato)).frame(width: M.fase, height: M.fase)
                         Text(f.nome).carattereApple(M.etichettaFase)
                             .foregroundColor(f.stato == .futura ? C.futuro : C.testo)
@@ -730,12 +730,12 @@ struct MiniPrisma: View {
             occhiello("Le tue posizioni")
             ForEach(Array(p.enumerated()), id: \.offset) { _, x in
                 HStack(alignment: .firstTextBaseline) {
-                    VStack(alignment: .leading, spacing: 1) {
+                    VStack(alignment: .leading, spacing: M.spazioMinimo) {
                         Text(x.nome).carattereApple(M.titoloCard).foregroundColor(C.testo).lineLimit(2)
                         Text(x.canale).carattereApple(M.canale).foregroundColor(Color(hex: x.coloreCanaleHex))
                     }
                     Spacer(minLength: 6)
-                    VStack(alignment: .trailing, spacing: 1) {
+                    VStack(alignment: .trailing, spacing: M.spazioMinimo) {
                         Text(Formati.euro(x.valore)).carattereApple(M.valore).foregroundColor(C.testo)
                         Text(Formati.giornoMeseBreve.string(from: x.data)).carattereApple(M.sottoCard).foregroundColor(C.testo2)
                     }
@@ -745,7 +745,7 @@ struct MiniPrisma: View {
     }
 
     private var piede: some View {
-        VStack(spacing: 2) {
+        VStack(spacing: M.spazioStretto) {
             Text(contenuto.consulente)
             ForEach(Array(contenuto.avvertenze.enumerated()), id: \.offset) { _, a in Text(a) }
             Text("Valido fino al \(Formati.dataEstesa.string(from: contenuto.validoFinoAl))")
@@ -775,7 +775,7 @@ private struct TestataMini: View {
             LogoPrisma(colore: C.logo)
                 .frame(width: M.logo * GeometriaLogo.proporzione, height: M.logo)
                 .offset(x: M.posizioneLogo.x, y: M.posizioneLogo.y)
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: M.spazioStretto) {
                 Text("Il Prisma di")
                     .carattereApple(M.sopraNome)
                     .foregroundColor(C.testo.opacity(M.opacitaSopraNome))

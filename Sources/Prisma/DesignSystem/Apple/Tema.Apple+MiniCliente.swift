@@ -83,6 +83,7 @@ extension Tema.Apple {
         static let padding = EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16)
         static let spazio: CGFloat = 8
         static let spazioRiga: CGFloat = 10
+        static let spazioStretto: CGFloat = 2
         static let larghezzaData: CGFloat = 92
         static let margine = EdgeInsets(top: 12, leading: 20, bottom: 0, trailing: 20)
         /// La riga sotto il pulsante di condivisione senza il consenso a WhatsApp.

@@ -167,7 +167,7 @@ struct UsciteDelCliente: View {
                 .carattereApple(T.dettaglio)
                 .foregroundStyle(T.coloreDettaglio)
                 .frame(width: T.larghezzaData, alignment: .leading)
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: T.spazioStretto) {
                 Text(u.genere.nome)
                     .carattereApple(T.titolo)
                     .foregroundStyle(T.coloreTitolo)

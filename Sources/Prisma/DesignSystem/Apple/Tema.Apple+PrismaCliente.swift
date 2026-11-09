@@ -155,6 +155,12 @@ extension Tema.Apple {
             static let raggioImmagine: CGFloat = 10
             /// Il sinistro: cerchi delle fasi 12.
             static let fase: CGFloat = 12
+            /// Spazi interni delle card: righe minime e strette, sotto l'occhiello, sotto un anello, accanto a una fase.
+            static let spazioMinimo: CGFloat = 1
+            static let spazioStretto: CGFloat = 2
+            static let spazioTitolo: CGFloat = 4
+            static let spazioAnello: CGFloat = 6
+            static let spazioFase: CGFloat = 8
             static let etichettaFase = K(dimensione: 11, peso: .medium)
             /// Le posizioni: nome, canale e valore.
             static let valore = K(dimensione: 13, peso: .semibold, tabellare: true)
@@ -188,6 +194,11 @@ extension Tema.Apple {
             static let altezzaImmagine: CGFloat = 300
             static let raggioImmagine: CGFloat = 6
             static let fase: CGFloat = 12
+            /// Spazi fra le righe strette (piede, posizioni), sotto il titolo, sotto un anello e accanto al pallino di una fase.
+            static let spazioStretto: CGFloat = 2
+            static let spazioTitolo: CGFloat = 4
+            static let spazioAnello: CGFloat = 6
+            static let spazioFase: CGFloat = 8
         }
     }
 }
