@@ -377,8 +377,8 @@ private struct LineaSpedizione: View {
 }
 
 /// Un nodo della linea: fatto verde pieno, adesso con il bordo arancio, l'alone e il respiro (fermo con calma e nelle
-/// istantanee), futuro con il bordo del binario, respinto rosso con l'alone.
-private struct NodoSpedizione: View {
+/// istantanee), futuro con il bordo del binario, respinto rosso con l'alone. Non privato: lo mostra anche la vetrina 400.
+struct NodoSpedizione: View {
     let stato: SinistroMini.StatoFase
 
     @Environment(\.prismaCalmo) private var calmo

@@ -28,6 +28,12 @@ extension Tema.Apple.Misura {
         static let scalaTelefono: CGFloat = 0.16
         static let tela = CGSize(width: 150, height: 90)
         static let voceNovita: CGFloat = 300
+        /// «Luce» giro 15: la busta della capsula in piccolo e lo spazio fra i nodi della spedizione.
+        static let scalaBusta: CGFloat = 0.24
+        static let spazioNodi: CGFloat = Spazio.cifre * 2
+        /// Il punto della barra del film nella vetrina (5 secondi su 20).
+        static let tempoFilm: Double = 5
+        static let durataFilm: Double = 20
     }
 }
 
@@ -51,6 +57,7 @@ struct VetrinaApple: View {
                 rigaGrafico
                 rigaSchede
                 rigaLuce
+                rigaUscite
                 Spacer(minLength: 0)
             }
             .padding(M.margine)
@@ -310,6 +317,64 @@ extension VetrinaApple {
             }
         }
         .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+// MARK: - «Luce» giro 15: le cose date al cliente (condivisione, film, capsula, spedizione del sinistro)
+
+extension VetrinaApple {
+    var rigaUscite: some View {
+        HStack(alignment: .top, spacing: M.spazio) {
+            RiquadroVetrinaApple(titolo: "Foglio di condivisione") {
+                // Nella vetrina non prepara nulla: il clic non apre il foglio
+                PulsanteCondividi(titolo: "Condividi…", consensoWhatsApp: false, prepara: { nil })
+            }
+            RiquadroVetrinaApple(titolo: "Comandi del film") {
+                comandiFilm
+            }
+            RiquadroVetrinaApple(titolo: "Busta della capsula") {
+                HStack(spacing: M.spazioInterno) {
+                    bustaPiccola(pronta: false)
+                    bustaPiccola(pronta: true)
+                }
+            }
+            RiquadroVetrinaApple(titolo: "Spedizione del sinistro") {
+                HStack(spacing: M.spazioNodi) {
+                    NodoSpedizione(stato: .fatta)
+                    NodoSpedizione(stato: .adesso)
+                    NodoSpedizione(stato: .futura)
+                    NodoSpedizione(stato: .respinta)
+                }
+                .padding(.horizontal, Tema.Apple.Pratiche.Spedizione.alone)
+                .padding(.vertical, Tema.Apple.Pratiche.Spedizione.alone)
+            }
+        }
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// I comandi sotto lo schermo del film, fermi: pausa, barra e tempo (le misure di `Tema.Apple.SalaRacconti.Film`).
+    private var comandiFilm: some View {
+        HStack(spacing: Tema.Apple.SalaRacconti.Film.spazioComandi) {
+            Text("❚❚")
+                .carattereApple(Tema.Apple.SalaRacconti.Film.simboloPulsante)
+                .foregroundColor(Tema.Apple.SalaRacconti.Film.coloreSimbolo)
+                .frame(width: Tema.Apple.SalaRacconti.Film.pulsanteTondo, height: Tema.Apple.SalaRacconti.Film.pulsanteTondo)
+                .background(Circle().fill(Tema.Apple.SalaRacconti.Film.fondoPulsanteTondo))
+            BarraFilm(frazione: M.tempoFilm / M.durataFilm, attiva: false) { _ in }
+            Text(TestiFilm.tempo(M.tempoFilm, totale: M.durataFilm))
+                .carattereApple(Tema.Apple.SalaRacconti.Film.tempo)
+                .foregroundColor(Tema.Apple.SalaRacconti.Film.coloreTempo)
+                .frame(width: Tema.Apple.SalaRacconti.Film.larghezzaTempo)
+                .lineLimit(1)
+        }
+    }
+
+    /// La busta chiusa con il sigillo: viola mentre si sigilla, arancio quando è pronta.
+    private func bustaPiccola(pronta: Bool) -> some View {
+        BustaCapsula(lemboChiuso: true, sigilloImpresso: true, pronta: pronta)
+            .scaleEffect(M.scalaBusta)
+            .frame(width: Tema.Apple.SalaRacconti.Capsula.busta.width * M.scalaBusta,
+                   height: Tema.Apple.SalaRacconti.Capsula.busta.height * M.scalaBusta)
     }
 }
 
