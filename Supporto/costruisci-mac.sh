@@ -48,7 +48,7 @@ for b in "$BIN_DIR"/*.bundle; do
   ditto "$b" "$APP/Contents/Resources/$(basename "$b")"
 done
 # Istruzioni, schemi, esempi e addestramento di Vera
-for cartella in Istruzioni Schemi Esempi Addestramento; do
+for cartella in Istruzioni Schemi Esempi Addestramento Valutazione; do
   if [ -d "Vera/$cartella" ]; then
     mkdir -p "$APP/Contents/Resources/Vera"
     ditto "Vera/$cartella" "$APP/Contents/Resources/Vera/$cartella"

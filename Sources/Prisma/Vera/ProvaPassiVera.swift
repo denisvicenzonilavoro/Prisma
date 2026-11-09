@@ -16,6 +16,7 @@ enum ProvaPassiVera {
         esecuzione(controlla, dati, richiesta)
         spiegazione(controlla, dati, richiesta)
         casiDifficili(controlla, dati)
+        altreRichieste(controlla, dati)
         modelli(controlla, dati, richiesta)
         datiDelTemplate(controlla)
     }
@@ -77,6 +78,48 @@ enum ProvaPassiVera {
         let ammessi = (strumento?["enum"] as? [String]) ?? []
         controlla(ammessi.sorted() == StrumentoPasso.allCases.map(\.rawValue).sorted() && (passi?["maxItems"] as? Int) == 5,
                   "Ragiona a passi: lo schema del piano ammette solo gli strumenti del catalogo")
+    }
+
+    // MARK: - Altre richieste complesse (una scelta tra due voci, un capitale una tantum)
+
+    private static func altreRichieste(_ controlla: (Bool, String) -> Void, _ dati: DatiPassi) {
+        let capitale = "Marco ha 30.000 € da parte: meglio la casa al lago o gli studi di Anna?"
+        controlla(PassiVera.eUnaRichiesta(capitale)
+                  && PassiVera.eUnaRichiesta("Con 300 € al mese cosa conviene prima, la casa o la pensione?")
+                  && PassiVera.eUnaRichiesta("Su cosa punto con 20.000 euro di liquidità: la casa o gli studi?"),
+                  "Altre richieste: la scelta tra due voci e il capitale una tantum passano dal ragionamento a passi")
+        controlla(!PassiVera.eUnaRichiesta("Marco ha 30.000 € in banca") && !PassiVera.eUnaRichiesta("Meglio chiamare Marco o Laura?"),
+                  "Altre richieste: un capitale senza scelta, o una scelta senza cifre, non sono richieste a passi")
+        controlla(PassiVera.capitaleUnaTantum("ha 30.000 € da parte") == 30_000 && PassiVera.capitaleUnaTantum("50.000 euro dal TFR") == 50_000
+                  && PassiVera.capitaleUnaTantum("€ 15.000 di liquidità") == 15_000 && PassiVera.capitaleUnaTantum("ha 400 euro") == nil
+                  && PassiVera.capitaleUnaTantum("Marco ha 400 € al mese") == nil,
+                  "Altre richieste: il capitale una tantum si legge solo con le sue parole vicino alla cifra")
+        guard case .richiesta(let r) = PassiVera.capisci(capitale, cliente: dati.cliente, obiettivi: dati.obiettivi) else {
+            return controlla(false, "Altre richieste: il capitale da dividere tra casa e studi si capisce")
+        }
+        controlla(r.capitale == 30_000 && r.budgetMensile == 0 && r.unaTantum && !r.protezione
+                  && Set(r.obiettiviIds) == ["obiettivo-prova-studi", "obiettivo-prova-casa"] && r.dicitura.hasSuffix(" una tantum"),
+                  "Altre richieste: 30.000 € una tantum tra «Università di Anna» e «Casa al lago», senza protezione")
+        if case .domanda(let d) = PassiVera.capisci("Marco ha 30.000 € da parte: proteggere Elena o gli studi?", cliente: dati.cliente, obiettivi: dati.obiettivi) {
+            controlla(d.contains("premio"), "Altre richieste: con un capitale la protezione non si divide (si paga con un premio): Vera lo dice")
+        } else {
+            controlla(false, "Altre richieste: capitale e protezione con un solo obiettivo diventano una domanda")
+        }
+        // Il capitale entra oggi nell'accantonato dell'obiettivo (lo stesso calcolo del dettaglio)
+        guard let studi = dati.obiettivo("obiettivo-prova-studi") else { return controlla(false, "Altre richieste: l'obiettivo degli studi") }
+        let serve = PassiVera.bisognoCapitale(studi, dati)
+        controlla(serve > 0 && serve.isFinite && serve.truncatingRemainder(dividingBy: 100) == 0
+                  && PassiVera.quotaObiettivo(studi, mensile: serve, dati, unaTantum: true).inTempo
+                  && !PassiVera.quotaObiettivo(studi, mensile: max(0, serve - 200), dati, unaTantum: true).inTempo,
+                  "Altre richieste: il capitale che serve oggi all'obiettivo è il minimo che lo porta in tempo (\(serve))")
+        let piano = PassiVera.eseguiTutto(PassiVera.piano(r, dati: dati), dati: dati)
+        controlla(piano.finito && piano.divisioni.count == 3 && piano.divisioni.allSatisfy { abs($0.totaleObiettivi - 30_000) < 1 && $0.protezioneMensile == 0 }
+                  && piano.consigliata != nil && !piano.passi.contains { $0.strumento == .leggiProtezione },
+                  "Altre richieste: tre divisioni dei 30.000 €, tutte senza protezione, e la scelta con la regola di Prisma")
+        controlla(piano.passi.first { $0.strumento == .leggiObiettivo }?.esito.contains("al mese") == false
+                  && !piano.vincoli.contains { $0.tipo == .sostenibilita } && piano.spiegazione.contains("Ti consiglio")
+                  && PassiVera.azioni(piano, cliente: dati.cliente).first?.argomenti["testo"]?.contains("una tantum") == true,
+                  "Altre richieste: con il capitale i testi non parlano di «al mese» e la nota dice «una tantum»")
     }
 
     // MARK: - Riconoscimento

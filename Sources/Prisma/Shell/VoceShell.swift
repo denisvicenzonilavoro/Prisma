@@ -32,6 +32,7 @@ extension StatoShell {
     /// Vera si mette in ascolto (smettendo di parlare).
     func ascolta() {
         guard persistente, !veraInCorso else { return }
+        fermaLetturaTrenta()
         voceVera.zitta()
         let vera = dati.impostazioni.vera
         let automatico = vera.riconoscimento == .automatico
@@ -234,6 +235,7 @@ extension StatoShell {
         guard persistente else { return }
         if dettaturaAttiva { chiudiDettatura() }
         ascoltoVeraSeNato?.ferma(invia: false)
+        fermaLetturaTrenta()
         voceVeraSeNata?.zitta()
     }
 
@@ -272,6 +274,12 @@ extension StatoShell {
             conversazioneAVoce = false
             return
         }
+        // «Il cliente in 30 secondi»: Vera racconta le cinque sezioni, una alla volta, con l'anello del conto alla rovescia
+        if m.trenta != nil {
+            ascoltaTrentaSecondi(messaggio: m.id)
+            return
+        }
+        fermaLetturaTrenta()
         voceVera.finito = { [weak self] in
             guard let self, self.conversazioneAVoce, !self.bloccato, self.presentazione == nil else { return }
             self.ascolta()

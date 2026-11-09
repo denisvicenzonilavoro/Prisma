@@ -318,6 +318,12 @@ struct ResocontoVeraVista: View {
                     Text(r.titolo).carattereApple(F.titoloResoconto)
                     Text("\(stato.cliente(i.clienteId)?.nome ?? "") · \(Formati.dataLunga.string(from: i.data)), \(Formati.ora.string(from: i.data))")
                         .carattereApple(F.dettaglioRiga).foregroundColor(F.coloreDettaglio)
+                    // Il consenso alla registrazione si vede nella scheda, prima della firma (non solo nel PDF)
+                    if let x = ResocontoVera.consensoDaMostrare(r, cliente: stato.cliente(i.clienteId)) {
+                        Label(ResocontoVera.testoConsenso(x), systemImage: "checkmark.shield")
+                            .carattereApple(F.dettaglioRiga).foregroundColor(F.verde)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
                 if !r.firmato {
                     Picker("", selection: Binding(get: { r.formato }, set: { stato.formatoResoconto(incontroId, $0) })) {
@@ -349,6 +355,16 @@ struct ResocontoVeraVista: View {
                 HStack {
                     Text(fonti(r)).carattereApple(F.nota).foregroundColor(F.coloreDettaglio)
                     Spacer()
+                    // «Manda una sintesi a …»: la bozza in Messaggi, nel tuo stile, dalla scheda «Conferma»
+                    if !stato.inModoCliente, let c = stato.cliente(i.clienteId),
+                       ResocontoVera.sintesiCliente(r, incontro: i, nome: c.nome) != nil {
+                        Button("Manda una sintesi a \(c.nome.split(separator: " ").first.map(String.init) ?? c.nome)") {
+                            _ = stato.mandaSintesiResoconto(incontroId, chiave: stato.chiaveConversazione)
+                        }
+                        .buttonStyle(.apple)
+                        .disabled(stato.veraInCorso || stato.solaLettura)
+                        .help("Le decisioni e i prossimi passi in una bozza in Messaggi: niente parte senza la tua conferma")
+                    }
                     if r.firmato {
                         PillolaFaseTre(testo: "Firmato\(r.firmatoIl.map { " il \(Formati.dataEstesa.string(from: $0))" } ?? "") ✓", colore: F.verde)
                         if let d = r.documentoId {

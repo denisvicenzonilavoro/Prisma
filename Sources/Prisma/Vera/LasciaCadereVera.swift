@@ -22,6 +22,14 @@ struct LetturaCaduta {
     var possibili: [String] = []
 }
 
+/// Una posizione letta in un estratto conto: nome, ISIN se c'è, controvalore e pagina. Va in Posizioni solo con «Conferma».
+struct PosizioneLetta: Codable, Equatable {
+    var nome: String
+    var isin: String?
+    var valore: Double
+    var pagina: Int
+}
+
 enum LasciaCadereVera {
     /// Il promemoria arriva un mese prima della scadenza (come per le posizioni).
     static let giorniPrima = 30
@@ -88,25 +96,178 @@ enum LasciaCadereVera {
         EstrattoreDocumento.data(campi.first { $0.chiave == .scadenza }?.valore)
     }
 
-    /// Le righe della scheda: l'archiviazione con i dati letti e, se c'è una scadenza futura, il promemoria.
-    static func azioni(_ l: LetturaCaduta, cliente c: Cliente, file: URL, testo: URL, oggi: Date, cal: Calendar = .current) -> [AzioneConferma] {
+    // MARK: - Estratto conto → Posizioni (template: «3 posizioni lette, da confermare»)
+
+    /// Lo strumento della riga «Aggiungo / aggiorno in Posizioni» (eseguito in LasciaCadereShell.swift).
+    static let strumentoPosizione = "posizioni_da_documento"
+    /// Al massimo tante posizioni da un estratto conto.
+    static let massimoPosizioni = 8
+
+    /// Le parole delle righe che non sono posizioni: totali, movimenti, costi, intestazioni.
+    private static let righeEscluse = #"\b(?:totale|totali|saldo|commission\w*|impost\w*|bollo|interess\w*|spese|competenz\w*|iban|codice fiscale|periodo|pagina|premio|rata|versament\w*|prelev\w*|bonific\w*|addebit\w*|accredit\w*|cedol\w*|dividend\w*|ritenut\w*|data)\b"#
+
+    /// Le posizioni di un estratto conto, solo con le regole: una riga con un nome e un importo in euro alla fine
+    /// («Fondo Azionario Europa · ISIN LU… · 12.340,50 €»), senza date (i movimenti) né parole di totali e costi.
+    static func posizioniLette(_ pagine: [String]) -> [PosizioneLetta] {
+        var lette: [PosizioneLetta] = []
+        let importo = #"(?<![\d.,])(\d{1,3}(?:\.\d{3})+|\d+),\d{2}(?![\d,])"#
+        for (n, pagina) in pagine.enumerated() {
+            for rigaGrezza in pagina.components(separatedBy: .newlines) {
+                let riga = rigaGrezza.trimmingCharacters(in: .whitespaces)
+                let piegata = normale(riga)
+                guard riga.count <= 160,
+                      DateItaliane.cerca(righeEscluse, piegata) == nil,
+                      riga.range(of: #"\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}"#, options: .regularExpression) == nil,
+                      let re = try? NSRegularExpression(pattern: importo),
+                      let ultimo = re.matches(in: riga, range: NSRange(riga.startIndex..., in: riga)).last,
+                      let r = Range(ultimo.range, in: riga),
+                      let valore = EstrattoreDocumento.numero(String(riga[r])), valore > 0 else { continue }
+                // L'ISIN in maiuscolo (DateItaliane.cerca ignora le maiuscole: una parola di 12 lettere finita in cifra passerebbe)
+                let isin = riga.range(of: #"\b[A-Z]{2}[A-Z0-9]{9}\d\b"#, options: .regularExpression).map { String(riga[$0]) }
+                // Il nome: il testo prima del primo numero o dell'ISIN, senza le parole del valore
+                var nome = String(riga[..<r.lowerBound])
+                if let i = nome.range(of: #"\bISIN\b|[A-Z]{2}[A-Z0-9]{9}\d|\d"#, options: .regularExpression) { nome = String(nome[..<i.lowerBound]) }
+                nome = nome.replacingOccurrences(of: #"(?i)\b(controvalore|valore|quote|n\.|nr\.|eur|euro)\b"#, with: " ", options: .regularExpression)
+                nome = nome.trimmingCharacters(in: CharacterSet(charactersIn: " .:;,-–—·|€\t"))
+                    .replacingOccurrences(of: #"\s{2,}"#, with: " ", options: .regularExpression)
+                guard nome.filter(\.isLetter).count >= 4,
+                      !lette.contains(where: { normale($0.nome) == normale(nome) }) else { continue }
+                lette.append(PosizioneLetta(nome: nome, isin: isin, valore: valore, pagina: n + 1))
+                if lette.count == massimoPosizioni { return lette }
+            }
+        }
+        return lette
+    }
+
+    /// L'area più probabile di una posizione letta dal nome.
+    static func areaProbabile(_ nome: String) -> AreaPosizione {
+        let t = normale(nome)
+        if DateItaliane.cerca(#"\b(?:fondo pensione|pip|previdenz\w*)\b"#, t) != nil { return .previdenza }
+        if DateItaliane.cerca(#"\b(?:conto|deposito|libretto|conto deposito)\b"#, t) != nil { return .liquidita }
+        return .investimento
+    }
+
+    /// La posizione del cliente che una riga letta aggiorna: in essere, non coperture né debiti, con il nome che torna a
+    /// parole intere (in un senso o nell'altro). Solo se è una: mai a caso tra due.
+    static func posizioneEsistente(_ p: PosizioneLetta, tra posizioni: [Posizione], cliente: String) -> Posizione? {
+        let letta = Set(normale(p.nome).split(separator: " "))
+        let trovate = posizioni.filter { x in
+            guard x.clienteId == cliente, x.stato == .inEssere, x.area != .protezione, !x.area.passivo else { return false }
+            let sua = Set(normale(x.nome).split(separator: " "))
+            return !sua.isEmpty && (sua.isSubset(of: letta) || letta.isSubset(of: sua))
+        }
+        return trovate.count == 1 ? trovate.first : nil
+    }
+
+    /// La riga della scheda per una posizione letta: aggiorna il valore di quella che c'è o ne aggiunge una nuova (in
+    /// essere, canale indipendente: non l'hai collocata tu), sempre da confermare.
+    static func azionePosizione(_ p: PosizioneLetta, cliente c: Cliente, esistente: Posizione?, data: Date, titoloDocumento: String) -> AzioneConferma {
+        let valore = Formati.euro(p.valore)
+        var argomenti = ["cliente": c.id, "nome": p.nome, "valore": String(p.valore), "data": RegistroStrumenti.isoData(data),
+                         "area": areaProbabile(p.nome).rawValue, "documento": titoloDocumento, "pagina": String(p.pagina)]
+        if let i = p.isin { argomenti["isin"] = i }
+        if let e = esistente {
+            argomenti["posizione"] = e.id
+            return AzioneConferma(strumento: strumentoPosizione, app: .posizioni, titolo: "Aggiorno «\(e.nome)» in Posizioni",
+                                  dettaglio: "\(valore) al \(Formati.dataEstesa.string(from: data)) · letto a pag. \(p.pagina)", argomenti: argomenti)
+        }
+        return AzioneConferma(strumento: strumentoPosizione, app: .posizioni, titolo: "Aggiungo «\(p.nome)» in Posizioni",
+                              dettaglio: "\(areaProbabile(p.nome).nome) · \(valore) al \(Formati.dataEstesa.string(from: data))"
+                                + (p.isin.map { " · ISIN \($0)" } ?? "") + " · in essere, indipendente · letto a pag. \(p.pagina)",
+                              argomenti: argomenti)
+    }
+
+    /// La data del valore di un estratto conto: quella letta, altrimenti la data del documento, altrimenti oggi.
+    static func dataValore(_ campi: [CampoEstratto], oggi: Date) -> Date {
+        let letta = EstrattoreDocumento.data(campi.first { $0.chiave == .dataValore }?.valore)
+            ?? EstrattoreDocumento.data(campi.first { $0.chiave == .dataDocumento }?.valore)
+        return letta.map { min($0, oggi) } ?? oggi
+    }
+
+    // MARK: - Carta d'identità → Anagrafica (template: «Scade il 14 marzo 2031»)
+
+    /// La riga «Registro il documento d'identità in anagrafica» (strumento del tagliando: In regola della scheda).
+    static func azioneIdentita(_ campi: [CampoEstratto], cliente c: Cliente, titoloDocumento: String) -> AzioneConferma? {
+        guard let s = scadenza(campi) else { return nil }
+        let numero = campi.first { $0.chiave == .numeroDocumento }?.valore.trimmingCharacters(in: .whitespaces) ?? ""
+        let rilascio = EstrattoreDocumento.data(campi.first { $0.chiave == .dataRilascio }?.valore)
+        var argomenti = ["cliente": c.id, "scadenza": RegistroStrumenti.isoData(s), "titoloDocumento": titoloDocumento]
+        if !numero.isEmpty { argomenti["numero"] = numero }
+        if let r = rilascio { argomenti["rilascio"] = RegistroStrumenti.isoData(r) }
+        var parti = ["Scade il \(Formati.dataEstesa.string(from: s))"]
+        if !numero.isEmpty { parti.insert("numero \(numero)", at: 0) }
+        return AzioneConferma(strumento: TagliandoVera.strumentoDocumento, app: .clienti, titolo: "Registro il documento d'identità di \(c.nome) in anagrafica",
+                              dettaglio: parti.joined(separator: " · ") + " · In regola, nella scheda", argomenti: argomenti)
+    }
+
+    /// I campi di una scheda, corretti uno per uno dal consulente prima della conferma: la riga dell'archiviazione porta
+    /// i campi nuovi (e il dettaglio), le righe che ne dipendono (promemoria della scadenza, documento d'identità) si rifanno.
+    static func correggi(_ azioni: [AzioneConferma], campo: CampoDocumento, valore: String, cliente c: Cliente, oggi: Date,
+                         cal: Calendar = .current) -> [AzioneConferma] {
+        guard let i = azioni.firstIndex(where: { $0.strumento == RegistroStrumenti.documentiArchivia }) else { return azioni }
+        var a = azioni[i]
+        var campi = (a.argomenti["campi"]?.data(using: .utf8)).flatMap { try? JSONDecoder().decode([CampoEstratto].self, from: $0) } ?? []
+        let pulito = valore.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let k = campi.firstIndex(where: { $0.chiave == campo }), campi[k].valore != pulito else { return azioni }
+        campi[k].valore = pulito
+        a.argomenti["campi"] = (try? JSONEncoder().encode(campi)).flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
+        let titolo = a.argomenti["titolo"] ?? ""
+        let tipo = Documento.Tipo(rawValue: a.argomenti["tipo"] ?? "") ?? .altro
+        a.dettaglio = dettaglioArchiviazione(tipo: tipo, campi: campi)
+        var r = azioni
+        r[i] = a
+        // Le righe che dipendono dai campi: si tolgono e si rifanno con i valori corretti (le altre restano)
+        let dipendenti = [RegistroStrumenti.attivitaNuova, TagliandoVera.strumentoDocumento]
+        let tolte = Set(r.filter { dipendenti.contains($0.strumento) && $0.tolta }.map(\.strumento))
+        r.removeAll { dipendenti.contains($0.strumento) }
+        let categoria = CategoriaDocumento(rawValue: a.argomenti["categoria"] ?? "")
+        for var x in righeDipendenti(campi: campi, categoria: categoria, titolo: titolo, cliente: c, oggi: oggi, cal: cal) {
+            if tolte.contains(x.strumento) { x.tolta = true }
+            r.append(x)
+        }
+        return r
+    }
+
+    /// «Polizza · Contraente: … (pag. 1) · …»: i primi quattro dati letti.
+    static func dettaglioArchiviazione(tipo: Documento.Tipo, campi: [CampoEstratto]) -> String {
+        let dati = campi.filter { !$0.valore.isEmpty }.prefix(4).map { "\($0.chiave.nome): \($0.valore) (pag. \($0.pagina))" }.joined(separator: " · ")
+        return "\(tipo.nome)" + (dati.isEmpty ? " · nessun dato letto" : " · \(dati)") + " · i dati letti si confermano con «Conferma»"
+    }
+
+    /// Le righe che nascono dai campi: il documento d'identità in anagrafica oppure il promemoria della scadenza.
+    static func righeDipendenti(campi: [CampoEstratto], categoria: CategoriaDocumento?, titolo: String, cliente c: Cliente, oggi: Date,
+                                cal: Calendar) -> [AzioneConferma] {
+        if categoria == .identita {
+            return azioneIdentita(campi, cliente: c, titoloDocumento: titolo).map { [$0] } ?? []
+        }
+        guard let s = scadenza(campi), s > oggi else { return [] }
+        let quando = max(cal.startOfDay(for: oggi), cal.date(byAdding: .day, value: -giorniPrima, to: s) ?? s)
+        return [AzioneConferma(strumento: RegistroStrumenti.attivitaNuova, app: .attivita, titolo: "Promemoria per la scadenza",
+                               dettaglio: "«Scade «\(titolo)» il \(Formati.dataEstesa.string(from: s))» · \(c.nome) · il \(Formati.dataEstesa.string(from: quando))",
+                               argomenti: ["cliente": c.id, "titolo": "Scade «\(titolo)» il \(Formati.dataEstesa.string(from: s))",
+                                           "scadenza": RegistroStrumenti.isoData(quando)])]
+    }
+
+    /// Le righe della scheda: l'archiviazione con i dati letti; poi, secondo il documento, le posizioni lette (estratto
+    /// conto → Posizioni), il documento d'identità (→ Anagrafica) o il promemoria della scadenza.
+    static func azioni(_ l: LetturaCaduta, cliente c: Cliente, file: URL, testo: URL, oggi: Date, posizioni: [Posizione] = [],
+                       cal: Calendar = .current) -> [AzioneConferma] {
         let campi = l.campi.filter { !$0.valore.isEmpty }
-        let dati = campi.prefix(4).map { "\($0.chiave.nome): \($0.valore) (pag. \($0.pagina))" }.joined(separator: " · ")
         let titolo = (l.nomeFile as NSString).deletingPathExtension
         let json = (try? JSONEncoder().encode(campi)).flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
         var righe = [AzioneConferma(strumento: RegistroStrumenti.documentiArchivia, app: .documenti,
                                     titolo: "Archivio «\(titolo)» in \(c.nome) · Documenti",
-                                    dettaglio: "\(l.tipo.nome)" + (dati.isEmpty ? " · nessun dato letto" : " · \(dati)") + " · i dati letti si confermano con «Conferma»",
+                                    dettaglio: dettaglioArchiviazione(tipo: l.tipo, campi: campi),
                                     argomenti: ["cliente": c.id, "file": file.path, "testo": testo.path, "titolo": titolo, "tipo": l.tipo.rawValue,
                                                 "categoria": l.categoria.rawValue, "campi": json, "pagine": String(l.pagine.count),
                                                 "pagineOCR": String(l.pagineOCR)])]
-        if let s = scadenza(l.campi), s > oggi {
-            let quando = max(cal.startOfDay(for: oggi), cal.date(byAdding: .day, value: -giorniPrima, to: s) ?? s)
-            righe.append(AzioneConferma(strumento: RegistroStrumenti.attivitaNuova, app: .attivita, titolo: "Promemoria per la scadenza",
-                                        dettaglio: "«Scade «\(titolo)» il \(Formati.dataEstesa.string(from: s))» · \(c.nome) · il \(Formati.dataEstesa.string(from: quando))",
-                                        argomenti: ["cliente": c.id, "titolo": "Scade «\(titolo)» il \(Formati.dataEstesa.string(from: s))",
-                                                    "scadenza": RegistroStrumenti.isoData(quando)]))
+        if l.tipo == .estrattoConto {
+            let data = dataValore(l.campi, oggi: oggi)
+            for p in posizioniLette(l.pagine) {
+                righe.append(azionePosizione(p, cliente: c, esistente: posizioneEsistente(p, tra: posizioni, cliente: c.id), data: data, titoloDocumento: titolo))
+            }
         }
+        righe += righeDipendenti(campi: l.campi, categoria: l.categoria, titolo: titolo, cliente: c, oggi: oggi, cal: cal)
         return righe
     }
 }

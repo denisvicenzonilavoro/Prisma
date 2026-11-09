@@ -124,6 +124,25 @@ extension StatoShell {
 
     // MARK: - Il filo lungo
 
+    /// «Il filo lungo» sullo schermo (template: «Memoria della conversazione» e «Riassunto che Vera tiene da parte»): per una
+    /// conversazione lunga, quanta finestra occupa (stima dei token di Prisma) e, se delle battute sono già uscite, il
+    /// riassunto che Vera porta con sé. nil per le conversazioni brevi.
+    func filoConversazione(chiave: String) -> FiloMostrato? {
+        let (storia, senzaFilo) = storiaPerQwen(chiave)
+        guard storia.count >= FiloMostrato.minimoMessaggi else { return nil }
+        // La finestra scelta in Impostazioni › Vera (la stessa che Prisma passa al nucleo)
+        let finestra = FinestraVera.valida(dati.impostazioni.vera.finestra)
+        let istruzioni = NucleoVera.token(IstruzioniVera.chat)
+        let budget = max(0, finestra - istruzioni - NucleoVera.riservaRisposta - FiloMostrato.riservaUltimo)
+        let uscite = FiloLungoVera.uscite(storia, budget: budget)
+        let dentro = storia.suffix(max(0, storia.count - uscite.count))
+        let usati = istruzioni + dentro.reduce(0) { $0 + NucleoVera.token($1.testo) + 4 }
+        return FiloMostrato(messaggi: storia.count, token: min(finestra, usati), finestra: finestra, uscite: uscite.count,
+                            // In modalità cliente (con appunti riservati nella conversazione) il riassunto salvato non si mostra:
+                            // solo quello di Prisma delle battute visibili, come per Qwen
+                            riassunto: riassuntoPerQwen(chiave: chiave, uscite: uscite, senzaFilo: senzaFilo))
+    }
+
     /// Il riassunto delle battute uscite dalla finestra: quello di Qwen se copre già tutte le uscite, altrimenti quello di
     /// Prisma (le battute accorciate), con davanti il riassunto di Qwen delle più vecchie.
     func riassuntoVera(chiave: String, uscite: [MessaggioVera]) -> String? {
@@ -184,4 +203,57 @@ extension StatoShell {
         return RicercaVera.cerca(domanda, in: pezzi, vettori: vettori, domandaVettore: q, quanti: 4)
             .map { ($0.pezzo.fonte, String($0.pezzo.testo.prefix(700))) }
     }
+}
+
+/// «Le lezioni di Vera» (template «Impara dalle correzioni», riquadro marcato «Esempio»): le risposte di Qwen votate, quante
+/// approvate con 👍 al primo colpo e l'andamento nelle ultime settimane. Solo dai voti veri delle conversazioni: senza
+/// voti niente percentuale (mai cifre d'esempio).
+struct AndamentoApprovazioni: Equatable {
+    static let settimane = 8
+    /// Una settimana conta nell'andamento con almeno tante risposte votate.
+    static let minimoSettimana = 1
+
+    var votate: Int
+    var approvate: Int
+    /// Dalla più vecchia alla più recente: la quota approvata della settimana (nil senza voti).
+    var perSettimana: [Double?]
+
+    var percentuale: Int? { votate > 0 ? Int((Double(approvate) / Double(votate) * 100).rounded()) : nil }
+
+    static func da(_ messaggi: [MessaggioVera], oggi: Date, cal: Calendar = .current) -> AndamentoApprovazioni {
+        let votati = messaggi.filter { $0.autore == .vera && $0.voto != nil }
+        var quote: [Double?] = []
+        let fine = cal.startOfDay(for: cal.date(byAdding: .day, value: 1, to: oggi) ?? oggi)
+        for k in stride(from: Self.settimane, to: 0, by: -1) {
+            let da = cal.date(byAdding: .day, value: -7 * k, to: fine) ?? fine
+            let a = cal.date(byAdding: .day, value: 7, to: da) ?? da
+            let dentro = votati.filter { $0.data >= da && $0.data < a }
+            quote.append(dentro.count >= minimoSettimana ? Double(dentro.filter { $0.voto == true }.count) / Double(dentro.count) : nil)
+        }
+        return AndamentoApprovazioni(votate: votati.count, approvate: votati.filter { $0.voto == true }.count, perSettimana: quote)
+    }
+}
+
+extension StatoShell {
+    /// L'andamento delle risposte approvate, su tutte le conversazioni salvate (e quelle di adesso).
+    func approvazioniVera(oggi: Date = Date()) -> AndamentoApprovazioni {
+        let tutte = (dati.impostazioni.vera.conservaConversazioni ? Array(dati.conversazioni.values) : []) + Array(conversazioniTemporanee.values)
+        return AndamentoApprovazioni.da(Array(tutte.joined()), oggi: oggi)
+    }
+}
+
+/// Quello che la chat mostra del filo della conversazione.
+struct FiloMostrato: Equatable {
+    /// Da quanti messaggi in su la conversazione è «lunga» e il filo si vede.
+    static let minimoMessaggi = 12
+    /// Spazio stimato per l'ultimo messaggio (contesto, scheda, domanda).
+    static let riservaUltimo = 1_200
+
+    var messaggi: Int
+    var token: Int
+    var finestra: Int
+    var uscite: Int
+    var riassunto: String?
+
+    var frazione: Double { finestra > 0 ? min(1, Double(token) / Double(finestra)) : 0 }
 }

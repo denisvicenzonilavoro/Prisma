@@ -1038,6 +1038,8 @@ enum ProvaVera {
         // Tre livelli: le bozze restano a «Fallo tu», «Apri il PDF» apre il PDF di quella spiegazione
         ProvaCorrezioniTreLivelliVera.esegui(controlla)
         ProvaPassiVera.esegui(controlla)
+        // «Le 25 novità di Vera»: il pannello del template, tutte accese, ogni voce dove si prova (NovitaVera.swift)
+        ProvaNovitaVera.esegui(controlla)
         // «Ragiona a passi» collegato all'app: smistamento, messaggio con il piano, scheda «Conferma» (ProvaCollegaPassi.swift)
         ProvaCollegaPassi.esegui(controlla)
         // Le domande dei passi con il loro seguito, «Rifai i calcoli», il piano vuoto evitato

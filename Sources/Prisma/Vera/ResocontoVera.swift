@@ -118,6 +118,46 @@ enum ResocontoVera {
         return nuovo
     }
 
+    // MARK: - La sintesi per il cliente («Manda una sintesi a …»)
+
+    /// La sintesi da mandare al cliente: cosa abbiamo deciso e i prossimi passi, con le righe del resoconto così come sono
+    /// (nessuna cifra nuova). Niente presenti, niente «Da raccogliere» (sono appunti del consulente). Senza decisioni né
+    /// passi non c'è niente da mandare (nil). Il tu o il Lei e la firma li mette poi lo stile («Scrive come te»).
+    static func sintesiCliente(_ r: ResocontoIncontro, incontro i: Incontro, nome: String) -> String? {
+        func sezione(_ n: Int) -> [String] { r.sezioni.indices.contains(n) ? r.sezioni[n].righe : [] }
+        let deciso = sezione(2)
+        let passi = sezione(3)
+        guard !deciso.isEmpty || !passi.isEmpty else { return nil }
+        let primo = nome.split(separator: " ").first.map(String.init) ?? nome
+        var righe = ["Buongiorno \(primo),", "grazie per l'incontro di \(Formati.dataLunga.string(from: i.data)). Ecco in breve dove siamo arrivati."]
+        if !deciso.isEmpty {
+            righe.append("")
+            righe.append("Cosa abbiamo deciso:")
+            righe += deciso.map { "- \($0)" }
+        }
+        if !passi.isEmpty {
+            righe.append("")
+            righe.append("I prossimi passi:")
+            righe += passi.map { "- \($0)" }
+        }
+        righe.append("")
+        righe.append("Resto a disposizione per qualsiasi domanda.")
+        return righe.joined(separator: "\n")
+    }
+
+    /// Il consenso alla registrazione da mostrare nella scheda prima della firma: quello della nota vocale, oppure, se il
+    /// resoconto viene dal copilota, quello del dossier. nil quando il resoconto viene solo dagli appunti.
+    static func consensoDaMostrare(_ r: ResocontoIncontro, cliente c: Cliente?) -> ConsensoCopilota? {
+        if let x = r.consenso { return x }
+        return r.fonti.contains(.copilota) ? c?.consensoCopilota : nil
+    }
+
+    /// «Consenso alla registrazione: a voce, il 2 novembre 2026».
+    static func testoConsenso(_ x: ConsensoCopilota) -> String {
+        "Consenso alla registrazione: \(x.modo.nome.lowercased()), il \(Formati.dataEstesa.string(from: x.data))"
+            + (x.nota.isEmpty ? "" : " · \(x.nota)")
+    }
+
     /// Il PDF firmato: le sezioni come prospetto, con la firma, la data e da dove viene.
     static func contenuto(_ r: ResocontoIncontro, incontro i: Incontro, cliente: String) -> ContenutoProspetto {
         var blocchi: [BloccoProspetto] = []

@@ -373,18 +373,32 @@ extension Istantanee {
             ("552-vera-ragiona-a-passi-scuro", { s in preparaPassi(s, ragionamento: true) }),
             ("553-vera-passi-senza-ragionamento", { s in preparaPassi(s, ragionamento: false) }),
             ("553-vera-passi-senza-ragionamento-scuro", { s in preparaPassi(s, ragionamento: false) }),
+            // Un'altra richiesta complessa: un capitale una tantum da dividere tra due obiettivi
+            ("639-vera-passi-capitale", { s in preparaPassiCapitale(s) }),
+            ("639-vera-passi-capitale-scuro", { s in preparaPassiCapitale(s) }),
         ]
     }
 
     nonisolated static let frasePassiIstantanea = "Marco ha 400 € al mese: vuole proteggere Elena e continuare con gli studi di Tommaso. Come li divido?"
 
-    nonisolated static func preparaPassi(_ s: StatoShell, ragionamento: Bool) {
+    /// Marco con un secondo obiettivo di prova («Casa al mare», come nel template del sussurro) e 30.000 € da dividere.
+    nonisolated static func preparaPassiCapitale(_ s: StatoShell) {
+        var casa = Obiettivo(clienteId: "marco", titolo: "Casa al mare", area: .casa, importo: 60_000,
+                             scadenza: Calendar.current.date(byAdding: .year, value: 8, to: Date()) ?? Date())
+        casa.accantonato = 7_000
+        s.dati.obiettivi.append(casa)
+        preparaPassi(s, ragionamento: true, frase: frasePassiCapitale)
+    }
+
+    nonisolated static let frasePassiCapitale = "Marco ha 30.000 € da parte: meglio la casa al mare o l'università di Anna?"
+
+    nonisolated static func preparaPassi(_ s: StatoShell, ragionamento: Bool, frase: String = frasePassiIstantanea) {
         s.rispostePreparate = true
         s.disponibilitaLocale = .pronto
         s.clienteAttivoId = "marco"
         s.veraPortafoglio = false
         s.dati.impostazioni.vera.passi.mostraRagionamento = ragionamento
-        _ = s.chiediPassi(frasePassiIstantanea, chiave: "marco")
+        _ = s.chiediPassi(frase, chiave: "marco")
         s.apri(.vera)
     }
 }
