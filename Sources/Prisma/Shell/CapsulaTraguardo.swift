@@ -20,7 +20,7 @@ struct TileCapsulaTraguardo: View {
                 SigilloCapsula(colore: K.colore)
                     .scaleEffect(K.scalaSigilloTraguardo)
                     .frame(width: K.latoSigilloTraguardo, height: K.latoSigilloTraguardo)
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: K.spazioTesti) {
                     Text(TestiCapsule.titoloTraguardo(nome: StatoShell.nomeBreve(cliente)))
                         .carattereApple(K.titoloTraguardo)
                         .foregroundColor(Tema.Apple.Colore.inchiostro)

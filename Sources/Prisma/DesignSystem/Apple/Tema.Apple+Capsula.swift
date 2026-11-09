@@ -45,6 +45,10 @@ extension Tema.Apple.SalaRacconti {
         static let aiuto = Tema.Apple.Carattere.secondario
         static let coloreAiuto = Tema.Apple.Colore.inchiostro3
         static let sopraAiuto: CGFloat = 6
+        /// Il segnaposto allineato al testo del campo (il margine interno dell'editor).
+        static let rientroSegnaposto: CGFloat = 5
+        /// Fra il nome e la riga sotto, nelle righe e nelle tile.
+        static let spazioTesti: CGFloat = 2
 
         // MARK: «Si apre quando»
 

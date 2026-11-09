@@ -179,7 +179,7 @@ struct CapsulaDelTempo: View {
                 Text(TestiCapsule.segnaposto)
                     .carattereApple(K.testoCampo)
                     .foregroundColor(K.coloreSegnaposto)
-                    .padding(.leading, 5)
+                    .padding(.leading, K.rientroSegnaposto)
                     .allowsHitTesting(false)
             }
         }
@@ -208,11 +208,11 @@ struct CapsulaDelTempo: View {
     private func sceltaAttuale(_ obiettivi: [Obiettivo]) -> SceltaAperturaCapsula {
         if let scelta {
             if case .obiettivo(let id) = scelta, !obiettivi.contains(where: { $0.id == id }) {
-                return obiettivi.first.map { .obiettivo($0.id) } ?? .data
+                return obiettivi.first.map { SceltaAperturaCapsula.obiettivo($0.id) } ?? .data
             }
             return scelta
         }
-        return obiettivi.first.map { .obiettivo($0.id) } ?? .data
+        return obiettivi.first.map { SceltaAperturaCapsula.obiettivo($0.id) } ?? .data
     }
 
     // MARK: La colonna di destra
@@ -522,7 +522,7 @@ struct RigaCapsula: View {
         let _ = ContaCorpi.segna()
         HStack(spacing: K.spazioRiga) {
             AvatarCliente(iniziali: cliente.iniziali, tinta: cliente.tinta.colori, lato: K.avatarRiga)
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: K.spazioTesti) {
                 Text(titolo)
                     .carattereApple(K.nomeRiga)
                     .foregroundColor(K.coloreNomeRiga)
@@ -569,7 +569,7 @@ struct TileCapsulaPronta: View {
         let forma = RoundedRectangle(cornerRadius: K.raggioPronta, style: .continuous)
         HStack(spacing: K.spazioPronta) {
             AvatarCliente(iniziali: cliente.iniziali, tinta: cliente.tinta.colori, lato: K.avatarPronta)
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: K.spazioTesti) {
                 Text(titolo)
                     .carattereApple(K.nomePronta)
                     .foregroundColor(K.coloreNomeRiga)
