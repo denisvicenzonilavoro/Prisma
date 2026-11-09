@@ -146,9 +146,9 @@ extension ProvaBackup {
         }
         var uscitaStrana = try JSONSerialization.jsonObject(with: Archivio.codificatore.encode(uscite[1])) as? [String: Any] ?? [:]
         uscitaStrana["genere"] = "genereDelFuturo"
-        let usciteLette = try Archivio.decodificatore.decode(
-            ElencoTollerante<UscitaCliente>.self,
-            from: JSONSerialization.data(withJSONObject: [uscitaStrana, try JSONSerialization.jsonObject(with: Archivio.codificatore.encode(uscite[0]))])).elementi
+        let uscitaBuona = try JSONSerialization.jsonObject(with: Archivio.codificatore.encode(uscite[0]))
+        let usciteLette = try Archivio.decodificatore.decode(ElencoTollerante<UscitaCliente>.self,
+                                                             from: JSONSerialization.data(withJSONObject: [uscitaStrana, uscitaBuona] as [Any])).elementi
         guard usciteLette == [uscite[0]] else { return "giro 15: le uscite non si leggono con tolleranza" }
         var sinistroStrano = try JSONSerialization.jsonObject(with: Archivio.codificatore.encode(sinistro)) as? [String: Any] ?? [:]
         sinistroStrano["fase"] = "faseDelFuturo"
