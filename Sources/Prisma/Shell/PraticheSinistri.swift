@@ -293,9 +293,9 @@ private struct LineaSpedizione: View {
     @Environment(\.prismaCalmo) private var calmo
     @Environment(\.modoIstantanea) private var istantanea
     @State private var avanzamento: CGFloat = 0
-    @State private var faseScelta: FaseSinistro?
+    @State private var faseScelta: FaseSinistro? = nil
     @State private var giorno = Date()
-    @State private var importo: Double?
+    @State private var importo: Double? = nil
 
     private typealias S = Tema.Apple.Pratiche.Spedizione
 

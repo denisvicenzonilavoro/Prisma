@@ -13,7 +13,7 @@ struct ModuloSinistro: View {
     let sinistri: StatoSinistri
 
     @State private var bozza: Sinistro
-    @State private var tipo: String?
+    @State private var tipo: String? = nil
     private let nuovo: Bool
 
     private typealias M = Tema.Apple.Pratiche.ModuloSinistro
