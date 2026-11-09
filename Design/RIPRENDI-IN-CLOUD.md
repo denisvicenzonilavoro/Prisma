@@ -50,6 +50,7 @@ locale sul Mac del 7-8 novembre 2026. Le regole vincolanti restano in `CLAUDE.md
 | Branch | Cosa | Stato |
 |---|---|---|
 | `luce/unione-8-10` | Luce giri 8-10: Sala (lettera dal futuro, Lancia l'anno, Quanto vale avermi accanto), Studio › Spese (chilometri, spese e scadenze), Pratiche › Moduli (compila da solo); ognuno con revisione avversaria e correzioni | compila in debug sul Mac e le prove dei singoli giri erano verdi; manca la build completa con tutte le prove (la fa il workflow al primo push) |
+| `vera/completa` | Vera, le lacune del controllo di completezza: «Le 25 novità di Vera» (pannello del template), fase 4 documentata, il cliente in 30 secondi a voce e dalla scheda, lascia cadere qui verso Posizioni e anagrafica, sintesi del resoconto, istantanee di memoria, pollici e filo lungo, ragiona a passi su altre richieste, valutazione manuale della palestra (`Vera/Valutazione/`) | sintassi controllata nel cloud; manca la build completa con le prove (al primo push) |
 | `vera/fase-4` | Vera, fase 4: funzioni 3, 4, 5, 7, 14, 15, 17, 20, collegate a chat, viste e archivio | due giri di revisione con correzioni, prove verdi in debug sul Mac (db982bc); contiene già `main` con il giro 0; si unisce in main solo con build verde e il via dell'utente |
 
 

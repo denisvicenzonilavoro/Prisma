@@ -125,7 +125,7 @@ extension StatoShell {
         #if os(macOS)
         guard !solaLettura else { return }
         let eventi = MotoreMercato.toccati(archivio: dati.mercato, impostazioni: dati.impostazioni.mercato, posizioni: dati.posizioni,
-                                           clienti: dati.clienti, obiettivi: dati.obiettivi, oggi: oggi)
+                                           clienti: clientiAttivi, obiettivi: dati.obiettivi, oggi: oggi)
         let nuovi = MotoreMercato.avvisi(eventi: eventi, esistenti: dati.mercato.avvisi, oggi: oggi)
         if nuovi != dati.mercato.avvisi { dati.mercato.avvisi = nuovi }
         #endif

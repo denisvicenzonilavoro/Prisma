@@ -14,6 +14,7 @@ enum ProvaPalestraVera {
         livelli(scheda, controlla)
         lettura(scheda, controlla)
         giudizio(scheda, controlla)
+        valutazione(controlla)
         modelloFinto(scheda, controlla)
         #if os(macOS)
         allenamento(controlla)
@@ -172,6 +173,42 @@ enum ProvaPalestraVera {
         controlla(PalestraVera.campoParziale(#"{"giudizio":"buona","motivo":"","replica":"Ah, quindi non è tutto bl"#, chiave: "replica") == "Ah, quindi non è tutto bl"
                   && PalestraVera.campoParziale(#"{"giudizio":"buona""#, chiave: "replica") == nil,
                   "Palestra: la replica si vede mentre Qwen la scrive")
+    }
+
+    // MARK: - Valutazione manuale (Vera/Valutazione/palestra.json, §5.3.5)
+
+    /// I dieci casi della valutazione manuale: nel pacchetto, con il profilo inventato, e per ognuno le regole di Prisma
+    /// danno proprio il giudizio massimo scritto nel file (la parte di Qwen si compila a mano sul Mac).
+    private static func valutazione(_ controlla: (Bool, String) -> Void) {
+        guard let url = Bundle.main.resourceURL?.appendingPathComponent("Vera/Valutazione/palestra.json"),
+              let d = try? Data(contentsOf: url),
+              let j = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any],
+              let p = j["profilo"] as? [String: String],
+              let casi = j["casi"] as? [[String: Any]] else {
+            return controlla(false, "Palestra: valutazione manuale nel pacchetto (Vera/Valutazione/palestra.json)")
+        }
+        var profilo = ProfiloInventatoPalestra()
+        profilo.eta = p["eta"] ?? ""
+        profilo.lavoro = p["lavoro"] ?? ""
+        profilo.timori = p["timori"] ?? ""
+        let scheda = PalestraVera.scheda(inventato: profilo)
+        let ammesse = PalestraVera.cifreAmmesse(scheda: scheda, turni: [])
+        var sbagliati: [String] = []
+        var completi = 0
+        for c in casi {
+            guard let risposta = c["risposta"] as? String, let obiezione = c["obiezione"] as? String, !obiezione.isEmpty,
+                  (c["difficolta"] as? String).flatMap(DifficoltaPalestra.init(rawValue:)) != nil,
+                  let atteso = (c["regoleMassimo"] as? String).flatMap(GiudizioPalestra.init(rawValue:)),
+                  c["esito"] is [String: Any] else { continue }
+            completi += 1
+            let dato = PalestraVera.giudizioRegole(risposta, scheda: scheda, ammesse: ammesse).massimo
+            if dato != atteso { sbagliati.append("\(c["id"] ?? "?"): \(dato.rawValue) invece di \(atteso.rawValue)") }
+        }
+        controlla(casi.count == 10 && completi == 10 && (j["testiDiProva"] as? Bool) == true && !profilo.vuoto,
+                  "Palestra: dieci casi di valutazione manuale, completi e dichiarati di prova (\(completi) su \(casi.count))")
+        controlla(sbagliati.isEmpty, "Palestra: le regole di Prisma danno il giudizio massimo atteso nei casi di valutazione (\(sbagliati.joined(separator: " | ")))")
+        let gradi = Set(casi.compactMap { ($0["regoleMassimo"] as? String).flatMap(GiudizioPalestra.init(rawValue:)) })
+        controlla(gradi == Set(GiudizioPalestra.allCases), "Palestra: i casi di valutazione coprono «debole», «buona» e «ottima»")
     }
 
     // MARK: - Giudizio e punteggio

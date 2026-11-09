@@ -19,7 +19,8 @@ struct AppVera: View {
 
     private var cliente: Cliente? { stato.clienteAttivo }
     private var chiave: String { stato.veraPortafoglio ? VeraPortafoglio.chiave : stato.clienteAttivoId }
-    private var messaggi: [MessaggioVera] { stato.conversazione(chiave) }
+    // In modalità cliente senza i messaggi del sussurro (appunti del consulente)
+    private var messaggi: [MessaggioVera] { stato.messaggiPerLoSchermo(stato.conversazione(chiave)) }
 
     /// Il punto in fondo alla chat: a ogni parola la chat scorre lì.
     private static let fondo = "fondo-chat-vera"
@@ -49,6 +50,15 @@ struct AppVera: View {
         // «Lascia cadere qui» e la pagina della memoria di Vera (fase 2, RilascioVera.swift)
         .rilascioDocumentiVera()
         .paginaMemoriaVera(stato.memoriaVera)
+        // Fase 4: la pagina delle routine e la pagina del tagliando dei dati sopra la finestra di Vera
+        // (VisteRoutineVera.swift, VisteTagliandoVera.swift)
+        .paginaRoutineVera()
+        .paginaTagliandoVera()
+        // Fase 5: «Vera su misura» e «I motori di Vera» (VisteSuMisuraVera.swift, VisteMotoriVera.swift)
+        .paginaSuMisuraVera()
+        .paginaMotoriVera()
+        // «Le 25 novità di Vera» (NovitaVera.swift)
+        .paginaNovitaVera()
         // Parte sia alla nascita della vista (Vera era chiusa o ridotta) sia a ogni nuova richiesta
         .task(id: stato.richiestaDettatura) { await accendiDettatura() }
         // Il FocusState resta in pari con makeFirstResponder(nil), altrimenti il prossimo «true» non cambia niente
@@ -115,6 +125,10 @@ struct AppVera: View {
                     schedaMotore
                     schedaOggi
                     schedaAmbito(larghezza: interna - col.paddingScheda.leading - col.paddingScheda.trailing)
+                    // Il tagliando dei dati (fase 4): salute dell'archivio e cose da sistemare, apre la pagina (fuori dalla modalità cliente)
+                    SchedaTagliandoColonnaVera()
+                    // «Lascia cadere qui»: i documenti archiviati oggi e dove sono andati (VisteLasciaCadereVera.swift)
+                    ArchiviatiOggiVeraVista()
                     if let t = urgente { schedaAvviso(t) }
                     if let c = cliente, !stato.veraPortafoglio { quadro(c) }
                 }
@@ -155,6 +169,21 @@ struct AppVera: View {
                     .fixedSize()
                     .help("Chiede di nuovo a Ollama se Qwen è pronto")
                     .padding(.top, col.verificaSopra)
+            }
+            // Fase 5: come smista Vera, e la pagina dei motori (Due velocità, Il cervello grande); mai in modalità cliente
+            if !stato.inModoCliente {
+                HStack(spacing: col.spazioSpia) {
+                    Text("Smista: regole e Qwen · Apple spento")
+                        .carattereApple(col.notaMotore)
+                        .foregroundColor(col.coloreNota)
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                    Button("Motori") { stato.apriPaginaMotori() }
+                        .buttonStyle(.appleSobrio)
+                        .fixedSize()
+                        .help("Due velocità e il cervello grande")
+                }
+                .padding(.top, col.verificaSopra)
             }
         }
         .multilineTextAlignment(.leading)
@@ -325,6 +354,8 @@ struct AppVera: View {
     private var chat: some View {
         let ch = Tema.Apple.Vera.Chat.self
         return VStack(spacing: 0) {
+            // «Il filo lungo»: nelle conversazioni lunghe, quanta finestra occupa e il riassunto tenuto da parte
+            FiloConversazioneVista(chiave: chiave)
             messaggiVista
                 .frame(maxHeight: .infinity)
             conVoce { v in notaVoce(v) }
@@ -550,7 +581,7 @@ struct AppVera: View {
                 .padding(ch.paddingVoce)
                 .background { Capsule(style: .continuous).fill(ch.fondoVoce) }
                 if v.parla {
-                    Button { stato.voceVera.zitta() } label: { Label("Interrompi", systemImage: "speaker.slash") }
+                    Button { stato.fermaLetturaTrenta(); stato.voceVera.zitta() } label: { Label("Interrompi", systemImage: "speaker.slash") }
                         .buttonStyle(.apple)
                         .fixedSize()
                         .help("Vera smette di parlare")
@@ -600,6 +631,10 @@ struct AzioniVera: View {
                 .opacity(fermo ? Tema.Apple.Vera.Campo.opacitaSpento : 1)
                 .help(stato.veraPortafoglio ? "Sul portafoglio Vera lavora sempre con le cifre di Prisma"
                                            : "Lavoro: i numeri solo da Prisma · Conversazione: domande di ogni tipo")
+            // «Le routine» (fase 4): apre la pagina delle routine
+            PulsanteRoutineVera()
+            // «Le 25 novità di Vera» (NovitaVera.swift), non in modalità cliente
+            PulsanteNovitaVera()
             Button { stato.nuovaConversazione() } label: {
                 Label("Nuova conversazione", systemImage: "square.and.pencil")
             }
@@ -719,6 +754,7 @@ struct NuvolaVera: View {
     var avanza: (() -> Void)? = nil
 
     @Environment(\.prismaStatoFinale) private var fermo
+    @Environment(StatoShell.self) private var stato
     @State private var testoScritto = false
 
     init(messaggio: MessaggioVera, nomeUtente: String, azioniCliente: Bool = true,
@@ -740,6 +776,16 @@ struct NuvolaVera: View {
         self.quadro = quadro
         self.nuova = nuova
         self.avanza = avanza
+    }
+
+    /// L'elenco del mercato da mostrare: in modalità cliente solo la riga del cliente presente (gli altri clienti
+    /// spariscono, anche dalle conversazioni già salvate) e niente «e altri N clienti».
+    static func mercatoVisibile(_ esito: EsitoMercatoVera?, modoCliente: String?) -> EsitoMercatoVera? {
+        guard var e = esito else { return nil }
+        guard let id = modoCliente else { return e }
+        e.toccati = e.toccati.filter { $0.clienteId == id }
+        e.oltre = 0
+        return e
     }
 
     var body: some View {
@@ -803,8 +849,32 @@ struct NuvolaVera: View {
                     if let r = messaggio.clientela {
                         TabellaClientelaVista(risultato: r)
                     }
+                    // Fase 4, sopra la scheda «Conferma» che ne raccoglie le azioni: i passi spuntati e il risultato della
+                    // routine, la settimana con gli orari proposti e lo spostamento in blocco, il piano a passi
+                    if let e = messaggio.esitoRoutine {
+                        RoutineEsitoVista(esito: e, messaggio: messaggio.id, anima: nuova)
+                    }
+                    if let o = messaggio.agendaOrari, !o.proposte.isEmpty {
+                        AgendaOrganizzaOrariVista(messaggio: messaggio.id, ricerca: o, scelto: messaggio.agendaOrariScelto)
+                    }
+                    // Annullato, lasciato stare o sostituito: la griglia mostra solo gli impegni di adesso (pillola neutra)
+                    if let s = messaggio.agendaSpostamento, !s.mosse.isEmpty {
+                        AgendaOrganizzaSpostamentoVista(spostamento: s, eseguito: messaggio.conferma?.stato == .eseguita, scheda: messaggio.conferma)
+                    }
+                    if let p = messaggio.pianoPassi {
+                        PianoPassiVeraVista(piano: p, messaggio: messaggio.id)
+                    }
                     // «Fallo tu»: la scheda di conferma, niente si esegue prima di «Conferma»
-                    if let c = messaggio.conferma {
+                    // In modalità cliente non si vedono le schede del sussurro e del mercato, né quelle di una routine,
+                    // di un piano o di azioni su altri clienti (`schedaVisibileSulloSchermo`)
+                    // «Lascia cadere qui»: di chi è il documento (più clienti possibili) e i dati letti da correggere
+                    if messaggio.titolo == StatoShell.titoloSceltaCaduto {
+                        SceltaClienteCadutoVista(messaggio: messaggio.id)
+                    }
+                    if let c = messaggio.conferma, c.origine == .documento, c.stato == .daConfermare, stato.schedaVisibileSulloSchermo(messaggio) {
+                        CampiLettiVeraVista(messaggio: messaggio.id, scheda: c)
+                    }
+                    if let c = messaggio.conferma, stato.schedaVisibileSulloSchermo(messaggio) {
                         SchedaConfermaVeraVista(scheda: c, messaggio: messaggio.id)
                             .padding(.top, b.sopraScheda)
                     }
@@ -814,7 +884,7 @@ struct NuvolaVera: View {
                     }
                     // Fase 2: «Il cliente in 30 secondi» e gli articoli della biblioteca delle norme
                     if let t = messaggio.trenta {
-                        TrentaSecondiVista(scheda: t)
+                        TrentaSecondiVista(scheda: t, messaggio: messaggio.id)
                     }
                     if let n = messaggio.norme {
                         NormeVeraVista(risposta: n)
@@ -835,12 +905,30 @@ struct NuvolaVera: View {
                     if let r = messaggio.resoconto {
                         ResocontoVeraVista(incontroId: r)
                     }
+                    // Fase 4: il tagliando dei dati ("" = tutto l'archivio, altrimenti l'id del cliente), il mercato per i
+                    // tuoi clienti, il tuo stile e i tre livelli
+                    if let t = messaggio.tagliando {
+                        TagliandoChatVista(clienteId: t)
+                    }
+                    if let e = Self.mercatoVisibile(messaggio.mercatoClienti, modoCliente: stato.modoCliente), !e.toccati.isEmpty {
+                        SchedaMercatoClientiVeraVista(esito: e, messaggio: messaggio.id)
+                    }
+                    if let s = messaggio.stileVera {
+                        SchedaStileVeraChat(scheda: s)
+                    }
+                    if let t = messaggio.treLivelli {
+                        TreLivelliVeraVista(id: t, livello: messaggio.treLivelliLivello ?? .tecnico)
+                    }
                     if let proposte = messaggio.proposte, !proposte.isEmpty {
                         elencoProposte(proposte)
                             .padding(.top, b.sopraScheda)
                     }
                     azioni
                         .padding(.top, b.sopraAzioni)
+                    // Fase 5, «Il cervello grande» (regola bloccata): sotto ogni risposta chi l'ha scritta, anche sotto le
+                    // risposte delle regole (fuori dalla condizione dei pollici)
+                    EtichettaMotoreVista(messaggio: messaggio)
+                        .padding(.top, Tema.Apple.EtichettaMotore.sopra)
                 }
                 .entrataSchedaCalcoli(nuova)
             }
@@ -985,5 +1073,28 @@ struct OndaVera: View {
     private func altezza(_ h: CGFloat) -> CGFloat {
         if let livello { return max(3, h * (0.15 + 0.85 * CGFloat(livello))) }
         return attiva ? h : max(3, h * 0.35)
+    }
+}
+
+/// In modalità cliente l'elenco del mercato sotto una risposta di Vera mostra solo il cliente presente, senza
+/// «e altri N clienti»; fuori dalla modalità cliente resta intero. Da chiamare in `Prisma --prova-vera`.
+enum ProvaMercatoModoCliente {
+    static func esegui(_ controlla: (Bool, String) -> Void) {
+        let s = StatoShell(persistente: false)
+        guard case .evento(let e) = MercatoClientiVera.riconosci("Le borse hanno perso l'8% in una settimana", oggi: Date(), cal: .current) else {
+            return controlla(false, "Mercato in modalità cliente: evento borse non riconosciuto")
+        }
+        var esito = s.esitoMercatoClientiVera(e)
+        esito.oltre = 2
+        guard esito.toccati.count >= 2, let primo = esito.toccati.first?.clienteId else {
+            return controlla(false, "Mercato in modalità cliente: servono almeno due clienti toccati dai dati di prova")
+        }
+        controlla(NuvolaVera.mercatoVisibile(esito, modoCliente: nil) == esito,
+                  "Mercato in modalità cliente: fuori dalla modalità cliente l'elenco resta intero")
+        let filtrato = NuvolaVera.mercatoVisibile(esito, modoCliente: primo)
+        controlla(filtrato?.toccati.map(\.clienteId) == [primo] && filtrato?.oltre == 0,
+                  "Mercato in modalità cliente: si vede solo il cliente presente, senza «e altri N clienti»")
+        controlla(NuvolaVera.mercatoVisibile(esito, modoCliente: "nessuno-toccato")?.toccati.isEmpty == true,
+                  "Mercato in modalità cliente: un cliente non toccato non vede nessuna riga")
     }
 }

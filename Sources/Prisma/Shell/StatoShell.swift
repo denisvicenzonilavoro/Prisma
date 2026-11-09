@@ -287,6 +287,12 @@ enum VoceConfronto: Hashable {
 
     /// Vera parla del portafoglio (tutti i clienti) invece che del cliente attivo.
     var veraPortafoglio = false { didSet { if veraPortafoglio && modoCliente != nil { veraPortafoglio = false } } }
+    /// «Le routine» di Vera (fase 4, CollegaRoutineShell.swift): la pagina delle routine aperta sopra Vera e la routine scelta.
+    var paginaRoutineVera = false
+    var routineSelezionataVera: String?
+    /// «Il mercato per i tuoi clienti» (fase 4, CollegaMercatoClientiShell.swift): la scena aperta sopra Mercato, con
+    /// l'id dell'evento da mostrare ("" = il primo); nil = chiusa. Non si salva.
+    var scenaMercatoClientiVera: String? = nil
 
     // Ricerca (⌘K)
     var testoRicerca = ""
@@ -336,6 +342,12 @@ enum VoceConfronto: Hashable {
     @ObservationIgnored var rispostaAVoce = false
     /// Conversazione a voce in corso: dopo ogni risposta Vera torna ad ascoltare, finché non le dici «basta».
     var conversazioneAVoce = false { didSet { aggiornaMenu() } }
+    /// «Il cliente in 30 secondi» letto a voce (TrentaSecondiShell.swift): quale messaggio, quale sezione sta dicendo
+    /// Vera, e quante volte è ripartito (l'anello del conto alla rovescia riparte a ogni «Ascolta di nuovo»).
+    var letturaTrenta: LetturaTrentaSecondi?
+    /// «Lascia cadere qui» con più clienti possibili (LasciaCadereShell.swift): per ogni risposta di Vera, il documento
+    /// letto in attesa che il consulente scelga di chi è. Solo in memoria, come la copia nella cartella temporanea.
+    var scelteClienteCaduto: [String: SceltaClienteCaduto] = [:]
     /// Qwen sul Mac (Ollama): pronto o perché no. Si aggiorna con `verificaMotoreLocale()`.
     var disponibilitaLocale = DisponibilitaVera.nonDisponibile("Ollama non ancora verificato.")
     /// La risposta di Vera mentre arriva (osservata solo dalla bolla in arrivo).
@@ -409,6 +421,33 @@ enum VoceConfronto: Hashable {
     private let salvataggio = SalvataggioArchivio()
     /// La memoria di Vera (fase 2 del brief): ricordi, lezioni e riassunti cifrati (StatoMemoriaVera.swift).
     @ObservationIgnored lazy var memoriaVera = StatoMemoriaVera(persistente: persistente)
+    /// Il tagliando dei dati (fase 4, CollegaTagliandoShell.swift): le voci del controllo di adesso (in memoria, si
+    /// rifanno quando servono; nell'archivio resta solo il registro) e la pagina sopra la chat di Vera.
+    var esitoTagliando: EsitoTagliando?
+    /// Con quale `versioneCalcoli` è stato fatto `esitoTagliando`: se i dati sono cambiati dopo (a pagina chiusa),
+    /// `esitoTagliandoAggiornato()` rifà l'elenco prima di usarlo. Non osservata: serve solo alle azioni.
+    @ObservationIgnored var versioneEsitoTagliando: Int?
+    var paginaTagliandoAperta = false
+    /// Fase 5, «Vera su misura» (CollegaSuMisuraShell.swift): la pagina sopra la chat, l'anteprima degli esempi anonimi,
+    /// il lavoro in corso (importazione o esame: a che punto è), se è l'esame (la chat aspetta: un modello alla volta)
+    /// e l'esito dell'ultimo esame.
+    var paginaSuMisuraAperta = false
+    var anteprimaSuMisuraAperta = false
+    var lavoroSuMisura: String?
+    var esameSuMisuraInCorso = false
+    var esitoEsameSuMisura: EsitoEsame?
+    @ObservationIgnored var compitoSuMisura: Task<Void, Never>?
+    /// Fase 5, «I motori di Vera» (CollegaMotoriShell.swift): la pagina con «Due velocità» e «Il cervello grande».
+    var paginaMotoriAperta = false
+    /// «Le 25 novità di Vera» (NovitaVera.swift): il pannello del template sopra la chat.
+    var paginaNovitaVeraAperta = false
+    var schedaMotori = SchedaMotoriVera.dueVelocita
+    /// Le richieste smistate di oggi con il loro tempo (solo in memoria).
+    let dueVelocita = StatoDueVelocita()
+    /// La domanda in corso e quando è partita: la prima risposta di Vera ne registra corsia e secondi.
+    @ObservationIgnored var inizioRichiestaVera: (testo: String, quando: Date)?
+    /// Il prossimo turno notturno del tagliando: un lavoro all'ora dell'orologio, niente Timer.
+    @ObservationIgnored var lavoroTagliando: DispatchWorkItem?
     /// I vettori della ricerca per significato, in una cache cifrata (RicercaVera.swift).
     @ObservationIgnored lazy var indiceVera = IndiceVera(persistente: persistente) { [weak self] in self?.memoriaVera.chiaveMemoria() }
     /// La biblioteca delle norme (funzione 13, BibliotecaVera.swift).
@@ -541,6 +580,8 @@ enum VoceConfronto: Hashable {
         aggiornaElencoBackup()
         // Promemoria del Mac: solo qui, con l'archivio sul disco (mai nelle istantanee e nelle prove)
         avviaPromemoria()
+        // «Le routine» programmate di Vera: un controllo ogni dieci minuti, solo con Prisma aperto (CollegaRoutineShell.swift)
+        avviaControlloRoutine()
         #if os(macOS)
         // Stop del Mac e risveglio (RipresaSistema.swift)
         avviaRipresa()
@@ -573,6 +614,8 @@ enum VoceConfronto: Hashable {
             }
         }
         avviaNotifiche()
+        // Il tagliando dei dati: il controllo dovuto (poco dopo l'avvio) e il prossimo turno notturno (CollegaTagliandoShell.swift)
+        avviaTagliando()
         // Lo sblocco chiesto mentre l'archivio arrivava
         if let velocita = sbloccoInAttesa {
             sbloccoInAttesa = nil
@@ -583,6 +626,7 @@ enum VoceConfronto: Hashable {
     deinit {
         // Il run loop trattiene il timer: senza questo resterebbe acceso dopo uno stato delle prove o delle istantanee
         timerNotifiche?.invalidate()
+        lavoroTagliando?.cancel()
     }
 
     /// Il menu Vai segue blocco, modalità cliente, presentazione e conversazione a voce, senza osservare StatoShell:
@@ -635,6 +679,10 @@ enum VoceConfronto: Hashable {
                 cambiaVersioneComuneClienti()
             }
             veraCambiata = dati.impostazioni.vera != prima.vera
+            #if os(macOS)
+            // Il turno notturno del tagliando segue le sue impostazioni (anche cambiate da un ripristino)
+            if dati.impostazioni.tagliando != prima.tagliando { programmaTagliando() }
+            #endif
         case .tutto(let prima):
             // Gli array non toccati condividono la memoria con i vecchi: confrontarli costa O(1)
             let ora = dati.istantanea
@@ -646,6 +694,9 @@ enum VoceConfronto: Hashable {
                 cambiaVersioneComuneClienti()
             }
             veraCambiata = ora.impostazioni.vera != prima.impostazioni.vera
+            #if os(macOS)
+            if ora.impostazioni.tagliando != prima.impostazioni.tagliando { programmaTagliando() }
+            #endif
             if ora.clienteAttivoId != prima.clienteAttivoId { clienteAttivoCambiato.send(ora.clienteAttivoId) }
         }
         if veraCambiata {
@@ -690,8 +741,12 @@ enum VoceConfronto: Hashable {
 
     // MARK: - Lettura
 
-    // In modalità cliente le app vedono solo il cliente davanti a te: gli altri non compaiono da nessuna parte
-    var clienti: [Cliente] { modoCliente.map { id in dati.clienti.filter { $0.id == id } } ?? dati.clienti }
+    // In modalità cliente le app vedono solo il cliente davanti a te: gli altri non compaiono da nessuna parte.
+    // Le schede unite a un'altra dal tagliando (`Cliente.unitaIn`) restano in archivio ma non compaiono più fra i clienti.
+    var clienti: [Cliente] { modoCliente.map { id in dati.clienti.filter { $0.id == id } } ?? clientiAttivi }
+    /// I clienti veri e propri: tutto l'archivio meno le schede unite a un'altra («Unisci le schede» del tagliando).
+    /// `dati.clienti` completo resta per archivio, backup, «Annulla» e ricerca per id.
+    var clientiAttivi: [Cliente] { dati.clienti.filter { $0.unitaIn == nil } }
     var appuntamenti: [Appuntamento] { modoCliente.map { id in dati.appuntamenti.filter { $0.clienteId == id } } ?? dati.appuntamenti }
     var attivita: [Attivita] { modoCliente.map { id in dati.attivita.filter { $0.clienteId == id } } ?? dati.attivita }
     var nomeUtente: String { dati.impostazioni.nomeUtente }
@@ -777,6 +832,7 @@ enum VoceConfronto: Hashable {
         compitoVera?.cancel()
         compitoVera = nil
         veraInCorso = false
+        let nome = cliente(id)?.nome
         dati.clienti.removeAll { $0.id == id }
         // Studio › Spese («Luce» giro 9): le visite concluse restano, senza nome né testi, per i km dei mesi già chiusi
         let tolte = MotoreChilometri.visiteDaTenere(clienteId: id, appuntamenti: dati.appuntamenti, kmClienti: dati.kmClienti)
@@ -796,6 +852,17 @@ enum VoceConfronto: Hashable {
         dati.promesse.removeAll { $0.clienteId == id }
         dati.confrontiDocumenti.removeAll { $0.clienteId == id }
         dati.coperture.removeAll { $0.clienteId == id }
+        // Vera, fase 4: i lanci delle routine, le voci chiuse del sussurro e le spiegazioni in tre livelli del cliente
+        dati.routine.esiti.removeAll { $0.clienteId == id }
+        // …e il cliente esce dai lanci di tutto il portafoglio (la settimana) e dalle altre conversazioni
+        if dati.routine.esiti.contains(where: { Self.citaCliente($0, id: id, nome: nome) }) {
+            var routine = dati.routine
+            routine.esiti = routine.esiti.map { Self.senzaCliente($0, id: id, nome: nome) }
+            dati.routine = routine
+        }
+        togliClienteDalleConversazioni(id, nome: nome)
+        dati.sussurriChiusi.removeAll { $0.clienteId == id }
+        dati.spiegazioniTreLivelli.removeAll { $0.clienteId == id }
         dati.conversazioni[id] = nil
         dati.commenti.removeAll { $0.clienteId == id }
         dati.note.removeAll { $0.clienteId == id }
@@ -824,11 +891,97 @@ enum VoceConfronto: Hashable {
         }
         for d in dati.documenti where d.clienteId == id { rimuoviFile(d) }
         dati.documenti.removeAll { $0.clienteId == id }
+        // Il profilo di stile: l'eccezione «tu o Lei» del cliente tolto non resta nelle impostazioni (né nei backup né
+        // nell'istantanea di «Prisma ovunque»). Si cambia solo il valore: l'origine della regola resta com'era.
+        if var r = dati.impostazioni.stileVera.cortesia, r.valore.perCliente[id] != nil {
+            r.valore.perCliente[id] = nil
+            dati.impostazioni.stileVera.cortesia = r
+        }
+        // Le schede unite a quella tolta tornano schede normali: altrimenti resterebbero escluse per sempre dal tagliando
+        // e dai clienti, con un «Annulla» dell'unione ormai impossibile
+        if dati.clienti.contains(where: { $0.unitaIn == id }) {
+            var elenco = dati.clienti
+            for i in elenco.indices where elenco[i].unitaIn == id { elenco[i].unitaIn = nil }
+            dati.clienti = elenco
+        }
         if modoCliente == id { modoCliente = nil }
         if dati.clienteAttivoId == id {
-            dati.clienteAttivoId = dati.clienti.first?.id ?? ""
+            dati.clienteAttivoId = clientiAttivi.first?.id ?? ""
         }
         azzeraNote()
+    }
+
+    /// Vera, fase 4: nelle conversazioni che restano (il portafoglio, le altre) il cliente tolto non resta negli esiti
+    /// strutturati: l'elenco del mercato, i lanci delle routine, gli orari e gli spostamenti dell'agenda, il tagliando e
+    /// le azioni delle schede «Conferma». Una sola scrittura per archivio, così Observation avvisa una volta.
+    func togliClienteDalleConversazioni(_ id: String, nome: String?) {
+        func pulisci(_ elenchi: [String: [MessaggioVera]]) -> [String: [MessaggioVera]]? {
+            var cambiato = false
+            var nuovi = elenchi
+            for (chiave, elenco) in elenchi {
+                let pulito = elenco.map { Self.senzaCliente($0, id: id, nome: nome) }
+                if pulito != elenco { nuovi[chiave] = pulito; cambiato = true }
+            }
+            return cambiato ? nuovi : nil
+        }
+        if let nuove = pulisci(dati.conversazioni) { dati.conversazioni = nuove }
+        if let nuove = pulisci(conversazioniTemporanee) { conversazioniTemporanee = nuove }
+    }
+
+    /// Un'azione della scheda «Conferma» che riguarda il cliente (anche come scheda principale o doppione di un'unione).
+    static func azioneDelCliente(_ a: AzioneConferma, id: String) -> Bool {
+        a.argomenti["cliente"] == id || a.argomenti["principale"] == id || a.argomenti["doppione"] == id
+    }
+
+    /// Una riga di testo che nomina il cliente per intero («Marco Bianchi»): solo con un nome di almeno tre lettere.
+    static func nominaCliente(_ testo: String, nome: String?) -> Bool {
+        guard let nome = nome?.trimmingCharacters(in: .whitespaces), nome.count >= 3 else { return false }
+        return testo.range(of: nome, options: [.caseInsensitive, .diacriticInsensitive]) != nil
+    }
+
+    static func citaCliente(_ e: EsitoRoutine, id: String, nome: String?) -> Bool {
+        senzaCliente(e, id: id, nome: nome) != e
+    }
+
+    /// Il lancio senza le righe, i passi, i pulsanti e le azioni del cliente tolto.
+    static func senzaCliente(_ e: EsitoRoutine, id: String, nome: String?) -> EsitoRoutine {
+        var e = e
+        e.azioni.removeAll { azioneDelCliente($0, id: id) }
+        e.risultato.pulsanti.removeAll { $0.clienteId == id }
+        e.risultato.righe.removeAll { nominaCliente($0, nome: nome) }
+        e.passi.removeAll { nominaCliente($0.titolo, nome: nome) || nominaCliente($0.dettaglio, nome: nome) }
+        return e
+    }
+
+    /// Il messaggio di Vera senza gli esiti di fase 4 che riguardano il cliente tolto.
+    static func senzaCliente(_ m: MessaggioVera, id: String, nome: String?) -> MessaggioVera {
+        var m = m
+        if var s = m.conferma, s.azioni.contains(where: { azioneDelCliente($0, id: id) }) {
+            s.azioni.removeAll { azioneDelCliente($0, id: id) }
+            m.conferma = s.azioni.isEmpty ? nil : s
+        }
+        if var esito = m.mercatoClienti, esito.toccati.contains(where: { $0.clienteId == id }) {
+            esito.toccati.removeAll { $0.clienteId == id }
+            if esito.toccati.isEmpty {
+                m.mercatoClienti = nil
+                m.mercatoBozze = nil
+            } else {
+                m.mercatoClienti = esito
+            }
+        }
+        if let e = m.esitoRoutine {
+            m.esitoRoutine = e.clienteId == id ? nil : senzaCliente(e, id: id, nome: nome)
+        }
+        if m.agendaOrari?.richiesta.clienteId == id {
+            m.agendaOrari = nil
+            m.agendaOrariScelto = nil
+        }
+        if var sp = m.agendaSpostamento, sp.mosse.contains(where: { $0.clienteId == id }) {
+            sp.mosse.removeAll { $0.clienteId == id }
+            m.agendaSpostamento = sp.mosse.isEmpty && sp.restano.isEmpty ? nil : sp
+        }
+        if m.tagliando == id { m.tagliando = nil }
+        return m
     }
 
     // MARK: - Note
@@ -1504,19 +1657,20 @@ enum VoceConfronto: Hashable {
     /// Salva il PDF nella cartella Documenti del cliente: entra nei backup e si ritrova in Documenti.
     /// `cliente`: di chi è il documento (il tavolo con l'iPad passa il cliente presente); nil = il cliente attivo.
     @discardableResult
-    func archiviaProspetto(_ pdf: Data, documento: DocumentoStampabile, cliente perCliente: String? = nil) -> String? {
+    func archiviaProspetto(_ pdf: Data, documento: DocumentoStampabile, cliente perCliente: String? = nil,
+                           sostituisci: Bool = true) -> String? {
         let cliente = perCliente ?? clienteAttivoId
         let titolo = "\(documento.genere) · \(documento.titolo)"
-        return archiviaPDF(pdf, titolo: titolo, tipo: documento.tipo, cliente: cliente)
+        return archiviaPDF(pdf, titolo: titolo, tipo: documento.tipo, cliente: cliente, sostituisci: sostituisci)
     }
 
     /// Salva un PDF fatto da Prisma nei Documenti del cliente (prospetti, report, moduli compilati: «Luce» giro 10).
-    /// Lo stesso documento archiviato di nuovo nello stesso giorno sostituisce la copia di prima.
+    /// Lo stesso documento archiviato di nuovo nello stesso giorno sostituisce la copia di prima (se richiesto).
     @discardableResult
     func archiviaPDF(_ pdf: Data, titolo: String, tipo: Documento.Tipo, cliente: String, posizioneId: String? = nil,
-                     modulo: CompilazioneModulo? = nil) -> String? {
+                     modulo: CompilazioneModulo? = nil, sostituisci: Bool = true) -> String? {
         // Solo lo stesso documento: stesso cliente, stesso titolo, stessa proposta (un modulo per un'altra proposta resta)
-        if let vecchio = dati.documenti.first(where: { $0.clienteId == cliente && $0.titolo == titolo && $0.posizioneId == posizioneId
+        if sostituisci, let vecchio = dati.documenti.first(where: { $0.clienteId == cliente && $0.titolo == titolo && $0.posizioneId == posizioneId
             && Calendar.current.isDateInToday($0.importatoIl) }) {
             eliminaDocumento(vecchio.id)
         }
@@ -2051,6 +2205,8 @@ enum VoceConfronto: Hashable {
     /// Vera risponde con Qwen. Se l'ultima verifica non l'ha trovato pronto, prima chiede di nuovo a Ollama
     /// (magari è stato appena aperto); se ancora non c'è, Vera lo dice e non risponde.
     func conQwen(cliente id: String, _ poi: @escaping ((MotoreVera & MotoreGenerativo)) -> Void) {
+        // L'esame di Vera su misura usa il modello (un modello alla volta sul Mac da 8 GB): la chat aspetta
+        if esameSuMisuraInCorso { return esameSuMisuraInPausa(cliente: id) }
         if let m = generativo {
             poi(m)
             return
@@ -2121,6 +2277,8 @@ enum VoceConfronto: Hashable {
             conversazioniTemporanee[id] = elenco
         }
         if m.autore == .vera, parla { parlaRisposta(m) }
+        // «Due velocità»: la corsia e il tempo della richiesta (CollegaMotoriShell.swift)
+        if m.autore == .vera { registraRichiestaVera(m) }
     }
 
     /// La modalità che la testata di Vera mostra: quella scelta, altrimenti quella dell'ultima risposta (lavoro se
@@ -2138,6 +2296,7 @@ enum VoceConfronto: Hashable {
         scenarioInSospeso = nil
         compitoVera?.cancel()
         compitoVera = nil
+        inizioRichiestaVera = nil
         // Il compito fermato non torna a rimettere Vera libera: lo si fa qui
         veraInCorso = false
         dati.conversazioni[id] = nil
@@ -2154,6 +2313,8 @@ enum VoceConfronto: Hashable {
         guard !testo.isEmpty, !veraInCorso else { return false }
         // La domanda parte da tastiera o da uno spunto: la dettatura del Mac si spegne (anche per i comandi)
         if dettaturaAttiva { chiudiDettatura() }
+        // «Due velocità»: il tempo parte qui. Il portafoglio è sempre lavoro (le cifre di Prisma): mai la corsia veloce
+        iniziaRichiestaVera(testo)
         // Comandi, «sì»/«no» alla scheda, domande su tutti i clienti, «Fallo tu» (FalloTuShell.swift)
         if spunto == nil, smista, smistaVera(testo, chiave: VeraPortafoglio.chiave) { return true }
         // «E se Marco va in pensione a 63 anni?»: lo scenario di un cliente nominato lo calcola Prisma (ScenariVeraShell.swift)
@@ -2359,13 +2520,17 @@ enum VoceConfronto: Hashable {
         guard !testo.isEmpty, !veraInCorso else { return false }
         // La domanda parte da tastiera o da uno spunto: la dettatura del Mac si spegne (anche per i comandi)
         if dettaturaAttiva { chiudiDettatura() }
+        // «Due velocità» (fase 5): prima le regole (qui sotto), poi il modello Apple (spento), infine Qwen; il tempo parte qui
+        iniziaRichiestaVera(testo)
         // Comandi, «sì»/«no» alla scheda, domande su tutti i clienti, «Fallo tu» (FalloTuShell.swift)
         if spunto == nil, smista, smistaVera(testo, chiave: clienteAttivoId) { return true }
         // «E se Marco va in pensione a 63 anni?»: lo scenario lo calcola Prisma, Vera lo racconta (ScenariVeraShell.swift)
         if spunto == nil, scenari, chiediScenarioVera(testo, chiave: clienteAttivoId, breve: breve) { return true }
         let id = clienteAttivoId
         guard let fonte = fonteVera(id) else { return false }
-        let storia = conversazione(id)
+        // In modalità cliente gli appunti del sussurro restano fuori anche da ciò che legge Qwen (storia e riassunto),
+        // non solo dallo schermo: la risposta la vede il cliente
+        let (storia, senzaFilo) = storiaPerQwen(id)
         aggiungiMessaggio(MessaggioVera(autore: .utente, testo: testo), cliente: id)
         domandaVera = ""
         let richiesta = RichiestaVera(domanda: testo, spunto: spunto ?? SpuntoVera.da(testo), fonte: fonte, storia: storia)
@@ -2386,7 +2551,7 @@ enum VoceConfronto: Hashable {
         var uscite = NucleoVera.uscite(storia, piano: piano)
         // Il riassunto allunga l'ultimo messaggio: possono uscire altre battute, che vanno riassunte anche loro
         for _ in 0..<3 {
-            guard let r = riassuntoVera(chiave: id, uscite: uscite) else { break }
+            guard let r = riassuntoPerQwen(chiave: id, uscite: uscite, senzaFilo: senzaFilo) else { break }
             ambiente.riassunto = r
             piano = NucleoVera.piano(richiesta, impostazioni: dati.impostazioni.vera, ambiente: ambiente)
             let nuove = NucleoVera.uscite(storia, piano: piano)
@@ -2397,6 +2562,12 @@ enum VoceConfronto: Hashable {
         let ricordiProposti = schedaRicordi(da: testo, chiave: id)
         let pianoIniziale = piano
         let ambienteIniziale = ambiente
+        // La corsia veloce: il modello Apple solo se ammesso, disponibile e la domanda è breve di conversazione. Con il
+        // modello Apple spento (`ModelloAppleVera.ammesso = false`) la condizione è sempre falsa: si va a Qwen come prima
+        if !breve, SmistamentoVera.corsiaModello(pianoIniziale.scelta, domanda: testo) == .apple, let veloce = ModelloAppleVera.motore() {
+            rispostaVeloce(pianoIniziale, domanda: testo, cliente: id, veloce: veloce)
+            return true
+        }
         conQwen(cliente: id) { _ in
             // La risposta arriva a pezzi e si vede mentre Vera la scrive (FlussoVera, bolla in arrivo)
             let motore = self.qwen
@@ -2414,7 +2585,7 @@ enum VoceConfronto: Hashable {
                             ambiente.brani = brani
                             piano = NucleoVera.piano(richiesta, impostazioni: self.dati.impostazioni.vera, ambiente: ambiente)
                             let dopo = NucleoVera.uscite(storia, piano: piano)
-                            if dopo.count > uscite.count, let r = self.riassuntoVera(chiave: id, uscite: dopo) {
+                            if dopo.count > uscite.count, let r = self.riassuntoPerQwen(chiave: id, uscite: dopo, senzaFilo: senzaFilo) {
                                 uscite = dopo
                                 ambiente.riassunto = r
                                 piano = NucleoVera.piano(richiesta, impostazioni: self.dati.impostazioni.vera, ambiente: ambiente)
@@ -2435,8 +2606,9 @@ enum VoceConfronto: Hashable {
                     // «La memoria»: i ricordi che Vera propone dalla tua domanda, salvati solo dopo «Ricorda»
                     m.conferma = ricordiProposti
                     self.aggiungiMessaggio(m, cliente: id)
-                    // «Il filo lungo»: le battute uscite si riassumono in background
-                    self.aggiornaFiloVera(chiave: id, uscite: uscite, motore: motore)
+                    // «Il filo lungo»: le battute uscite si riassumono in background (non in modalità cliente con appunti
+                    // del sussurro: il filo salvato li contiene e lo si riprende tornati consulente)
+                    if !senzaFilo { self.aggiornaFiloVera(chiave: id, uscite: uscite, motore: motore) }
                 } catch is CancellationError {
                     // Nuova conversazione: la risposta interrotta non resta
                 } catch {
@@ -2449,6 +2621,30 @@ enum VoceConfronto: Hashable {
             }
         }
         return true
+    }
+
+    /// La storia che va a Qwen: in modalità cliente senza gli appunti del sussurro (come sullo schermo). `senzaFilo` è vero
+    /// quando quegli appunti c'erano: allora il filo salvato non si usa e non si aggiorna.
+    func storiaPerQwen(_ id: String) -> (storia: [MessaggioVera], senzaFilo: Bool) {
+        let tutta = conversazione(id)
+        return (messaggiPerLoSchermo(tutta), inModoCliente && tutta.contains(where: Self.riservatoAlConsulente))
+    }
+
+    /// Il messaggio di Vera che porta un lancio di routine (in qualunque conversazione: la chiave del lancio la sceglie
+    /// chi lo chiede). nil se la conversazione non c'è più. Serve alla pagina delle routine per i pulsanti verso Messaggi.
+    func messaggioConEsito(_ esitoId: String) -> MessaggioVera? {
+        let tutte = (dati.impostazioni.vera.conservaConversazioni ? Array(dati.conversazioni.values) : []) + Array(conversazioniTemporanee.values)
+        for elenco in tutte {
+            if let m = elenco.last(where: { $0.autore == .vera && $0.esitoRoutine?.id == esitoId }) { return m }
+        }
+        return nil
+    }
+
+    /// Il riassunto delle battute uscite per Qwen. Con `senzaFilo` (modalità cliente e appunti del sussurro nella
+    /// conversazione) il filo salvato si ignora, perché può contenerli: vale il riassunto di Prisma delle sole battute visibili.
+    func riassuntoPerQwen(chiave: String, uscite: [MessaggioVera], senzaFilo: Bool) -> String? {
+        guard senzaFilo else { return riassuntoVera(chiave: chiave, uscite: uscite) }
+        return uscite.isEmpty ? nil : FiloLungoVera.riassuntoDiPrisma(uscite)
     }
 
     // MARK: - Confronto tra modelli
@@ -2788,6 +2984,8 @@ enum VoceConfronto: Hashable {
                 self.riverificaGiornoDerivati()
                 guard !self.lavoriInPausa else { return }
                 self.aggiornaPromemoria()
+                // Il tagliando in memoria si rifà con l'«oggi» nuovo (scadenze del giorno, attività con la data di oggi)
+                self.aggiornaEsitoTagliandoAlCambioGiorno()
             }
             .store(in: &abbonamenti)
         // Un altro fuso orario: anche «oggi» delle cache va rifatto
@@ -2882,6 +3080,8 @@ enum VoceConfronto: Hashable {
         lavoriInPausa = true
         timerNotifiche?.invalidate()
         timerNotifiche = nil
+        // Il turno notturno del tagliando si toglie: lo rimette la ripresa dei lavori
+        annullaTagliandoProgrammato()
     }
 
     /// Dopo il risveglio: tra `attesa` secondi ripartono notifiche, promemoria e controllo del backup.
@@ -2896,6 +3096,8 @@ enum VoceConfronto: Hashable {
             self.ricalcolaNotifiche()
             self.aggiornaPromemoria()
             self.controllaBackupAutomatico()
+            // Il tagliando dei dati: il controllo saltato nella notte e il prossimo turno
+            self.avviaTagliando()
         }
         ripresaLavori = lavoro
         DispatchQueue.main.asyncAfter(deadline: .now() + attesa, execute: lavoro)
@@ -3358,7 +3560,7 @@ enum VoceConfronto: Hashable {
         let usati = Set(dati.posizioni.compactMap(\.prodottoId) + dati.valutazioni.map(\.prodottoId))
         dati.prodotti.removeAll { esempi.contains($0.id) && !usati.contains($0.id) }
         if dati.clienti.first(where: { $0.id == dati.clienteAttivoId }) == nil {
-            dati.clienteAttivoId = dati.clienti.first?.id ?? ""
+            dati.clienteAttivoId = clientiAttivi.first?.id ?? ""
         }
         // I fac-simile della Biblioteca se ne vanno con i clienti di prova («Luce» giro 6)
         togliEsempiBiblioteca()
@@ -3590,6 +3792,75 @@ enum SchedaCliente: String, CaseIterable, Hashable {
         case .nelTempo: return "Nel tempo"
         case .lineaVita: return "Linea della vita"
         case .azienda: return "L'azienda"
+        }
+    }
+}
+
+// MARK: - Prova del secondo giro di revisione della fase 4 di Vera
+
+extension StatoShell {
+    /// Da chiamare in `Prisma --prova-vera` (ProvaVera.swift, accanto a `provaSussurroChatEChiusura`): in modalità cliente
+    /// gli appunti del sussurro non vanno a Qwen, il cliente eliminato esce dagli esiti del portafoglio, la pagina delle
+    /// routine ritrova il messaggio del lancio e gli scenari «E se…, conviene?» non sono dei tre livelli.
+    static func provaFaseQuattroSecondoGiro(_ controlla: (Bool, String) -> Void) {
+        let s = StatoShell(persistente: false)
+        s.rispostePreparate = true
+        s.veraPortafoglio = false
+        s.clienteAttivoId = "sofia"
+        // 1. Modalità cliente: la storia e il piano per Qwen senza gli appunti del sussurro
+        let segreto = "Appunto riservato: preferisce non essere chiamata la mattina"
+        s.aggiungiMessaggio(MessaggioVera(autore: .utente, testo: "Cosa devo sapere su Sofia?", titolo: titoloSussurro), cliente: "sofia", parla: false)
+        s.aggiungiMessaggio(MessaggioVera(autore: .vera, testo: segreto, titolo: titoloSussurro, motore: motoreAzioni), cliente: "sofia", parla: false)
+        let (fuori, filoFuori) = s.storiaPerQwen("sofia")
+        controlla(fuori.contains { $0.testo == segreto } && !filoFuori, "Secondo giro: fuori dalla modalità cliente la storia per Qwen è intera")
+        s.modoCliente = "sofia"
+        let (storia, senzaFilo) = s.storiaPerQwen("sofia")
+        controlla(!storia.contains(where: riservatoAlConsulente) && senzaFilo,
+                  "Secondo giro: in modalità cliente la storia per Qwen non ha gli appunti del sussurro e il filo salvato non si usa")
+        if let fonte = s.fonteVera("sofia") {
+            let r = RichiestaVera(domanda: "Come sto andando?", spunto: nil, fonte: fonte, storia: storia)
+            let piano = NucleoVera.piano(r, impostazioni: s.dati.impostazioni.vera, ambiente: s.ambienteVera(cliente: "sofia"))
+            controlla(!piano.messaggi.contains { $0.testo.contains(segreto) }, "Secondo giro: in modalità cliente il piano di Qwen non contiene appunti del sussurro")
+        } else {
+            controlla(false, "Secondo giro: manca Sofia tra i dati di prova")
+        }
+        let riassunto = s.riassuntoPerQwen(chiave: "sofia", uscite: storia, senzaFilo: true) ?? ""
+        controlla(!riassunto.contains(segreto), "Secondo giro: in modalità cliente il riassunto per Qwen non contiene appunti del sussurro")
+        s.modoCliente = nil
+
+        // 2. Il cliente eliminato esce dall'elenco del mercato nel portafoglio
+        if case .evento(let e) = MercatoClientiVera.riconosci("Le borse hanno perso l'8% in una settimana", oggi: Date()) {
+            let esito = s.esitoMercatoClientiVera(e)
+            if let toccato = esito.toccati.first {
+                let m = s.rispondiMercatoClienti(esito, chiave: VeraPortafoglio.chiave)
+                s.eliminaCliente(toccato.clienteId)
+                let dopo = s.conversazione(VeraPortafoglio.chiave).first { $0.id == m.id }
+                controlla(dopo != nil && dopo?.mercatoClienti?.toccati.contains { $0.clienteId == toccato.clienteId } != true,
+                          "Secondo giro: dopo l'eliminazione «\(toccato.nome)» non resta nell'elenco del mercato del portafoglio")
+                controlla(esito.toccati.count > 1 || dopo?.mercatoClienti == nil,
+                          "Secondo giro: senza più clienti toccati l'elenco del mercato se ne va")
+            } else {
+                controlla(false, "Secondo giro: le borse −8% non toccano nessun cliente di prova")
+            }
+        } else {
+            controlla(false, "Secondo giro: «le borse hanno perso l'8%» non è riconosciuto")
+        }
+
+        // 3. La pagina delle routine ritrova il messaggio del lancio (in qualunque conversazione)
+        var lancio = EsitoRoutine(routineId: "prova", titolo: "Prova", richiesta: "Prova", clienteId: nil, data: Date())
+        lancio.risultato = RisultatoRoutine(titolo: "Prova", righe: [], pulsanti: [])
+        var mr = MessaggioVera(autore: .vera, testo: "Prova", motore: MotoriVera.sintesi.nome)
+        mr.esitoRoutine = lancio
+        s.aggiungiMessaggio(mr, cliente: VeraPortafoglio.chiave, parla: false)
+        controlla(s.messaggioConEsito(lancio.id)?.id == mr.id, "Secondo giro: la pagina delle routine ritrova il messaggio del lancio")
+        controlla(s.messaggioConEsito("esito-routine-mancante") == nil, "Secondo giro: un lancio senza messaggio non trova niente")
+
+        // 4. Gli scenari restano a chiediScenarioVera; le richieste vere restano dei tre livelli
+        for f in TreLivelliVera.scenariNonTreLivelli {
+            controlla(!TreLivelliVera.eUnaRichiesta(f), "Secondo giro: «\(f)» è uno scenario, non dei tre livelli")
+        }
+        for f in ["Perché il fondo pensione conviene a Marco?", "E se Marco versasse 100 € in più nel fondo pensione? Spiegalo in tre livelli"] {
+            controlla(TreLivelliVera.eUnaRichiesta(f), "Secondo giro: «\(f)» resta dei tre livelli")
         }
     }
 }

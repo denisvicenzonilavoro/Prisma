@@ -524,6 +524,8 @@ extension StatoShell {
             self.sistema.bloccatoStabile = false
             // Al primo avvio parte l'introduzione «Come funziona Prisma»
             self.dopoSblocco()
+            // Il tagliando, se una notte è saltata (a sblocco finito, mai durante l'entrata; CollegaTagliandoShell.swift)
+            self.tagliandoSeDovuto()
         }
     }
 

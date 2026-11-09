@@ -77,6 +77,8 @@ private struct CorpoMercato: View {
             DettaglioSerieMercato(id: id)
         }
         .overlay { if scatto { foglioIstantanea } }
+        // «Il mercato per i tuoi clienti» (fase 4 di Vera, funzione 14): la scena sopra Mercato (VisteMercatoClientiVera.swift)
+        .scenaMercatoClientiVera()
         .sheet(item: scatto ? Binding<FoglioMercato?>.constant(nil) : $sessione.foglio) { f in
             FoglioMercatoVista(foglio: f)
                 .environment(stato)
@@ -192,6 +194,8 @@ private struct AzioniMercatoCorpo: View {
         let _ = ContaCorpi.segna()
         HStack(spacing: I.spazio) {
             CampoISINMercato(sessione: sessione)
+            // «Per i tuoi clienti» (fase 4 di Vera): si nasconde da solo in modalità cliente
+            PulsanteMercatoClientiVera()
             if !stato.inModoCliente {
                 Button { sessione.foglio = .soglie } label: {
                     Label(TestiAppMercato.soglie, systemImage: "slider.horizontal.3")

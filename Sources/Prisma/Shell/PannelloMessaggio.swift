@@ -53,6 +53,15 @@ struct PannelloMessaggio: View {
         ChiaveTestoMessaggio(occasione: occasione.id, tono: tono, canale: canale)
     }
 
+    /// «Scrive come te» (fase 4 di Vera, funzione 15): le regole dello stile che il testo pronto non rispetta.
+    @ViewBuilder
+    private var avvisiStile: some View {
+        if let s = pronto {
+            AvvisiStileMessaggioVista(testo: s.testo, clienteId: cliente.id)
+                .padding(.top, Tema.Apple.Messaggi.Barra.sopra)
+        }
+    }
+
     private var pronto: TestoScrittoMessaggio? {
         scrittoIstantanea ?? sessione.scritto(chiave)
     }
@@ -81,11 +90,13 @@ struct PannelloMessaggio: View {
                 }
                 .frame(maxHeight: .infinity, alignment: .top)
                 .entrataCascata(primoIndice + 3, base: base)
+                avvisiStile
                 barra
                     .padding(.top, Tema.Apple.Messaggi.Barra.sopra)
             } else {
                 corpo
                     .entrataCascata(primoIndice + 3, base: base)
+                avvisiStile
                 barra
                     .padding(.top, Tema.Apple.Messaggi.Barra.sopra)
             }
@@ -426,7 +437,7 @@ struct PannelloMessaggio: View {
             }
         }
         let prima = sessione.idSalvato(k)
-        let esito = stato.apriMessaggio(occasione, tono: k.tono, canale: k.canale, scritto: s, id: prima)
+        let esito = stato.apriMessaggio(occasione, tono: s.tono ?? k.tono, canale: k.canale, scritto: s, id: prima)
         stato.mostraAvviso(esito.messaggio)
         if esito.aperto {
             sessione.ricordaSalvato(k, id: prima ?? stato.dati.messaggi.last(where: { $0.occasioneId == occasione.id })?.id)
@@ -440,7 +451,7 @@ struct PannelloMessaggio: View {
         let prima = sessione.idSalvato(k)
         let statoPrima = prima.flatMap { id in stato.dati.messaggi.first(where: { $0.id == id })?.stato }
         let nuovo: StatoMessaggio = (statoPrima == .apertoInMail || statoPrima == .apertoInMessaggi) ? (statoPrima ?? .salvato) : .salvato
-        guard let m = stato.salvaMessaggio(occasione, tono: k.tono, canale: k.canale, scritto: s, stato: nuovo, id: prima) else {
+        guard let m = stato.salvaMessaggio(occasione, tono: s.tono ?? k.tono, canale: k.canale, scritto: s, stato: nuovo, id: prima) else {
             return
         }
         sessione.ricordaSalvato(k, id: m.id)

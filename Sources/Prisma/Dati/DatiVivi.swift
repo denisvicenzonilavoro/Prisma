@@ -37,7 +37,7 @@ import Observation
     @ObservationIgnored private var inCarica = false
 
     /// Numero dei campi di `DatiPrisma` copiati qui (la prova lo confronta con Mirror).
-    static let numeroCampi = 41
+    static let numeroCampi = 45
 
     var versione: Int { didSet { segnala(.calcoli) } }
     var clienti: [Cliente] { didSet(prima) { segnalaClienti(prima, clienti, \.id) } }
@@ -80,6 +80,13 @@ import Observation
     var speseStudio: ArchivioSpese { didSet { segnala(.neutro) } }
     /// I km per cliente di Studio › Spese: nessun calcolo in cache.
     var kmClienti: [String: Double] { didSet { segnala(.neutro) } }
+    // Vera, fase 4: routine, tagliando, voci chiuse del sussurro e spiegazioni in tre livelli non entrano in nessun
+    // calcolo (neutri, esclusi da `DatiPrisma.stessiCalcoli`): le voci chiuse sono una preferenza di vista, che
+    // `vociSussurro` rilegge dai dati vivi
+    var routine: ArchivioRoutine { didSet { segnala(.neutro) } }
+    var tagliando: StatoTagliando { didSet { segnala(.neutro) } }
+    var sussurriChiusi: [SussurroChiuso] { didSet { segnala(.neutro) } }
+    var spiegazioniTreLivelli: [SpiegazioneTreLivelli] { didSet { segnala(.neutro) } }
     var clienteAttivoId: String { didSet(prima) { segnala(.clienteAttivo(prima: prima)) } }
     var impostazioni: Impostazioni { didSet(prima) { segnala(.impostazioni(prima: prima)) } }
 
@@ -123,6 +130,10 @@ import Observation
         coperture = d.coperture
         speseStudio = d.speseStudio
         kmClienti = d.kmClienti
+        routine = d.routine
+        tagliando = d.tagliando
+        sussurriChiusi = d.sussurriChiusi
+        spiegazioniTreLivelli = d.spiegazioniTreLivelli
         clienteAttivoId = d.clienteAttivoId
         impostazioni = d.impostazioni
     }
@@ -213,6 +224,10 @@ import Observation
         d.coperture = coperture
         d.speseStudio = speseStudio
         d.kmClienti = kmClienti
+        d.routine = routine
+        d.tagliando = tagliando
+        d.sussurriChiusi = sussurriChiusi
+        d.spiegazioniTreLivelli = spiegazioniTreLivelli
         return d
     }
 
@@ -257,6 +272,10 @@ import Observation
         d.coperture = _coperture
         d.speseStudio = _speseStudio
         d.kmClienti = _kmClienti
+        d.routine = _routine
+        d.tagliando = _tagliando
+        d.sussurriChiusi = _sussurriChiusi
+        d.spiegazioniTreLivelli = _spiegazioniTreLivelli
         return d
     }
 
@@ -304,6 +323,10 @@ import Observation
         if coperture != d.coperture { coperture = d.coperture }
         if speseStudio != d.speseStudio { speseStudio = d.speseStudio }
         if kmClienti != d.kmClienti { kmClienti = d.kmClienti }
+        if routine != d.routine { routine = d.routine }
+        if tagliando != d.tagliando { tagliando = d.tagliando }
+        if sussurriChiusi != d.sussurriChiusi { sussurriChiusi = d.sussurriChiusi }
+        if spiegazioniTreLivelli != d.spiegazioniTreLivelli { spiegazioniTreLivelli = d.spiegazioniTreLivelli }
         if clienteAttivoId != d.clienteAttivoId { clienteAttivoId = d.clienteAttivoId }
         if impostazioni != d.impostazioni { impostazioni = d.impostazioni }
         inCarica = false
@@ -330,6 +353,9 @@ extension Impostazioni {
         b.pratiche = pratiche
         // Chilometri, spese e scadenze (giro 9 di «Luce») non entrano nei calcoli in cache
         b.studio.spese = studio.spese
+        // Vera, fase 4: il tagliando dei dati e il profilo di stile non entrano nei calcoli
+        b.tagliando = tagliando
+        b.stileVera = stileVera
         return self == b
     }
 }

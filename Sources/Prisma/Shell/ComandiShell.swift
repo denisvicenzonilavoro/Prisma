@@ -6,8 +6,9 @@ import Foundation
 extension StatoShell {
     /// Se la frase è un comando, Vera lo esegue e risponde nella conversazione; true se l'ha gestita.
     func eseguiComandoVera(_ testo: String, oggi: Date = Date()) -> Bool {
-        // Anche in modalità cliente Vera riconosce tutti i nomi, per non scambiare un altro cliente con quello davanti a te
-        let noti = dati.clienti.map { ClienteNoto(id: $0.id, nome: $0.nome) }
+        // Anche in modalità cliente Vera riconosce tutti i nomi, per non scambiare un altro cliente con quello davanti a te;
+        // le schede unite in un'altra (doppioni del tagliando) restano fuori: hanno lo stesso nome della principale
+        let noti = clientiAttivi.map { ClienteNoto(id: $0.id, nome: $0.nome) }
         var comando: ComandoVera?
         if var b = appuntamentoInSospeso {
             appuntamentoInSospeso = nil

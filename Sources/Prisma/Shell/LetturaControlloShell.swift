@@ -11,10 +11,13 @@ extension StatoShell {
     /// sempre e solo quello davanti a te). nil se nel portafoglio non si capisce di chi.
     func clienteDellaRichiesta(_ testo: String, chiave: String) -> String? {
         if inModoCliente { return cliente(clienteAttivoId) == nil ? nil : clienteAttivoId }
-        let noti = dati.clienti.map { ClienteNoto(id: $0.id, nome: $0.nome) }
+        let noti = clientiAttivi.map { ClienteNoto(id: $0.id, nome: $0.nome) }
         let nominati = InterpreteComandi.clientiNominati(InterpreteComandi.pulisci(testo), noti)
         if nominati.count == 1 { return nominati[0].id }
-        return chiave != VeraPortafoglio.chiave && cliente(chiave) != nil ? chiave : nil
+        let aperto = chiave != VeraPortafoglio.chiave && cliente(chiave) != nil ? chiave : nil
+        // Più clienti nominati: vale il dossier aperto solo se è tra loro, altrimenti Vera chiede di chi si parla
+        if nominati.count > 1 { return aperto.flatMap { a in nominati.contains { $0.id == a } ? a : nil } }
+        return aperto
     }
 
     /// In modalità cliente le schede della fase 3 mostrano solo il cliente davanti a te (le conversazioni salvate prima
@@ -417,7 +420,7 @@ extension StatoShell {
                                argomenti: ["cliente": c.id, "scopo": "copertura", "testo": testo, "canale": canale.rawValue])
         return rispostaFaseTre("Ecco il messaggio per \(c.nome), con l'articolo di ogni limite: con «Conferma» diventa una bozza in Messaggi.",
                                chiave: chiave, motore: Self.motoreAzioni) {
-            $0.conferma = SchedaConfermaVera(richiesta: "Spiega a \(c.nome) cosa non copre «\(x.titolo)»", azioni: [a], origine: .regole)
+            $0.conferma = self.inStile(SchedaConfermaVera(richiesta: "Spiega a \(c.nome) cosa non copre «\(x.titolo)»", azioni: [a], origine: .regole))
         }
     }
 
@@ -534,6 +537,23 @@ extension StatoShell {
             rispondi(finale, motore: finale.conQwen ? motore.nome : MotoriVera.sintesi.nome)
             self.veraInCorso = false
             self.compitoVera = nil
+        }
+    }
+
+    /// «Manda una sintesi a …» (template «Il resoconto dell'incontro»): la sintesi per il cliente (decisioni e prossimi
+    /// passi del resoconto) come bozza in Messaggi, nello stile del consulente, dalla scheda «Conferma». Niente parte da
+    /// sola; mai in modalità cliente.
+    @discardableResult
+    func mandaSintesiResoconto(_ incontroId: String, chiave: String) -> MessaggioVera? {
+        guard !inModoCliente, let i = incontro(incontroId), let r = i.resoconto, let c = cliente(i.clienteId),
+              let testo = ResocontoVera.sintesiCliente(r, incontro: i, nome: c.nome) else { return nil }
+        let canale: CanaleMessaggio = c.email.isEmpty ? .messaggi : .mail
+        let a = AzioneConferma(strumento: RegistroStrumenti.messaggiPrepara, app: .messaggi, titolo: "Preparo la sintesi per \(c.nome)",
+                               dettaglio: RegistroStrumenti.dettaglioMessaggio(testo, canale: canale),
+                               argomenti: ["cliente": c.id, "scopo": "resoconto", "testo": testo, "canale": canale.rawValue])
+        return rispostaFaseTre("Ecco la sintesi di «\(i.titolo)» per \(c.nome), con le decisioni e i prossimi passi del resoconto: con «Conferma» diventa una bozza in Messaggi, nel tuo stile.",
+                               chiave: chiave, motore: Self.motoreAzioni) {
+            $0.conferma = self.inStile(SchedaConfermaVera(richiesta: "Manda a \(c.nome) una sintesi dell'incontro", azioni: [a], origine: .regole))
         }
     }
 

@@ -270,6 +270,25 @@ enum ProvaFaseTreVera {
         let inventato = ResocontoVera.applica(#"{"presenti":"x","parlato":["Il mutuo pesa sulla rata."],"deciso":["Investire 90.000 € subito"],"passi":["Mandare il riepilogo dei costi"],"raccogliere":["Il fabbisogno mensile"],"breve":["Riepilogo dei costi"]}"#, a: r)
         controlla(inventato.sezioni[2].righe == r.sezioni[2].righe && inventato.sezioni[4].righe == ["Il fabbisogno mensile"] && inventato.conQwen,
                   "Resoconto: la sezione con una cifra inventata resta di Prisma, le altre di Qwen")
+        // «Manda una sintesi a Giulia»: decisioni e prossimi passi, senza cifre nuove né appunti interni
+        let sintesi = ResocontoVera.sintesiCliente(r, incontro: i, nome: c.nome) ?? ""
+        controlla(sintesi.hasPrefix("Buongiorno Giulia,") && sintesi.contains("Mandare il riepilogo dei costi")
+                  && !sintesi.contains("Fabbisogno") && !sintesi.contains("Denis")
+                  && CommentoVera.numeriConservati(bozza: r.sezioni.flatMap(\.righe).joined(separator: "\n") + Formati.dataLunga.string(from: i.data), testo: sintesi),
+                  "Resoconto: la sintesi per il cliente ha decisioni e prossimi passi, nessuna cifra nuova né appunti interni")
+        var vuoto = r
+        vuoto.sezioni[2].righe = []
+        vuoto.sezioni[3].righe = []
+        controlla(ResocontoVera.sintesiCliente(vuoto, incontro: i, nome: c.nome) == nil, "Resoconto: senza decisioni né passi non c'è sintesi da mandare")
+        // Il consenso alla registrazione si vede nella scheda: della nota vocale, oppure del dossier se viene dal copilota
+        var conNota = r
+        conNota.consenso = ConsensoCopilota(data: i.data, modo: .aVoce)
+        var soloAppunti = r
+        soloAppunti.consenso = nil
+        soloAppunti.fonti = [.appunti]
+        controlla(ResocontoVera.consensoDaMostrare(conNota, cliente: c).map(ResocontoVera.testoConsenso)?.contains("a voce") == true
+                  && ResocontoVera.consensoDaMostrare(soloAppunti, cliente: c) == nil,
+                  "Resoconto: il consenso alla registrazione è nella scheda prima della firma, solo quando c'è stata una registrazione")
         // In chat, ✕, breve, firma
         controlla(s.chiediResoconto("Il resoconto dell'incontro con Giulia", chiave: "giulia") && s.conversazione("giulia").last?.resoconto == i.id
                   && s.incontro(i.id)?.resoconto != nil, "Resoconto: in chat il resoconto, salvato nell'incontro")
@@ -299,6 +318,11 @@ enum ProvaFaseTreVera {
                   "Resoconto: «Firma» mette il PDF nei Documenti di Giulia, con nome e data, e la trascrizione non resta")
         controlla((s.testoDocumento(s.dati.documenti.last!).joined()).contains("Resoconto"), "Resoconto: il PDF ha il testo del resoconto")
         controlla(s.firmaResoconto(i.id) == nil, "Resoconto: un resoconto firmato non si firma due volte")
+        let messaggiPrima = s.dati.messaggi.count
+        let manda = s.mandaSintesiResoconto(i.id, chiave: "giulia")
+        controlla(manda?.conferma?.azioni.map(\.strumento) == [RegistroStrumenti.messaggiPrepara] && manda?.conferma?.stato == .daConfermare
+                  && manda?.conferma?.azioni.first?.argomenti["cliente"] == "giulia" && s.dati.messaggi.count == messaggiPrima,
+                  "Resoconto: «Manda una sintesi a Giulia» prepara la bozza in Messaggi da confermare, niente parte da sola")
         s.formatoResoconto(i.id, .breve)
         controlla(s.incontro(i.id)?.resoconto?.formato == .completo, "Resoconto: firmato non cambia più")
         let passi = s.proponiPassiResoconto(i.id, chiave: "giulia")

@@ -36,6 +36,10 @@ struct SchedaConfermaVera: Codable, Equatable, Identifiable {
         case memoria
         /// «Lascia cadere qui»: un documento trascinato, da archiviare con i dati letti.
         case documento
+        /// «Il sussurro» (fase 4, funzione 7): l'attività o il riesame di una voce del sussurro.
+        case sussurro
+        /// «Il mercato per i tuoi clienti»: le bozze per i clienti toccati da un evento e le attività (fase 4, funzione 14).
+        case mercato
     }
 
     var id = "conferma-\(UUID().uuidString.prefix(8).lowercased())"

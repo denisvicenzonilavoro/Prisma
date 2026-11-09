@@ -91,7 +91,9 @@ enum FontiVera {
             let fine = m.range.location + m.range.length
             let dopo = ns.substring(from: min(fine, ns.length))
             // Un orario o un giorno con il mese dopo: non è una cifra
-            if dopo.hasPrefix(":") || dopo.hasPrefix("°") || dopo.hasPrefix("ª") { continue }
+            // Un orario («15:30») ha una cifra subito dopo i due punti; «il 15%: meno…» è una cifra
+            if dopo.hasPrefix(":"), unitaTesto.isEmpty, dopo.dropFirst().first?.isNumber == true { continue }
+            if dopo.hasPrefix("°") || dopo.hasPrefix("ª") { continue }
             if unitaTesto.isEmpty, DateItaliane.cerca(#"^\s*(?:"# + mesi + #")\b"#, dopo.lowercased()) != nil { continue }
             guard let valore = valore(cifra) else { continue }
             let unita: UnitaCifra

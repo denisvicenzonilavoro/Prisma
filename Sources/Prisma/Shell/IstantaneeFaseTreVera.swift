@@ -63,6 +63,12 @@ extension Istantanee {
     nonisolated static func preparaResoconto(_ s: StatoShell) {
         base(s, cliente: "giulia")
         _ = s.chiediResoconto("Il resoconto dell'incontro con Giulia", chiave: "giulia")
+        // Come dopo una nota vocale: il consenso alla registrazione si vede nella scheda, prima della firma
+        if let i = s.incontroPerResoconto(cliente: "giulia"), var r = i.resoconto {
+            r.consenso = ConsensoCopilota(data: i.data, modo: .aVoce, nota: "dato all'inizio dell'incontro")
+            if !r.fonti.contains(.notaVocale) { r.fonti.append(.notaVocale) }
+            s.salvaResoconto(r, incontro: i.id)
+        }
         s.apri(.vera)
     }
 }

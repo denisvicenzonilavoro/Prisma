@@ -72,6 +72,7 @@ extension StatoShell {
             mini.nota = "Con la dettatura del Mac scrivi qui sotto, oppure parla con Vera nella sua app (⌥⌘E)."
             return
         }
+        fermaLetturaTrenta()
         voceVera.zitta()
         let scelta = vera.riconoscimento == .automatico
             ? (ripiegoAscolto ?? SceltaRiconoscimento.catenaAutomatica.first ?? .classico) : vera.riconoscimento
@@ -124,7 +125,7 @@ extension StatoShell {
     /// Qwen può rispondere (o la domanda è un comando, che fa Prisma da sola)?
     private func prontaPer(_ testo: String) -> Bool {
         if rispostePreparate || generativo != nil || appuntamentoInSospeso != nil { return true }
-        let noti = dati.clienti.map { ClienteNoto(id: $0.id, nome: $0.nome) }
+        let noti = clientiAttivi.map { ClienteNoto(id: $0.id, nome: $0.nome) }
         return InterpreteComandi.interpreta(testo, clienti: noti, attivo: veraPortafoglio ? nil : clienteAttivoId) != nil
     }
 

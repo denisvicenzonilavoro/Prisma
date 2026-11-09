@@ -31,6 +31,8 @@ extension StatoShell {
         pannelloAppAperte = false
         portafoglio = false
         veraPortafoglio = false
+        // La scena «Per i tuoi clienti» elenca tutto il portafoglio
+        scenaMercatoClientiVera = nil
         filtroClienteAgenda = nil
         filtroClienteAttivita = nil
         // Studio › Spese non si vede in modalità cliente (§6.3.1 punto 1.7): niente foglio aperto, e il segmentato torna al

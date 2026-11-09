@@ -82,6 +82,9 @@ struct Cliente: Identifiable, Codable, Hashable {
     /// dossier» acceso (Impostazioni › Moduli), si mostra mascherato, entra nei backup e mai in «Prisma ovunque» né nei
     /// messaggi. Solo un IBAN valido (mod 97).
     var iban: String?
+    /// La scheda in cui questa è stata unita da «Unisci le schede» del tagliando dei dati (versione 27, Vera fase 4): l'id
+    /// della scheda principale. nil = scheda normale. La scheda unita non si cancella: resta in archivio, segnata così.
+    var unitaIn: String?
 
     init(id: String, nome: String, iniziali: String, tinta: TintaAvatar, tema: String, email: String,
          telefono: String, preferito: Bool, nota: String, creatoIl: Date) {
@@ -125,6 +128,7 @@ struct Cliente: Identifiable, Codable, Hashable {
         case aziende
         case clienteDal
         case luogoNascita, iban
+        case unitaIn
     }
 
     /// Lettura tollerante: i campi aggiunti nelle versioni successive possono mancare.
@@ -169,6 +173,8 @@ struct Cliente: Identifiable, Codable, Hashable {
         luogoNascita = ((try? c.decodeIfPresent(String.self, forKey: .luogoNascita)) ?? nil)
             .flatMap { $0.trimmingCharacters(in: .whitespaces).isEmpty ? nil : $0 }
         iban = ((try? c.decodeIfPresent(String.self, forKey: .iban)) ?? nil).flatMap { IBAN.valido($0) ? IBAN.pulito($0) : nil }
+        // Scheda unita dal tagliando (versione 27, Vera fase 4): illeggibile o vuoto = scheda normale
+        unitaIn = ((try? c.decodeIfPresent(String.self, forKey: .unitaIn)) ?? nil).flatMap { $0.isEmpty ? nil : $0 }
     }
 
     /// Le aziende registrate (vuoto se nessuna).

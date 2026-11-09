@@ -322,7 +322,7 @@ enum MotoreRicerca {
             #endif
             return Candidato(risultato: RisultatoRicerca(destinazione: .app(app), gruppo: .app, titolo: app.titolo, dettaglio: dettaglio))
         }
-        candidati[.clienti] = dati.clienti.map { c in
+        candidati[.clienti] = dati.clienti.filter { $0.unitaIn == nil }.map { c in
             Candidato(risultato: RisultatoRicerca(destinazione: .cliente(c.id), gruppo: .clienti, titolo: c.nome, dettaglio: c.tema),
                       campi: [("Progetto", c.tema), ("Email", c.email), ("Telefono", c.telefono), ("Professione", c.professione),
                               ("Codice fiscale", c.codiceFiscale), ("Indirizzo", c.indirizzo), ("Nota", c.nota)])

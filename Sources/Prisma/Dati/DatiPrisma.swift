@@ -91,6 +91,19 @@ struct DatiPrisma: Codable, Equatable {
     /// Studio › Spese (versione 27, «Luce» giro 9). Un dato del cliente: sta nel suo file della cartella a pezzi e se ne va
     /// con lui. Resta sul Mac: non entra in «Prisma ovunque».
     var kmClienti: [String: Double] = [:]
+    /// Vera, fase 4 (Vera/BRIEF.md), versione 27, tutti letti con tolleranza.
+    /// «Le routine» (3): le routine del consulente, lo stato delle quattro pronte (spente, usate) e gli ultimi venti
+    /// lanci (`ArchivioRoutine`, Vera/RoutineVera.swift). Dato comune; i lanci non entrano in Prisma ovunque.
+    var routine = ArchivioRoutine()
+    /// «Il tagliando dei dati» (5): l'ultimo controllo in breve e le voci segnate «Va bene così». Dato comune; non entra
+    /// nell'istantanea di Prisma ovunque (gli id delle voci contengono codici fiscali, email e telefoni).
+    var tagliando = StatoTagliando()
+    /// «Il sussurro» (7): le voci chiuse con «Non ora» o dopo «Conferma», che per una settimana non tornano
+    /// (Shell/CollegaSussurroShell.swift). Le chiavi delle preferenze solo come impronta.
+    var sussurriChiusi: [SussurroChiuso] = []
+    /// «Tre livelli» (17): le spiegazioni per te, per il cliente e in una pagina, con le cifre di Prisma da cui nascono.
+    /// Restano sul Mac (non entrano in Prisma ovunque).
+    var spiegazioniTreLivelli: [SpiegazioneTreLivelli] = []
     var clienteAttivoId: String
     var impostazioni: Impostazioni
 
@@ -172,6 +185,14 @@ struct DatiPrisma: Codable, Equatable {
     ///     correzioni dei giri, ore richieste per anno, nomi nel pacchetto spenti) e dove si
     ///     è svolto un appuntamento (`Appuntamento.presso`: dal cliente, in studio, altrove; nil = da chiedere).
     ///     I km di andata e ritorno per cliente (`kmClienti`), nel file di ogni cliente.
+    ///     Vera, fase 4: le routine (`routine`: routine del consulente, stato delle pronte, ultimi lanci), il tagliando
+    ///     dei dati (`tagliando`, `Impostazioni.tagliando`, `Cliente.unitaIn`), le voci chiuse del sussurro
+    ///     (`sussurriChiusi`, `ImpostazioniVera.sussurroNelDossier`), le spiegazioni in tre livelli
+    ///     (`spiegazioniTreLivelli`), il profilo di stile (`Impostazioni.stileVera`) e il ragionamento a passi
+    ///     (`ImpostazioniVera.passi`), tutti letti con tolleranza.
+    ///     Vera, fase 5: le versioni di «Vera su misura» con l'esame (`ImpostazioniVera.suMisura`), il tipo di motore
+    ///     esterno (`ImpostazioniVera.motoreEsterno`, non collegato) e, nella memoria cifrata, id, modalità ed esclusione
+    ///     degli esempi approvati; tutti letti con tolleranza.
     static let versioneAttuale = 27
 
     init(clienti: [Cliente], appuntamenti: [Appuntamento], attivita: [Attivita], posizioni: [Posizione],
@@ -241,6 +262,7 @@ struct DatiPrisma: Codable, Equatable {
         case partiteRischio
         case promesse, confrontiDocumenti, coperture
         case speseStudio, kmClienti
+        case routine, tagliando, sussurriChiusi, spiegazioniTreLivelli
     }
 
     /// Lettura tollerante: gli archivi delle versioni precedenti non hanno tutte le sezioni.
@@ -309,6 +331,12 @@ struct DatiPrisma: Codable, Equatable {
         // I km per cliente: un valore negativo o non finito si scarta, gli altri restano
         kmClienti = (((try? c.decodeIfPresent([String: Double].self, forKey: .kmClienti)) ?? nil) ?? [:])
             .filter { $0.value.isFinite && $0.value >= 0 }
+        // Vera, fase 4 (versione 27, letti con tolleranza): routine (illeggibili = le sole pronte), tagliando (senza o
+        // illeggibile = vuoto), voci chiuse del sussurro e spiegazioni in tre livelli (una riga rovinata si scarta)
+        routine = ((try? c.decodeIfPresent(ArchivioRoutine.self, forKey: .routine)) ?? nil) ?? ArchivioRoutine()
+        tagliando = ((try? c.decodeIfPresent(StatoTagliando.self, forKey: .tagliando)) ?? nil) ?? StatoTagliando()
+        sussurriChiusi = ((try? c.decodeIfPresent(ElencoTollerante<SussurroChiuso>.self, forKey: .sussurriChiusi)) ?? nil)?.elementi ?? []
+        spiegazioniTreLivelli = ((try? c.decodeIfPresent(ElencoTollerante<SpiegazioneTreLivelli>.self, forKey: .spiegazioniTreLivelli)) ?? nil)?.elementi ?? []
         clienteAttivoId = try c.decodeIfPresent(String.self, forKey: .clienteAttivoId) ?? (clienti.first?.id ?? "")
         impostazioni = try c.decodeIfPresent(Impostazioni.self, forKey: .impostazioni) ?? Impostazioni()
     }
@@ -364,6 +392,10 @@ struct DatiPrisma: Codable, Equatable {
         try metti(coperture, .coperture)
         try metti(speseStudio, .speseStudio)
         try metti(kmClienti, .kmClienti)
+        try metti(routine, .routine)
+        try metti(tagliando, .tagliando)
+        try metti(sussurriChiusi, .sussurriChiusi)
+        try metti(spiegazioniTreLivelli, .spiegazioniTreLivelli)
         try metti(clienteAttivoId, .clienteAttivoId)
         try metti(impostazioni, .impostazioni)
     }
@@ -451,6 +483,13 @@ struct Impostazioni: Codable, Equatable {
     /// dall'utente, gli anni della partita, le avvertenze e il titolo del valore approvati. Letta con tolleranza: senza,
     /// nessun evento a caso e i segnaposto dichiarati.
     var sala = ImpostazioniSala()
+    /// Il tagliando dei dati (Impostazioni › Vera, Vera fase 4): acceso e l'ora del controllo notturno (di base le 2:10).
+    /// Letto con tolleranza: senza, acceso alle 2:10.
+    var tagliando = ImpostazioniTagliando()
+    /// «Scrive come te» (funzione 15 di Vera): il profilo di stile del consulente, imparato dai messaggi aperti da Prisma
+    /// in Mail o in Messaggi e corretto da lui. Solo regole, mai testi. Fuori da `vera` di proposito (ogni cambio di
+    /// `vera` fa ripartire Vera e il ponte, e Prisma ovunque azzera `vera`). Letto con tolleranza: senza, il profilo vuoto.
+    var stileVera = ProfiloStile()
 
     init() {}
 
@@ -469,6 +508,7 @@ struct Impostazioni: Codable, Equatable {
         case storie, traguardi
         case palestra
         case sala
+        case tagliando, stileVera
     }
 
     init(from decoder: Decoder) throws {
@@ -527,6 +567,9 @@ struct Impostazioni: Codable, Equatable {
         palestra = ((try? c.decodeIfPresent(ImpostazioniPalestra.self, forKey: .palestra)) ?? nil) ?? ImpostazioniPalestra()
         // Sala, racconti senza uscita (versione 27, giro 8): senza o illeggibile, nessun evento e i segnaposto
         sala = ((try? c.decodeIfPresent(ImpostazioniSala.self, forKey: .sala)) ?? nil) ?? ImpostazioniSala()
+        // Tagliando dei dati e profilo di stile (versione 27, Vera fase 4): senza o illeggibili, i valori di base
+        tagliando = ((try? c.decodeIfPresent(ImpostazioniTagliando.self, forKey: .tagliando)) ?? nil) ?? ImpostazioniTagliando()
+        stileVera = ((try? c.decodeIfPresent(ProfiloStile.self, forKey: .stileVera)) ?? nil) ?? ProfiloStile()
     }
 }
 
@@ -745,6 +788,15 @@ struct ImpostazioniVera: Codable, Equatable {
     var finestra = FinestraVera.predefinita
     /// Il modello della ricerca per significato (Ollama, /api/embed), caricato solo quando serve.
     var modelloRicerca = RicercaVera.modelloPredefinito
+    /// «Il sussurro» (fase 4, funzione 7): le due o tre cose da sapere nella Panoramica del dossier (mai in modalità cliente).
+    var sussurroNelDossier = true
+    /// «Ragiona a passi» (fase 4, funzione 20): acceso o spento e l'interruttore «Mostra il ragionamento».
+    var passi = ImpostazioniPassiVera()
+    /// «Vera su misura» (fase 5, funzione 22): le versioni addestrate con il loro esame, il modello di prima e gli esempi
+    /// tenuti per l'esame.
+    var suMisura = ImpostazioniSuMisura()
+    /// «Il cervello grande» (fase 5, funzione 25): solo il tipo di motore esterno scelto (resta non collegato).
+    var motoreEsterno = ImpostazioniMotoreEsterno()
 
     /// Il modello del fornitore scelto.
     var modello: String {
@@ -764,6 +816,8 @@ struct ImpostazioniVera: Codable, Equatable {
         case conservaConversazioni, voce, velocitaVoce, risposteAVoce, leggiTutto, conversazioneContinua, indirizzoLocale, modelloLocale, riconoscimento, mostraPassaggiVoce
         case fornitore, indirizzoCompatibile, modelloCompatibile, ragionamento, prontaAllAvvio, restaInMemoria, modelliConfronto, ponte
         case memoriaAttiva, imparaDalleCorrezioni, finestra, modelloRicerca
+        case sussurroNelDossier, passi
+        case suMisura, motoreEsterno
     }
 
     init(from decoder: Decoder) throws {
@@ -794,6 +848,12 @@ struct ImpostazioniVera: Codable, Equatable {
         finestra = FinestraVera.valida((try? c.decodeIfPresent(Int.self, forKey: .finestra)) ?? FinestraVera.predefinita)
         let ricerca = (try? c.decodeIfPresent(String.self, forKey: .modelloRicerca)) ?? ""
         modelloRicerca = ricerca.isEmpty ? RicercaVera.modelloPredefinito : ricerca
+        // Fase 4 (versione 27): il sussurro acceso e il ragionamento a passi di base se mancano o sono illeggibili
+        sussurroNelDossier = (try? c.decodeIfPresent(Bool.self, forKey: .sussurroNelDossier)) ?? true
+        passi = ((try? c.decodeIfPresent(ImpostazioniPassiVera.self, forKey: .passi)) ?? nil) ?? ImpostazioniPassiVera()
+        // Fase 5 (versione 27): su misura e motore esterno di base se mancano o sono illeggibili
+        suMisura = ((try? c.decodeIfPresent(ImpostazioniSuMisura.self, forKey: .suMisura)) ?? nil) ?? ImpostazioniSuMisura()
+        motoreEsterno = ((try? c.decodeIfPresent(ImpostazioniMotoreEsterno.self, forKey: .motoreEsterno)) ?? nil) ?? ImpostazioniMotoreEsterno()
     }
 }
 

@@ -9,9 +9,10 @@ extension StatoShell {
 
     var contestoStrumenti: ContestoStrumenti {
         // In modalità cliente Vera conosce solo il cliente davanti a te: niente nomi né dati degli altri
-        let clienti = inModoCliente ? dati.clienti.filter { $0.id == clienteAttivoId } : dati.clienti
+        let clienti = inModoCliente ? clientiAttivi.filter { $0.id == clienteAttivoId } : clientiAttivi
         return ContestoStrumenti(oggi: Date(), clienti: clienti, appuntamenti: dati.appuntamenti, posizioni: dati.posizioni,
-                          attivo: veraPortafoglio ? nil : clienteAttivoId, impostazioni: dati.impostazioni, inModoCliente: inModoCliente)
+                          attivo: veraPortafoglio ? nil : clienteAttivoId, impostazioni: dati.impostazioni, inModoCliente: inModoCliente,
+                          clientiScritti: Set(StileVera.inviati(dati.messaggi).map(\.clienteId)))
     }
 
     // MARK: - Lo smistamento
@@ -24,17 +25,66 @@ extension StatoShell {
         if ricordaVera(testo, chiave: chiave) { return true }
         // «Rileggi: …» prima dei comandi: il testo da rileggere può contenere giorni, clienti e appuntamenti
         if chiediSecondaLettura(testo, chiave: chiaveConversazione) { return true }
-        if eseguiComandoVera(testo) { return true }
+        // Fase 4, prima dei comandi a regole (che leggerebbero giorni, clienti, «firma» e «settimana» come agenda), dalle
+        // frasi più strette alle più larghe:
+        // «Scrive come te» (funzione 15): «mostra il mio stile», «riscrivi nel mio stile: …», «da ora firma Denis V.»,
+        // «dai del tu a Giulia», «niente emoji» (CollegaStileShell.swift)
+        if chiediStileVera(testo, chiave: chiaveConversazione) { return true }
+        // Fase 5, frasi strette prima dei comandi a regole (che leggerebbero «apri…»): «Vera su misura», «addestra Vera»,
+        // «com'è andato l'esame?» (CollegaSuMisuraShell.swift); aprono la pagina e rispondono con lo stato, nessuna azione
+        if chiediSuMisura(testo, chiave: chiaveConversazione) { return true }
+        // «Due velocità» e «Il cervello grande»: «come smisti le domande?», «motore esterno» (CollegaMotoriShell.swift)
+        if chiediMotori(testo, chiave: chiaveConversazione) { return true }
+        // Il tagliando dei dati (funzione 5): «fai il tagliando», «controlla l'archivio», «ci sono doppioni?», «sistema
+        // tutto» dopo una risposta del tagliando (CollegaTagliandoShell.swift)
+        if chiediTagliando(testo, chiave: chiaveConversazione) { return true }
+        // «L'agenda che si organizza» (funzione 4): «trovami un'ora per il riesame di Federico entro giovedì», «libera
+        // giovedì, sposta tutto a venerdì», poi «Federico ha scelto martedì» (CollegaAgendaOrganizzaShell.swift)
+        if chiediAgendaOrganizza(testo, chiave: chiaveConversazione) { return true }
+        if sceltaDettaAgenda(testo, chiave: chiaveConversazione) { return true }
+        // «Il sussurro» (funzione 7): «cosa devo sapere su Marco?», «cosa c'è da sapere su Marco domani?» prima dei
+        // comandi a regole, che leggerebbero «cosa c'è… domani» come agenda; la sua frase è ancorata in testa e lascia
+        // passare i verbi d'azione (CollegaSussurroShell.swift)
+        if chiediSussurro(testo, chiave: chiaveConversazione) { return true }
+        // «Le routine» (funzione 3): «chiudiamo il mese», «com'è la settimana?», «ho firmato con Giulia», «prepara
+        // l'incontro con Marco»; i comandi d'azione («fissa… a fine mese») e i documenti li lascia passare
+        // (CollegaRoutineShell.swift). Ultima del gruppo: le sue frasi sono le più larghe
+        if chiediRoutine(testo, chiave: chiaveConversazione) { return true }
+        // «Le borse hanno perso l'8% da lunedì, cosa c'è da fare?»: un evento di mercato non è una domanda sull'agenda,
+        // passa più avanti a «Il mercato per i tuoi clienti»
+        if !eventoDiMercatoNonAgenda(testo), eseguiComandoVera(testo) { return true }
         // Fase 3: promesse, differenze, coperture e resoconto
         if chiediResoconto(testo, chiave: chiaveConversazione) { return true }
         if chiediDifferenze(testo, chiave: chiaveConversazione) { return true }
         if chiediCopertura(testo, chiave: chiaveConversazione) { return true }
         if chiediPromesse(testo, chiave: chiaveConversazione) { return true }
+        // Fase 4, dopo i comandi e la fase 3, prima di «Raccontami Marco», della clientela, delle norme e di «Fallo tu»:
+        // «Il mercato per i tuoi clienti» (funzione 14): «prepara i messaggi» solo subito dopo un elenco senza bozze
+        if chiediBozzeMercatoClienti(testo, chiave: chiaveConversazione) { return true }
+        // «Ragiona a passi» (funzione 20): un budget mensile da dividere tra protezione e obiettivi (CollegaPassiShell.swift)
+        if chiediPassi(testo, chiave: chiaveConversazione) { return true }
+        // «Il mercato per i tuoi clienti» (funzione 14): l'evento detto a parole («le borse hanno perso l'8% in una
+        // settimana», «la BCE taglia i tassi di 25 punti base»), prima di «Tre livelli» che leggerebbe «perché…»
+        if chiediMercatoClienti(testo, chiave: chiaveConversazione) { return true }
+        // «Tre livelli» (funzione 17): «Perché il fondo pensione conviene a Marco?», «la liquidità di Sofia in una pagina»
+        // (CollegaTreLivelliShell.swift). Ultima del gruppo: le sue frasi sono le più larghe
+        if chiediTreLivelli(testo, chiave: chiaveConversazione) { return true }
         // «Raccontami Marco» (funzione 6) e le domande sulle norme della biblioteca (funzione 13)
         if chiediTrentaSecondi(testo, chiave: chiaveConversazione) { return true }
         if chiediClientela(testo, nelDossier: chiave != VeraPortafoglio.chiave) { return true }
         if chiediNorme(testo, chiave: chiaveConversazione) { return true }
         return chiediFalloTu(testo, chiave: chiaveConversazione)
+    }
+
+    /// true se la frase dice un evento di mercato e i comandi a regole la leggerebbero come agenda («cosa c'è» con un
+    /// giorno): allora i comandi la lasciano passare. Un appuntamento in sospeso ha sempre la precedenza.
+    func eventoDiMercatoNonAgenda(_ testo: String) -> Bool {
+        guard appuntamentoInSospeso == nil, MercatoClientiVera.eUnEvento(testo) else { return false }
+        let noti = clientiAttivi.map { ClienteNoto(id: $0.id, nome: $0.nome) }
+        if case .agenda? = InterpreteComandi.interpreta(testo, clienti: noti, attivo: veraPortafoglio ? nil : clienteAttivoId) {
+            return true
+        }
+        return false
     }
 
     // MARK: - «Fallo tu»
@@ -102,8 +152,11 @@ extension StatoShell {
 
     /// «Sì», «conferma», «procedi» oppure «no», «lascia stare» subito dopo una scheda: la risposta va alla scheda.
     /// true se la frase era per la scheda.
+    /// In modalità cliente una scheda nascosta (il sussurro, il mercato, una routine o un piano su altri clienti) non
+    /// prende il «sì» né il «no» detto davanti al cliente: resta in attesa per il consulente.
     func rispostaAllaSchedaVera(_ testo: String, chiave: String) -> Bool {
-        guard let m = conversazione(chiave).last, m.autore == .vera, let s = m.conferma, s.stato == .daConfermare else { return false }
+        guard let m = conversazione(chiave).last, m.autore == .vera, let s = m.conferma, s.stato == .daConfermare,
+              schedaVisibileSulloSchermo(m) else { return false }
         let t = testo.lowercased().trimmingCharacters(in: .whitespacesAndNewlines.union(.punctuationCharacters))
         if DateItaliane.cerca(#"^(?:s[iì]|conferma|confermo|procedi|vai|fallo|fai pure|va bene(?: fallo)?|ok(?: fallo| procedi| conferma)?|d'accordo)$"#, t) != nil {
             aggiungiMessaggio(MessaggioVera(autore: .utente, testo: testo), cliente: chiave)
@@ -120,6 +173,22 @@ extension StatoShell {
             return true
         }
         return false
+    }
+
+    /// La scheda «Conferma» di un messaggio si mostra (e si conferma) sullo schermo? In modalità cliente no se è un
+    /// appunto del consulente (sussurro), se nasce dal mercato (bozze per altri clienti), se l'esito della routine o il
+    /// piano a passi parla di un altro cliente, o se una sua azione riguarda un cliente diverso da quello davanti a te.
+    func schedaVisibileSulloSchermo(_ m: MessaggioVera) -> Bool {
+        guard inModoCliente, let s = m.conferma else { return true }
+        if Self.riservatoAlConsulente(m) || s.origine == .mercato { return false }
+        // Il tagliando dei dati e lo spostamento in blocco riguardano tutto il portafoglio
+        if m.titolo == Self.titoloTagliando || m.agendaSpostamento != nil { return false }
+        if let e = m.esitoRoutine, !routineVisibile(e) { return false }
+        if let p = m.pianoPassi, !visibileAlCliente(p.richiesta.clienteId) { return false }
+        return !s.azioni.contains { a in
+            guard let id = a.argomenti["cliente"], !id.isEmpty else { return false }
+            return id != clienteAttivoId
+        }
     }
 
     // MARK: - La scheda
@@ -205,6 +274,8 @@ extension StatoShell {
             for i in s.azioni.indices { if let e = esiti[s.azioni[i].id] { s.azioni[i].esito = e } }
             s.stato = .eseguita
         }
+        // Il sussurro (fase 4, funzione 7): le voci confermate si chiudono, il dossier non le ripropone
+        if s.origine == .sussurro, let eseguita = messaggioVera(messaggio)?.conferma { chiudiSussurriConfermati(eseguita) }
         let fatte = s.attive.compactMap { esiti[$0.id] }
         let testo: String
         if fatte.count == 1 {
@@ -212,7 +283,9 @@ extension StatoShell {
         } else {
             testo = (fatte.allSatisfy(\.fatta) ? "Fatto." : "Fatto in parte.") + "\n" + fatte.map { "• \($0.messaggio)" }.joined(separator: "\n")
         }
-        aggiungiMessaggio(MessaggioVera(autore: .vera, testo: testo, motore: Self.motoreAzioni), cliente: chiave ?? chiaveConversazione)
+        // Dopo una scheda del sussurro anche il «Fatto.» resta un appunto del consulente (nascosto in modalità cliente)
+        aggiungiMessaggio(MessaggioVera(autore: .vera, testo: testo, titolo: s.origine == .sussurro ? Self.titoloSussurro : nil,
+                                        motore: Self.motoreAzioni), cliente: chiave ?? chiaveConversazione)
         return fatte
     }
 
@@ -230,6 +303,8 @@ extension StatoShell {
             // Annullata in parte: la scheda resta eseguita, con le righe annullate segnate
             if tutte { s.stato = .annullata }
         }
+        // Il sussurro: le voci delle azioni annullate tornano nella vista (solo quelle, con la scheda già aggiornata)
+        if s.origine == .sussurro, let aggiornata = messaggioVera(messaggio)?.conferma { riapriSussurriAnnullati(aggiornata) }
         mostraAvviso(tutte ? "Annullato" : "Annullato in parte: alcune cose erano già cambiate")
     }
 
@@ -259,6 +334,8 @@ extension StatoShell {
             if RegistroStrumenti.strumento(a.strumento)?.nelDossier == false { return no("In modalità cliente non tocco l'agenda di tutti.") }
         }
         let oggi = Date()
+        // Il tagliando dei dati (fase 4, funzione 5): unire due schede, completare un dato, registrare il documento d'identità
+        if let esito = eseguiAzioneTagliando(a, oggi: oggi) { return esito }
         switch a.strumento {
         case RegistroStrumenti.agendaNuovo:
             guard let id = arg["cliente"], let c = cliente(id), let inizio = RegistroStrumenti.daIso(arg["inizio"]) else { return no("Non ho trovato il cliente o l'orario.") }
@@ -327,10 +404,31 @@ extension StatoShell {
         case RegistroStrumenti.messaggiPrepara:
             guard let id = arg["cliente"], let c = cliente(id), let testo = arg["testo"], !testo.isEmpty else { return no("Non ho il testo del messaggio.") }
             let canale = CanaleMessaggio(rawValue: arg["canale"] ?? "") ?? .messaggi
-            let origine = OrigineMessaggio(tipo: .richiestaVera, riferimento: a.id)
-            var m = MessaggioCliente(clienteId: id, occasioneId: "\(TipoOccasioneMessaggio.richiestaVera.rawValue)-\(id)-\(a.id)", origine: origine,
-                                     canaleLavoro: nil, tono: .formale, canale: canale,
-                                     oggetto: canale == .mail ? (arg["scopo"] == "spostamento" ? "Il nostro incontro" : "Un messaggio da \(nomeUtente)") : nil,
+            // «Il mercato per i tuoi clienti» (fase 4, funzione 14): la bozza ricorda l'evento da cui nasce e porta il tono
+            // (tu o Lei) scelto da Prisma per quel cliente
+            let mercato = arg["origine"] == "mercato"
+            let riferimento = mercato ? (arg["evento"] ?? a.id) : a.id
+            let tipo: TipoOccasioneMessaggio = mercato ? .avvisoMercato : .richiestaVera
+            let tono = TonoMessaggio(rawValue: arg["tono"] ?? "") ?? .formale
+            let origine = OrigineMessaggio(tipo: tipo, riferimento: riferimento)
+            let occasione = "\(tipo.rawValue)-\(id)-\(riferimento)"
+            // Dalla scena del Mercato e dal portafoglio: una sola bozza per cliente ed evento
+            if mercato, dati.messaggi.contains(where: { $0.occasioneId == occasione && $0.stato == .bozza }) {
+                return EsitoAzioneVera(fatta: false, messaggio: "Per \(c.nome) c'è già una bozza per questo evento in Messaggi.")
+            }
+            let oggetto: String?
+            if canale != .mail {
+                oggetto = nil
+            } else if mercato {
+                oggetto = tono.lei ? "I mercati e i suoi investimenti" : "I mercati e i tuoi investimenti"
+            } else {
+                // «L'agenda che si organizza» (fase 4, funzione 4): gli orari proposti e la conferma dell'orario
+                oggetto = Self.oggettoAgendaOrganizza(scopo: arg["scopo"], orari: arg["orari"])
+                    ?? (arg["scopo"] == "spostamento" ? "Il nostro incontro" : "Un messaggio da \(nomeUtente)")
+            }
+            var m = MessaggioCliente(clienteId: id, occasioneId: occasione, origine: origine,
+                                     canaleLavoro: nil, tono: tono, canale: canale,
+                                     oggetto: oggetto,
                                      testo: testo, cifre: [], autore: .vera, modello: nil)
             m.stato = .bozza
             dati.messaggi.append(m)
@@ -366,6 +464,21 @@ extension StatoShell {
 
         case RegistroStrumenti.documentiArchivia:
             return archiviaDocumentoCaduto(a)
+        // «Lascia cadere qui»: le posizioni lette in un estratto conto (LasciaCadereShell.swift)
+        case LasciaCadereVera.strumentoPosizione:
+            return eseguiPosizioneCaduta(a)
+
+        // Fase 4: «Le routine» (CollegaRoutineShell.swift)
+        case RoutineVera.strumentoPosizioneFirmata:
+            return eseguiPosizioneFirmataRoutine(a)
+        case RoutineVera.strumentoSalva:
+            return eseguiSalvaRoutine(a)
+        // Fase 4: «Scrive come te» (CollegaStileShell.swift)
+        case RegistroStrumenti.stileCambia:
+            return eseguiStileVera(a)
+        // Fase 4: «Tre livelli», la pagina salvata nei Documenti (CollegaTreLivelliShell.swift)
+        case StatoShell.trelivelliStrumentoPagina:
+            return trelivelliEseguiPagina(a)
 
         default:
             return no("Questa azione non è ancora disponibile in Prisma.")
@@ -375,6 +488,8 @@ extension StatoShell {
     /// Rimette le cose com'erano prima di un'azione; true se ci è riuscito.
     func disfaAzioneVera(_ a: AzioneConferma) -> Bool {
         guard let e = a.esito, e.fatta else { return false }
+        // Il tagliando dei dati (fase 4, funzione 5)
+        if let fatto = disfaAzioneTagliando(a) { return fatto }
         switch a.strumento {
         case RegistroStrumenti.agendaNuovo, RegistroStrumenti.agendaBlocca:
             guard let id = e.oggetto, dati.appuntamenti.contains(where: { $0.id == id }) else { return false }
@@ -423,6 +538,17 @@ extension StatoShell {
             if let u = urlDocumento(d) { try? FileManager.default.removeItem(at: u) }
             if let u = urlTesto(d) { try? FileManager.default.removeItem(at: u) }
             dati.documenti.removeAll { $0.id == id }
+        case LasciaCadereVera.strumentoPosizione:
+            guard disfaPosizioneCaduta(a) else { return false }
+        // Fase 4: «Le routine», «Scrive come te» e «Tre livelli»
+        case RoutineVera.strumentoPosizioneFirmata:
+            return disfaPosizioneFirmataRoutine(a)
+        case RoutineVera.strumentoSalva:
+            return disfaSalvaRoutine(a)
+        case RegistroStrumenti.stileCambia:
+            guard disfaStileVera(a) else { return false }
+        case StatoShell.trelivelliStrumentoPagina:
+            guard trelivelliDisfaPagina(a) else { return false }
         default:
             return false
         }
@@ -440,15 +566,15 @@ extension StatoShell {
 
     var datiClientela: DatiClientela {
         var spese: [String: (mensili: Double, salvata: Bool)] = [:]
-        for c in dati.clienti { spese[c.id] = (analisi360(c.id).protezione.fabbisognoMensile, analisiSalvata(c.id)) }
-        return DatiClientela(oggi: Date(), clienti: dati.clienti, posizioni: dati.posizioni, appuntamenti: dati.appuntamenti,
+        for c in clientiAttivi { spese[c.id] = (analisi360(c.id).protezione.fabbisognoMensile, analisiSalvata(c.id)) }
+        return DatiClientela(oggi: Date(), clienti: clientiAttivi, posizioni: dati.posizioni, appuntamenti: dati.appuntamenti,
                              incontri: dati.incontri, spese: spese)
     }
 
     /// Una domanda su tutti i clienti: Qwen la traduce in filtri, Prisma cerca. true se l'ha gestita.
     /// La conversazione passa al portafoglio (riguarda tutti i clienti); in modalità cliente non si fa.
     func chiediClientela(_ testo: String, nelDossier: Bool = false) -> Bool {
-        let noti = dati.clienti.map { ClienteNoto(id: $0.id, nome: $0.nome) }
+        let noti = clientiAttivi.map { ClienteNoto(id: $0.id, nome: $0.nome) }
         guard ClientelaVera.eUnaDomanda(testo, clienti: noti, soloEspliciti: nelDossier) else { return false }
         if inModoCliente {
             let chiave = chiaveConversazione
@@ -520,5 +646,52 @@ extension Cliente {
         case "indirizzo": return indirizzo
         default: return professione
         }
+    }
+}
+
+// MARK: - Prova
+
+extension StatoShell {
+    /// In modalità cliente la scheda «Conferma» nascosta (sussurro, azioni su un altro cliente) non si vede e non prende
+    /// il «sì» detto davanti al cliente: resta in attesa per il consulente; fuori dalla modalità cliente sì.
+    static func provaSchedaNascostaInModoCliente(_ controlla: (Bool, String) -> Void) {
+        let s = StatoShell(persistente: false)
+        s.rispostePreparate = true
+        s.veraPortafoglio = false
+        guard let davanti = s.dati.clienti.first?.id, let altro = s.dati.clienti.first(where: { $0.id != davanti })?.id else {
+            return controlla(false, "Scheda nascosta: servono due clienti nei dati di prova")
+        }
+        s.clienteAttivoId = davanti
+        let attivita = s.dati.attivita.count
+        func scheda(_ cliente: String, origine: SchedaConfermaVera.Origine, titolo: String?) -> String {
+            var m = MessaggioVera(autore: .vera, testo: "Una scheda da confermare.", titolo: titolo, motore: motoreAzioni)
+            let azione = AzioneConferma(strumento: RegistroStrumenti.attivitaNuova, app: .attivita, titolo: "Attività", dettaglio: "Da fare",
+                                        argomenti: ["cliente": cliente, "titolo": "Richiamare"])
+            m.conferma = SchedaConfermaVera(richiesta: "Prova", azioni: [azione], origine: origine)
+            s.aggiungiMessaggio(m, cliente: davanti, parla: false)
+            return m.id
+        }
+        // Il sussurro sul cliente davanti a te
+        let sussurro = scheda(davanti, origine: .sussurro, titolo: titoloSussurro)
+        s.entraModoCliente(avviso: false)
+        guard s.inModoCliente else { return controlla(false, "Scheda nascosta: la modalità cliente non si è accesa") }
+        let ultimo = s.conversazione(davanti).last
+        controlla(ultimo.map { !s.schedaVisibileSulloSchermo($0) } == true, "Scheda nascosta: in modalità cliente la scheda del sussurro non si vede")
+        controlla(!s.rispostaAllaSchedaVera("sì", chiave: davanti) && s.conversazione(davanti).last?.conferma?.stato == .daConfermare
+                  && s.dati.attivita.count == attivita,
+                  "Scheda nascosta: in modalità cliente un «sì» non conferma la scheda del sussurro")
+        controlla(!s.rispostaAllaSchedaVera("no", chiave: davanti) && s.conversazione(davanti).last?.conferma?.stato == .daConfermare,
+                  "Scheda nascosta: in modalità cliente un «no» non lascia stare la scheda del sussurro")
+        s.esciModoCliente()
+        // Una scheda di regole con un'azione su un altro cliente
+        _ = scheda(altro, origine: .regole, titolo: nil)
+        s.entraModoCliente(avviso: false)
+        controlla(s.conversazione(davanti).last.map { !s.schedaVisibileSulloSchermo($0) } == true
+                  && !s.rispostaAllaSchedaVera("sì", chiave: davanti),
+                  "Scheda nascosta: in modalità cliente una scheda con azioni su un altro cliente non si vede e non si conferma")
+        s.esciModoCliente()
+        controlla(s.conversazione(davanti).last.map { s.schedaVisibileSulloSchermo($0) } == true
+                  && s.conversazione(davanti).contains { $0.id == sussurro && s.schedaVisibileSulloSchermo($0) },
+                  "Scheda nascosta: fuori dalla modalità cliente le schede si vedono")
     }
 }

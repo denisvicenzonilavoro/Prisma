@@ -191,9 +191,19 @@ import Foundation
         cambia { $0.lezioni.removeAll { $0.id == id } }
     }
 
-    func approva(domanda: String, risposta: String) {
+    func approva(domanda: String, risposta: String, modalita: ModalitaVera? = nil) {
         guard MemoriaVera.vietato(domanda + " " + risposta) == nil else { return }
-        cambia { $0.esempi.append(EsempioVera(domanda: domanda, risposta: risposta)) }
+        cambia { $0.esempi.append(EsempioVera(domanda: domanda, risposta: risposta, modalita: modalita)) }
+    }
+
+    /// Gli esempi approvati con 👍 (Vera su misura, fase 5).
+    var esempi: [EsempioVera] { carica(); return contenuto.esempi }
+
+    /// Esclude (o riammette) un esempio dal pacchetto e dall'esame di «Vera su misura».
+    func escludiEsempio(_ id: String, _ escluso: Bool) {
+        cambia { c in
+            for i in c.esempi.indices where c.esempi[i].id == id { c.esempi[i].escluso = escluso }
+        }
     }
 
     // MARK: - Il filo lungo

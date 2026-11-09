@@ -568,6 +568,13 @@ extension StatoShell {
             return corrente
         }
         var nuovo = e.dati
+        // L'istantanea non porta lanci delle routine, tagliando e spiegazioni in tre livelli: la copia buona è quella
+        // del dispositivo adesso, non quella di quando il giro è partito
+        nuovo.routine.esiti = corrente.routine.esiti
+        nuovo.tagliando = corrente.tagliando
+        nuovo.spiegazioniTreLivelli = corrente.spiegazioniTreLivelli
+        // Un «Non ora» del sussurro premuto mentre il giro lavorava resta
+        nuovo.sussurriChiusi = SpazioOvunque.unisciSussurriChiusi(nuovo.sussurriChiusi, corrente.sussurriChiusi, clienti: nuovo.clienti)
         let ultimoSeq = partenza.giornaleOvunque.map(\.seq).max() ?? 0
         let nuove = corrente.giornaleOvunque.filter { $0.seq > ultimoSeq }
         for op in nuove { MotoreUnioneOvunque.applicaForzata(op, a: &nuovo) }

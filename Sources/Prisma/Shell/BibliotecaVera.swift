@@ -226,6 +226,13 @@ extension StatoShell {
         let noti = dati.clienti.map { ClienteNoto(id: $0.id, nome: $0.nome) }
         guard let id = TrentaSecondiVera.cliente(testo, clienti: noti, attivo: veraPortafoglio ? nil : clienteAttivoId) else { return false }
         guard !inModoCliente || id == clienteAttivoId else { return false }
+        return raccontaTrentaSecondi(id, domanda: testo, chiave: chiave)
+    }
+
+    /// Compone «Il cliente in 30 secondi» per un cliente già scelto (dalla chat o dalla scheda del cliente) e lo mette
+    /// nella conversazione; Qwen, se è pronto, rende le sezioni scorrevoli con le stesse cifre.
+    @discardableResult
+    func raccontaTrentaSecondi(_ id: String, domanda testo: String, chiave: String) -> Bool {
         guard let fonte = fonteVera(id) else { return false }
         aggiungiMessaggio(MessaggioVera(autore: .utente, testo: testo), cliente: chiave)
         domandaVera = ""

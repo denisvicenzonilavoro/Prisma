@@ -28,10 +28,45 @@ struct LezioneVera: Codable, Identifiable, Equatable {
 }
 
 /// Una risposta approvata con 👍: un esempio per l'addestramento su misura (fase 5) e per lo stile.
-struct EsempioVera: Codable, Equatable {
+/// Fase 5: un id stabile (per tenere da parte le domande dell'esame), la modalità in cui Vera aveva risposto e
+/// l'esclusione scelta dal consulente nell'anteprima di «Vera su misura». Letto con tolleranza: un esempio di prima
+/// senza id riceve sempre lo stesso id (l'impronta di domanda e risposta).
+struct EsempioVera: Codable, Equatable, Identifiable {
+    var id: String
     var domanda: String
     var risposta: String
     var data = Date()
+    /// nil = esempio di prima della fase 5 (la modalità non era salvata).
+    var modalita: ModalitaVera?
+    /// Escluso dal consulente: non entra mai nel pacchetto né nell'esame.
+    var escluso = false
+
+    init(domanda: String, risposta: String, data: Date = Date(), modalita: ModalitaVera? = nil) {
+        self.id = Self.impronta(domanda: domanda, risposta: risposta)
+        self.domanda = domanda
+        self.risposta = risposta
+        self.data = data
+        self.modalita = modalita
+    }
+
+    /// Le prime 12 cifre esadecimali dello SHA256 di domanda e risposta: lo stesso esempio ha sempre lo stesso id.
+    static func impronta(domanda: String, risposta: String) -> String {
+        let h = SHA256.hash(data: Data((domanda + "\u{1F}" + risposta).utf8))
+        return "esempio-" + String(h.map { String(format: "%02x", $0) }.joined().prefix(12))
+    }
+
+    private enum CodingKeys: String, CodingKey { case id, domanda, risposta, data, modalita, escluso }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        domanda = try c.decode(String.self, forKey: .domanda)
+        risposta = try c.decode(String.self, forKey: .risposta)
+        data = (try? c.decodeIfPresent(Date.self, forKey: .data)) ?? Date()
+        modalita = (try? c.decodeIfPresent(ModalitaVera.self, forKey: .modalita)) ?? nil
+        escluso = (try? c.decodeIfPresent(Bool.self, forKey: .escluso)) ?? false
+        let salvato = ((try? c.decodeIfPresent(String.self, forKey: .id)) ?? nil) ?? ""
+        id = salvato.isEmpty ? Self.impronta(domanda: domanda, risposta: risposta) : salvato
+    }
 }
 
 /// Il riassunto progressivo di una conversazione lunga: copre le battute fino a `finoA` (esclusa la storia ancora visibile).

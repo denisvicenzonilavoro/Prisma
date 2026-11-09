@@ -9,7 +9,7 @@ extension StatoShell {
     /// Se la frase è uno scenario (o risponde alla domanda di Vera su uno scenario in sospeso) Vera lo gestisce qui:
     /// true se l'ha presa. `chiave` è la conversazione: il cliente aperto o il portafoglio (lì solo con un cliente nominato).
     func chiediScenarioVera(_ testo: String, chiave: String, breve: Bool) -> Bool {
-        let noti = dati.clienti.map { ClienteNoto(id: $0.id, nome: $0.nome) }
+        let noti = clientiAttivi.map { ClienteNoto(id: $0.id, nome: $0.nome) }
         let portafoglio = chiave == VeraPortafoglio.chiave
         let attivo: String? = portafoglio ? nil : clienteAttivoId
         var sospeso = scenarioInSospeso
