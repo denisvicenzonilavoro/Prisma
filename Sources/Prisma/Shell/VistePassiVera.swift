@@ -252,9 +252,9 @@ struct ColonnaDivisionePassi: View {
         .accessibilityAddTraits(consigliata ? .isSelected : [])
     }
 
-    /// La barra di una voce: la parte del budget mensile, con la cifra a destra.
+    /// La barra di una voce: la parte del budget mensile (o del capitale una tantum), con la cifra a destra.
     private func barra(etichetta: String, valore: Double, colore: Color) -> some View {
-        let parte = richiesta.budgetMensile > 0 ? max(0, min(1, valore / richiesta.budgetMensile)) : 0
+        let parte = richiesta.totale > 0 ? max(0, min(1, valore / richiesta.totale)) : 0
         return VStack(alignment: .leading, spacing: R.sottoEtichetta) {
             Text(etichetta).carattereApple(R.etichettaBarra).foregroundColor(F.coloreDettaglio).lineLimit(1)
             HStack(spacing: R.spazioPiccolo) {

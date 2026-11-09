@@ -7,7 +7,10 @@ import Foundation
 //
 // Chi fa cosa (regola 5 «Prima il codice»):
 // - le regole riconoscono quando una richiesta merita il ragionamento a passi (`eUnaRichiesta`) e la capiscono
-//   (`capisci`: budget mensile, protezione sì o no, gli obiettivi del cliente di cui si parla, chi va protetto);
+//   (`capisci`: budget mensile o capitale una tantum, protezione sì o no, gli obiettivi del cliente di cui si parla, chi va
+//   protetto). Oltre a «come li divido?», anche le scelte tra due voci («meglio la casa o gli studi?», «cosa conviene
+//   prima», «su cosa punto») e i capitali da dividere tra gli obiettivi («30.000 € da parte: casa o studi?», simulati
+//   con l'accantonato dell'obiettivo; la protezione no, perché si paga con un premio periodico);
 // - Qwen propone il piano in JSON scegliendo solo dal catalogo di sola lettura (`StrumentoPasso`); il codice lo valida
 //   (strumenti esistenti, al massimo cinque passi, letture prima della simulazione, «scegli e spiega» per ultimo, titoli
 //   senza cifre) e, se non va, usa il piano delle regole (`pianoConRegole`);
@@ -104,6 +107,15 @@ struct RichiestaPassi: Codable, Equatable {
     var obiettiviIds: [String]
     /// Chi va protetto, per i testi: «Elena», «la famiglia».
     var protetta: String
+    /// Un capitale una tantum da dividere tra gli obiettivi («30.000 € da parte»), al posto del budget mensile (che resta 0).
+    /// nil per le richieste di prima, che erano tutte mensili (letto con tolleranza: manca = mensile).
+    var capitale: Double? = nil
+
+    /// Il capitale una tantum, oppure il budget mensile.
+    var totale: Double { capitale ?? budgetMensile }
+    var unaTantum: Bool { capitale != nil }
+    /// «400 € al mese» o «30.000 € una tantum».
+    var dicitura: String { CifreDoc.euro(totale) + (unaTantum ? " una tantum" : " al mese") }
 }
 
 /// Com'è andata la lettura della richiesta.
@@ -346,7 +358,29 @@ enum PassiVera {
     static func chiedeDivisione(_ testo: String) -> Bool {
         let t = piega(testo)
         if chiedePassi(t) { return true }
-        return DateItaliane.cerca(#"\bcome (?:li|le|lo|la) (?:divido|dividiamo|divid\w*|ripart\w*|distribu\w*|uso|usiamo|impiego|investo|metto)\b|\bdivider\w*|\bdivision\w*|\bsuddivid\w*|\bripart\w*|\bdistribu\w*|\bcome conviene\b|\bpriorit\w*|\bsia .+ sia\b"#, t) != nil
+        if DateItaliane.cerca(#"\bcome (?:li|le|lo|la) (?:divido|dividiamo|divid\w*|ripart\w*|distribu\w*|uso|usiamo|impiego|investo|metto)\b|\bdivider\w*|\bdivision\w*|\bsuddivid\w*|\bripart\w*|\bdistribu\w*|\bcome conviene\b|\bpriorit\w*|\bsia .+ sia\b"#, t) != nil {
+            return true
+        }
+        // Altre richieste complesse con la stessa forma: una scelta tra due voci («meglio la casa o gli studi?», «cosa
+        // conviene prima», «su cosa punto», «a cosa do la precedenza», «dove li metto»)
+        return DateItaliane.cerca(#"\bcosa conviene\b|\bsu cosa punt\w*|\ba cosa (?:do|diamo|dare|dovrei dare) (?:la )?precedenza\b|\bdove (?:li|le) (?:metto|mettiamo)\b|\bmeglio\b.{1,80}\bo\b"#, t) != nil
+    }
+
+    /// Un capitale una tantum da dividere: «30.000 € da parte», «20.000 euro da investire», «€ 15.000 di liquidità»,
+    /// «50.000 € dal TFR». Solo con una di queste parole vicino alla cifra (una cifra qualsiasi non è un capitale).
+    static func capitaleUnaTantum(_ testo: String) -> Double? {
+        let t = piega(testo)
+        let numero = #"(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d{1,2}))?"#
+        let quale = #"(?:da parte|messi da parte|da investire|da impiegare|di risparmi\w*|di liquidit\w*|una tantum|in un'unica soluzione|in banca|sul conto|di eredit\w*|dall'eredit\w*|di bonus|di tfr|dal tfr|accantonat\w*|dalla vendita|da una vendita|liquidat\w*)"#
+        let schemi = [numero + #"\s*(?:€|euro)\s*(?:[a-z']+\s+){0,3}?"# + quale, #"€\s*"# + numero + #"\s*(?:[a-z']+\s+){0,3}?"# + quale]
+        for s in schemi {
+            guard let trovato = DateItaliane.cerca(s, t), trovato.1.count >= 3 else { continue }
+            let g = trovato.1
+            let intero = g[1].replacingOccurrences(of: ".", with: "")
+            let decimali = g[2].isEmpty ? "" : "." + g[2]
+            if let v = Double(intero + decimali), v > 0 { return v }
+        }
+        return nil
     }
 
     /// «Ragiona a passi», «passo per passo», «mostrami il ragionamento».
@@ -357,7 +391,7 @@ enum PassiVera {
     /// Merita il ragionamento a passi: un budget mensile da dividere tra almeno due voci (la protezione e un obiettivo,
     /// oppure due obiettivi). Solo regole, senza dati: lo smistamento lo chiede prima di tutto il resto.
     static func eUnaRichiesta(_ testo: String) -> Bool {
-        guard budget(testo) != nil, chiedeDivisione(testo) else { return false }
+        guard budget(testo) != nil || capitaleUnaTantum(testo) != nil, chiedeDivisione(testo) else { return false }
         var voci = famiglieIn(testo).count
         if voci == 0, DateItaliane.cerca(#"\bobiettiv\w*"#, piega(testo)) != nil { voci = 1 }
         if parlaDiProtezione(testo) { voci += 1 }
@@ -409,8 +443,12 @@ enum PassiVera {
     /// Capisce la richiesta: budget, protezione, obiettivi. Se manca qualcosa, la domanda da fare.
     static func capisci(_ testo: String, cliente c: Cliente, obiettivi: [Obiettivo]) -> CapitoPassi {
         let primo = c.nome.split(separator: " ").first.map(String.init) ?? c.nome
-        guard let b = budget(testo) else { return .domanda("Quanto può mettere \(primo) ogni mese?") }
-        let protezione = parlaDiProtezione(testo)
+        // Prima il budget mensile; senza, un capitale una tantum («30.000 € da parte»)
+        let mensile = budget(testo)
+        let capitale = mensile == nil ? capitaleUnaTantum(testo) : nil
+        guard let b = mensile ?? capitale else { return .domanda("Quanto può mettere \(primo) ogni mese?") }
+        // La protezione si paga con un premio periodico: con un capitale una tantum si divide solo tra gli obiettivi
+        let protezione = capitale == nil && parlaDiProtezione(testo)
         var scelti = obiettiviNominati(testo, obiettivi: obiettivi, famiglia: c.famiglia)
         // «l'obiettivo» senza dire quale: va bene solo se ce n'è uno
         if scelti.isEmpty, obiettivi.count == 1, DateItaliane.cerca(#"\bobiettiv\w*"#, piega(testo)) != nil { scelti = obiettivi }
@@ -419,13 +457,19 @@ enum PassiVera {
             let elenco = obiettivi.map { "«\($0.titolo)»" }.joined(separator: ", ")
             return .domanda("Per quale obiettivo? \(primo) ha \(elenco).")
         }
+        if capitale != nil && scelti.count < 2 {
+            if parlaDiProtezione(testo) {
+                return .domanda("La protezione si paga con un premio ogni mese o ogni anno: i \(CifreDoc.euro(b)) una tantum li divido tra gli obiettivi. Quanto può mettere \(primo) ogni mese per la protezione?")
+            }
+            return .domanda("Tra quali obiettivi divido i \(CifreDoc.euro(b))? Dimmene almeno due.")
+        }
         if !protezione && scelti.count < 2 {
             return .domanda("Tra cosa divido i \(CifreDoc.euro(b)) al mese? Dimmi se c'è anche la protezione o un altro obiettivo.")
         }
         // Al massimo tre obiettivi: il piano ha cinque passi e la scheda tre colonne
         let ids = Array(scelti.prefix(3)).map(\.id)
-        return .richiesta(RichiestaPassi(testo: testo, clienteId: c.id, budgetMensile: b, protezione: protezione, obiettiviIds: ids,
-                                         protetta: protetta(testo, famiglia: c.famiglia, obiettivi: scelti)))
+        return .richiesta(RichiestaPassi(testo: testo, clienteId: c.id, budgetMensile: mensile ?? 0, protezione: protezione, obiettiviIds: ids,
+                                         protetta: protetta(testo, famiglia: c.famiglia, obiettivi: scelti), capitale: capitale))
     }
 
     // MARK: Il piano (regole o Qwen)
@@ -452,7 +496,7 @@ enum PassiVera {
             }
             return "Guardo gli obiettivi"
         case .simulaDivisioni:
-            return "Simulo tre divisioni dei \(CifreDoc.euro(r.budgetMensile))"
+            return "Simulo tre divisioni dei \(CifreDoc.euro(r.totale))"
         default:
             return s.titolo
         }
@@ -480,7 +524,7 @@ enum PassiVera {
         let utente = """
         RICHIESTA: \(r.testo)
         CLIENTE: \(dati.cliente.nome)
-        BUDGET: \(CifreDoc.euro(r.budgetMensile)) al mese
+        BUDGET: \(r.dicitura)
         PROTEZIONE: \(r.protezione ? "sì, per \(r.protetta)" : "no")
         OBIETTIVI DELLA RICHIESTA: \(obiettivi)
         STRUMENTI
@@ -573,7 +617,7 @@ enum PassiVera {
             piano.passi[k].esito = esitoProtezione(dati)
         case .leggiObiettivo:
             let ids = passo.obiettivoId.map { [$0] } ?? piano.richiesta.obiettiviIds
-            piano.passi[k].esito = ids.compactMap { dati.obiettivo($0) }.map { esitoObiettivo($0, dati) }.joined(separator: " · ")
+            piano.passi[k].esito = ids.compactMap { dati.obiettivo($0) }.map { esitoObiettivo($0, dati, unaTantum: piano.richiesta.unaTantum) }.joined(separator: " · ")
         case .simulaDivisioni:
             piano.divisioni = divisioni(piano.richiesta, dati: dati)
             piano.passi[k].esito = esitoSimulazione(piano)
@@ -643,33 +687,60 @@ enum PassiVera {
         return (v / 10).rounded(.up) * 10
     }
 
-    static func esitoObiettivo(_ o: Obiettivo, _ dati: DatiPassi) -> String {
+    /// Il capitale da aggiungere oggi che porta l'obiettivo in tempo (per eccesso, a 100 €; 0 se è già raggiunto; infinito
+    /// se nemmeno il doppio dell'importo basta). Lo stesso calcolo del dettaglio dell'obiettivo, con l'accantonato aumentato.
+    static func bisognoCapitale(_ o: Obiettivo, _ dati: DatiPassi) -> Double {
+        func basta(_ c: Double) -> Bool {
+            var x = o
+            x.accantonato += c
+            return MotoreObiettivo.calcola(x, posizioni: dati.posizioni, data: dati.oggi).mancante <= 0.5
+        }
+        guard !basta(0) else { return 0 }
+        var basso = 0.0
+        var alto = max(o.importo, 1) * 2
+        guard basta(alto) else { return .infinity }
+        for _ in 0..<40 {
+            let m = (basso + alto) / 2
+            if basta(m) { alto = m } else { basso = m }
+        }
+        return (alto / 100).rounded(.up) * 100
+    }
+
+    static func esitoObiettivo(_ o: Obiettivo, _ dati: DatiPassi, unaTantum: Bool = false) -> String {
         let e = MotoreObiettivo.calcola(o, posizioni: dati.posizioni, data: dati.oggi)
         var testo = "«\(o.titolo)»: \(CifreDoc.euro(o.importo)) per \(Formati.meseAnno.string(from: o.scadenza)), oggi \(CifreDoc.euro(e.disponibileOggi))"
-        let b = bisogno(o, dati)
-        if b == 0 { testo += ", già in tempo" } else if b.isFinite { testo += ", servono \(CifreDoc.euro(b)) al mese in più" } else { testo += ", la data è troppo vicina" }
+        let b = unaTantum ? bisognoCapitale(o, dati) : bisogno(o, dati)
+        if b == 0 {
+            testo += ", già in tempo"
+        } else if b.isFinite {
+            testo += unaTantum ? ", servono \(CifreDoc.euro(b)) in più oggi" : ", servono \(CifreDoc.euro(b)) al mese in più"
+        } else {
+            testo += ", la data è troppo vicina"
+        }
         return testo
     }
 
     // MARK: La simulazione
 
     private static func arrotonda10(_ v: Double) -> Double { (v / 10).rounded() * 10 }
+    /// Un capitale si divide a 100 €, un budget mensile a 10 €.
+    private static func arrotonda(_ v: Double, _ r: RichiestaPassi) -> Double { r.unaTantum ? (v / 100).rounded() * 100 : arrotonda10(v) }
 
     /// Le tre divisioni del budget, ognuna simulata con i motori di Prisma. La «seconda» voce sono gli obiettivi (con
     /// la protezione nella richiesta) o gli obiettivi dopo il primo (senza). L'equilibrio dà alla seconda voce quanto
     /// basta per arrivare in tempo, se sta tra le altre due divisioni; altrimenti metà budget.
     static func divisioni(_ r: RichiestaPassi, dati: DatiPassi) -> [DivisioneBudget] {
         let obiettivi = r.obiettiviIds.compactMap { dati.obiettivo($0) }
-        guard r.budgetMensile > 0, !obiettivi.isEmpty, r.protezione || obiettivi.count >= 2 else { return [] }
-        let b = r.budgetMensile
+        guard r.totale > 0, !obiettivi.isEmpty, r.protezione || obiettivi.count >= 2 else { return [] }
+        let b = r.totale
         let prima: Obiettivo? = r.protezione ? nil : obiettivi[0]
         let seconda = r.protezione ? obiettivi : Array(obiettivi.dropFirst())
-        let bisogni = Dictionary(obiettivi.map { ($0.id, bisogno($0, dati)) }, uniquingKeysWith: { a, _ in a })
+        let bisogni = Dictionary(obiettivi.map { ($0.id, r.unaTantum ? bisognoCapitale($0, dati) : bisogno($0, dati)) }, uniquingKeysWith: { a, _ in a })
         let bisognoSeconda = seconda.reduce(0.0) { $0 + (bisogni[$1.id] ?? 0) }
 
-        let basso = arrotonda10(b * (frazioni[.piuPrima] ?? 0.3))
-        let alto = arrotonda10(b * (frazioni[.piuSeconda] ?? 0.7))
-        let equilibrio = (bisognoSeconda > basso && bisognoSeconda < alto) ? bisognoSeconda : arrotonda10(b * (frazioni[.equilibrio] ?? 0.5))
+        let basso = arrotonda(b * (frazioni[.piuPrima] ?? 0.3), r)
+        let alto = arrotonda(b * (frazioni[.piuSeconda] ?? 0.7), r)
+        let equilibrio = (bisognoSeconda > basso && bisognoSeconda < alto) ? bisognoSeconda : arrotonda(b * (frazioni[.equilibrio] ?? 0.5), r)
         let quoteSeconda: [TipoDivisione: Double] = [.piuPrima: basso, .equilibrio: equilibrio, .piuSeconda: alto]
 
         let esito = MotoreAnalisi.protezione(dati.protezione, posizioni: dati.posizioni)
@@ -700,7 +771,7 @@ enum PassiVera {
                 assegnato += quota
             }
             if let prima { perObiettivo[prima.id] = restoPrima }
-            let quote = obiettivi.map { quotaObiettivo($0, mensile: perObiettivo[$0.id] ?? 0, dati) }
+            let quote = obiettivi.map { quotaObiettivo($0, mensile: perObiettivo[$0.id] ?? 0, dati, unaTantum: r.unaTantum) }
 
             var capitale: Double?
             var copertura: Double?
@@ -734,9 +805,10 @@ enum PassiVera {
 
     /// Un obiettivo con `mensile` € in più al mese: lo stesso calcolo del dettaglio dell'obiettivo (MotoreObiettivo, con
     /// il versamento previsto aumentato). In tempo: quanti anni prima si arriva; in ritardo: quanti anni dopo.
-    static func quotaObiettivo(_ o: Obiettivo, mensile: Double, _ dati: DatiPassi) -> QuotaObiettivo {
+    static func quotaObiettivo(_ o: Obiettivo, mensile: Double, _ dati: DatiPassi, unaTantum: Bool = false) -> QuotaObiettivo {
         var conQuota = o
-        conQuota.versamentoMensile += max(0, mensile)
+        // Un capitale una tantum entra oggi nell'accantonato; un budget mensile nel versamento previsto
+        if unaTantum { conQuota.accantonato += max(0, mensile) } else { conQuota.versamentoMensile += max(0, mensile) }
         let e = MotoreObiettivo.calcola(conQuota, posizioni: dati.posizioni, data: dati.oggi)
         let inTempo = e.mancante <= 0.5
         let cal = dati.calendario
@@ -799,12 +871,12 @@ enum PassiVera {
         for o in obiettivi where o.scadenza <= unAnno {
             elenco.append(VincoloPassi(tipo: .obiettivoVicino, testo: "«\(o.titolo)» scade entro un anno: i versamenti mensili contano poco", data: o.scadenza))
         }
-        let bisogni = obiettivi.map { bisogno($0, dati) }
+        let bisogni = obiettivi.map { r.unaTantum ? bisognoCapitale($0, dati) : bisogno($0, dati) }
         let totale = bisogni.reduce(0, +)
-        if totale.isFinite, totale > r.budgetMensile {
-            elenco.append(VincoloPassi(tipo: .budgetCorto, testo: "Da soli gli obiettivi chiederebbero \(CifreDoc.euro(totale)) al mese, più dei \(CifreDoc.euro(r.budgetMensile)) disponibili"))
+        if totale.isFinite, totale > r.totale {
+            elenco.append(VincoloPassi(tipo: .budgetCorto, testo: "Da soli gli obiettivi chiederebbero \(CifreDoc.euro(totale))\(r.unaTantum ? " oggi" : " al mese"), più dei \(CifreDoc.euro(r.totale)) disponibili"))
         }
-        if let netto = dati.cliente.profilo.redditoNettoAnnuo, netto > 0, r.budgetMensile * 12 > netto / 4 {
+        if !r.unaTantum, let netto = dati.cliente.profilo.redditoNettoAnnuo, netto > 0, r.budgetMensile * 12 > netto / 4 {
             elenco.append(VincoloPassi(tipo: .sostenibilita, testo: "I \(CifreDoc.euro(r.budgetMensile)) al mese sono più di un quarto del reddito netto: va verificato che restino sostenibili"))
         }
         if r.protezione, tariffa(dati) == nil {
@@ -868,7 +940,7 @@ enum PassiVera {
     /// La spiegazione di Prisma (sempre disponibile, cifre esatte): la scelta, il perché e il primo vincolo.
     static func bozzaSpiegazione(_ piano: PianoPassi, dati: DatiPassi) -> String {
         guard let d = piano.divisioneConsigliata else {
-            return "Non riesco a dividere i \(CifreDoc.euro(piano.richiesta.budgetMensile)) al mese: mancano gli obiettivi o il budget."
+            return "Non riesco a dividere i \(piano.richiesta.dicitura): mancano gli obiettivi o il budget."
         }
         let r = piano.richiesta
         let reggono = piano.divisioni.filter(\.reggeObiettivi).count
@@ -890,7 +962,7 @@ enum PassiVera {
             if let protezione { testo += ", con \(protezione)" }
             testo += "."
         } else {
-            testo += "Nessuna divisione dei \(CifreDoc.euro(r.budgetMensile)) porta tutti gli obiettivi in tempo: questa è quella che lascia meno indietro. "
+            testo += "Nessuna divisione dei \(CifreDoc.euro(r.totale)) porta tutti gli obiettivi in tempo: questa è quella che lascia meno indietro. "
             testo += (d.quote.map(testoObiettivo) + [protezione].compactMap { $0 }).joined(separator: "; ") + "."
         }
         if let v = piano.vincoli.first { testo += " Prima, però: \(minuscolaIniziale(v.testo))." }
@@ -1067,7 +1139,7 @@ enum PassiVera {
     static func azioni(_ piano: PianoPassi, cliente c: Cliente) -> [AzioneConferma] {
         var elenco: [AzioneConferma] = []
         if let d = piano.divisioneConsigliata {
-            let nota = "Divisione dei \(CifreDoc.euro(piano.richiesta.budgetMensile)) al mese consigliata da Vera: «\(d.titolo)», \(ripartizione(d, piano.richiesta))."
+            let nota = "Divisione dei \(piano.richiesta.dicitura) consigliata da Vera: «\(d.titolo)», \(ripartizione(d, piano.richiesta))."
             elenco.append(AzioneConferma(strumento: RegistroStrumenti.notaNuova, app: .note, titolo: "Metto «\(d.titolo)» nel taccuino di \(c.nome)",
                                          dettaglio: "«\(nota)» · nel taccuino del cliente",
                                          argomenti: ["cliente": c.id, "testo": nota]))

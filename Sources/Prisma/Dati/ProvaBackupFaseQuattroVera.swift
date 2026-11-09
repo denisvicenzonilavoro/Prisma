@@ -652,6 +652,20 @@ extension ProvaBackup {
         m.id = idMessaggioPassiDiProva
         m.pianoPassi = piano
         d.conversazioni[c.id, default: []].append(m)
+        // Un piano con un capitale una tantum (le richieste nuove della funzione 20): il campo «capitale» torna uguale
+        let rc = RichiestaPassi(testo: "Ha 30.000 € da parte: meglio la casa o gli studi?", clienteId: c.id, budgetMensile: 0,
+                                protezione: false, obiettiviIds: ["obiettivo-backup-passi", "obiettivo-backup-casa"], protetta: "la famiglia",
+                                capitale: 30_000)
+        var pianoCapitale = PianoPassi(richiesta: rc, passi: [
+            PassoPiano(id: 1, strumento: .leggiObiettivo, titolo: "Guardo gli obiettivi", obiettivoId: nil, stato: .fatto,
+                       esito: "«Studi»: servono 4.200 € in più oggi"),
+            PassoPiano(id: 2, strumento: .scegliESpiega, titolo: "Scelgo e spiego", obiettivoId: nil, stato: .fatto, esito: "Equilibrio"),
+        ], conQwen: false, creatoIl: t)
+        pianoCapitale.id = "passi-backup-capitale"
+        var mc = MessaggioVera(autore: .vera, testo: "Ti consiglio «Equilibrio».", titolo: StatoShell.titoloPassi, motore: "Calcoli di Prisma")
+        mc.id = idMessaggioPassiDiProva + "-capitale"
+        mc.pianoPassi = pianoCapitale
+        d.conversazioni[c.id, default: []].append(mc)
         // Valori diversi da quelli di base, per vedere che tornano
         d.impostazioni.vera.passi.mostraRagionamento = false
         d.impostazioni.vera.passi.attivo = false
@@ -663,6 +677,12 @@ extension ProvaBackup {
               let m = originale.conversazioni[c.id]?.first(where: { $0.id == idMessaggioPassiDiProva }), let piano = m.pianoPassi,
               !originale.impostazioni.vera.passi.attivo, !originale.impostazioni.vera.passi.mostraRagionamento else {
             return "l'archivio di prova non ha il ragionamento a passi"
+        }
+        // Il capitale una tantum (funzione 20, richieste nuove) torna uguale; il piano di prima, senza il campo, resta mensile
+        guard let capitale = originale.conversazioni[c.id]?.first(where: { $0.id == idMessaggioPassiDiProva + "-capitale" })?.pianoPassi,
+              capitale.richiesta.capitale == 30_000, piano.richiesta.capitale == nil,
+              estratto.conversazioni[c.id]?.first(where: { $0.id == idMessaggioPassiDiProva + "-capitale" })?.pianoPassi == capitale else {
+            return "il piano del ragionamento a passi con il capitale una tantum non torna uguale dal backup"
         }
         guard estratto.conversazioni[c.id]?.first(where: { $0.id == m.id })?.pianoPassi == piano,
               estratto.impostazioni.vera.passi == originale.impostazioni.vera.passi else {
@@ -677,8 +697,21 @@ extension ProvaBackup {
         try ScrittorePezzi(cartella: cartella).scrivi(originale)
         let letto = try ArchivioPezzi.leggi(ArchivioPezzi.cartellaPezzi(in: cartella)).lettura.dati
         guard letto.conversazioni[c.id]?.first(where: { $0.id == m.id })?.pianoPassi == piano,
+              letto.conversazioni[c.id]?.first(where: { $0.id == idMessaggioPassiDiProva + "-capitale" })?.pianoPassi == capitale,
               letto.impostazioni.vera.passi == originale.impostazioni.vera.passi else {
             return "il piano del ragionamento a passi non torna uguale dall'archivio a pezzi"
+        }
+        // Una richiesta di prima, senza «capitale»: si legge come mensile (capitale nil), il resto uguale
+        let codCapitale = try JSONEncoder().encode(capitale)
+        if var j = try JSONSerialization.jsonObject(with: codCapitale) as? [String: Any], var rich = j["richiesta"] as? [String: Any] {
+            rich.removeValue(forKey: "capitale")
+            j["richiesta"] = rich
+            let vecchio = try JSONDecoder().decode(PianoPassi.self, from: JSONSerialization.data(withJSONObject: j))
+            guard vecchio.richiesta.capitale == nil, !vecchio.richiesta.unaTantum, vecchio.passi == capitale.passi else {
+                return "una richiesta a passi senza il capitale non si legge come mensile"
+            }
+        } else {
+            return "il piano con il capitale non si codifica"
         }
 
         // Un archivio di prima: senza «pianoPassi» nei messaggi e senza «passi» nelle impostazioni di Vera (chiave «eve»)
