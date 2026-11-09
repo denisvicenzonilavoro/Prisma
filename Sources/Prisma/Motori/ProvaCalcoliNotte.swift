@@ -417,7 +417,8 @@ enum ProvaCalcoliNotte {
 
     #if os(macOS)
     private static func notifica(_ verifica: VerificaCalcoli) {
-        var d = DatiPrisma.demo()
+        // Un archivio piccolo e fisso (non i dati demo, che dipendono dalla data di oggi e riempiono i 50 promemoria)
+        var d = dati([cliente("giulia", "Giulia Prova")], posizioni: [posizione("giulia")])
         var n = NotteDiLavoro(giorno: ora(0, giorni: 1), inizio: ora(2, 10, giorni: 1), cal: cal)
         n.esito = .fatta
         n.carte = (0..<8).map { k in

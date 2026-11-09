@@ -185,6 +185,7 @@ enum TestiNotte {
     }
 
     static let confermaModuli = "Moduli approvati"
+    static let confermaModuliGiaPronti = "Moduli già nei Documenti"
 
     static func titoloRiesame(nome: String) -> String { "Il riesame di \(primoNome(nome)) è pronto" }
 
@@ -203,6 +204,7 @@ enum TestiNotte {
     }
 
     static let confermaRiesame = "Riesame approvato"
+    static let confermaRiesameGiaPronto = "Riesame già nei Documenti"
 
     static func titoloCampagna(titolo: String, inclusi: Int) -> String { "\(titolo): \(inclusi) clienti" }
 

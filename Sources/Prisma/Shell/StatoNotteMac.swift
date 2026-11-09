@@ -339,12 +339,20 @@ extension StatoShell {
             }
         case .riesame:
             guard let cid = c.clienteId, let fatto = pdfNotte(cliente: cid, scelta: nil, appuntamento: nil,
-                                                              crea: { self.documentoProspetto(.riesame) }),
-                  let doc = archiviaProspetto(fatto.0, documento: fatto.1, cliente: cid) else {
+                                                              crea: { self.documentoProspetto(.riesame) }) else {
                 mostraAvviso("Non riesco a preparare il riesame adesso.")
                 return
             }
-            creati = [doc]
+            // Lo stesso prospetto già archiviato oggi: `archiviaPDF` lo sostituirebbe e «Annulla» non potrebbe rimetterlo
+            if documentoNotteDiOggi(titolo: "\(fatto.1.genere) · \(fatto.1.titolo)", cliente: cid, posizioneId: nil) {
+                conferma = TestiNotte.confermaRiesameGiaPronto
+            } else {
+                guard let doc = archiviaProspetto(fatto.0, documento: fatto.1, cliente: cid) else {
+                    mostraAvviso("Non riesco a preparare il riesame adesso.")
+                    return
+                }
+                creati = [doc]
+            }
         case .messaggio:
             creati = salvaBozzeNotte(c.bozze)
         case .documento:
@@ -362,10 +370,14 @@ extension StatoShell {
         case .ricalcolo, .daFinire:
             break
         case .moduli:
-            creati = archiviaModuliNotte(c)
+            let esito = archiviaModuliNotte(c)
+            creati = esito.creati
             if creati.isEmpty {
-                mostraAvviso("Non riesco a scrivere i moduli compilati adesso.")
-                return
+                guard esito.giaPronti > 0 else {
+                    mostraAvviso("Non riesco a scrivere i moduli compilati adesso.")
+                    return
+                }
+                conferma = TestiNotte.confermaModuliGiaPronti
             }
         case .campagna:
             guard let g = gruppiCampagne().first(where: { $0.id == c.riferimento }) else { scaduta = true; break }
@@ -435,29 +447,43 @@ extension StatoShell {
         return (pdf, d)
     }
 
-    /// I moduli compilati con i dati di adesso, nei Documenti del cliente (come «Salva nel dossier»).
-    private func archiviaModuliNotte(_ c: CartaNotte) -> [String] {
+    /// Un documento con lo stesso titolo (e la stessa proposta) archiviato oggi: `archiviaPDF` lo sostituirebbe, e
+    /// «Annulla» toglierebbe la copia nuova senza poter rimettere quella di prima.
+    private func documentoNotteDiOggi(titolo: String, cliente: String, posizioneId: String?) -> Bool {
+        dati.documenti.contains { $0.clienteId == cliente && $0.titolo == titolo && $0.posizioneId == posizioneId
+            && Calendar.current.isDateInToday($0.importatoIl) }
+    }
+
+    /// I moduli compilati con i dati di adesso, nei Documenti del cliente (come «Salva nel dossier»). Quelli già salvati
+    /// oggi restano come sono (`giaPronti`).
+    private func archiviaModuliNotte(_ c: CartaNotte) -> (creati: [String], giaPronti: Int) {
         moduli.carica()
         guard let cid = c.clienteId, let cl = dati.clienti.first(where: { $0.id == cid }),
-              let p = dati.posizioni.first(where: { $0.id == c.riferimento }) else { return [] }
+              let p = dati.posizioni.first(where: { $0.id == c.riferimento }) else { return ([], 0) }
         let f = dati.impostazioni.studio.fatturazione
         let consulente = [f.nome, f.cognome].map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }.joined(separator: " ")
         let fonte = FonteCompilazione(cliente: cl, posizione: p, prodotto: p.prodottoId.flatMap { id in dati.prodotti.first { $0.id == id } },
                                       consulente: consulente, comuneConsulente: f.sede.comune, oggi: Date(),
                                       conservaIban: dati.impostazioni.pratiche.ibanConservato)
         var creati: [String] = []
+        var giaPronti = 0
         for mid in c.modelli {
-            guard let m = moduli.modello(mid), let base = moduli.pdf(m) else { continue }
+            guard let m = moduli.modello(mid) else { continue }
+            let titolo = "Modulo · \(m.titolo) · \(p.nome)"
+            if documentoNotteDiOggi(titolo: titolo, cliente: cid, posizioneId: p.id) {
+                giaPronti += 1
+                continue
+            }
+            guard let base = moduli.pdf(m) else { continue }
             let a = CompilatoreModuli.anteprima(m, fonte: fonte)
             guard let pdf = CompilatoreModuli.scrivi(m, pdf: base, anteprima: a) else { continue }
             let comp = CompilazioneModulo(modelloId: m.id, titoloModello: m.titolo, compilatoIl: Appuntamento.alMinuto(Date()),
                                           mancanti: a.datiMancanti, firme: a.firme.count)
-            if let doc = archiviaPDF(pdf, titolo: "Modulo · \(m.titolo) · \(p.nome)", tipo: .modulo, cliente: cid, posizioneId: p.id,
-                                     modulo: comp) {
+            if let doc = archiviaPDF(pdf, titolo: titolo, tipo: .modulo, cliente: cid, posizioneId: p.id, modulo: comp) {
                 creati.append(doc)
             }
         }
-        return creati
+        return (creati, giaPronti)
     }
 
     /// «Più tardi» (←, ✕, trascinamento a sinistra): la carta resta e torna alla prossima apertura (domani «DA IERI»).
