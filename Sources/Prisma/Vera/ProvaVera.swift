@@ -461,6 +461,37 @@ enum ProvaVera {
                   "Novità: «La lettera dal futuro» apre la Sala sul palco della lettera")
         provaSala.tornaAllaSala()
         controlla(provaSala.sala.esperienza == nil && provaSala.appAttiva == .sala, "Sala: «‹ Sala» torna alla griglia")
+        // Il gioco del rischio a metà (§4.1.4): «‹ Sala», Esc e le pillole chiedono conferma; senza risposte no
+        provaSala.apriEsperienza(.giocoRischio, cliente: "giulia")
+        provaSala.sala.rischioAMeta = false
+        provaSala.scegliClienteSala("marco")
+        controlla(provaSala.clienteAttivoId == "marco" && provaSala.sala.uscitaRischio == nil,
+                  "Gioco del rischio: senza risposte il cambio di cliente non chiede conferma")
+        provaSala.sala.rischioAMeta = true
+        provaSala.scegliClienteSala("giulia")
+        controlla(provaSala.clienteAttivoId == "marco" && provaSala.sala.uscitaRischio == .cliente("giulia"),
+                  "Gioco del rischio: a metà partita il cambio di cliente chiede conferma prima di cambiare")
+        provaSala.sala.uscitaRischio = nil
+        controlla(!provaSala.puoTornareAllaSala() && provaSala.sala.uscitaRischio == .torna && provaSala.sala.esperienza == .giocoRischio,
+                  "Gioco del rischio: a metà partita «‹ Sala» ed Esc chiedono conferma e restano sul palco")
+        provaSala.confermaUscitaRischio()
+        controlla(provaSala.sala.esperienza == nil && provaSala.sala.uscitaRischio == nil && !provaSala.sala.rischioAMeta,
+                  "Gioco del rischio: confermata l'uscita si torna alla griglia e le risposte a metà si perdono")
+        provaSala.apriEsperienza(.giocoRischio, cliente: "marco")
+        provaSala.sala.rischioAMeta = true
+        provaSala.scegliClienteSala("giulia")
+        provaSala.confermaUscitaRischio()
+        controlla(provaSala.clienteAttivoId == "giulia" && provaSala.sala.esperienza == .giocoRischio,
+                  "Gioco del rischio: confermato il cambio, il gioco riparte per l'altro cliente")
+        provaSala.sala.rischioAMeta = true
+        provaSala.tornaAllaSala()
+        provaSala.sala.rischioAMeta = false
+        provaSala.apriEsperienza(.lettera, cliente: "giulia")
+        provaSala.sala.rischioAMeta = true
+        controlla(provaSala.puoTornareAllaSala() && provaSala.sala.uscitaRischio == nil,
+                  "Gioco del rischio: fuori dal gioco la conferma non scatta")
+        provaSala.sala.rischioAMeta = false
+        provaSala.tornaAllaSala()
         provaSala.apriVoceNovita(NovitaLuce.dopoLaFirma)
         controlla(provaSala.appAttiva == .pratiche && provaSala.schedaPratiche == .dopoLaFirma,
                   "Novità: «Le pratiche dopo la firma» apre Pratiche sulla scheda «Dopo la firma»")

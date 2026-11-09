@@ -46,7 +46,7 @@ struct AzioniSala: View {
             let varianti = PilloleClienti.varianti(stato.clienti, attivo: stato.clienteAttivo,
                                                    numeri: [t.pilloleMassime, t.pilloleMassime - 1, t.pilloleMinime])
             PilloleClienti(lunga: varianti[0], media: varianti[1], corta: varianti[2],
-                           scelto: stato.clienteAttivoId, scegli: { stato.clienteAttivoId = $0 })
+                           scelto: stato.clienteAttivoId, scegli: { stato.scegliClienteSala($0) })
                 .equatable()
         }
     }
@@ -73,6 +73,24 @@ private struct CorpoSala: View {
             EscSala(sistema: stato.sistema, palco: sala.esperienza != nil)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        // Il gioco del rischio a metà (§4.1.4): uscire o cambiare cliente perde le risposte già date
+        .confirmationDialog(TestiUscitaRischio.titoloLasciaRischio,
+                            isPresented: Binding(get: { sala.uscitaRischio != nil }, set: { if !$0 { sala.uscitaRischio = nil } }),
+                            titleVisibility: .visible) {
+            Button(TestiUscitaRischio.lasciaRischio, role: .destructive) { confermaUscita() }
+            Button(TestiUscitaRischio.continuaRischio, role: .cancel) { sala.uscitaRischio = nil }
+        } message: {
+            Text(sala.uscitaRischio == .torna ? TestiUscitaRischio.messaggioTornaRischio : TestiUscitaRischio.messaggioClienteRischio)
+        }
+    }
+
+    private func confermaUscita() {
+        let m = Tema.Apple.Moto.SalaEsperienze.self
+        if istantanea || sala.uscitaRischio != .torna {
+            stato.confermaUscitaRischio()
+        } else {
+            withAnimation(calmo ? Tema.Moto.dissolvenzaCalma : m.ritorno) { stato.confermaUscitaRischio() }
+        }
     }
 
     /// Dalla scheda al palco: la card cresce dalla scheda toccata (senza movimento con «Riduci movimento»).
@@ -92,6 +110,7 @@ private struct CorpoSala: View {
     /// Dal palco alla griglia: la card torna nella sua scheda.
     private func torna() {
         let m = Tema.Apple.Moto.SalaEsperienze.self
+        guard stato.puoTornareAllaSala() else { return }
         if istantanea {
             stato.tornaAllaSala()
         } else {
@@ -111,10 +130,12 @@ private struct EscSala: View {
         let _ = ContaCorpi.segna()
         let libera = sistema.appAttiva == .sala && !sistema.pannelloNovita && sistema.sovrapposizione == nil
             && !sistema.pannelloNotifiche && !sistema.pannelloRicerca && sistema.guida == nil && !sistema.bloccato
-            && stato.presentazione == nil && !stato.sala.dettaglioValoreAperto
+            && stato.presentazione == nil && !stato.sala.dettaglioValoreAperto && stato.sala.uscitaRischio == nil
         if libera {
             Button(palco ? "Torna alla Sala" : "Chiudi la Sala") {
                 if palco {
+                    // A metà del gioco del rischio chiede conferma (§4.1.4)
+                    guard stato.puoTornareAllaSala() else { return }
                     withAnimation(Tema.Apple.Moto.SalaEsperienze.ritorno) { stato.tornaAllaSala() }
                 } else {
                     stato.chiudi(.sala)
