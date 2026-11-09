@@ -366,7 +366,7 @@ struct MappaTerritorio: View {
         if contenuto.vista != .giro {
             let daFare = Array(posate.filter { $0.luce.daFare != nil }.prefix(T.Moto.pulsantiMassimi))
             ForEach(daFare, id: \.luce.id) { l in
-                AnelloPulsante(raggio: l.raggio + L.distanzaDaFare, colore: L.daFare, spessore: L.spessoreDaFare)
+                AnelloPulsanteTerritorio(raggio: l.raggio + L.distanzaDaFare, colore: L.daFare, spessore: L.spessoreDaFare)
                     .opacity(l.alfa)
                     .position(l.punto)
                     .allowsHitTesting(false)
@@ -554,7 +554,7 @@ private struct BaseMappa: View {
 
 /// Un anello arancio che pulsa (1,8 s, scala 1,35, opacità 0,35) con l'animazione di SwiftUI ripetuta; fermo a scala 1
 /// con calmo e nelle istantanee.
-struct AnelloPulsante: View {
+struct AnelloPulsanteTerritorio: View {
     let raggio: CGFloat
     let colore: Color
     let spessore: CGFloat
@@ -609,7 +609,7 @@ private struct StratoGiro: View {
                 }
             }
             if let s = suggerimento {
-                AnelloPulsante(raggio: G.raggioSuggerimento, colore: Tema.Apple.Territorio.Luce.daFare, spessore: G.spessoreSuggerimento)
+                AnelloPulsanteTerritorio(raggio: G.raggioSuggerimento, colore: Tema.Apple.Territorio.Luce.daFare, spessore: G.spessoreSuggerimento)
                     .position(s)
             }
             if punti.count >= 2 {
