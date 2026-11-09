@@ -1,12 +1,22 @@
 import Foundation
 
 // Ciò che Clienti › Potenziali e Passaparola chiedono allo stato («Luce» giro 12, §9.2.4): aggiungere, modificare,
-// spostare ed eliminare un potenziale; l'arrivo in «Cliente» passa dal modulo del nuovo cliente (mai da solo); il primo
+// spostare ed eliminare un potenziale; l'arrivo in «Cliente» passa dalla scena del nuovo cliente (mai da solo); il primo
 // incontro sul primo spazio libero vero dell'Agenda; «Scrivigli» solo con informativa e consenso (decisione 39); la
 // richiesta di presentazione preparata in Messaggi (decisione 17). Ogni scrittura è vietata in sola lettura (iPad, copia
 // di «Prisma ovunque» di sola lettura, archivio più recente).
 
 extension StatoShell {
+    /// Potenziali e Passaparola si guardano soltanto (§9.2.4): sull'iPad e sull'iPhone, che sono una copia (i passaggi di
+    /// fase si fanno sul Mac), e con l'archivio in sola lettura.
+    var potenzialiInSolaLettura: Bool {
+        #if os(iOS)
+        return true
+        #else
+        return solaLettura
+        #endif
+    }
+
     /// Le tinte degli avatar dei clienti nuovi, a giro.
     private static let tinteNuovi: [TintaAvatar] = [.blu, .rosa, .verde, .viola, .oro]
 
@@ -55,16 +65,20 @@ extension StatoShell {
         spostaPotenziale(id, a: s)
     }
 
-    /// L'arrivo in «Cliente»: apre il modulo del nuovo cliente già compilato (AppClienti lo legge da
+    /// L'arrivo in «Cliente» (§9.2.4): apre la scena del nuovo cliente con il nome già scritto e «presentato da …»;
+    /// da lì la carta letta o «Scrivi a mano» creano il dossier, e solo allora la scheda resta in «Cliente». Se la scena
+    /// non si apre (presentazione in corso), il modulo del nuovo cliente già compilato (AppClienti lo legge da
     /// `richiestaClienteDaPotenziale`). Già cliente: apre il suo dossier.
     func proponiCliente(_ id: String) {
-        guard !solaLettura, let p = dati.potenziali.first(where: { $0.id == id }) else { return }
+        guard !potenzialiInSolaLettura, let p = dati.potenziali.first(where: { $0.id == id }) else { return }
         if let cid = p.clienteId, dati.clienti.contains(where: { $0.id == cid }) {
             clienteAttivoId = cid
             schedaCliente = .panoramica
             vistaClienti = .rubrica
             return
         }
+        apriNuovoCliente(potenziale: id)
+        guard !nuovoClienteAperto, !inModoCliente else { return }
         richiestaClienteDaPotenziale = id
     }
 
@@ -80,11 +94,7 @@ extension StatoShell {
         guard !solaLettura else { return }
         salvaCliente(cliente)
         if let i = dati.potenziali.firstIndex(where: { $0.id == id }) {
-            var p = dati.potenziali[i]
-            p.fase = .cliente
-            p.clienteId = cliente.id
-            p.storia.append(CambioFase(fase: .cliente, il: MessaggioCliente.adesso))
-            dati.potenziali[i] = p
+            dati.potenziali[i] = MotorePassaparola.diventato(dati.potenziali[i], cliente: cliente.id, il: MessaggioCliente.adesso)
         }
         richiestaClienteDaPotenziale = nil
         mostraAvviso(TestiPassaparola.benvenuto(cliente.nome))

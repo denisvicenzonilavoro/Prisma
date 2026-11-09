@@ -70,7 +70,7 @@ extension StatoShell {
         // «Luce» giro 13: la scena del nuovo cliente sostituita da un'altra non lascia i dati letti in memoria
         if sistema.sovrapposizione == .scena(.cartaIdentita), s != .scena(.cartaIdentita) {
             scartaCartaInUso()
-            nuovoCliente.chiudi()
+            svuotaNuovoCliente()
         }
         withTransaction(Transaction(animation: nil)) {
             if sistema.pannelloNovita { sistema.pannelloNovita = false }
@@ -92,7 +92,7 @@ extension StatoShell {
         // «Luce» giro 13: chiudere la scena del nuovo cliente scarta tutto ciò che si è letto
         if s == .scena(.cartaIdentita) {
             scartaCartaInUso()
-            nuovoCliente.chiudi()
+            svuotaNuovoCliente()
         }
         Movimenti.anima(Tema.Moto.Pannelli.chiusuraPresentazione, durata: Tema.Moto.Pannelli.durataChiusuraPresentazione,
                         animato: animato && persistente) {

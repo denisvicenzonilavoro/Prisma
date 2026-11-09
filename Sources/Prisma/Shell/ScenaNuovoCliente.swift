@@ -264,8 +264,10 @@ private struct SchedaNuovoClienteMac: View {
 
     private var rigaCliente: some View {
         let lettura = nuovoCliente.letturaCorretta
-        let nome = acceso ? (lettura.nomeCompleto ?? "…") : "…"
-        let iniziali = acceso ? Cliente.iniziali(di: lettura.nomeCompleto ?? "") : ""
+        // Aperta da «Diventa cliente» (§9.2.4): il nome del potenziale è già scritto, l'avatar resta spento fino alla carta
+        let scritto = nuovoCliente.potenzialeId.flatMap { id in stato.dati.potenziali.first { $0.id == id }?.nome }
+        let nome = acceso ? (lettura.nomeCompleto ?? scritto ?? "…") : (scritto ?? "…")
+        let iniziali = acceso ? Cliente.iniziali(di: lettura.nomeCompleto ?? scritto ?? "") : scritto.map { Cliente.iniziali(di: $0) } ?? ""
         return HStack(alignment: .center, spacing: S.spazioCliente) {
             AvatarCliente(iniziali: iniziali, tinta: stato.prossimaTinta.colori, lato: S.avatar)
                 .opacity(acceso ? 1 : S.avatarSpento)
@@ -326,6 +328,10 @@ private struct SchedaNuovoClienteMac: View {
     // MARK: Contenuto secondo la fase
 
     @ViewBuilder private var contenuto: some View {
+        // «Diventa cliente» da Clienti › Potenziali: prima della lettura la scheda dice già chi l'ha presentato
+        if nuovoCliente.fase != .letto, nuovoCliente.potenzialeId != nil, let p = stato.potenzialeDaCarta {
+            tilePotenziale(p, nota: TestiPassaparola.notaPotenzialeAttesa)
+        }
         switch nuovoCliente.fase {
         case .attesa:
             ZonaNuovoCliente(nuovoCliente: nuovoCliente, testo: "oppure trascina qui una foto o un PDF del documento", nota: nil)
@@ -365,6 +371,11 @@ private struct SchedaNuovoClienteMac: View {
                 giaInPrisma(gia)
                     .entrataStile(.tabellaInquadra)
             } else {
+                // «È un potenziale cliente» (§9.1.4): «Crea il dossier» porta con sé chi l'ha presentato
+                if let p = stato.potenzialeDaCarta {
+                    tilePotenziale(p, nota: TestiPassaparola.notaPotenzialeLetto)
+                        .entrataStile(.tabellaInquadra)
+                }
                 tileModuli
                     .entrataStile(.tabellaInquadra)
                 copia
@@ -394,6 +405,25 @@ private struct SchedaNuovoClienteMac: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .superficieApple(I.superficieConferma)
         .padding(.top, S.tileSopra)
+    }
+
+    /// «Elena Marchi è tra i potenziali, presentata da Sofia» con la nota sotto (stessa tile dei moduli).
+    private func tilePotenziale(_ p: PotenzialeCliente, nota: String) -> some View {
+        VStack(alignment: .leading, spacing: S.paddingVoceModulo) {
+            Text(stato.frasePotenzialeDaCarta(p))
+                .carattereApple(S.titoloTile)
+                .foregroundColor(S.coloreTitoloTile)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(nota)
+                .carattereApple(S.fraseTile)
+                .foregroundColor(S.coloreFraseTile)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(I.paddingConferma)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .superficieApple(I.superficieConferma)
+        .padding(.top, S.tileSopra)
+        .accessibilityElement(children: .combine)
     }
 
     /// I moduli di privacy e adeguata verifica: pronti se i modelli ci sono, altrimenti «Moduli da preparare».

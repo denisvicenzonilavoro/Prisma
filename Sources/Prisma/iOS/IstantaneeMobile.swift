@@ -215,6 +215,16 @@ enum IstantaneeMobile {
                 Scena(nome: "582-copilota-attesa-mac", orizzontale: true) { m in
                     IstantaneeMobile.copilota(m, attesa: true)
                 },
+                // «Luce» giro 12 (§9.2.4): Potenziali e Passaparola sull'iPad, in sola lettura (l'iPad è una copia: niente
+                // «+ Potenziale», trascinamento, «Diventa cliente» né «Prepara la richiesta»), con i potenziali di prova
+                Scena(nome: "76-potenziali-ipad", orizzontale: true) { m in
+                    m.stato.vistaClienti = .potenziali
+                    m.apri(.clienti)
+                },
+                Scena(nome: "76-passaparola-ipad", orizzontale: true) { m in
+                    m.stato.vistaClienti = .passaparola
+                    m.apri(.clienti)
+                },
                 // Prisma ovunque (giro 8): l'iPad sulla copia cifrata con il Mac che non risponde, la pillola nella barra e
                 // Impostazioni › iPhone e iPad del dispositivo (dati di prova di Shell/IstantaneeOvunque.swift)
                 Scena(nome: "613-ovunque-ipad") { m in

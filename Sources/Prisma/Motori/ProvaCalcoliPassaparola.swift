@@ -46,6 +46,7 @@ enum ProvaCalcoliPassaparola {
         anni(verifica)
         datiDiProva(verifica)
         testoRichiesta(verifica)
+        dallaCarta(verifica)
     }
 
     // MARK: - 1, 2 Totali
@@ -137,6 +138,69 @@ enum ProvaCalcoliPassaparola {
         let nuovo = MotorePassaparola.clienteDa(p, tinta: .verde, oggi: oggi)
         verifica.vero("Passaparola: il cliente nuovo porta chi l'ha presentato e quando",
                       nuovo.presentatoDa == "marco" && nuovo.presentatoIl == p.creatoIl && nuovo.nome == p.nome)
+    }
+
+    // MARK: - 5b Dalla carta d'identità (§9.1.4 «È un potenziale cliente», §9.2.4 «Diventa cliente»)
+
+    private static func dallaCarta(_ verifica: VerificaCalcoli) {
+        let sofia = cliente("sofia", "Sofia Romano")
+        var elena = potenziale("elena", da: "sofia", fase: .proposta)
+        elena.nome = "Elena Marchi"
+        elena.email = "elena.prova@example.invalid"
+        elena.nota = "Nota di prova"
+        var vecchia = potenziale("elena-vecchia", fase: .daContattare)
+        vecchia.nome = "Elena Marchi"
+        vecchia.creatoIl = d(2025, 3, 1)
+        var gia = potenziale("gia", fase: .cliente)
+        gia.nome = "Paolo Ferri"
+        let elenco = [vecchia, elena, gia]
+        let trovata = MotorePassaparola.potenzialeCorrispondente(nome: "MARCHI élena", potenziali: elenco, clienti: [sofia])
+        verifica.vero("Passaparola: la carta riconosce il potenziale per nome (ordine, maiuscole e accenti non contano), il più recente",
+                      trovata?.id == "elena")
+        verifica.vero("Passaparola: nessun nome letto o nome diverso = nessun potenziale (mai indovinato)",
+                      MotorePassaparola.potenzialeCorrispondente(nome: nil, potenziali: elenco, clienti: []) == nil
+                      && MotorePassaparola.potenzialeCorrispondente(nome: "Elena Marchetti", potenziali: elenco, clienti: []) == nil)
+        verifica.vero("Passaparola: un potenziale già in «Cliente» non si riconosce di nuovo",
+                      MotorePassaparola.potenzialeCorrispondente(nome: "Paolo Ferri", potenziali: elenco, clienti: []) == nil)
+        var collegata = elena
+        collegata.clienteId = "sofia"
+        verifica.vero("Passaparola: un potenziale collegato a un dossier che esiste non si riconosce",
+                      MotorePassaparola.potenzialeCorrispondente(nome: "Elena Marchi", potenziali: [collegata], clienti: [sofia]) == nil)
+
+        // Il cliente nato dalla carta porta chi l'ha presentata e i recapiti scritti dall'utente, non sovrascrive la carta
+        var daCarta = cliente("nuova", "Elena Marchi", creato: oggi)
+        daCarta.telefono = "000 0000000"
+        let nuovo = MotorePassaparola.cliente(daCarta, dalPotenziale: elena)
+        verifica.vero("Passaparola: dalla carta, il cliente porta presentatoDa e la data della presentazione",
+                      nuovo.presentatoDa == "sofia" && nuovo.presentatoIl == elena.creatoIl && nuovo.nome == "Elena Marchi")
+        verifica.vero("Passaparola: dalla carta, recapiti e nota del potenziale solo dove mancano",
+                      nuovo.email == elena.email && nuovo.telefono == "000 0000000" && nuovo.nota == "Nota di prova")
+        let senzaNome = MotorePassaparola.cliente(cliente("vuota", "", creato: oggi), dalPotenziale: elena)
+        verifica.vero("Passaparola: «Scrivi a mano» senza nome letto prende il nome del potenziale",
+                      senzaNome.nome == "Elena Marchi" && senzaNome.iniziali == Cliente.iniziali(di: "Elena Marchi"))
+        let libera = MotorePassaparola.cliente(daCarta, dalPotenziale: vecchia)
+        verifica.vero("Passaparola: una fonte libera non diventa un presentatore", libera.presentatoDa == nil && libera.presentatoIl == nil)
+
+        let diventata = MotorePassaparola.diventato(elena, cliente: "nuova", il: oggi)
+        verifica.vero("Passaparola: il potenziale diventato cliente passa in «Cliente», collegato, con la storia",
+                      diventata.fase == .cliente && diventata.clienteId == "nuova"
+                      && diventata.storia.last == CambioFase(fase: .cliente, il: oggi))
+
+        // La frase della scena: il genere dalla carta, mai indovinato
+        verifica.vero("Passaparola: «è tra i potenziali, presentata da Sofia» con la carta di una donna",
+                      TestiPassaparola.traIPotenziali(elena, clienti: [sofia], femminile: true)
+                        == "Elena Marchi è tra i potenziali, presentata da Sofia")
+        verifica.vero("Passaparola: «presentato da» per un uomo, «su presentazione di» se il genere non si sa",
+                      TestiPassaparola.traIPotenziali(elena, nome: "Elio Marchi", clienti: [sofia], femminile: false)
+                        == "Elio Marchi è tra i potenziali, presentato da Sofia"
+                      && TestiPassaparola.traIPotenziali(elena, clienti: [sofia], femminile: nil)
+                        == "Elena Marchi è tra i potenziali, su presentazione di Sofia")
+        var dalSito = vecchia
+        dalSito.fonte = "dal sito dello studio"
+        verifica.vero("Passaparola: senza presentatore la fonte libera tra parentesi, o solo «è tra i potenziali»",
+                      TestiPassaparola.traIPotenziali(dalSito, clienti: [sofia], femminile: true)
+                        == "Elena Marchi è tra i potenziali (dal sito dello studio)"
+                      && TestiPassaparola.traIPotenziali(vecchia, clienti: [], femminile: true) == "Elena Marchi è tra i potenziali")
     }
 
     // MARK: - 6 Momento giusto

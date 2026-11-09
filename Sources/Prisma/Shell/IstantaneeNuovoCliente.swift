@@ -7,7 +7,10 @@ import Foundation
 /// - 841: lo stato finale del template (carta fac-simile con i campi accesi, cinque righe, «3,6», moduli pronti), chiara
 ///   e scura; 842: lettura parziale (scadenza e luogo non letti, codice fiscale che non torna);
 /// - 843: il cliente già in Prisma; 844: senza i modelli dei moduli; 845: il ponte spento; 846: «Riduci movimento»;
-/// - 847: la testata di Clienti con il menu «…» e «Nuovo cliente» col glifo.
+/// - 847: la testata di Clienti con il menu «…» e «Nuovo cliente» col glifo;
+/// - 848: «È un potenziale cliente» (§9.1.4): la carta di Elena Marchi letta mentre Elena è tra i potenziali, presentata
+///   da Sofia (chiara e scura); 849: la scena aperta da «Diventa cliente» (§9.2.4), in attesa della carta, con il nome
+///   già scritto e chi l'ha presentata (chiara e scura).
 ///
 /// DATI DI PROVA DICHIARATI: la carta fac-simile «Elena Marchi» (`CartaIdentitaFacSimile`, scritta «FAC-SIMILE», numero
 /// «CA00000AA» palesemente finto), i moduli fac-simile disegnati da Prisma e il codice fiscale messo a un cliente di prova
@@ -51,6 +54,20 @@ extension Istantanee {
         una("847-clienti-testata-luce") { s in
             s.apriApp(.clienti)
         }
+        coppia("848-clienti-nuovo-potenziale") { s in
+            s.dati.potenziali = s.dati.potenziali + [elenaTraIPotenziali()]
+            preparaNuovoCliente(s, righe: CartaIdentitaFacSimile.righe(), moduli: true)
+        }
+        coppia("849-clienti-nuovo-da-potenziale") { s in
+            let p = elenaTraIPotenziali()
+            s.dati.potenziali = s.dati.potenziali + [p]
+            s.dati.impostazioni.vera.ponte.condividi = true
+            if !s.dati.impostazioni.vera.ponte.abbinato { s.dati.impostazioni.vera.ponte.codice = PonteVera.nuovoCodice() }
+            moduliPrivacyEVerificaDiProva(s)
+            s.apriApp(.clienti)
+            s.vistaClienti = .potenziali
+            s.proponiCliente(p.id)
+        }
         return scene
     }
 
@@ -66,6 +83,18 @@ extension Istantanee {
             s.nuovoCliente.mostra(righe: righe, origine: CartaIdentitaFacSimile.dispositivo, carta: "carta-prova", subito: true)
             s.nuovoCliente.fermaPerIstantanea(secondi: 3.6)
         }
+    }
+
+    /// DATI DI PROVA DICHIARATI: Elena Marchi (lo stesso nome della carta fac-simile) fra i potenziali in «Proposta»,
+    /// presentata da Sofia (cliente di prova), solo dentro le scene 848 e 849.
+    nonisolated static func elenaTraIPotenziali() -> PotenzialeCliente {
+        var p = PotenzialeCliente(id: PotenzialiDiProva.prefisso + "marchi-scena", nome: "Elena Marchi",
+                                  creatoIl: Date(timeIntervalSinceReferenceDate: Date().timeIntervalSinceReferenceDate.rounded(.down) - 86_400 * 40))
+        p.presentatoDa = "sofia"
+        p.fase = .proposta
+        p.storia = [CambioFase(fase: .daContattare, il: p.creatoIl), CambioFase(fase: .proposta, il: p.creatoIl)]
+        p.diProva = true
+        return p
     }
 
     /// I fac-simile di Prisma: l'adeguata verifica di `caricaEsempiModuli` e la stessa pagina come informativa privacy

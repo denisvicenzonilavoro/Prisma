@@ -12,6 +12,7 @@ enum ProvaCalcoliCartaIdentita {
         fronte(verifica)
         doppioni(verifica)
         creazione(verifica)
+        potenziale(verifica)
     }
 
     /// Una data di nascita come le scrive la carta: giorno a mezzanotte nel calendario gregoriano.
@@ -193,5 +194,71 @@ enum ProvaCalcoliCartaIdentita {
         giulia.conformita = dopo?.conformita
         verifica.vero("Carta: «Aggiorna il documento» cambia solo il documento del cliente",
                       dopo == giulia && dopo?.conformita?.documento?.numero == "CA00000AA")
+    }
+
+    // MARK: - «È un potenziale cliente» (§9.1.4) e «Diventa cliente» (§9.2.4)
+
+    /// Elena Marchi (DATI DI PROVA: lo stesso nome della carta fac-simile) fra i potenziali, presentata da Sofia.
+    private static func elena(_ id: String, fase: FasePotenziale) -> PotenzialeCliente {
+        var p = PotenzialeCliente(id: id, nome: "Elena Marchi", creatoIl: giorno(2026, 6, 15))
+        p.presentatoDa = "sofia"
+        p.fase = fase
+        p.email = "elena.prova@example.invalid"
+        return p
+    }
+
+    private static func potenziale(_ verifica: VerificaCalcoli) {
+        // 1. La carta letta riconosce il potenziale per nome; «Crea il dossier» porta chi l'ha presentata e lo collega
+        let s = StatoShell(persistente: false)
+        s.dati.potenziali = s.dati.potenziali + [elena("pot-carta-elena", fase: .proposta)]
+        s.nuovoCliente.apri(fase: .trascina)
+        s.nuovoCliente.mostra(righe: CartaIdentitaFacSimile.righe(), origine: "prova", subito: true)
+        let p = s.potenzialeDaCarta
+        verifica.vero("Carta: la carta di Elena Marchi riconosce il potenziale con lo stesso nome", p?.id == "pot-carta-elena")
+        verifica.vero("Carta: la scena dice «Elena Marchi è tra i potenziali, presentata da Sofia» (genere dalla carta)",
+                      p.map { s.frasePotenzialeDaCarta($0) } == "Elena Marchi è tra i potenziali, presentata da Sofia")
+        let c = s.creaClienteDaCarta()
+        let creato = s.dati.clienti.first { $0.id == c?.id }
+        let dopo = s.dati.potenziali.first { $0.id == "pot-carta-elena" }
+        verifica.vero("Carta: il dossier nato dal potenziale porta chi l'ha presentata, con la data della presentazione",
+                      creato?.presentatoDa == "sofia" && creato?.presentatoIl == giorno(2026, 6, 15)
+                        && creato?.email == "elena.prova@example.invalid" && creato?.codiceFiscale == "MRCLNE90D43A944S")
+        verifica.vero("Carta: il potenziale passa in «Cliente», collegato al dossier",
+                      dopo?.fase == .cliente && dopo?.clienteId == creato?.id && dopo?.storia.last?.fase == .cliente)
+        s.nuovoCliente.apri(fase: .trascina)
+        s.nuovoCliente.mostra(righe: CartaIdentitaFacSimile.righe(), origine: "prova", subito: true)
+        verifica.vero("Carta: una seconda lettura della stessa carta non ritrova il potenziale (ora è il cliente)",
+                      s.potenzialeDaCarta == nil && s.clienteGiaPresenteDaCarta?.id == creato?.id)
+        s.svuotaNuovoCliente()
+
+        // 2. «Diventa cliente» apre la scena con il nome già scritto; chiusa senza dossier, la scheda torna in «Proposta»
+        let t = StatoShell(persistente: false)
+        t.dati.potenziali = t.dati.potenziali + [elena("pot-scena-elena", fase: .analisi)]
+        t.nuovoCliente.apri(fase: .trascina, potenziale: "pot-scena-elena")
+        verifica.vero("Carta: aperta da «Diventa cliente», la scena conosce il potenziale prima di leggere la carta",
+                      t.potenzialeDaCarta?.id == "pot-scena-elena"
+                        && t.potenzialeDaCarta.map { t.frasePotenzialeDaCarta($0) } == "Elena Marchi è tra i potenziali, su presentazione di Sofia")
+        t.nuovoCliente.ricomincia(fase: .trascina)
+        verifica.vero("Carta: «Riprova» non dimentica il potenziale", t.nuovoCliente.potenzialeId == "pot-scena-elena")
+        t.svuotaNuovoCliente()
+        let annullata = t.dati.potenziali.first { $0.id == "pot-scena-elena" }
+        verifica.vero("Carta: chiusa senza dossier, la scheda torna in «Proposta» e non diventa cliente",
+                      annullata?.fase == .proposta && annullata?.clienteId == nil && t.nuovoCliente.potenzialeId == nil)
+
+        // 3. «Scrivi a mano» dalla scena del potenziale: il modulo porta chi l'ha presentata e lo collega al salvataggio
+        t.nuovoCliente.apri(fase: .trascina, potenziale: "pot-scena-elena")
+        t.scriviAManoDaCarta()
+        verifica.vero("Carta: «Scrivi a mano» apre il modulo con il nome del potenziale e chi l'ha presentata",
+                      t.bozzaNuovoCliente?.nome == "Elena Marchi" && t.bozzaNuovoCliente?.presentatoDa == "sofia"
+                        && t.potenzialeDellaBozza == "pot-scena-elena")
+        verifica.vero("Carta: passato al modulo, il potenziale resta in «Proposta» (lo collega il salvataggio)",
+                      t.dati.potenziali.first { $0.id == "pot-scena-elena" }?.fase == .proposta)
+        if let bozza = t.bozzaNuovoCliente, let id = t.potenzialeDellaBozza {
+            t.confermaClienteDaPotenziale(potenziale: id, cliente: bozza)
+        }
+        let collegata = t.dati.potenziali.first { $0.id == "pot-scena-elena" }
+        verifica.vero("Carta: salvato il modulo, la scheda è in «Cliente» collegata al dossier",
+                      collegata?.fase == .cliente && collegata?.clienteId == t.bozzaNuovoCliente?.id
+                        && t.dati.clienti.contains { $0.id == collegata?.clienteId && $0.presentatoDa == "sofia" })
     }
 }

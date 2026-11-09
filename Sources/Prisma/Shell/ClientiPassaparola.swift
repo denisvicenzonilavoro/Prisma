@@ -38,7 +38,8 @@ struct VistaPassaparola: View {
         let anni = MotorePassaparola.nuoviPerAnno(clienti: clienti, oggi: oggi)
         // Le pratiche non entrano nei calcoli in cache (DatiPrisma.stessiCalcoli): si leggono vive per la data della firma
         let momenti: [MomentoPerChiedere] = {
-            guard !stato.solaLettura else { return [] }
+            // iPad (§9.2.4) e archivio in sola lettura: si guarda soltanto, niente «Prepara la richiesta»
+            guard !stato.potenzialiInSolaLettura else { return [] }
             var x = stato.datiDeiCalcoli()
             x.pratiche = stato.dati.pratiche
             return MotorePassaparola.momentoGiusto(dati: x, oggi: oggi)

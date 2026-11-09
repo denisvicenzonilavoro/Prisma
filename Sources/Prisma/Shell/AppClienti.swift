@@ -173,6 +173,9 @@ struct AppClienti: View {
     private func controllaBozza(_ bozza: Cliente?) {
         guard let bozza else { return }
         stato.bozzaNuovoCliente = nil
+        // «Scrivi a mano» dalla scena aperta per un potenziale: salvato collega la scheda, annullato la riporta in «Proposta»
+        potenzialeDelModulo = stato.potenzialeDellaBozza
+        stato.potenzialeDellaBozza = nil
         modulo = bozza
     }
 
