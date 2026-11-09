@@ -457,7 +457,7 @@ enum ProvaTavolo {
             let aperto = nuova.flatMap { k in stato.chiaveCapsula(k).flatMap { try? SigilloCapsule.apri(k, chiave: $0) } }
             controlla(aperto == privato, "Tavolo: il sigillo è quello di sempre (la chiave delle capsule lo riapre)")
             // Il testo non è in chiaro da nessuna parte del Mac: dati (con il sigillo), avvisi, tavolo, messaggi all'iPad
-            let datiInChiaro = (try? JSONEncoder().encode(stato.dati)).map { String(decoding: $0, as: UTF8.self) } ?? privato
+            let datiInChiaro = (try? JSONEncoder().encode(stato.dati.istantanea)).map { String(decoding: $0, as: UTF8.self) } ?? privato
             let osservabili = [datiInChiaro, stato.avviso ?? "", tavolo.avviso ?? "", tavolo.mostrato ?? "",
                                String(describing: tavolo.mostraAttivo as Any)]
             let nelSigillo = nuova.map { String(decoding: $0.sigillo, as: UTF8.self).contains(privato) } ?? true
