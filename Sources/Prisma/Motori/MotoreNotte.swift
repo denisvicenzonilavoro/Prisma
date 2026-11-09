@@ -428,9 +428,9 @@ enum MotoreNotte {
         var elenco: [CartaNotte] = []
         // Dalla notte più recente: una carta passata da una notte all'altra c'è più volte, vale l'ultima
         for n in notti.sorted(by: { $0.giorno > $1.giorno }) where n.giorno < giorno {
-            for c in n.carte where !c.decisa && c.perIl >= limite && !visti.contains(c.id) {
+            for c in n.carte where c.perIl >= limite && !visti.contains(c.id) {
                 visti.insert(c.id)
-                if valida(c) { elenco.append(c) }
+                if !c.decisa && valida(c) { elenco.append(c) }
             }
         }
         return elenco.sorted { ($0.perIl, $0.preparataIl, $0.id) < ($1.perIl, $1.preparataIl, $1.id) }
