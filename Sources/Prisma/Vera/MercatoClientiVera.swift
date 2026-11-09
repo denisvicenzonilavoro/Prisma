@@ -284,8 +284,9 @@ enum RegoleMercatoClienti {
     static let paroleBozza = 90
 }
 
-/// Lo stile delle bozze: tono (tu o Lei), firme e tratti del consulente. Oggi nasce da Impostazioni › Messaggi;
-/// con «Scrive come te» (funzione 15) arriveranno lo stile imparato e i tratti.
+/// Lo stile delle bozze: tono (tu o Lei), firme e tratti del consulente. Nasce da Impostazioni › Messaggi e, quando il
+/// profilo di «Scrive come te» (funzione 15) non è vuoto, prende da lì tu o Lei per cliente, firma, chiusura e tratti
+/// (`StatoShell.stileBozzeMercato`, CollegaMercatoClientiShell.swift).
 struct StileBozzeVera: Codable, Equatable {
     var tonoPredefinito: TonoMessaggio = .cordiale
     /// Dai del Lei da questa età in su (nil = sempre il tono predefinito).
