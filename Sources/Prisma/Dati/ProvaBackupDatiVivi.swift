@@ -26,11 +26,17 @@ extension ProvaBackup {
         }
 
         let stato = StatoShell(persistente: false)
-        var segnali = 0
-        var clientiAttivi: [String] = []
+        // I conteggi stanno in un oggetto, non in variabili locali catturate dalle chiusure di Combine: nel codice
+        // ottimizzato (release) il valore letto dopo una modifica poteva restare quello di prima.
+        let conti = ContiProvaDatiVivi()
+        var segnali: Int { conti.segnali }
+        var clientiAttivi: [String] { conti.clientiAttivi }
         var abbonamenti = Set<AnyCancellable>()
-        stato.modificheDati.sink { segnali += 1 }.store(in: &abbonamenti)
-        stato.clienteAttivoCambiato.sink { clientiAttivi.append($0) }.store(in: &abbonamenti)
+        stato.modificheDati.sink { conti.segnali += 1 }.store(in: &abbonamenti)
+        stato.clienteAttivoCambiato.sink { conti.clientiAttivi.append($0) }.store(in: &abbonamenti)
+        // Le iscrizioni vivono fino alla fine della prova: nel codice ottimizzato Swift può liberare `abbonamenti` dopo
+        // l'ultimo uso (lo `store`), e da lì i segnali non arrivavano più («una nota: 0 segnali», versione dei dati +1).
+        defer { withExtendedLifetime(abbonamenti) {} }
 
         // Una modifica annidata: un segnale (il salvataggio parte), una generazione nuova, le cache dei calcoli rifatte
         let fotografia = stato.dati.istantanea
@@ -79,10 +85,13 @@ extension ProvaBackup {
         ]
         for (nome, modifica) in modifiche {
             let prima = stato.dati.istantanea
-            let (s, c, n) = (segnali, stato.versioneCalcoli, stato.versioneNote)
+            let (s, c, n, v) = (segnali, stato.versioneCalcoli, stato.versioneNote, stato.versioneDati)
             modifica(stato.dati)
             let dopo = stato.dati.istantanea
-            guard segnali == s + 1 else { return "dati a pezzi: \(nome): \(segnali - s) segnali di modifica invece di uno" }
+            guard segnali == s + 1 else {
+                return "dati a pezzi: \(nome): \(segnali - s) segnali di modifica invece di uno (versione dei dati +\(stato.versioneDati &- v), "
+                    + "dati \(dopo == prima ? "uguali" : "cambiati"))"
+            }
             // Una scrittura che non cambia nulla (lo stesso valore) può rifare le cache: costa un ricalcolo, non un errore
             let ricalcolate = stato.versioneCalcoli != c
             guard ricalcolate == !dopo.stessiCalcoli(di: prima) || (ricalcolate && dopo == prima) else {
@@ -174,4 +183,10 @@ extension ProvaBackup {
         guard confrontiToccati else { return "dati a pezzi: una posizione cambiata non rifà l'elenco dei confronti" }
         return nil
     }
+}
+
+/// I conteggi di `provaDatiVivi` (segnali di modifica e annunci del cliente attivo).
+private final class ContiProvaDatiVivi {
+    var segnali = 0
+    var clientiAttivi: [String] = []
 }
