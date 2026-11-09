@@ -134,6 +134,17 @@ struct CorpoShell: View {
                                                        removal: .opacity.animation(Tema.Apple.Moto.Storia.animazioneChiude)))
                 }
 
+                // «Luce» giro 14: le carte della notte, sopra barra, finestre e dock (CarteNotte.swift, solo sul Mac)
+                #if os(macOS)
+                if sistema.sovrapposizione == .notte {
+                    CarteNotte(notte: stato.notte)
+                        .frame(width: geo.size.width, height: geo.size.height)
+                        .transition(modoIstantanea ? AnyTransition.identity
+                            : AnyTransition.asymmetric(insertion: .opacity.animation(Tema.Apple.Moto.Notte.animazioneApre),
+                                                       removal: .opacity.animation(Tema.Apple.Moto.Notte.animazioneChiude)))
+                }
+                #endif
+
                 if sistema.bloccato {
                     // L'uscita ha una curva sua: nelle istantanee e nelle prove la schermata se ne va di colpo
                     SchermataBenvenuto()
