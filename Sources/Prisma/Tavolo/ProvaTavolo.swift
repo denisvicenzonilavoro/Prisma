@@ -1,4 +1,5 @@
 #if os(macOS)
+import Combine
 import CryptoKit
 import Foundation
 import SwiftUI
@@ -216,6 +217,9 @@ enum ProvaTavolo {
         controlla(vita && linea.map { $0.valori.count == $0.etaFine - $0.etaOggi + 1 && !$0.eventi.isEmpty } == true,
                   "Tavolo: la linea della vita arriva già calcolata, un valore per anno fino a \(MotoreLineaVita.etaFinePredefinita) anni")
 
+        // Il tavolo a doppio senso (giro 16): realtà aumentata, scatto, rischio, Lancia l'anno, disegno, capsula, immagini
+        doppioSensoInRete(stato: stato, tavolo: tavolo, ipad: ipad, contesto: contesto, controlla)
+
         // La presa visione: la scritta esatta nel PDF, archiviato nei Documenti del cliente
         controlla(tavolo.puoChiederePresaVisione(presente), "Tavolo: la presa visione si può chiedere dopo aver mostrato un documento")
         tavolo.chiediPresaVisione(contesto)
@@ -294,6 +298,163 @@ enum ProvaTavolo {
         }
     }
 
+    /// Il doppio senso in rete, con lo stesso iPad collegato (giro 16, decisioni 27, 48, 49, 111, 113).
+    private static func doppioSensoInRete(stato: StatoShell, tavolo: TavoloMac, ipad: ClienteTavolo, contesto: ContestoTavolo,
+                                          _ controlla: (Bool, String) -> Void) {
+        guard let c = stato.cliente(presente) else { return controlla(false, "Tavolo: il cliente presente") }
+        let primo = TestiRealta.primoNome(c.nome)
+        // 1. La realtà aumentata: senza la conferma del consulente le cifre non partono (decisione 49)
+        tavolo.mandaFamiglia(contesto)
+        _ = attendi(5) { mostrato(ipad)?.genere == .famiglia }
+        tavolo.mandaRealta(contesto)
+        controlla(!attendi(1) { mostrato(ipad)?.genere == .realtaAumentata },
+                  "Tavolo: senza la conferma del consulente il cristallo non va sull'iPad")
+        tavolo.confermaCifre(presente)
+        tavolo.mandaRealta(contesto)
+        let ar = attendi(5) { mostrato(ipad)?.genere == .realtaAumentata }
+        let atteso = MotoreRealtaAumentata.calcola(cliente: c, posizioni: stato.posizioniCliente(presente),
+                                                   obiettivi: stato.obiettiviCliente(presente),
+                                                   eventi: stato.eventiVitaCliente(presente), analisi: stato.dati.analisi[presente])
+        let realta = mostrato(ipad)?.realta
+        controlla(ar && realta?.strati.count == atteso.strati.count && realta?.nome == primo,
+                  "Tavolo: dopo la conferma il cristallo arriva con \(atteso.strati.count) strati e il nome di battesimo")
+        // 2. Lo scatto dall'iPad: un foglio nei Documenti del cliente, l'avviso torna con lo stesso id
+        if let m = mostrato(ipad), let immagine = CristalloFermo.scatto(atteso, anno: atteso.annoOggi, esploso: false, lato: 200),
+           let png = ProtocolloTavolo.png(immagine) {
+            let anno = atteso.annoOggi ?? 2_031
+            let prima = stato.dati.documenti.count
+            ipad.mandaFotoRealta(FotoRealtaTavolo(id: m.id, immagine: png, conStanza: false, anno: anno, esploso: false))
+            let archiviato = attendi(15) { stato.dati.documenti.count == prima + 1 }
+            let doc = stato.dati.documenti.last
+            controlla(archiviato && doc?.clienteId == presente && doc?.scattoRealta?.origine == .ipad && doc?.scattoRealta?.conStanza == false,
+                      "Tavolo: lo scatto dall'iPad è nei Documenti del cliente («\(doc?.titolo ?? "—")»)")
+            let avvisato = attendi(5) { mostrato(ipad)?.id == m.id && mostrato(ipad)?.realta?.ultimoScatto != nil }
+            controlla(avvisato, "Tavolo: l'iPad riceve «Foto salvata nel dossier» con lo stesso id (il cristallo non si rifà)")
+            stato.dati.impostazioni.sala.scattoConStanza = false
+            let n = stato.dati.documenti.count
+            ipad.mandaFotoRealta(FotoRealtaTavolo(id: m.id, immagine: png, conStanza: true, anno: anno, esploso: false))
+            ipad.mandaFotoRealta(FotoRealtaTavolo(id: "id-vecchio", immagine: png, conStanza: false, anno: anno, esploso: false))
+            ipad.mandaFotoRealta(FotoRealtaTavolo(id: m.id, immagine: Data(count: ProtocolloTavolo.massimoFoto + 1), conStanza: false,
+                                                  anno: anno, esploso: false))
+            _ = attendi(2) { false }
+            controlla(stato.dati.documenti.count == n,
+                      "Tavolo: scatto con la stanza non permesso, id vecchio o immagine oltre 4 MB: niente nei Documenti")
+        } else {
+            controlla(false, "Tavolo: lo scatto di prova del cristallo")
+        }
+
+        var ricevuti: [ContenutoTavolo] = []
+        let iscrizione = tavolo.dallIPad.sink { ricevuti.append($0) }
+        withExtendedLifetime(iscrizione) {
+            // 3. Il gioco del rischio: la risposta e i secondi arrivano alla vista del Mac; un id diverso no
+            if let scenari = MotoreGiocoRischio.caricati, let sc = scenari.scenari.first {
+                tavolo.mandaRischio(contesto, stato: RischioTavolo(indice: 0, totale: scenari.scenari.count, scenario: sc,
+                                                                  avvertenza: scenari.avvertenza, testiDiProva: scenari.testiDiProva,
+                                                                  emerso: nil, punteggio: nil, massimo: nil))
+                if attendi(5, { mostrato(ipad)?.genere == .rischio }), let m = mostrato(ipad) {
+                    ipad.mandaRispostaRischio(RispostaRischioTavolo(id: "id-diverso", scenario: sc.id, scelta: 2, secondi: 1.25))
+                    ipad.mandaRispostaRischio(RispostaRischioTavolo(id: m.id, scenario: sc.id, scelta: 1, secondi: 2.5))
+                    let arrivata = attendi(5) { ricevuti.contains { if case .rispostaRischio(let x) = $0 { return x.scelta == 1 && x.secondi == 2.5 }; return false } }
+                    let diversa = ricevuti.contains { if case .rispostaRischio(let x) = $0 { return x.id != m.id }; return false }
+                    controlla(arrivata && !diversa, "Tavolo: la risposta al rischio torna al Mac con la scelta e i secondi dell'iPad")
+                } else {
+                    controlla(false, "Tavolo: lo scenario del rischio arriva sull'iPad")
+                }
+            } else {
+                controlla(false, "Tavolo: i testi del gioco del rischio")
+            }
+            // 4. Lancia l'anno: un tocco sull'iPad, il Mac lancia e rimanda con lo stesso id
+            if case .success(var p) = stato.partitaLanciaAnno(c, numero: 0, seme: 42) {
+                tavolo.mandaLancia(contesto, partita: p, avvertenza: ImpostazioniSala.segnapostoAvvertenza)
+                if attendi(5, { mostrato(ipad)?.genere == .lanciaAnno }), let m = mostrato(ipad) {
+                    ipad.mandaLancio(mostra: m.id)
+                    let lancio = attendi(5) { ricevuti.contains { if case .lancioAnno(let x) = $0 { return x.id == m.id }; return false } }
+                    MotoreLanciaAnno.lancia(&p, cartaAMano: nil)
+                    tavolo.mandaLancia(contesto, partita: p, avvertenza: ImpostazioniSala.segnapostoAvvertenza)
+                    let uno = attendi(5) { mostrato(ipad)?.lancia?.anniLanciati == 1 && mostrato(ipad)?.id == m.id }
+                    controlla(lancio && uno, "Tavolo: un tocco = un anno, l'iPad vede il primo anno con lo stesso id")
+                } else {
+                    controlla(false, "Tavolo: Lancia l'anno arriva sull'iPad")
+                }
+            } else {
+                controlla(false, "Tavolo: la partita di Lancia l'anno di prova (seme 42)")
+            }
+            // 5. Il disegno: il tratto normalizzato torna al Mac; un tratto non valido non parte
+            let prep = MotoreLineaVita.prepara(cliente: c, posizioni: stato.posizioniCliente(presente),
+                                               obiettivi: stato.obiettiviCliente(presente), eventi: stato.eventiVitaCliente(presente),
+                                               analisi: stato.dati.analisi[presente])
+            if let ingresso = prep.ingresso {
+                let assi = MotoreDisegno.assi(MotoreLineaVita.calcola(ingresso), area: CGRect(x: 0, y: 0, width: 800, height: 420))
+                tavolo.mandaDisegno(contesto, assi: assi, ingresso: ingresso, risultato: nil, frase: nil)
+                if attendi(5, { mostrato(ipad)?.genere == .disegno }), let m = mostrato(ipad) {
+                    let punti = DisegnoDiProva.sopraIlPiano.map { PuntoTavolo(x: Double($0.x), y: Double($0.y)) }
+                    ipad.mandaTratto(TrattoTavolo(id: m.id, punti: [PuntoTavolo(x: 0.4, y: 0.4)]))
+                    ipad.mandaTratto(TrattoTavolo(id: m.id, punti: punti))
+                    let tratto = attendi(5) { ricevuti.contains { if case .tratto(let t) = $0 { return t.punti.count == punti.count }; return false } }
+                    let corto = ricevuti.contains { if case .tratto(let t) = $0 { return t.punti.count == 1 }; return false }
+                    controlla(tratto && !corto, "Tavolo: il tratto del disegno (\(punti.count) punti normalizzati) torna al Mac; uno non valido no")
+                    controlla(m.disegno?.etaPensione == ingresso.etaPensione && m.disegno?.etichetteAsse.isEmpty == false,
+                              "Tavolo: la tela arriva con gli assi già scritti")
+                } else {
+                    controlla(false, "Tavolo: la tela del disegno arriva sull'iPad")
+                }
+            } else {
+                controlla(false, "Tavolo: la linea della vita di prova per il disegno")
+            }
+        }
+        // 6. La capsula: il testo arriva una volta sola, l'iPad torna neutro, il testo non torna mai dal Mac
+        let testoCapsula = "Testo di prova della capsula."
+        var arrivati: [String] = []
+        tavolo.chiediTestoCapsula(contesto, capsula: CapsulaTavolo(nome: primo, siApre: "Si apre a 67 anni (prova)", aiuto: TestiRealta.aiutoCapsula)) {
+            arrivati.append($0)
+        }
+        if attendi(5, { mostrato(ipad)?.genere == .capsula }), let m = mostrato(ipad) {
+            ipad.mandaTestoCapsula(testoCapsula, mostra: m.id)
+            let una = attendi(5) { arrivati == [testoCapsula] && ipad.schermo == .neutra }
+            ipad.mandaTestoCapsula(testoCapsula, mostra: m.id)
+            _ = attendi(1) { false }
+            let mai = !ipad.registro.contains { String(decoding: $0, as: UTF8.self).contains(testoCapsula) }
+            controlla(una && arrivati.count == 1 && mai,
+                      "Tavolo: il testo della capsula arriva una volta, l'iPad torna neutro e il Mac non lo rimanda")
+        } else {
+            controlla(false, "Tavolo: la capsula arriva sull'iPad")
+        }
+        // 7. Un altro cliente sul Mac con il cristallo sull'iPad: schermata neutra
+        tavolo.mandaRealta(contesto)
+        _ = attendi(5) { mostrato(ipad)?.genere == .realtaAumentata }
+        stato.clienteAttivoId = "marco"
+        controlla(attendi(5) { ipad.schermo == .neutra }, "Tavolo: cambiato cliente, il cristallo sparisce dall'iPad")
+        stato.clienteAttivoId = presente
+        // 8. Le immagini dei palchi (decisione 111): PNG che si apre, della misura del palco, non uniforme
+        for e in [EsperienzaSala.prismaLuce, .giornataPensione] {
+            stato.mostraEsperienzaSulTavolo(e, cliente: presente)
+            let arrivata = attendi(10) { mostrato(ipad)?.genere == .pagina && mostrato(ipad)?.titolo == e.titolo }
+            let pagina = mostrato(ipad)?.pagine.first
+            let immagine = pagina.flatMap { ProtocolloTavolo.immagine($0.png) }
+            let misura = Tema.Apple.RealtaAumentata.ImmaginePalco.misura
+            controlla(arrivata && pagina?.larghezza == Double(misura.width) && immagine.map(nonUniforme) == true,
+                      "Tavolo: l'immagine del palco «\(e.titolo)» arriva in PNG, \(immagine?.width ?? 0)×\(immagine?.height ?? 0), non vuota")
+        }
+        tavolo.schermataNeutra()
+    }
+
+    /// Almeno due colori diversi in 16 punti campione (un'immagine vuota o di un colore solo non passa).
+    private static func nonUniforme(_ img: CGImage) -> Bool {
+        let lato = 4
+        guard let spazio = CGColorSpace(name: CGColorSpace.sRGB),
+              let ctx = CGContext(data: nil, width: lato, height: lato, bitsPerComponent: 8, bytesPerRow: lato * 4, space: spazio,
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
+        ctx.draw(img, in: CGRect(x: 0, y: 0, width: lato, height: lato))
+        guard let dati = ctx.data else { return false }
+        let byte = dati.bindMemory(to: UInt8.self, capacity: lato * lato * 4)
+        var colori = Set<UInt32>()
+        for i in 0..<(lato * lato) {
+            let k = i * 4
+            colori.insert(UInt32(byte[k]) << 24 | UInt32(byte[k + 1]) << 16 | UInt32(byte[k + 2]) << 8 | UInt32(byte[k + 3]))
+        }
+        return colori.count >= 2
+    }
+
     /// I messaggi ricevuti dall'iPad (in chiaro, senza le immagini) non nominano nessun altro cliente.
     private static func nessunAltroCliente(_ registro: [Data], stato: StatoShell, _ controlla: (Bool, String) -> Void) {
         guard let c = stato.cliente(presente) else { return controlla(false, "Tavolo: il cliente presente") }
@@ -348,7 +509,12 @@ enum ProvaTavolo {
         guard var m = try? JSONDecoder().decode(MessaggioTavolo.self, from: chiaro) else { return String(decoding: chiaro, as: UTF8.self) }
         if case .mostra(var x)? = m.contenuto {
             for i in x.pagine.indices { x.pagine[i].png = Data() }
+            x.disegno?.risultato?.png = Data()
             m.contenuto = .mostra(x)
+        }
+        if case .fotoRealta(var f)? = m.contenuto {
+            f.immagine = Data()
+            m.contenuto = .fotoRealta(f)
         }
         if case .presaVisione(var p)? = m.contenuto {
             p.tratto = Data()
