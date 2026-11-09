@@ -54,6 +54,9 @@ struct AppVera: View {
         // (VisteRoutineVera.swift, VisteTagliandoVera.swift)
         .paginaRoutineVera()
         .paginaTagliandoVera()
+        // Fase 5: «Vera su misura» e «I motori di Vera» (VisteSuMisuraVera.swift, VisteMotoriVera.swift)
+        .paginaSuMisuraVera()
+        .paginaMotoriVera()
         // Parte sia alla nascita della vista (Vera era chiusa o ridotta) sia a ogni nuova richiesta
         .task(id: stato.richiestaDettatura) { await accendiDettatura() }
         // Il FocusState resta in pari con makeFirstResponder(nil), altrimenti il prossimo «true» non cambia niente

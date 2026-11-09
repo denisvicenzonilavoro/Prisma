@@ -39,6 +39,10 @@ extension Tema.Apple {
         static let opacitaSpenta: Double = 0.55
         static let numero: CGFloat = 26
         static let carattereNumero = Carattere(dimensione: 13, peso: .bold, tabellare: true)
+        static let numeroAcceso = Color.white
+        static let pallino: CGFloat = 8
+        static let spazioTesti: CGFloat = 2
+        static let spazioRigaEsame: CGFloat = 4
         static let titoloTappa = Carattere(dimensione: 15, peso: .bold)
         static let testo = Carattere(dimensione: 12.5, peso: .regular, interlinea: 1.4)
         static let esempio = Carattere(dimensione: 13.5, peso: .regular, interlinea: 1.6)
