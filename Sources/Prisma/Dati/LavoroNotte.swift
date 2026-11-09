@@ -256,3 +256,36 @@ struct ImpostazioniNotte: Codable, Equatable, Hashable {
     /// Il preparatore è acceso.
     func prepara(_ t: TipoCartaNotte) -> Bool { preparatori.contains(t) }
 }
+
+extension NotteDiLavoro {
+    /// Le notti senza il cliente tolto: via le sue carte, il suo id dai clienti delle carte campagna e ricalcolo, i suoi
+    /// appuntamenti (e le loro righe) dalla borsa, la sua voce dalla fotografia. nil se non c'è niente da cambiare.
+    static func togliCliente(_ id: String, appuntamenti tolti: Set<String>, da notti: [NotteDiLavoro]) -> [NotteDiLavoro]? {
+        var cambiate = false
+        let nuove = notti.map { n -> NotteDiLavoro in
+            var m = n
+            let prima = m.carte
+            m.carte = m.carte.filter { $0.clienteId != id }
+            for i in m.carte.indices {
+                if m.carte[i].clienti.contains(id) { m.carte[i].clienti.removeAll { $0 == id } }
+                if m.carte[i].bozze.contains(where: { $0.clienteId == id }) { m.carte[i].bozze.removeAll { $0.clienteId == id } }
+                if !tolti.isEmpty, m.carte[i].appuntamenti.contains(where: { tolti.contains($0) }) {
+                    var app: [String] = []
+                    var righe: [String] = []
+                    for (k, a) in m.carte[i].appuntamenti.enumerated() where !tolti.contains(a) {
+                        app.append(a)
+                        if k < m.carte[i].righe.count { righe.append(m.carte[i].righe[k]) }
+                    }
+                    m.carte[i].appuntamenti = app
+                    m.carte[i].righe = righe
+                    for a in tolti { m.carte[i].noteAggiunte[a] = nil }
+                }
+            }
+            let prefisso = id + "·"
+            if m.attenzioni.contains(where: { $0.hasPrefix(prefisso) }) { m.attenzioni.removeAll { $0.hasPrefix(prefisso) } }
+            if m.carte != prima || m.attenzioni != n.attenzioni { cambiate = true }
+            return m
+        }
+        return cambiate ? nuove : nil
+    }
+}

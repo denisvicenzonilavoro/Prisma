@@ -102,6 +102,10 @@ struct DatiPrisma: Codable, Equatable {
     /// cliente e le proposte da confermare. Sezione «ovunque» della cartella a pezzi, nei backup, mai in «Prisma ovunque»;
     /// le decise si tolgono dopo 30 giorni.
     var noteInArrivo: [NotaInArrivo] = []
+    /// «Stanotte Prisma ha lavorato» (versione 27, «Luce» giro 14, `Dati/LavoroNotte.swift`): le notti di lavoro con le
+    /// carte preparate e il loro materiale (ultime 14). Sezione «relazione» della cartella a pezzi, nei backup, mai in
+    /// «Prisma ovunque».
+    var notti: [NotteDiLavoro] = []
     var clienteAttivoId: String
     var impostazioni: Impostazioni
 
@@ -192,6 +196,8 @@ struct DatiPrisma: Codable, Equatable {
     ///     una campagna senza id si scartano; un Prisma di prima salta i messaggi con i tipi nuovi).
     ///     Giro 13: le note dettate sull'iPhone (`noteInArrivo`, con le proposte da confermare, lette con tolleranza:
     ///     una nota illeggibile si scarta) e la cittadinanza del cliente (`Cliente.cittadinanza`).
+    ///     Giro 14: il lavoro della notte (`notti`, ultime 14, lette con tolleranza) e le sue impostazioni
+    ///     (`Impostazioni.notte`).
     static let versioneAttuale = 27
 
     init(clienti: [Cliente], appuntamenti: [Appuntamento], attivita: [Attivita], posizioni: [Posizione],
@@ -265,6 +271,7 @@ struct DatiPrisma: Codable, Equatable {
         case speseStudio, kmClienti
         case potenziali, campagne
         case noteInArrivo
+        case notti
     }
 
     /// Lettura tollerante: gli archivi delle versioni precedenti non hanno tutte le sezioni.
@@ -338,6 +345,8 @@ struct DatiPrisma: Codable, Equatable {
         campagne = ((try? c.decodeIfPresent(ElencoTollerante<Campagna>.self, forKey: .campagne)) ?? nil)?.elementi ?? []
         // Le note dall'iPhone (versione 27, giro 13): una nota illeggibile si scarta, le altre restano
         noteInArrivo = ((try? c.decodeIfPresent(ElencoTollerante<NotaInArrivo>.self, forKey: .noteInArrivo)) ?? nil)?.elementi ?? []
+        // Le notti di lavoro (versione 27, giro 14): una notte illeggibile si scarta, le altre restano
+        notti = ((try? c.decodeIfPresent(ElencoTollerante<NotteDiLavoro>.self, forKey: .notti)) ?? nil)?.elementi ?? []
         clienteAttivoId = try c.decodeIfPresent(String.self, forKey: .clienteAttivoId) ?? (clienti.first?.id ?? "")
         impostazioni = try c.decodeIfPresent(Impostazioni.self, forKey: .impostazioni) ?? Impostazioni()
     }
@@ -396,6 +405,7 @@ struct DatiPrisma: Codable, Equatable {
         try metti(potenziali, .potenziali)
         try metti(campagne, .campagne)
         try metti(noteInArrivo, .noteInArrivo)
+        try metti(notti, .notti)
         try metti(clienteAttivoId, .clienteAttivoId)
         try metti(impostazioni, .impostazioni)
     }
@@ -487,6 +497,9 @@ struct Impostazioni: Codable, Equatable {
     /// minimi), deviazione e visita breve del giro, zone dell'utente, attenzioni che accendono l'anello e partenza.
     /// Letta con tolleranza: senza, i valori di base dichiarati «stima». Non entra nei calcoli in cache.
     var territorio = ImpostazioniTerritorio()
+    /// Impostazioni › Vera › «Stanotte» (versione 27, «Luce» giro 14): il lavoro della notte, spento di base, l'ora di
+    /// inizio, le bozze di Vera, i tipi di carta e la notifica del mattino (spenta). Letta con tolleranza: senza, spento.
+    var notte = ImpostazioniNotte()
 
     init() {}
 
@@ -506,6 +519,7 @@ struct Impostazioni: Codable, Equatable {
         case palestra
         case sala
         case territorio
+        case notte
     }
 
     init(from decoder: Decoder) throws {
@@ -566,6 +580,8 @@ struct Impostazioni: Codable, Equatable {
         sala = ((try? c.decodeIfPresent(ImpostazioniSala.self, forKey: .sala)) ?? nil) ?? ImpostazioniSala()
         // Territorio (versione 27, giro 11): senza o illeggibile, i valori di base
         territorio = ((try? c.decodeIfPresent(ImpostazioniTerritorio.self, forKey: .territorio)) ?? nil) ?? ImpostazioniTerritorio()
+        // Stanotte (versione 27, giro 14): senza o illeggibile, spento
+        notte = ((try? c.decodeIfPresent(ImpostazioniNotte.self, forKey: .notte)) ?? nil) ?? ImpostazioniNotte()
     }
 }
 

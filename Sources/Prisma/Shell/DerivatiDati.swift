@@ -536,6 +536,9 @@ extension DatiPrisma {
         b.potenziali = a.potenziali
         // Le note dall'iPhone («Luce» giro 13) non entrano in nessun calcolo in cache
         b.noteInArrivo = a.noteInArrivo
+        // Le notti di lavoro di «Stanotte» («Luce» giro 14) non entrano in nessun calcolo in cache
+        b.notti = a.notti
+        b.impostazioni.notte = a.impostazioni.notte
         b.impostazioni.studio.spese = a.impostazioni.studio.spese
         return a == b
     }

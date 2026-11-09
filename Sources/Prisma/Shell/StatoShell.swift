@@ -824,11 +824,14 @@ enum VoceConfronto: Hashable {
             spese.visiteTolte.append(contentsOf: tolte)
             dati.speseStudio = spese
         }
+        let appuntamentiTolti = Set(dati.appuntamenti.filter { $0.clienteId == id }.map(\.id))
         dati.appuntamenti.removeAll { $0.clienteId == id }
         dati.attivita.removeAll { $0.clienteId == id }
         dati.posizioni.removeAll { $0.clienteId == id }
         dati.simulazioni.removeAll { $0.clienteId == id }
         dati.analisi[id] = nil
+        // Stanotte («Luce» giro 14): le carte del cliente se ne vanno con lui (una sola assegnazione, solo se serve)
+        if let notti = NotteDiLavoro.togliCliente(id, appuntamenti: appuntamentiTolti, da: dati.notti) { dati.notti = notti }
         // Le partite del gioco del rischio della Sala («Luce» giro 4)
         dati.partiteRischio.removeAll { $0.clienteId == id }
         // Vera, fase 3: promesse, confronti e coperture del cliente
