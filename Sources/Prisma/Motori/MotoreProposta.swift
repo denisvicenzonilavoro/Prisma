@@ -471,8 +471,8 @@ enum MotoreProposta {
             }
             var elenco = prodottiAdatti(b, catalogo: fonte.prodotti, canaliCliente: fonte.cliente.canali, ultimo: ultimo)
             // La sostituzione non propone il prodotto che il cliente ha già
-            if b.sostituzione, let attuale = attuale(b, fonte: fonte) {
-                elenco.removeAll { $0.id == attuale.prodottoId || $0.nome == attuale.nome }
+            if b.sostituzione, let gia = attuale(b, fonte: fonte) {
+                elenco.removeAll { $0.id == gia.prodottoId || $0.nome == gia.nome }
             }
             return elenco
         }()

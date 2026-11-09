@@ -293,7 +293,7 @@ private struct ColonnaProposta: View {
         case .fatto(let v):
             VStack(alignment: .leading, spacing: Q.spazioDentro) {
                 MiniaturaProspettoProposta()
-                Text("\(v.pagine) \(v.pagine == 1 ? "pagina" : "pagine") · su carta bianca")
+                Text("\(v.pagine) \(v.pagine == 1 ? "pagina" : "pagine") · " + (v.attualeId != nil ? "restare o cambiare" : "su carta bianca"))
                     .carattereApple(Q.spiegazione)
                     .foregroundColor(Tema.Apple.Colore.inchiostro2)
             }
