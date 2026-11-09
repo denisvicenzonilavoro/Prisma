@@ -21,11 +21,11 @@ extension Istantanee {
             una(nome + "-scuro", prepara)
         }
         coppia("620-sala-prisma-cliente") { s in
-            preparaPrismaCliente(s)
+            preparaScenaPrismaCliente(s)
             s.apriEsperienza(.prismaCliente, cliente: "giulia")
         }
         coppia("621-sala-prisma-cliente-file-pronto") { s in
-            preparaPrismaCliente(s)
+            preparaScenaPrismaCliente(s)
             s.sala.provaUscite.prismaFilePronto = true
             s.apriEsperienza(.prismaCliente, cliente: "giulia")
         }
@@ -36,7 +36,7 @@ extension Istantanee {
             s.apriEsperienza(.prismaCliente, cliente: "andrea")
         }
         una("623-sala-prisma-cliente-password") { s in
-            preparaPrismaCliente(s)
+            preparaScenaPrismaCliente(s)
             s.sala.provaUscite.prismaPasswordMostrata = true
             s.apriEsperienza(.prismaCliente, cliente: "giulia")
         }
@@ -47,7 +47,7 @@ extension Istantanee {
     nonisolated static let passwordDiProvaPrisma = "Lago-Vela-Pino-27"
 
     /// Dati di prova comuni: la password di prova e un film del piano esportato di Giulia (un Documento senza file).
-    nonisolated static func preparaPrismaCliente(_ s: StatoShell) {
+    nonisolated static func preparaScenaPrismaCliente(_ s: StatoShell) {
         s.sala.provaUscite.passwordDiProva = passwordDiProvaPrisma
         if s.ultimoFilm(clienteId: "giulia") == nil {
             var film = Documento(clienteId: "giulia", titolo: "\(TestiUscite.titoloFilm) · dati di prova", tipo: .altro)
