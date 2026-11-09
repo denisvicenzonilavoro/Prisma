@@ -285,6 +285,12 @@ enum MotoreSmontaggio {
 // MARK: - Testi
 
 enum TestiSmontaggio {
+    /// La conferma di «Aggiungi al dossier…».
+    static func confermaDossier(voci n: Int) -> String {
+        "Entra nei Documenti come estratto conto, con il testo letto e \(n == 1 ? "la voce di costo trovata" : "le \(n) voci di costo trovate"). "
+            + "La foto non si conserva."
+    }
+
     static func percento(_ p: Double) -> String {
         let f = NumberFormatter()
         f.locale = Locale(identifier: "it_IT")

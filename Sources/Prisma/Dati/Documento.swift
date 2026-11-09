@@ -73,6 +73,9 @@ struct Documento: Identifiable, Codable, Hashable {
     /// Lo scatto della realtà aumentata (versione 27, «Luce» giro 16, decisione 27): anno, esploso, stanza, origine. nil
     /// per gli altri documenti. Non va in «Prisma ovunque».
     var scattoRealta: ScattoRealta?
+    /// Le voci di costo trovate dallo Smontaggio (versione 27, «Luce» §8.2.5 punto 5), quando il documento entra nel
+    /// dossier dallo Smontaggio con la conferma: tipo, valore scritto, cifra e da dove viene. nil per gli altri documenti.
+    var costiTrovati: [VoceCostoTrovata]?
 
     /// La categoria che conta: prospetti e report sono sempre «di Prisma».
     var genere: CategoriaDocumento {
@@ -96,6 +99,7 @@ struct Documento: Identifiable, Codable, Hashable {
         case categoria, vociTenute
         case modulo
         case scattoRealta
+        case costiTrovati
     }
 
     init(from decoder: Decoder) throws {
@@ -120,6 +124,8 @@ struct Documento: Identifiable, Codable, Hashable {
         modulo = (try? c.decodeIfPresent(CompilazioneModulo.self, forKey: .modulo)) ?? nil
         // Uno scatto rovinato non fa perdere il documento
         scattoRealta = (try? c.decodeIfPresent(ScattoRealta.self, forKey: .scattoRealta)) ?? nil
+        // Una voce rovinata non fa perdere le altre né il documento
+        costiTrovati = (try? c.decodeIfPresent(ElencoTollerante<VoceCostoTrovata>.self, forKey: .costiTrovati))?.elementi
     }
 
     func campo(_ chiave: CampoDocumento) -> CampoEstratto? {

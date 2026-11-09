@@ -81,6 +81,8 @@ struct SmontaggioApple: View {
     let smontaggio: StatoSmontaggio
     @State private var fumetto: Int?
     @State private var sopraVassoio = false
+    /// «Aggiungi al dossier…» chiede conferma: niente entra nel dossier senza un sì (come in Inquadra).
+    @State private var confermaDossier = false
 
     private typealias S = Tema.Apple.Posizioni.Smontaggio
 
@@ -110,7 +112,8 @@ struct SmontaggioApple: View {
                         vassoio(costi, cliente: cliente)
                             .entrataCascata(0, base: S.Moto.baseCascata)
                         ScrollView(.vertical, showsIndicators: false) {
-                            colonnaCard(costi, cliente: cliente, posizione: posizione, proposte: proposte, scelta: scelta, esito: esito)
+                            colonnaCard(costi, cliente: cliente, posizione: posizione, proposte: proposte, scelta: scelta, esito: esito,
+                                        attuale: attuale)
                         }
                         .frame(width: colonna)
                     }
@@ -118,7 +121,8 @@ struct SmontaggioApple: View {
                     ScrollView(.vertical, showsIndicators: false) {
                         VStack(alignment: .leading, spacing: S.spazio) {
                             vassoio(costi, cliente: cliente).frame(minHeight: 560)
-                            colonnaCard(costi, cliente: cliente, posizione: posizione, proposte: proposte, scelta: scelta, esito: esito)
+                            colonnaCard(costi, cliente: cliente, posizione: posizione, proposte: proposte, scelta: scelta, esito: esito,
+                                        attuale: attuale)
                         }
                     }
                 }
@@ -236,11 +240,11 @@ struct SmontaggioApple: View {
     // MARK: Le card
 
     private func colonnaCard(_ costi: SmontaggioCosti, cliente: Cliente?, posizione: Posizione?, proposte: [Posizione],
-                             scelta: Posizione?, esito: EsitoSostituzione?) -> some View {
+                             scelta: Posizione?, esito: EsitoSostituzione?, attuale: Posizione?) -> some View {
         VStack(alignment: .leading, spacing: S.spazio) {
             cardDocumento(costi, cliente: cliente, posizione: posizione, scelta: scelta)
                 .entrataCascata(1, base: S.Moto.baseCascata)
-            cardDieciAnni(costi, proposte: proposte, scelta: scelta, esito: esito)
+            cardDieciAnni(costi, proposte: proposte, scelta: scelta, esito: esito, attuale: attuale)
                 .entrataCascata(2, base: S.Moto.baseCascata)
         }
     }
@@ -282,6 +286,20 @@ struct SmontaggioApple: View {
                     .carattereApple(Tema.Apple.Carattere.secondario)
                     .foregroundColor(Tema.Apple.Colore.inchiostro2)
             }
+            if let c = cliente, !smontaggio.vuoto, !costi.vuoto {
+                Button("Aggiungi al dossier di \(nomeBreve(c))…") { confermaDossier = true }
+                    .buttonStyle(.appleSobrio)
+                    .disabled(stato.solaLettura || stato.documentoSmontaggioPresente(costi))
+                    .help(stato.documentoSmontaggioPresente(costi) ? "Il documento con queste voci è già nei Documenti del cliente"
+                          : "Il documento entra nei Documenti del cliente con le voci di costo trovate, senza la foto")
+                    .confirmationDialog("Aggiungere il documento al dossier di \(c.nome)?", isPresented: $confermaDossier,
+                                        titleVisibility: .visible) {
+                        Button("Aggiungi ai Documenti") { stato.aggiungiSmontaggioAlDossier(costi) }
+                        Button("Annulla", role: .cancel) {}
+                    } message: {
+                        Text(TestiSmontaggio.confermaDossier(voci: costi.voci.count))
+                    }
+            }
         }
         .padding(S.padding)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -303,7 +321,8 @@ struct SmontaggioApple: View {
         }
     }
 
-    private func cardDieciAnni(_ costi: SmontaggioCosti, proposte: [Posizione], scelta: Posizione?, esito: EsitoSostituzione?) -> some View {
+    private func cardDieciAnni(_ costi: SmontaggioCosti, proposte: [Posizione], scelta: Posizione?, esito: EsitoSostituzione?,
+                               attuale: Posizione?) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text("In \(IpotesiCalcolo.orizzontePredefinito) anni, con le ipotesi di Prisma")
@@ -344,8 +363,8 @@ struct SmontaggioApple: View {
                     .foregroundColor(Tema.Apple.Colore.inchiostro2)
             }
             ViewThatFits(in: .horizontal) {
-                HStack(spacing: 10) { pulsantiProposta(scelta) }
-                VStack(alignment: .leading, spacing: 10) { pulsantiProposta(scelta) }
+                HStack(spacing: 10) { pulsantiProposta(scelta, attuale: attuale, costi: costi) }
+                VStack(alignment: .leading, spacing: 10) { pulsantiProposta(scelta, attuale: attuale, costi: costi) }
             }
             .padding(.top, 6)
         }
@@ -354,13 +373,13 @@ struct SmontaggioApple: View {
         .superficieApple(Tema.Apple.Superficie.cardPiatta)
     }
 
-    @ViewBuilder private func pulsantiProposta(_ scelta: Posizione?) -> some View {
-        Button("Crea la proposta di sostituzione") { creaProposta(scelta) }
+    @ViewBuilder private func pulsantiProposta(_ scelta: Posizione?, attuale: Posizione?, costi: SmontaggioCosti) -> some View {
+        Button("Crea la proposta di sostituzione") { creaProposta(scelta, attuale: attuale, costi: costi) }
             .buttonStyle(StilePulsanteApple(.principale, grande: true))
-            .disabled(scelta == nil || stato.solaLettura)
+            .disabled(scelta == nil || attuale == nil || stato.solaLettura)
             .fixedSize()
         #if os(macOS)
-        Button("Inquadra un altro documento") { stato.apriInquadra() }
+        Button("Inquadra un altro documento") { stato.apriInquadraSmontaggio() }
             .buttonStyle(StilePulsanteApple(.secondaria, grande: true))
             .fixedSize()
         #endif
@@ -370,13 +389,12 @@ struct SmontaggioApple: View {
         nomeBreve(smontaggio.clienteId.flatMap { id in stato.dati.clienti.first { $0.id == id } })
     }
 
-    /// Apre la proposta scelta nel dossier del cliente, sulle posizioni: la sostituzione si presenta da lì (il prospetto
-    /// di sostituzione esiste già). Niente si salva senza l'utente.
-    private func creaProposta(_ p: Posizione?) {
-        guard let p else { return }
-        stato.clienteAttivoId = p.clienteId
-        stato.posizioneInDettaglio = p.id
-        stato.mostraAvviso("Proposta di sostituzione: \(p.nome). Il prospetto di sostituzione è nella posizione.")
+    /// «Crea la proposta di sostituzione»: Pratiche › Proposta impostata sulla sostituzione (prodotto della proposta scelta,
+    /// capitale = valore del documento, cliente), dove si costruisce con «✦ Costruisci la proposta». Niente si salva
+    /// senza l'utente; un documento mai registrato resta una posizione provvisoria in memoria.
+    private func creaProposta(_ p: Posizione?, attuale: Posizione?, costi: SmontaggioCosti) {
+        guard let p, let attuale else { return }
+        stato.proponiSostituzioneDaSmontaggio(attuale: attuale, registrata: smontaggio.posizioneId != nil, proposta: p, costi: costi)
     }
 }
 
@@ -718,6 +736,49 @@ extension StatoShell {
     }
 
     /// Le righe arrivate dall'iPhone mentre la vista attiva è lo Smontaggio: le legge MotoreSmontaggio, non Inquadra.
+    /// La sostituzione chiesta dallo Smontaggio diventa il bisogno scelto di Pratiche › Proposta.
+    func proponiSostituzioneDaSmontaggio(attuale: Posizione, registrata: Bool, proposta: Posizione, costi: SmontaggioCosti) {
+        guard let c = cliente(attuale.clienteId.isEmpty ? proposta.clienteId : attuale.clienteId) else { return }
+        var motivo = "Dallo Smontaggio di «\(smontaggio.titolo.isEmpty ? attuale.nome : smontaggio.titolo)»"
+        if let oggi = costi.costoAnnuo { motivo += ": costi oggi \(Formati.euro(oggi)) l'anno" }
+        motivo += ", confronto con «\(proposta.nome)»."
+        var a = attuale
+        if a.clienteId.isEmpty { a.clienteId = c.id }
+        let b = MotoreProposta.bisognoSostituzione(attuale: a, cliente: c, motivo: motivo, prodotto: proposta.prodottoId,
+                                                   propostaId: proposta.esito == .bozza ? proposta.id : nil,
+                                                   provvisoria: !registrata)
+        clienteAttivoId = c.id
+        richiediBisognoProposta(b)
+        apriPratiche(.proposta)
+    }
+
+    /// Il documento dello Smontaggio con queste voci è già nei Documenti del cliente.
+    func documentoSmontaggioPresente(_ costi: SmontaggioCosti) -> Bool {
+        guard let id = smontaggio.clienteId else { return false }
+        return dati.documenti.contains { $0.clienteId == id && $0.titolo == smontaggio.titolo && $0.costiTrovati == costi.voci }
+    }
+
+    /// «Aggiungi al dossier…», dopo la conferma: il documento entra nei Documenti del cliente come estratto conto, senza
+    /// la foto (decisione 47), con il testo letto e le voci di costo trovate (`Documento.costiTrovati`), collegato alla
+    /// posizione se lo Smontaggio ne ha una.
+    func aggiungiSmontaggioAlDossier(_ costi: SmontaggioCosti) {
+        guard !solaLettura else {
+            mostraAvviso("Archivio in sola lettura: aggiorna Prisma per aggiungere documenti.")
+            return
+        }
+        guard let id = smontaggio.clienteId, let c = cliente(id), !costi.vuoto, !documentoSmontaggioPresente(costi) else { return }
+        var doc = Documento(clienteId: c.id, titolo: smontaggio.titolo.isEmpty ? "Estratto conto" : smontaggio.titolo, tipo: .estrattoConto)
+        doc.importatoIl = Appuntamento.alMinuto(Date())
+        doc.lettura = .letto
+        doc.pagine = 1
+        doc.pagineOCR = 1
+        doc.posizioneId = smontaggio.posizioneId
+        doc.costiTrovati = costi.voci
+        dati.documenti.append(doc)
+        memorizzaTesto(doc.id, [smontaggio.righe.map(\.testo).joined(separator: "\n")])
+        mostraAvviso("Documento aggiunto ai Documenti di \(c.nome.split(separator: " ").first.map(String.init) ?? c.nome), senza la foto")
+    }
+
     func prendiInquadraturaSmontaggio(_ x: InquadraturaPonte) {
         smontaggio.carica(righe: x.righe, titolo: x.righe.first(where: { MotoreSmontaggio.tipo($0.testo) == nil && $0.testo.count > 3 })?.testo ?? "Documento inquadrato",
                           origine: "inquadrato con \(x.dispositivo)", clienteId: x.clienteId ?? clienteAttivoId)

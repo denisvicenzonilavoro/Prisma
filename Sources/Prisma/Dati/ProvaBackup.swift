@@ -181,6 +181,8 @@ enum ProvaBackup {
             ProvaBackup.aggiungiLuceClientiDiProva(&originale)
             // «Luce», giro 16: lo scatto della realtà aumentata nei Documenti e l'interruttore della stanza (ProvaBackupRealta.swift)
             ProvaBackup.aggiungiRealtaDiProva(&originale)
+            // «Luce» §8.2: un documento entrato nel dossier dallo Smontaggio con le voci di costo (ProvaBackupSmontaggio.swift)
+            ProvaBackup.aggiungiSmontaggioDiProva(&originale)
             // Vera, fase 3: promesse, confronti, coperture e un resoconto (ProvaBackupFaseTreVera.swift)
             ProvaBackup.aggiungiFaseTreVeraDiProva(&originale)
             // Il versamento mensile previsto dell'obiettivo (cursore del dettaglio nel tema Apple)
@@ -327,6 +329,11 @@ enum ProvaBackup {
             }
             // Lo scatto della realtà aumentata e l'interruttore della stanza (versione 27, «Luce» giro 16) (ProvaBackupRealta.swift)
             if let e = try verificaRealta(originale: originale, estratto: estratto.dati) {
+                print("ERRORE: \(e)")
+                return 1
+            }
+            // Le voci di costo dello Smontaggio nei Documenti (versione 27, «Luce» §8.2) (ProvaBackupSmontaggio.swift)
+            if let e = try verificaSmontaggio(originale: originale, estratto: estratto.dati) {
                 print("ERRORE: \(e)")
                 return 1
             }
