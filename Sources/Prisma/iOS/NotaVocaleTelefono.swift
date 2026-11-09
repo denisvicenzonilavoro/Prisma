@@ -18,6 +18,8 @@ import UIKit
 
 struct IncontriTelefono: View {
     @Environment(StatoShell.self) var stato
+    @Environment(\.istantaneaSchermo) private var istantanea
+    @Environment(\.prismaCalmo) private var calmo
 
     private typealias M = Tema.Apple.NotaVocale.Mobile
 
@@ -38,8 +40,11 @@ struct IncontriTelefono: View {
             VuotoTelefono(testo: "Il copilota dell’incontro è sull’iPad e sul Mac. Qui detti le note tra una visita e l’altra.")
         }
         .fullScreenCover(isPresented: Bindable(stato).notaVeloceAperta) {
+            // Il foglio a tutto schermo riceve lo stato delle istantanee e «Riduci movimento» (come Inquadra)
             NotaVocaleTelefono(nota: nota)
                 .environment(stato)
+                .environment(\.istantaneaSchermo, istantanea)
+                .prismaCalmo(calmo)
         }
         .onAppear { stato.leggiNoteInPartenza() }
     }
