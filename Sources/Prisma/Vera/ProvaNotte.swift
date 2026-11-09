@@ -168,6 +168,11 @@ enum ProvaNotte {
 
         let m = StatoShell(persistente: false)
         let e = EsecutoreBozzeNotte()
+        // Una notte che sta lavorando (giorno di oggi), con l'esecutore delle bozze attivo (Revisione R11)
+        let giorno = Calendar.current.startOfDay(for: Date())
+        var inLavoro = NotteDiLavoro(giorno: giorno, inizio: Date())
+        inLavoro.esito = .inCorso
+        m.dati.notti = [inLavoro]
         m.notte.inCorso = true
         m.notte.lavoro.esecutore = e
         m.fermaLavoroNotte(.memoria)
@@ -175,7 +180,17 @@ enum ProvaNotte {
         let c = MotoreNotte.carta(PreparativoNotte(tipo: .daFinire, clienteId: nil, riferimento: "bozze", dettagli: .daFinire(bozze: 3, motivo: .memoria)),
                                   giorno: Date(), adesso: Date(), nomi: [:])
         controlla(c.titolo == TestiNotte.daFinireMemoria(3) && c.daFinire == 3, "Notte: dopo l'avviso di memoria resta una carta «Da finire»")
-        m.notte.inCorso = false
+        // Le bozze rimaste diventano una sola carta «Da finire» (anche se arrivano due volte) e la notte è «interrotta»
+        m.aggiungiDaFinire(3, motivo: .memoria, giorno: giorno)
+        m.aggiungiDaFinire(3, motivo: .memoria, giorno: giorno)
+        m.finisciNotte(giorno: giorno)
+        let finita = m.dati.notti.first { $0.giornoChiave == NotteDiLavoro.chiave(giorno) }
+        controlla(finita?.esito == .interrotta && finita?.motivoStop == .memoria && finita?.fine != nil,
+                  "Notte: dopo l'avviso di memoria la notte è «interrotta» con il motivo")
+        controlla(finita?.carte.filter { $0.tipo == .daFinire }.count == 1 && finita?.carte.first { $0.tipo == .daFinire }?.daFinire == 3,
+                  "Notte: dopo l'avviso di memoria resta una sola carta «Da finire» con le bozze mancanti")
+        controlla(!m.notte.inCorso && m.notte.lavoro.esecutore == nil && m.notte.lavoro.fermatoPer == .memoria,
+                  "Notte: alla fine il lavoro è chiuso")
         m.notte.lavoro.chiudi()
     }
     #endif

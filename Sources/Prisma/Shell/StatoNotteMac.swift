@@ -258,7 +258,7 @@ extension StatoShell {
     }
 
     /// Una sola carta «Da finire» con le bozze che mancano.
-    private func aggiungiDaFinire(_ n: Int, motivo: MotivoStopNotte, giorno: Date) {
+    func aggiungiDaFinire(_ n: Int, motivo: MotivoStopNotte, giorno: Date) {
         guard n > 0, !solaLettura else { return }
         let chiave = NotteDiLavoro.chiave(giorno)
         var notti = dati.notti
@@ -276,7 +276,7 @@ extension StatoShell {
     }
 
     /// Fine del lavoro: fatta o interrotta (con il motivo), attività e memoria via, promemoria e notifiche aggiornati.
-    private func finisciNotte(giorno: Date) {
+    func finisciNotte(giorno: Date) {
         let chiave = NotteDiLavoro.chiave(giorno)
         let motivo = notte.lavoro.fermatoPer
         notte.lavoro.chiudi()
@@ -479,18 +479,19 @@ extension StatoShell {
     func annullaCartaNotte(_ id: String) {
         guard !solaLettura, let c = cartaNotte(id) else { return }
         if c.stato == .approvata {
-            for doc in c.creati where dati.documenti.contains(where: { $0.id == doc }) { eliminaDocumento(doc) }
-            let bozze = Set(c.creati)
-            if dati.messaggi.contains(where: { bozze.contains($0.id) && $0.stato == .bozza }) {
-                dati.messaggi = dati.messaggi.filter { !(bozze.contains($0.id) && $0.stato == .bozza) }
-            }
-            for aid in c.creati where dati.attivita.contains(where: { $0.id == aid && !$0.completata }) { eliminaAttivita(aid) }
+            // Prima la campagna: se una sua bozza è già stata aperta resta, e allora nulla si tocca (la carta resta approvata)
             for cid in c.creati where dati.campagne.contains(where: { $0.id == cid }) {
                 guard annullaCampagna(cid) else {
                     mostraAvviso("Una bozza della campagna è già stata aperta: la campagna resta.")
                     return
                 }
             }
+            for doc in c.creati where dati.documenti.contains(where: { $0.id == doc }) { eliminaDocumento(doc) }
+            let bozze = Set(c.creati)
+            if dati.messaggi.contains(where: { bozze.contains($0.id) && $0.stato == .bozza }) {
+                dati.messaggi = dati.messaggi.filter { !(bozze.contains($0.id) && $0.stato == .bozza) }
+            }
+            for aid in c.creati where dati.attivita.contains(where: { $0.id == aid && !$0.completata }) { eliminaAttivita(aid) }
             if !c.noteAggiunte.isEmpty {
                 var appuntamenti = dati.appuntamenti
                 var cambiato = false

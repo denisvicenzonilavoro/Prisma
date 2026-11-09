@@ -417,6 +417,19 @@ enum ProvaFluidita {
                               verifica: { !stato.aperta(.biblioteca) }),
             ])
         }
+        // Stanotte (giro 14): le otto carte della notte di prova (dati di prova dichiarati, id «notte-prova-») si aprono
+        // sopra la scrivania e si richiudono; le notti tornano quelle di prima. Mai in modalità cliente (lì non si aprono)
+        if !stato.inModoCliente, stato.presentazione == nil {
+            let notti = stato.dati.notti
+            s.prepara(banco) { stato.dati.notti = [NotteDiProva.notte(stato.dati.istantanea, oggi: Date(), cal: Calendar.current)] }
+            s.misura(banco, [
+                PassoFluidita(nome: "Luce · apri le carte della notte", azione: { stato.apriNotte() },
+                              verifica: { stato.sovrapposizione == .notte && !stato.notte.pila.isEmpty }),
+                PassoFluidita(nome: "Luce · chiudi le carte della notte", azione: { stato.chiudiSovrapposizione(animato: false) },
+                              verifica: { stato.sovrapposizione == nil }),
+            ])
+            s.prepara(banco) { stato.dati.notti = notti }
+        }
     }
 
     /// Lascia girare il run loop senza misurare (lavori rimandati, notifiche ricalcolate), con un pool per giro.
