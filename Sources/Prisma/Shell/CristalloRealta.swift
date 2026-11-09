@@ -371,7 +371,7 @@ final class CristalloRealta {
 final class ScenaVirtualeRealta {
     private typealias K = Tema.Apple.RealtaAumentata.Camera
 
-    let ancora = AnchorEntity(world: .zero)
+    let ancora = AnchorEntity(world: SIMD3<Float>(0, 0, 0))
     let camera = PerspectiveCamera()
     let luce = DirectionalLight()
     let tavolo = ModelEntity()

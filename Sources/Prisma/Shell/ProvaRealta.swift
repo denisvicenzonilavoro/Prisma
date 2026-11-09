@@ -72,7 +72,8 @@ enum ProvaRealta {
             let r = try CristalloRealta.risorsa(m, nome: "prova")
             let b = r.bounds
             controlla(abs(b.min.y - 0.2) < 1e-4 && abs(b.max.y - 0.9) < 1e-4, "La maglia diventa una MeshResource alta come gli estremi")
-            controlla(abs(b.min.z + MotoreRealtaAumentata.raggio) < 1e-3, "Il vertice del cristallo va verso −z")
+            controlla(abs(b.min.z + (MotoreRealtaAumentata.raggio - MotoreRealtaAumentata.arrotondamento)) < 1e-3,
+                      "Il vertice del cristallo va verso −z")
         } catch {
             controlla(false, "MeshDescriptor: \(error.localizedDescription)")
         }
@@ -88,7 +89,7 @@ enum ProvaRealta {
                   "Il vetro è trasparente")
         // 3. L'esploso alza gli strati, l'altezza cresce con il patrimonio
         let primo = cristallo.strati.last?.model?.mesh.bounds.min.y ?? 0
-        try? cristallo.aggiorna(anno: esito.annoFine, esploso: 1, crescita: 1, scelto: nil)
+        try? cristallo.aggiorna(anno: esito.annoOggi, esploso: 1, crescita: 1, scelto: nil)
         let dopo = cristallo.strati.last?.model?.mesh.bounds.min.y ?? 0
         let atteso = MotoreRealtaAumentata.salitaEsploso * Float(max(0, esito.strati.count - 1))
         controlla(dopo - primo >= atteso - 0.05, "L'esploso alza l'ultimo strato di 0,2 × indice")

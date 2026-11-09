@@ -131,6 +131,7 @@ private struct CorpoDisegno: View {
 
     /// Il tratto dall'iPad (punti 0…1, y = 0 in basso): convertito come `prepara(assi:ingresso:)`, poi la stessa strada
     /// del rilascio sul Mac; il risultato disegnato torna all'iPad con la frase.
+    @MainActor
     private func disegnoDalTavolo(_ t: TrattoTavolo) {
         guard alTavolo, !modulo, t.valido(), let assi = assiTavolo, let ingresso = ingressoTavolo else { return }
         generazione += 1
@@ -145,6 +146,7 @@ private struct CorpoDisegno: View {
     }
 
     /// Il risultato per l'iPad: il disegno (tratteggiato) e la curva del piano, su carta bianca.
+    @MainActor
     private func paginaRisultato(_ e: EsitoDisegno, assi: AssiDisegno) -> PaginaTavolo? {
         let misura = CGSize(width: assi.area.maxX + assi.area.minX, height: assi.area.maxY + assi.area.minY)
         let vista = ZStack {
