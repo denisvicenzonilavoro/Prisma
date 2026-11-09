@@ -182,6 +182,9 @@ struct PaginaSuMisuraVista: View {
             RigaAvvisoSuMisura(colore: G.avviso, testo: "La memoria di Vera è bloccata (ripristino su un altro Mac): aprila dalla pagina dei ricordi con la password dei backup.")
         } else if stato.suMisuraMancaInOllama {
             RigaAvvisoSuMisura(colore: G.errore, testo: "La Vera su misura non è in Ollama su questo Mac (dopo un ripristino il modello non viaggia con il backup): torna a \(stato.dati.impostazioni.vera.suMisura.modelloPrecedente ?? MotoreLocale.modelloPredefinito).")
+        } else if !stato.disponibilitaLocale.pronto {
+            // Ollama spento o non pronto: gli esempi e l'anteprima si guardano lo stesso, importazione ed esame aspettano
+            RigaAvvisoSuMisura(colore: G.avviso, testo: "Ollama non risponde: importazione ed esame aspettano Ollama aperto sul Mac. Esempi e anteprima si guardano lo stesso.")
         }
         if stato.esempiSuMisuraFermi {
             RigaAvvisoSuMisura(colore: G.spenta, testo: "«Impara dalle correzioni» o la memoria sono spenti: niente esempi nuovi. Quelli che ci sono restano.")
@@ -221,7 +224,7 @@ struct PaginaSuMisuraVista: View {
     private func raccolta(_ fase: FaseSuMisura) -> some View {
         let esempi = stato.memoriaVera.esempi.count
         let lezioni = stato.memoriaVera.lezioni.filter(\.attiva).count
-        Text(esempi == 1 ? "1 conversazione che hai approvato" : "\(esempi) conversazioni che hai approvato" + (lezioni > 0 ? ", con le tue \(lezioni) correzioni." : "."))
+        Text((esempi == 1 ? "1 conversazione che hai approvato" : "\(esempi) conversazioni che hai approvato") + (lezioni > 0 ? ", con le tue \(lezioni) correzioni." : "."))
             .carattereApple(G.testo).foregroundColor(C.inchiostro2)
             .fixedSize(horizontal: false, vertical: true)
         EsempioSegnapostoVista(testo: esempioMostrato)
@@ -288,6 +291,7 @@ struct PaginaSuMisuraVista: View {
         case .inAttesaModello, .nonSuperata, .ritirata, .superata:
             Button("Importa il modello addestrato") { stato.scegliModelloDaImportare() }
                 .buttonStyle(.apple).fixedSize()
+                .disabled(!stato.disponibilitaLocale.pronto)
         default:
             EmptyView()
         }
@@ -323,7 +327,7 @@ struct PaginaSuMisuraVista: View {
         if case .daEsaminare(let v) = fase {
             Button("Fai l'esame") { stato.esaminaSuMisura(v.id) }
                 .buttonStyle(.applePrimario).fixedSize()
-                .disabled(stato.veraInCorso)
+                .disabled(stato.veraInCorso || !stato.disponibilitaLocale.pronto)
         }
     }
 

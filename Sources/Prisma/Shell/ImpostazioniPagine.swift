@@ -323,9 +323,6 @@ extension AppImpostazioni {
         }
     }
     #else
-    /// Come nel template (§4.6, PIE i07): «Motore» con lo stato reale di Qwen sul Mac (Ollama o un server compatibile
-    /// OpenAI, solo indirizzi locali), «iPhone e iPad» (il ponte cifrato) e la scorciatoia della mini Vera; poi come
-    /// lavora Vera (modello, ragionamento, avvio, conversazioni) e, chiuse, fornitore e indirizzo in «Avanzate».
     /// Il tono della pillola di «Vera su misura» (verde in uso o promossa, arancio se non va, neutro altrimenti).
     private var tonoSuMisura: Pillola.Tono {
         switch stato.faseSuMisura {
@@ -335,6 +332,9 @@ extension AppImpostazioni {
         }
     }
 
+    /// Come nel template (§4.6, PIE i07): «Motore» con lo stato reale di Qwen sul Mac (Ollama o un server compatibile
+    /// OpenAI, solo indirizzi locali), «iPhone e iPad» (il ponte cifrato) e la scorciatoia della mini Vera; poi come
+    /// lavora Vera (modello, ragionamento, avvio, conversazioni) e, chiuse, fornitore e indirizzo in «Avanzate».
     var paginaVera: some View {
         let vera = stato.dati.impostazioni.vera
         let pronta = stato.disponibilitaLocale.pronto
