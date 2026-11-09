@@ -39,6 +39,13 @@ struct PanoramicaDossierApple: View {
                 .entrataDossier(1)
             ProssimoIncontroApple(cliente: cliente, appuntamento: prossimo)
                 .entrataDossier(2)
+            #if os(macOS)
+            // «Luce» giro 15: i sinistri del cliente (Pratiche › Sinistri); Pratiche non si apre in modalità cliente
+            if !stato.inModoCliente && stato.dati.sinistri.contains(where: { $0.clienteId == cliente.id }) {
+                SinistriDossierApple(cliente: cliente)
+                    .entrataDossier(2)
+            }
+            #endif
         }
         if let k = completezza {
             ColonneProporzionaliDossier(proporzione: p.proporzione, spazio: p.spazio, larghezzaMinima: p.larghezzaDueColonne) {

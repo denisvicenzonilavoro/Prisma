@@ -196,6 +196,17 @@ struct DettaglioPosizione: View {
                         .buttonStyle(StileVetro())
                         .help("La scheda di adeguatezza: controlli a semaforo, documenti da consegnare, PDF da firmare")
                 }
+                #if os(macOS)
+                // «Luce» giro 15: dalla polizza di protezione in essere, il nuovo sinistro in Pratiche › Sinistri
+                if posizione.area == .protezione && posizione.stato == .inEssere && !stato.inModoCliente {
+                    Button { stato.apriNuovoSinistro(cliente: posizione.clienteId, posizione: posizione.id) } label: {
+                        Label(TestiSinistri.apriUnSinistro, systemImage: "cross.case")
+                    }
+                    .buttonStyle(StileVetro())
+                    .help("Segui il sinistro di questa polizza in Pratiche › Sinistri, come una spedizione")
+                    .disabled(stato.solaLettura)
+                }
+                #endif
                 Button { stato.apriProspetto(.posizione(posizione.id)) } label: { Label("Prospetto", systemImage: "doc.text") }
                     .buttonStyle(StileVetro())
                     .help("Il prospetto di dettaglio in PDF: contratto, costi, proiezione anno per anno, fonti")

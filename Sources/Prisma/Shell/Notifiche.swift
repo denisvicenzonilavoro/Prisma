@@ -254,6 +254,21 @@ enum MotoreNotifiche {
                                                                : praticheFerme.map { nome($0.clienteId) }.joined(separator: ", "),
                                    data: inizio, canale: praticheFerme.count == 1 ? prima.canale : nil))
         }
+        // «Luce» giro 15: i sinistri aperti senza fatti da più dei giorni scelti (Impostazioni › Pratiche), solo dei
+        // clienti visibili: una voce sola, solo dentro Prisma (decisione 29, nessuna notifica di macOS)
+        let sogliaSinistri = dati.impostazioni.pratiche.sogliaSinistroFermo
+        let sinistriFermi = dati.sinistri.filter { s in
+            nomi[s.clienteId] != nil && MotoreSinistri.fermo(s, oggi: oggi, soglia: sogliaSinistri, cal: cal)
+        }
+        if let primoFermo = sinistriFermi.first {
+            elenco.append(Notifica(id: "sinistri-" + sinistriFermi.map(\.id).joined(separator: ","),
+                                   gruppo: .daSistemare, app: .pratiche,
+                                   titolo: TestiSinistri.titoloNotifica(quanti: sinistriFermi.count,
+                                                                        giorni: MotoreSinistri.giorniFermo(primoFermo, oggi: oggi, cal: cal)),
+                                   dettaglio: sinistriFermi.count == 1 ? "\(nome(primoFermo.clienteId)) · \(primoFermo.titolo)"
+                                                                      : sinistriFermi.map { nome($0.clienteId) }.joined(separator: ", "),
+                                   data: inizio))
+        }
         // «Luce» giro 13: la carta d'identità arrivata dall'iPhone, **senza il nome** (decisione 25: solo dentro Prisma,
         // mai nel Centro notifiche del Mac; la carta vive solo in memoria)
         for c in stato.carteInArrivo where c.id != stato.nuovoCliente.cartaId {
