@@ -399,7 +399,8 @@ extension StatoShell {
     /// Le bozze nella lista di Messaggi (stato «bozza», mai aperte), senza doppioni.
     private func salvaBozzeNotte(_ bozze: [MessaggioCliente]) -> [String] {
         let esistenti = Set(dati.messaggi.map(\.id))
-        let nuove = bozze.filter { !esistenti.contains($0.id) && dati.clienti.contains(where: { c in c.id == $0.clienteId }) }
+        let clienti = Set(dati.clienti.map(\.id))
+        let nuove = bozze.filter { !esistenti.contains($0.id) && clienti.contains($0.clienteId) }
             .map { b -> MessaggioCliente in
                 var m = b
                 m.stato = .bozza
