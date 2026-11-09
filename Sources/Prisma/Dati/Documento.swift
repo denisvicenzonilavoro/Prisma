@@ -70,6 +70,9 @@ struct Documento: Identifiable, Codable, Hashable {
     /// Il modulo compilato da Pratiche › Moduli (versione 27, «Luce» giro 10): modello, dati che mancavano, firme. nil per
     /// gli altri documenti. Non va in «Prisma ovunque» (decisione 44).
     var modulo: CompilazioneModulo?
+    /// Lo scatto della realtà aumentata (versione 27, «Luce» giro 16, decisione 27): anno, esploso, stanza, origine. nil
+    /// per gli altri documenti. Non va in «Prisma ovunque».
+    var scattoRealta: ScattoRealta?
 
     /// La categoria che conta: prospetti e report sono sempre «di Prisma».
     var genere: CategoriaDocumento {
@@ -92,6 +95,7 @@ struct Documento: Identifiable, Codable, Hashable {
         case id, clienteId, titolo, tipo, file, pagine, dimensione, importatoIl, lettura, pagineOCR, campi, prodottoId, posizioneId
         case categoria, vociTenute
         case modulo
+        case scattoRealta
     }
 
     init(from decoder: Decoder) throws {
@@ -114,6 +118,8 @@ struct Documento: Identifiable, Codable, Hashable {
         categoria = try? c.decodeIfPresent(CategoriaDocumento.self, forKey: .categoria)
         vociTenute = try? c.decodeIfPresent([String].self, forKey: .vociTenute)
         modulo = (try? c.decodeIfPresent(CompilazioneModulo.self, forKey: .modulo)) ?? nil
+        // Uno scatto rovinato non fa perdere il documento
+        scattoRealta = (try? c.decodeIfPresent(ScattoRealta.self, forKey: .scattoRealta)) ?? nil
     }
 
     func campo(_ chiave: CampoDocumento) -> CampoEstratto? {
@@ -123,6 +129,37 @@ struct Documento: Identifiable, Codable, Hashable {
     /// Valore confermato di un campo (i dati non confermati non entrano nel dossier).
     func confermato(_ chiave: CampoDocumento) -> String? {
         campi.first { $0.chiave == chiave && $0.confermato && !$0.valore.trimmingCharacters(in: .whitespaces).isEmpty }?.valore
+    }
+}
+
+/// Lo scatto della realtà aumentata salvato nel dossier («Luce» giro 16, decisione 27): non va in «Prisma ovunque».
+struct ScattoRealta: Codable, Hashable {
+    enum Origine: String, Codable {
+        case mac, ipad
+    }
+
+    /// L'anno del cursore al momento dello scatto.
+    var anno: Int
+    var esploso: Bool
+    /// true: la foto comprende la stanza (solo con Impostazioni › Sala acceso e la conferma).
+    var conStanza: Bool
+    var origine: Origine
+}
+
+// L'`init(from:)` in un'estensione: nel corpo della struttura toglierebbe l'init per membri
+// `ScattoRealta(anno:esploso:conStanza:origine:)`.
+extension ScattoRealta {
+    private enum Chiavi: String, CodingKey {
+        case anno, esploso, conStanza, origine
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: Chiavi.self)
+        anno = try c.decode(Int.self, forKey: .anno)
+        esploso = (try? c.decodeIfPresent(Bool.self, forKey: .esploso)) ?? false
+        conStanza = (try? c.decodeIfPresent(Bool.self, forKey: .conStanza)) ?? false
+        // Un'origine sconosciuta (un Prisma più nuovo) non fa perdere lo scatto
+        origine = ((try? c.decodeIfPresent(String.self, forKey: .origine)) ?? nil).flatMap(Origine.init(rawValue:)) ?? .mac
     }
 }
 

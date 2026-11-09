@@ -179,6 +179,8 @@ enum ProvaBackup {
             ProvaBackup.aggiungiTerritorioDiProva(&originale)
             // «Luce», giro 12: potenziali clienti, presentatori, una campagna con le bozze (ProvaBackupLuceClienti.swift)
             ProvaBackup.aggiungiLuceClientiDiProva(&originale)
+            // «Luce», giro 16: lo scatto della realtà aumentata nei Documenti e l'interruttore della stanza (ProvaBackupRealta.swift)
+            ProvaBackup.aggiungiRealtaDiProva(&originale)
             // Vera, fase 3: promesse, confronti, coperture e un resoconto (ProvaBackupFaseTreVera.swift)
             ProvaBackup.aggiungiFaseTreVeraDiProva(&originale)
             // Il versamento mensile previsto dell'obiettivo (cursore del dettaglio nel tema Apple)
@@ -320,6 +322,11 @@ enum ProvaBackup {
             }
             // Potenziali clienti, passaparola e campagne (versione 27, «Luce» giro 12), e un archivio della 26 (ProvaBackupLuceClienti.swift)
             if let e = try verificaLuceClienti(originale: originale, estratto: estratto.dati) {
+                print("ERRORE: \(e)")
+                return 1
+            }
+            // Lo scatto della realtà aumentata e l'interruttore della stanza (versione 27, «Luce» giro 16) (ProvaBackupRealta.swift)
+            if let e = try verificaRealta(originale: originale, estratto: estratto.dati) {
                 print("ERRORE: \(e)")
                 return 1
             }

@@ -159,7 +159,8 @@ enum SpazioOvunque {
             d.iban = nil
             return d
         }
-        x.documenti = x.documenti.filter { $0.tipo != .modulo && $0.modulo == nil }
+        // Lo scatto della realtà aumentata resta sul Mac («Luce» giro 16, decisione 27)
+        x.documenti = x.documenti.filter { $0.tipo != .modulo && $0.modulo == nil && $0.scattoRealta == nil }
         // La posizione a mano del cliente (`Cliente.luogo`) e le impostazioni del Territorio (`Impostazioni.territorio`)
         // restano nell'istantanea («Luce» giro 11, decisione 44): l'iPad fa la stessa stima, ma non le modifica (non
         // sono campi sincronizzati)

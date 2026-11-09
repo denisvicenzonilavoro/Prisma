@@ -118,6 +118,7 @@ enum ProvaOvunque {
             try provaSpaziLuce()
             try provaAziende()
             try provaRacconti()
+            try provaScattoRealta()
             try provaSpese()
             try provaTerritorio()
             try provaModuliIban()
@@ -267,6 +268,27 @@ enum ProvaOvunque {
                       "l'inizio del rapporto o l'indennizzo stimato non tornano uguali dall'istantanea dello spazio")
         try controlla(letto.impostazioni.sala == istantanea.impostazioni.sala,
                       "le impostazioni della Sala non tornano uguali dall'istantanea dello spazio")
+    }
+
+    /// «Luce» giro 16 (decisione 27): un documento con lo scatto della realtà aumentata resta sul Mac (non entra
+    /// nell'istantanea), gli altri documenti sì; l'interruttore dello scatto con la stanza va con le altre impostazioni.
+    private static func provaScattoRealta() throws {
+        var dati = DatiPrisma.demo()
+        guard let c = dati.clienti.first else { throw Fallita(motivo: "i dati di prova non hanno clienti") }
+        var scatto = Documento(clienteId: c.id, titolo: "Il cristallo · prova ovunque", tipo: .report)
+        scatto.id = "doc-scatto-ovunque"
+        scatto.scattoRealta = ScattoRealta(anno: 2_029, esploso: false, conStanza: true, origine: .ipad)
+        var altro = Documento(clienteId: c.id, titolo: "Report di prova ovunque", tipo: .report)
+        altro.id = "doc-altro-ovunque"
+        dati.documenti += [scatto, altro]
+        dati.impostazioni.sala.scattoConStanza = true
+        let istantanea = SpazioOvunque.datiIstantanea(dati)
+        try controlla(!istantanea.documenti.contains { $0.id == scatto.id || $0.scattoRealta != nil },
+                      "lo scatto della realtà aumentata entra nell'istantanea di Prisma ovunque")
+        try controlla(istantanea.documenti.contains { $0.id == altro.id }, "gli altri documenti non entrano più nell'istantanea")
+        let chiaro = try JSONOvunque.codificatore().encode(istantanea)
+        let letto = try JSONOvunque.decodificatore().decode(DatiPrisma.self, from: chiaro)
+        try controlla(letto.impostazioni.sala.scattoConStanza, "l'interruttore dello scatto con la stanza non torna uguale dallo spazio")
     }
 
     private static func provaAziende() throws {

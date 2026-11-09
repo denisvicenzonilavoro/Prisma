@@ -113,6 +113,9 @@ struct ImpostazioniSala: Codable, Equatable {
     var avvertenzaValore: String?
     /// Il titolo di «Quanto vale avermi accanto», con {valore} e {periodo} (nil = il testo di prova del template).
     var titoloValore: String?
+    /// «Lo scatto può comprendere la stanza» (Impostazioni › Sala, «Luce» giro 16, decisione 27): spento di base; acceso,
+    /// sull'iPad del tavolo si può mandare anche la foto con la stanza, con la conferma a ogni scatto.
+    var scattoConStanza = false
 
     init() {}
 
@@ -126,6 +129,7 @@ struct ImpostazioniSala: Codable, Equatable {
 
     private enum CodingKeys: String, CodingKey {
         case eventiAnno, anniPartita, avvertenzaLettera, avvertenzaLancia, avvertenzaValore, titoloValore
+        case scattoConStanza
     }
 
     init(from decoder: Decoder) throws {
@@ -141,6 +145,7 @@ struct ImpostazioniSala: Codable, Equatable {
         avvertenzaLancia = testo(.avvertenzaLancia)
         avvertenzaValore = testo(.avvertenzaValore)
         titoloValore = testo(.titoloValore)
+        scattoConStanza = ((try? c.decodeIfPresent(Bool.self, forKey: .scattoConStanza)) ?? nil) ?? false
     }
 
     /// Un testo dell'utente o il segnaposto, con il segno se è il segnaposto.
