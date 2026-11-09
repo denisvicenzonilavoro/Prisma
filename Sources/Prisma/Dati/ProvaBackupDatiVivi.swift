@@ -34,6 +34,9 @@ extension ProvaBackup {
         var abbonamenti = Set<AnyCancellable>()
         stato.modificheDati.sink { conti.segnali += 1 }.store(in: &abbonamenti)
         stato.clienteAttivoCambiato.sink { conti.clientiAttivi.append($0) }.store(in: &abbonamenti)
+        // Le iscrizioni vivono fino alla fine della prova: nel codice ottimizzato Swift può liberare `abbonamenti` dopo
+        // l'ultimo uso (lo `store`), e da lì i segnali non arrivavano più («una nota: 0 segnali», versione dei dati +1).
+        defer { withExtendedLifetime(abbonamenti) {} }
 
         // Una modifica annidata: un segnale (il salvataggio parte), una generazione nuova, le cache dei calcoli rifatte
         let fotografia = stato.dati.istantanea
