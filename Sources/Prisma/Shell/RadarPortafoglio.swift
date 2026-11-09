@@ -51,7 +51,10 @@ struct RadarPortafoglioApple: View, Equatable {
         .presentatoreDettaglio(dettaglio) { id in
             if let v = r.voci.first(where: { $0.id == id }) {
                 DettaglioRadar(voce: v, solaLettura: solaLettura) {
-                    d.chiudi { stato.preparaBozzeRiequilibrio([v]) }
+                    // La bozza di riequilibrio si apre: nel dossier del cliente su Posizioni, tra le sue proposte
+                    d.chiudi {
+                        if let b = stato.preparaBozzeRiequilibrio([v]).first { stato.apriPosizione(b) }
+                    }
                 } dossier: {
                     d.chiudi(subito: true)
                     stato.apriClienteDalRadar(v.clienteId)
@@ -115,6 +118,8 @@ private struct CorpoRadar: View {
             apri(id)
         } modello: { _ in
             stato.apriImpostazioniModelli()
+        } dossier: { id in
+            if let v = radar.voci.first(where: { $0.id == id }) { stato.apriClienteDalRadar(v.clienteId) }
         }
         .overlay { avvisoVuoto }
     }
@@ -174,9 +179,14 @@ struct RadarModelli: View {
     let aperto: String?
     let apri: (String) -> Void
     let modello: (String) -> Void
+    /// Doppio clic su un punto: il dossier del cliente.
+    var dossier: (String) -> Void = { _ in }
 
     @State private var sopra: String?
     @State private var visibile = false
+    /// Il punto scelto con la tastiera (Tab scorre i fuori tolleranza dal più lontano, Invio apre il dettaglio).
+    @State private var tastiera: String?
+    @FocusState private var conFuoco: Bool
     @Environment(\.prismaStatoFinale) private var fermo
     @Environment(\.modoIstantanea) private var istantanea
 
@@ -194,13 +204,35 @@ struct RadarModelli: View {
                     .opacity(visibile || fermo ? 1 : 0)
                     .animation(Tema.Apple.Moto.Curva.uscita.animazione(R.Moto.durataPunti).delay(R.Moto.ritardoPunti), value: visibile)
                 anelliVivi(geo)
+                anelloTastiera(geo)
                 nomiModelli(geo)
                 ancora(geo)
                 fumetto(geo)
             }
             .contentShape(Rectangle())
+            // Il doppio clic prima del clic singolo: SwiftUI aspetta il secondo tocco solo dove c'è il doppio
+            .onTapGesture(count: 2, coordinateSpace: .local) { p in
+                if let v = geo.punto(vicinoA: p) { dossier(v.id) }
+            }
             .onTapGesture(coordinateSpace: .local) { p in
                 if let v = geo.punto(vicinoA: p) { apri(v.id) }
+            }
+            // Tastiera (§8.3.4): Tab scorre i punti fuori tolleranza dal più lontano, Invio apre il dettaglio, Esc lo
+            // chiude (la ✕ del dettaglio ha `.cancelAction`)
+            .focusable()
+            .focused($conFuoco)
+            .focusEffectDisabled()
+            .onKeyPress(.tab) {
+                scorriTastiera()
+                return .handled
+            }
+            .onKeyPress(.return) {
+                guard let id = tastiera else { return .ignored }
+                apri(id)
+                return .handled
+            }
+            .onChange(of: conFuoco) { _, fuoco in
+                if !fuoco { tastiera = nil }
             }
             .onContinuousHover(coordinateSpace: .local) { fase in
                 switch fase {
@@ -305,6 +337,29 @@ struct RadarModelli: View {
                     .position(geo.posizione(v))
                     .allowsHitTesting(false)
             }
+        }
+    }
+
+    /// Il prossimo punto fuori tolleranza (dal più lontano), in giro.
+    private func scorriTastiera() {
+        let ordine = radar.voci.filter(\.fuori).sorted { $0.distanza > $1.distanza }.map(\.id)
+        guard !ordine.isEmpty else { return }
+        if let attuale = tastiera, let i = ordine.firstIndex(of: attuale) {
+            tastiera = ordine[(i + 1) % ordine.count]
+        } else {
+            tastiera = ordine[0]
+        }
+        sopra = tastiera
+    }
+
+    /// L'anello bianco attorno al punto scelto con Tab.
+    @ViewBuilder private func anelloTastiera(_ geo: GeometriaRadar) -> some View {
+        if let id = tastiera, let v = radar.voci.first(where: { $0.id == id }) {
+            Circle()
+                .stroke(R.coloreAnelloTastiera, lineWidth: R.spessoreAnelloTastiera)
+                .frame(width: 2 * R.anelloTastiera, height: 2 * R.anelloTastiera)
+                .position(geo.posizione(v))
+                .allowsHitTesting(false)
         }
     }
 
@@ -799,16 +854,23 @@ private struct RigaClasseRadar: View {
 extension StatoShell {
     /// Prepara le bozze di riequilibrio per i clienti dati (decisione 2): proposte in bozza, una per canale, con gli
     /// spostamenti nelle note. Niente si esegue: l'avviso dice dove sono.
-    func preparaBozzeRiequilibrio(_ voci: [VoceRadar]) {
-        guard !solaLettura, !voci.isEmpty else { return }
+    /// Restituisce le bozze create (per «Prepara la proposta», che apre la prima).
+    @discardableResult
+    func preparaBozzeRiequilibrio(_ voci: [VoceRadar]) -> [Posizione] {
+        guard !solaLettura, !voci.isEmpty else { return [] }
         let oggi = Date()
         var n = 0
+        var create: [Posizione] = []
         for v in voci where !v.bozzaPronta {
-            for b in MotoreRadar.bozze(v, oggi: oggi) { salvaPosizione(b) }
+            for b in MotoreRadar.bozze(v, oggi: oggi) {
+                salvaPosizione(b)
+                create.append(b)
+            }
             n += 1
         }
-        guard n > 0 else { return }
+        guard n > 0 else { return create }
         mostraAvviso(TestiRadar.avvisoBozze(n))
+        return create
     }
 
     /// Impostazioni › Portafogli modello.
