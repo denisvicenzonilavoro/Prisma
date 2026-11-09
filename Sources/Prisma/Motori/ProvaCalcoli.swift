@@ -1295,6 +1295,9 @@ enum ProvaCalcoli {
         // «Luce», giro 13: nuovo cliente in 10 secondi (codice fiscale con controllo e omocodie, comune non controllato,
         // zona a lettura ottica con le cifre 7-3-1, fronte, campi mai inventati, fronte e retro, doppioni, creazione)
         ProvaCalcoliCartaIdentita.esegui(verificaEsterna)
+        // «Luce», giro 14: Stanotte Prisma ha lavorato (finestra, condizioni senza lo schermo, preparativi, ricalcolo con la
+        // fotografia, ordine con Qwen per ultimo, id stabili, carte di ieri, testi, memoria e ordine dei lavori, potatura)
+        ProvaCalcoliNotte.esegui(verificaEsterna)
         // «Luce», giro 4: il prisma di luce (quote per vista, canali distinti, obiettivi senza il 20% del template,
         // anni dalla linea della vita, geometria, shader) e «Disegna il tuo futuro» (versamento in più verificato)
         ProvaCalcoliLuce.esegui(verificaEsterna)
