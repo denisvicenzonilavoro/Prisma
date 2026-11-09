@@ -1,6 +1,7 @@
 import Foundation
 #if os(macOS)
 import AppKit
+import UniformTypeIdentifiers
 #endif
 
 // «Nuovo cliente in 10 secondi» (Design/template-luce-specifica.md §9.1, «Luce» giro 13) nello stato della shell:

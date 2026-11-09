@@ -157,7 +157,11 @@ enum ProvaNotaVocale {
         let prima = d2.attivita.count
         let e2 = ApplicaNotaVocale.applica(nil, nota: &n2, a: &d2, oggi: oggi)
         controlla(e2.attivita == 0 && d2.attivita.count == prima && n2.stato == .confermata, "Nota: una proposta scartata non entra")
-        var senzaCliente = NotaVocaleDiProva.inArrivo(d2, oggi: oggi, testo: "Da richiamare per la polizza.", id: NotaVocaleDiProva.prefisso + "nessuno")
+        // Senza gli appuntamenti dei dati di prova (nascono attorno al giorno della prova): nessun indizio del cliente
+        var senzaAppuntamenti = d2
+        senzaAppuntamenti.appuntamenti = []
+        var senzaCliente = NotaVocaleDiProva.inArrivo(senzaAppuntamenti, oggi: oggi, testo: "Da richiamare per la polizza.",
+                                                      id: NotaVocaleDiProva.prefisso + "nessuno")
         let e3 = ApplicaNotaVocale.applica(nil, nota: &senzaCliente, a: &d2, oggi: oggi)
         controlla(senzaCliente.clienteId == nil && e3 == EsitoNotaVocale() && senzaCliente.stato == .daGuardare,
                   "Nota: senza il cliente scelto non entra niente")

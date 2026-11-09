@@ -465,7 +465,8 @@ private struct SchedaNuovoClienteMac: View {
         let mancano = !MotoreCartaIdentita.mancanti(nuovoCliente.letturaCorretta).isEmpty
         let nome = stato.nomeBreveDaCarta ?? "questo cliente"
         return Button(mancano ? "Completa e crea il dossier" : "Crea il dossier di \(nome)") {
-            if mancano { stato.scriviAManoDaCarta() } else { stato.creaClienteDaCarta() }
+            // Un `if` con rami di tipo diverso non diventa un'espressione: il risultato si scarta esplicitamente
+            if mancano { stato.scriviAManoDaCarta() } else { _ = stato.creaClienteDaCarta() }
         }
         .buttonStyle(.applePrimarioGrande)
         .keyboardShortcut(.defaultAction)
