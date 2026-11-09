@@ -344,12 +344,20 @@ struct PulsanteMostraSulTavolo: View {
     @State private var pannello = false
 
     var body: some View {
+        // Le stesure della lettera non sono osservate (`@ObservationIgnored`): si guardano al tocco, non per spegnere il
+        // pulsante, che altrimenti resterebbe spento anche dopo che la lettera è scritta
         let senzaLettera = esperienza == .lettera && stato.sala.stesureLettera[cliente.id]?[stato.sala.versioneLettera] == nil
         Button {
-            if tavolo.collegato { stato.mostraEsperienzaSulTavolo(esperienza, cliente: cliente.id) } else { pannello = true }
+            if esperienza == .lettera && stato.sala.stesureLettera[cliente.id]?[stato.sala.versioneLettera] == nil {
+                stato.mostraAvviso(TestiRealta.scriviPrimaLettera)
+            } else if tavolo.collegato {
+                stato.mostraEsperienzaSulTavolo(esperienza, cliente: cliente.id)
+            } else {
+                pannello = true
+            }
         } label: { Text("▣ Mostra sul tavolo") }
             .buttonStyle(.apple)
-            .disabled(!esperienza.disponibile || !esperienza.tavoloPronto || senzaLettera)
+            .disabled(!esperienza.disponibile || !esperienza.tavoloPronto)
             .help(aiuto(senzaLettera: senzaLettera))
             .popover(isPresented: $pannello, arrowEdge: .bottom) {
                 VStack(alignment: .leading, spacing: Tema.Apple.Tavolo.spazioPannello) {
