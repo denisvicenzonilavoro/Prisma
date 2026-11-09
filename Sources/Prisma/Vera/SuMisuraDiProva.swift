@@ -55,4 +55,26 @@ enum SuMisuraDiProva {
             return 0.55 + 1.6 * exp(-3.2 * x) + 0.04 * sin(Double(i) * 1.7)
         }
     }
+
+    /// Le 7 richieste del template, nella corsia dove vanno davvero con il modello Apple spento, con i tempi del template
+    /// (indicativi, dati di prova): un secondo dopo l'altra, a partire da `oggi`.
+    static func corsie(oggi: Date = Date()) -> [(testo: String, corsia: CorsiaVera, secondi: Double, quando: Date)] {
+        let righe: [(String, CorsiaVera, Double)] = [
+            ("Apri l'agenda di domani", .regole, 0.3),
+            ("Che documento è questo?", .qwen, 0.6),
+            ("Confronta i due KID di Giulia", .qwen, 6),
+            ("Segna 24 km per oggi", .regole, 0.2),
+            ("Prepara la proposta per Laura", .qwen, 9),
+            ("Chi devo chiamare oggi?", .regole, 0.5),
+            ("Spiegami la rivalutabile di Sofia", .qwen, 5),
+        ]
+        return righe.enumerated().map { i, r in (r.0, r.1, r.2, oggi.addingTimeInterval(Double(i))) }
+    }
+
+    /// Un esempio con un nome che l'archivio non conosce (per l'anteprima: «da guardare»), dati di prova.
+    static func esempioDaGuardare(oggi: Date = Date()) -> EsempioVera {
+        EsempioVera(domanda: "Ho sentito Carla Neri per la polizza della figlia: come le rispondo?",
+                    risposta: "Le direi che guardiamo insieme le condizioni prima di decidere.", data: oggi, modalita: .lavoro)
+    }
 }
+

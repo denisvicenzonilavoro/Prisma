@@ -1642,6 +1642,8 @@ enum Istantanee {
         tutteLeScene += sceneFaseDueVera
         tutteLeScene += sceneFaseTreVera
         tutteLeScene += sceneFaseQuattroVera
+        // Vera, fase 5: su misura, due velocità, il cervello grande e l'etichetta del motore (IstantaneeFaseCinqueVera.swift)
+        tutteLeScene += sceneFaseCinqueVera
         tutteLeScene += scenePosizioniApple
         tutteLeScene += sceneDossierApple
         tutteLeScene += sceneSimulatoriApple
