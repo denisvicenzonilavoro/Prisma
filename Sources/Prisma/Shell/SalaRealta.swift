@@ -119,7 +119,7 @@ struct PalcoRealtaAumentata: View {
                 HStack {
                     PillolaRealta(testo: TestiRealta.marchio)
                     Spacer()
-                    PillolaRealta(testo: trovato ? TestiRealta.tavoloTrovato : TestiRealta.cercoSuperficie, verde: trovato)
+                    PillolaRealta(testo: (trovato || istantanea) ? TestiRealta.tavoloTrovato : TestiRealta.cercoSuperficie, verde: trovato || istantanea)
                 }
                 .padding(RA.Pillola.margine)
                 Spacer()

@@ -232,6 +232,43 @@ struct EtichetteSopraRealta: View {
     /// La targhetta compare (ritardo dell'apertura o dopo la posa).
     let targhettaVisibile: Bool
 
+    var body: some View {
+        EtichettePosizionateRealta(targhetta: etichette.targhetta, strati: etichette.strati, esito: esito, nome: nome, anno: anno,
+                                   esploso: esploso, scelto: scelto, targhettaVisibile: targhettaVisibile)
+    }
+}
+
+/// Le etichette sopra il fermo-immagine: le posizioni del disegno di `CristalloFermo`, calcolate subito (le istantanee
+/// le disegnano senza aspettare un `onAppear`).
+struct EtichetteFermeRealta: View {
+    let esito: EsitoRealta
+    let nome: String
+    let anno: Int?
+    let esploso: Bool
+    let scelto: String?
+    let targhettaVisibile: Bool
+
+    var body: some View {
+        GeometryReader { geo in
+            EtichettePosizionateRealta(targhetta: CristalloFermo.puntoTarghetta(esito, anno: anno, esploso: esploso, misura: geo.size),
+                                       strati: CristalloFermo.puntiStrati(esito, anno: anno, esploso: esploso, misura: geo.size),
+                                       esito: esito, nome: nome, anno: anno, esploso: esploso, scelto: scelto,
+                                       targhettaVisibile: targhettaVisibile)
+        }
+    }
+}
+
+/// La targhetta e le pillole degli strati in posizioni date.
+struct EtichettePosizionateRealta: View {
+    let targhetta: CGPoint?
+    let strati: [String: CGPoint]
+    let esito: EsitoRealta
+    let nome: String
+    let anno: Int?
+    let esploso: Bool
+    let scelto: String?
+    let targhettaVisibile: Bool
+
     @Environment(\.prismaCalmo) private var calmo
 
     var body: some View {
@@ -239,14 +276,14 @@ struct EtichetteSopraRealta: View {
             ZStack(alignment: .topLeading) {
                 if esploso {
                     ForEach(esito.strati) { s in
-                        if let p = etichette.strati[s.id] {
+                        if let p = strati[s.id] {
                             PillolaStrato(strato: s, valore: esito.valore(s, anno: anno), spenta: scelto != nil && scelto != s.id)
                                 .position(x: p.x + RA.Strato.scostamento.width + RA.Strato.mezzaLarghezza, y: p.y + RA.Strato.scostamento.height)
                                 .transition(.opacity)
                         }
                     }
                 }
-                if targhettaVisibile, let p = etichette.targhetta {
+                if targhettaVisibile, let p = targhetta {
                     TarghettaRealta(valore: valoreTarghetta, nome: nome, anno: anno ?? esito.annoOggi)
                         .position(x: p.x, y: max(RA.Targhetta.distanzaAlto, p.y) - RA.Targhetta.asta.height * 2)
                         .transition(.opacity)
@@ -261,34 +298,6 @@ struct EtichetteSopraRealta: View {
     private var valoreTarghetta: Double {
         if let scelto, let s = esito.strati.first(where: { $0.id == scelto }) { return esito.valore(s, anno: anno) }
         return esito.totale(anno: anno)
-    }
-}
-
-/// Le etichette sopra il fermo-immagine: le stesse posizioni del disegno di `CristalloFermo`.
-struct EtichetteFermeRealta: View {
-    let esito: EsitoRealta
-    let nome: String
-    let anno: Int?
-    let esploso: Bool
-    let scelto: String?
-    let targhettaVisibile: Bool
-
-    @StateObject private var etichette = EtichetteRealta()
-
-    var body: some View {
-        GeometryReader { geo in
-            EtichetteSopraRealta(etichette: etichette, esito: esito, nome: nome, anno: anno, esploso: esploso, scelto: scelto,
-                                 targhettaVisibile: targhettaVisibile)
-                .onAppear { posiziona(geo.size) }
-                .onChange(of: geo.size) { _, s in posiziona(s) }
-                .onChange(of: anno) { _, _ in posiziona(geo.size) }
-                .onChange(of: esploso) { _, _ in posiziona(geo.size) }
-        }
-    }
-
-    private func posiziona(_ misura: CGSize) {
-        etichette.targhetta = CristalloFermo.puntoTarghetta(esito, anno: anno, esploso: esploso, misura: misura)
-        etichette.strati = CristalloFermo.puntiStrati(esito, anno: anno, esploso: esploso, misura: misura)
     }
 }
 

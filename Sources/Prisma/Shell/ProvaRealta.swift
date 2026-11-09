@@ -57,6 +57,13 @@ enum ProvaRealta {
            stimata: false, motivoSenzaAnni: nil, massimo: 131_870)
     }
 
+    /// DATI DI PROVA per la vetrina 400: tre strati con quote fisse, nessun cliente.
+    static let esitoVetrina = EsitoRealta(totaleOggi: 87_430, strati: [
+        StratoRealta(classe: .azionario, nome: "Azionario", quota: 0.43, valoreOggi: 37_595),
+        StratoRealta(classe: .gestioneSeparata, nome: "Gestione separata", quota: 0.37, valoreOggi: 32_349),
+        StratoRealta(classe: .liquidita, nome: "Liquidità", quota: 0.2, valoreOggi: 17_486),
+    ], anni: [], stimata: false, motivoSenzaAnni: nil, massimo: 87_430)
+
     #if canImport(RealityKit)
     private static func realityKit(_ esito: EsitoRealta, senzaVista: Bool, _ controlla: (Bool, String) -> Void) {
         // 1. Le maglie diventano MeshResource con i limiti attesi

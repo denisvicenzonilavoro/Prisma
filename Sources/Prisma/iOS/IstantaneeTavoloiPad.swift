@@ -61,6 +61,71 @@ enum IstantaneeTavoloiPad {
         m.tavolo.mostraPerIstantanea(.neutra, collegamento: .caduto)
     }
 
+    // MARK: Il doppio senso («Luce» giro 16): 74 e 56-59
+
+    /// La realtà aumentata al tavolo (74): il cristallo di Giulia sul tavolo virtuale, senza «Fine».
+    static func realta(_ m: StatoMobile) {
+        m.stato.clienteAttivoId = cliente
+        guard let c = m.stato.cliente(cliente) else { return neutra(m) }
+        let e = MotoreRealtaAumentata.calcola(cliente: c, posizioni: m.stato.posizioniCliente(cliente),
+                                              obiettivi: m.stato.obiettiviCliente(cliente), eventi: m.stato.eventiVitaCliente(cliente),
+                                              analisi: m.stato.dati.analisi[cliente])
+        var x = MostraTavolo(id: "istantanea-realta", genere: .realtaAumentata, titolo: EsperienzaSala.realtaAumentata.titolo,
+                             cliente: c.nome)
+        x.realta = MotoreRealtaAumentata.tavolo(e, nome: TestiRealta.primoNome(c.nome), scattoConStanza: false)
+        m.tavolo.mostraPerIstantanea(.mostra(x), collegamento: mac)
+    }
+
+    /// Il gioco del rischio al tavolo (56): lo scenario 1, neutro, con le tre risposte (testi di prova della risorsa).
+    static func rischio(_ m: StatoMobile) {
+        m.stato.clienteAttivoId = cliente
+        guard let s = MotoreGiocoRischio.caricati, let sc = s.scenari.first else { return neutra(m) }
+        var x = MostraTavolo(id: "istantanea-rischio", genere: .rischio, titolo: EsperienzaSala.giocoRischio.titolo,
+                             cliente: m.stato.cliente(cliente)?.nome ?? "")
+        x.rischio = RischioTavolo(indice: 0, totale: s.scenari.count, scenario: sc, avvertenza: s.avvertenza,
+                                  testiDiProva: s.testiDiProva, emerso: nil, punteggio: nil, massimo: nil)
+        m.tavolo.mostraPerIstantanea(.mostra(x), collegamento: mac)
+    }
+
+    /// Lancia l'anno al tavolo (57): le due vite dopo tre anni a seme fisso.
+    static func lancia(_ m: StatoMobile) {
+        m.stato.clienteAttivoId = cliente
+        guard let c = m.stato.cliente(cliente), case .success(var p) = m.stato.partitaLanciaAnno(c, numero: 0, seme: 2026_11_08)
+        else { return neutra(m) }
+        for _ in 0..<3 { MotoreLanciaAnno.lancia(&p, cartaAMano: nil) }
+        var x = MostraTavolo(id: "istantanea-lancia", genere: .lanciaAnno, titolo: EsperienzaSala.lanciaAnno.titolo, cliente: c.nome)
+        x.lancia = LanciaAnnoTavolo.da(p, nome: TestiRealta.primoNome(c.nome), avvertenza: ImpostazioniSala.segnapostoAvvertenza)
+        m.tavolo.mostraPerIstantanea(.mostra(x), collegamento: mac)
+    }
+
+    /// Il disegno al tavolo (58): la tela con gli assi e il tratto di prova (DisegnoDiProva, dati di prova dichiarati).
+    static func disegno(_ m: StatoMobile) {
+        m.stato.clienteAttivoId = cliente
+        guard let c = m.stato.cliente(cliente) else { return neutra(m) }
+        let prep = MotoreLineaVita.prepara(cliente: c, posizioni: m.stato.posizioniCliente(cliente),
+                                           obiettivi: m.stato.obiettiviCliente(cliente), eventi: m.stato.eventiVitaCliente(cliente),
+                                           analisi: m.stato.dati.analisi[cliente])
+        guard let ingresso = prep.ingresso else { return neutra(m) }
+        let assi = MotoreDisegno.assi(MotoreLineaVita.calcola(ingresso), area: CGRect(x: 0, y: 0, width: 800, height: 420))
+        var x = MostraTavolo(id: "istantanea-disegno", genere: .disegno, titolo: EsperienzaSala.disegna.titolo, cliente: c.nome)
+        x.disegno = DisegnoTavolo(etaOggi: assi.etaOggi, etaFine: assi.etaFine, etaPensione: ingresso.etaPensione,
+                                  etichetteAsse: (0...4).map { MotoreDisegno.etichettaAsse(assi.massimo * Double($0) / 4) },
+                                  risultato: nil, frase: nil)
+        // Il tratto di prova: y = 0 in alto sulla tela dell'iPad
+        let tratto = DisegnoDiProva.sopraIlPiano.map { CGPoint(x: $0.x, y: 1 - $0.y) }
+        m.tavolo.mostraPerIstantanea(.mostra(x), collegamento: mac, tratto: [tratto])
+    }
+
+    /// La capsula al tavolo (59): il campo con un testo di prova dichiarato.
+    static func capsula(_ m: StatoMobile) {
+        m.stato.clienteAttivoId = cliente
+        let nome = m.stato.cliente(cliente)?.nome ?? "Giulia"
+        var x = MostraTavolo(id: "istantanea-capsula", genere: .capsula, titolo: EsperienzaSala.capsula.titolo, cliente: nome)
+        x.capsula = CapsulaTavolo(nome: TestiRealta.primoNome(nome), siApre: "Si apre a 67 anni (testo di prova)",
+                                  aiuto: TestiRealta.aiutoCapsula)
+        m.tavolo.mostraPerIstantanea(.mostra(x), collegamento: mac, testo: "Testo di prova della capsula.")
+    }
+
     /// La pagina `indice` in PNG a 2× su carta bianca e in chiaro, come `TavoloMac.pagina` sul Mac.
     static func pagina(_ d: DocumentoStampabile, indice i: Int) -> PaginaTavolo? {
         guard d.pagine.indices.contains(i) else { return nil }

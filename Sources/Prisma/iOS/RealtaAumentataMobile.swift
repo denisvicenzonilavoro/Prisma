@@ -34,7 +34,6 @@ struct PalcoRealtaAumentata: View {
     @Environment(\.istantaneaSchermo) private var istantaneaSchermo
     @Environment(\.modoIstantanea) private var modoIstantanea
     @Environment(\.prismaCalmo) private var calmo
-    @State private var aperta = false
 
     var body: some View {
         let _ = ContaCorpi.segna()
@@ -51,7 +50,7 @@ struct PalcoRealtaAumentata: View {
                     .frame(height: RA.Mobile.altezzaAnteprima)
                     .clipShape(RoundedRectangle(cornerRadius: RA.Mobile.raggioAnteprima, style: .continuous))
                 ColonnaRealta(esito: esito, primo: primo, anno: anno)
-                Button { aperta = true } label: {
+                Button { stato.sala.realtaAperta = true } label: {
                     Text(TestiRealta.apri).frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.applePrimario)
@@ -60,9 +59,9 @@ struct PalcoRealtaAumentata: View {
             }
             .padding(RA.Mobile.margine)
         }
-        .fullScreenCover(isPresented: $aperta) {
+        .fullScreenCover(isPresented: Binding(get: { stato.sala.realtaAperta }, set: { stato.sala.realtaAperta = $0 })) {
             RealtaAumentataMobile(esito: esito, nome: primo, scattoConStanza: stato.dati.impostazioni.sala.scattoConStanza,
-                                  modo: .daSolo)
+                                  modo: .daSolo, fotocameraNegataDiProva: prova?.fotocameraNegata ?? false)
                 .environment(\.istantaneaSchermo, istantaneaSchermo)
                 .prismaCalmo(calmo)
         }
@@ -131,6 +130,8 @@ struct RealtaAumentataMobile: View {
     let modo: Modo
     /// Al tavolo: «Foto salvata nel dossier di …», rimandato dal Mac.
     var ultimoScatto: String?
+    /// Solo istantanee: il ripiego con la fotocamera negata (73).
+    var fotocameraNegataDiProva = false
 
     @Environment(\.dismiss) private var chiudi
     @Environment(\.scenePhase) private var fase
@@ -260,6 +261,8 @@ struct RealtaAumentataMobile: View {
             }
             if case .virtuale(let motivo, let negata) = statoAR.modo, let motivo, !istantanea {
                 AvvisoRealta(testo: motivo, azione: negata ? (titolo: TestiRealta.consentiImpostazioni, fai: apriImpostazioni) : nil)
+            } else if istantanea && fotocameraNegataDiProva {
+                AvvisoRealta(testo: TestiRealta.fotocameraNegata, azione: (titolo: TestiRealta.consentiImpostazioni, fai: apriImpostazioni))
             }
             if let avviso { AvvisoRealta(testo: avviso).transition(.opacity) }
             if esito.vuota {

@@ -1714,6 +1714,8 @@ enum Istantanee {
         // (Shell/IstantaneeNotaVocale.swift)
         tutteLeScene += sceneNuovoCliente
         tutteLeScene += sceneNotaVocale
+        // «Luce», giro 16: la realtà aumentata e il tavolo a doppio senso (Shell/IstantaneeSalaRealta.swift)
+        tutteLeScene += sceneSalaRealta
         for scena in tutteLeScene where solo?.contains(scena.nome) ?? true {
             // Un pool per scena: senza il ciclo degli eventi (si esce in PrismaApp.init) niente lo svuoterebbe,
             // e stato, finestra e bitmap di ogni scena resterebbero in memoria fino all'ultima istantanea

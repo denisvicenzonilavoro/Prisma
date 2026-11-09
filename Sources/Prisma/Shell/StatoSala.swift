@@ -156,6 +156,8 @@ enum VistaTerritorio: String, CaseIterable, Identifiable, Hashable {
     var confermaCifreTavolo: EsperienzaSala?
     /// Solo istantanee: lo stato di prova della realtà aumentata (anno, esploso, strato scelto, tavolo collegato).
     @ObservationIgnored var realtaIstantanea: ScenaRealtaDiProva?
+    /// iPhone e iPad: la realtà aumentata a tutto schermo è aperta («Apri in realtà aumentata»).
+    var realtaAperta = false
 }
 
 /// Solo istantanee: lo stato della realtà aumentata da disegnare («Luce» giro 16).
@@ -166,6 +168,8 @@ struct ScenaRealtaDiProva {
     var esploso = false
     var scelto: String?
     var tavoloCollegato = false
+    /// iPhone e iPad: il ripiego con «Consenti in Impostazioni» (73).
+    var fotocameraNegata = false
 }
 
 /// Solo istantanee: una partita di Lancia l'anno già giocata (seme fisso, anni, carte a mano per anno).
