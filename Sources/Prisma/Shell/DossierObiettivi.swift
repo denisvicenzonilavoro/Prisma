@@ -37,6 +37,7 @@ struct ObiettiviDossierApple: View {
             LazyVGrid(columns: colonne, alignment: .leading, spacing: s.spazio) {
                 ForEach(Array(elenco.enumerated()), id: \.element.id) { i, o in
                     SchedaObiettivoApple(obiettivo: o, posizioni: posizioni, indice: i) { apri(o) }
+                        .overlay { evidenza(o) }
                         .entrataDossier(i)
                 }
                 if elenco.count < s.postiDelTemplate {
@@ -49,6 +50,19 @@ struct ObiettiviDossierApple: View {
         }
         .sheet(item: $modulo) { o in
             ModuloObiettivo(bozza: o, nuovo: !stato.dati.obiettivi.contains { $0.id == o.id }) { stato.salvaObiettivo($0) }
+        }
+        // «Luce» giro 13: l'evidenza dell'obiettivo proposto da una nota dall'iPhone si toglie lasciando Obiettivi
+        .onDisappear { if stato.notaVocale.obiettivoEvidenziato != nil { stato.notaVocale.obiettivoEvidenziato = nil } }
+    }
+
+    /// L'obiettivo con la modifica proposta da una nota dettata sull'iPhone («Luce» giro 13): contorno nel colore della
+    /// voce «Obiettivo da aggiornare»; la modifica si conferma nella scheda «Arriva sul Mac», che resta aperta.
+    @ViewBuilder private func evidenza(_ o: Obiettivo) -> some View {
+        if stato.notaVocale.obiettivoEvidenziato == o.id {
+            RoundedRectangle(cornerRadius: Tema.Apple.Clienti.Obiettivi.raggio, style: .continuous)
+                .strokeBorder(Tema.Apple.NotaVocale.Voce.obiettivo, lineWidth: Tema.Apple.NotaVocale.Voce.contornoEvidenza)
+                .allowsHitTesting(false)
+                .accessibilityLabel(Text("Modifica proposta dalla nota dall’iPhone"))
         }
     }
 

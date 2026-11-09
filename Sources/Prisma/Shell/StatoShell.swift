@@ -2110,6 +2110,12 @@ enum VoceConfronto: Hashable {
         Task {
             let d = await MotoreLocale.verificaDispositivo(vera)
             DispatchQueue.main.async { if self.disponibilitaLocale != d { self.disponibilitaLocale = d } }
+            #if os(iOS)
+            // «Luce» giro 13: il ponte ha trovato il Mac (anche con Qwen non pronto): partono le note in partenza
+            if vera.ponte.abbinato, d.motivo != PonteVera.macNonTrovato {
+                await MainActor.run { self.consegnaNoteInPartenza() }
+            }
+            #endif
         }
     }
 

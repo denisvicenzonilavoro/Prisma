@@ -77,6 +77,8 @@ extension Tema.Apple {
             static let attivita = K.anello1
             static let messaggio = K.arancio
             static let obiettivo = K.stima
+            /// L'obiettivo da aggiornare evidenziato nel dossier su Obiettivi: contorno 2 nel colore della voce.
+            static let contornoEvidenza: CGFloat = 2
 
             static func colore(_ t: TipoPropostaNota) -> Color {
                 switch t {

@@ -15,6 +15,9 @@ import SwiftUI
     var mostrata: String?
     /// La voce in modifica (id della proposta).
     var inModifica: String?
+    /// L'obiettivo con la modifica proposta da una nota, evidenziato nel dossier su Obiettivi (si toglie lasciando la
+    /// scheda Obiettivi).
+    var obiettivoEvidenziato: String?
 }
 
 /// La voce «Nota dall’iPhone · 11:42» nella colonna «Oggi» di Incontri, con il pallino delle note da guardare.
@@ -346,6 +349,7 @@ private struct VoceNotaVocale: View {
     /// Il dossier su Obiettivi, con l'obiettivo da aggiornare (la modifica si conferma qui).
     private func apriObiettivo() {
         guard let c = nota.clienteId else { return }
+        notaVocale.obiettivoEvidenziato = proposta.obiettivoId
         stato.apriCliente(c)
         stato.schedaCliente = .obiettivi
     }
