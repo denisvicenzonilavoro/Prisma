@@ -409,6 +409,9 @@ enum ProvaFaseDueVera {
     private static func lasciaCadereDove(_ controlla: (Bool, String) -> Void) {
         // Le posizioni lette dalle regole: nome, ISIN, valore e pagina; mai totali, movimenti o righe con una data
         let lette = LasciaCadereVera.posizioniLette([estrattoDiProva])
+        guard lette.count == 3 else {
+            return controlla(false, "Lascia cadere: dall'estratto conto tre posizioni lette (\(lette.map(\.nome)))")
+        }
         controlla(lette.map(\.nome) == ["Conto corrente ordinario", "Fondo Azionario Europa", "BTP Italia"]
                   && lette.map(\.valore) == [12_450.30, 8_300, 5_000] && lette[1].isin == "LU0123456789" && lette[2].isin == "IT0005497000"
                   && lette.allSatisfy { $0.pagina == 1 },

@@ -5,7 +5,7 @@ import SwiftUI
 // con il numero nel pallino colorato (`.novI`, `.novN`). I cinque colori sono quelli dei gruppi del template (`GR`).
 
 extension Tema.Apple {
-    enum NovitaVera {
+    enum PannelloVeraNovita {
         static let larghezza: CGFloat = 1200
         static let bordo: CGFloat = 24
         static let padding = EdgeInsets(top: 18, leading: 20, bottom: 20, trailing: 20)

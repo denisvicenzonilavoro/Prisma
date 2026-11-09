@@ -75,8 +75,8 @@ struct PannelloNovita: View {
             // «Le 25 novità di Vera» (NovitaVera.swift): il pannello del template di Vera, sopra la sua finestra
             Button { stato.apriNovitaVera() } label: {
                 Text("✦ Le \(NovitaVera.allCases.count) novità di Vera")
-                    .carattereApple(Tema.Apple.NovitaVera.pulsante)
-                    .foregroundColor(Tema.Apple.NovitaVera.colorePulsante)
+                    .carattereApple(Tema.Apple.PannelloVeraNovita.pulsante)
+                    .foregroundColor(Tema.Apple.PannelloVeraNovita.colorePulsante)
             }
             .buttonStyle(StileSemplice())
             .help("Le 25 novità di Vera, nei cinque gruppi")

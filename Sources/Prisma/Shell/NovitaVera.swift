@@ -22,7 +22,7 @@ enum NovitaVera: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    /// I cinque gruppi del template, con il loro colore (`Tema.Apple.NovitaVera.colori`).
+    /// I cinque gruppi del template, con il loro colore (`Tema.Apple.PannelloVeraNovita.colori`).
     enum Gruppo: Int, CaseIterable, Identifiable {
         case faLeCose, conosceIClienti, leggeEControlla, scriveComeTe, piuIntelligente
 
@@ -38,7 +38,7 @@ enum NovitaVera: String, CaseIterable, Identifiable {
             }
         }
 
-        var colore: Color { Tema.Apple.NovitaVera.colori[rawValue] }
+        var colore: Color { Tema.Apple.PannelloVeraNovita.colori[rawValue] }
 
         var voci: [NovitaVera] { NovitaVera.allCases.filter { $0.gruppo == self } }
     }
@@ -225,7 +225,7 @@ private struct ModificatoreNovitaVera: ViewModifier {
                             .contentShape(Rectangle())
                             .onTapGesture { stato.chiudiNovitaVera() }
                         PannelloNovitaVera()
-                            .padding(Tema.Apple.NovitaVera.bordo)
+                            .padding(Tema.Apple.PannelloVeraNovita.bordo)
                     }
                     .transition(.opacity)
                 }
@@ -237,7 +237,7 @@ private struct ModificatoreNovitaVera: ViewModifier {
 /// Il pannello del template (`#novP`): la sfera e «Le 25 novità di Vera», «Chiudi», cinque colonne con le voci numerate.
 struct PannelloNovitaVera: View {
     @Environment(StatoShell.self) var stato
-    private typealias N = Tema.Apple.NovitaVera
+    private typealias N = Tema.Apple.PannelloVeraNovita
 
     var body: some View {
         let _ = ContaCorpi.segna()
@@ -282,7 +282,7 @@ private struct VoceNovitaVera: View {
     @Environment(StatoShell.self) var stato
     let voce: NovitaVera
     @State private var sopra = false
-    private typealias N = Tema.Apple.NovitaVera
+    private typealias N = Tema.Apple.PannelloVeraNovita
 
     var body: some View {
         let forma = RoundedRectangle(cornerRadius: N.raggioVoce, style: .continuous)
