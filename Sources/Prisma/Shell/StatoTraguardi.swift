@@ -27,6 +27,8 @@ extension StatoShell {
         var d = datiDeiCalcoli()
         d.note = dati.note
         d.impostazioni = dati.impostazioni
+        // «Luce» giro 15: le capsule del tempo, lette vive (la capsula legata all'obiettivo raggiunto)
+        d.capsule = dati.capsule
         return d
     }
 

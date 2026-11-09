@@ -1314,6 +1314,14 @@ enum ProvaCalcoli {
         // mutuo, studi, festeggiati e scartati, idea solo dalle note, «Da festeggiare», lettura tollerante)
         ProvaCalcoliStorie.esegui(verificaEsterna)
         ProvaCalcoliTraguardi.esegui(verificaEsterna)
+        // «Luce», giro 15: le cose date al cliente. La password (tre parole e un numero, elenco, rifiuti) e le prove delle
+        // parti (Prisma del cliente, film, capsule, biglietto, sinistri: ognuna sostituisce il corpo del suo file)
+        ProvaCalcoliPassword.esegui(verificaEsterna)
+        ProvaCalcoliPrismaCliente.esegui(verificaEsterna)
+        ProvaCalcoliFilm.esegui(verificaEsterna)
+        ProvaCalcoliCapsule.esegui(verificaEsterna)
+        ProvaCalcoliBiglietto.esegui(verificaEsterna)
+        ProvaCalcoliSinistri.esegui(verificaEsterna)
 
         // Giro 7: glossario e guida. Ogni chiave ha la sua voce, le etichette puntano a voci vere, ogni app ha 3 passi
         verifica("Glossario: voci per ogni chiave", Double(VoceGlossario.Chiave.allCases.filter { Glossario.voce($0) == nil }.count), 0)

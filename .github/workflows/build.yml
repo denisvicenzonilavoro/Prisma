@@ -120,6 +120,37 @@ jobs:
             exit 1
           fi
 
+      - name: Privacy delle cose date al cliente
+        run: |
+          # «Luce» giro 15 (decisione 1, CLAUDE.md › Dati e privacy): Prisma non passa numeri a WhatsApp e non usa la rete
+          # per le cose date al cliente: spedisce il consulente dal foglio di condivisione del sistema
+          if grep -rnE 'wa\.me|whatsapp://|api\.whatsapp' Sources/Prisma; then
+            echo "::error::Niente indirizzi di WhatsApp nel codice: si condivide solo dal foglio di sistema"
+            exit 1
+          fi
+          # I file che non esistono ancora (parti del giro non scritte) si saltano; quelli che ci sono si controllano tutti
+          FILE_USCITE=$(ls Sources/Prisma/Shell/FoglioCondivisione.swift Sources/Prisma/Shell/UsciteCliente.swift \
+              Sources/Prisma/Dati/FilePrismaCliente.swift Sources/Prisma/Shell/*Film*.swift Sources/Prisma/Dati/*Capsul*.swift \
+              Sources/Prisma/Dati/Sinistro.swift Sources/Prisma/Dati/*PrismaCliente*.swift Sources/Prisma/Motori/*PrismaCliente*.swift \
+              Sources/Prisma/Shell/*PrismaCliente*.swift Sources/Prisma/Motori/*Film*.swift Sources/Prisma/Motori/*Capsul*.swift \
+              Sources/Prisma/Shell/*Capsul*.swift Sources/Prisma/Motori/*Sinistr*.swift Sources/Prisma/Shell/*Sinistr*.swift \
+              Sources/Prisma/iOS/*Sinistr*.swift Sources/Prisma/Shell/EsportaBiglietto.swift 2>/dev/null || true)
+          if [ -n "$FILE_USCITE" ] && grep -nE 'URLSession|URLRequest|NWConnection' $FILE_USCITE; then
+            echo "::error::Le cose date al cliente non devono usare la rete"
+            exit 1
+          fi
+
+      - name: "Prisma del cliente: lettore del file (Node, solo prova)"
+        run: |
+          # «Luce» giro 15 (decisioni 3 e 109): il lettore JavaScript del file del cliente non usa la rete; Prisma scrive un
+          # file di prova (contenuto e password di prova) e Node, solo qui e mai nell'app, lo apre con il lettore vero
+          if grep -nE 'fetch\(|XMLHttpRequest|WebSocket|sendBeacon|import\(|https?://' Sources/Prisma/Risorse/PrismaCliente/lettore.js; then
+            echo "::error::Il lettore del Prisma del cliente non deve usare la rete"; exit 1
+          fi
+          node --version
+          "Prisma.app/Contents/MacOS/Prisma" --prova-file-cliente "$PWD/file-cliente"
+          node Supporto/prova-file-cliente.mjs "$PWD/file-cliente"
+
       - name: Verifica Prisma.app
         run: |
           APP=Prisma.app
@@ -181,6 +212,9 @@ jobs:
           # Prova di Prisma ovunque: due archivi e una cartella locale che finge iCloud Drive (ritardi, file non scaricato,
           # copia «nome 2», file troncato, conflitti da decidere, passphrase sbagliata e cambiata, niente dati in chiaro)
           "$APP/Contents/MacOS/Prisma" --prova-ovunque
+          # Il film del piano («Luce» giro 15): il video dei dati di prova (senza il codificatore H.264 sul runner un
+          # avviso, la build resta verde)
+          "$APP/Contents/MacOS/Prisma" --prova-film
           codesign --verify --deep --strict --verbose=2 "$APP"
           echo "Prisma.app verificata"
 
@@ -271,6 +305,9 @@ jobs:
               # La tabella della fluidità accanto alle schermate: si confrontano due commit senza leggere i log
               cp fluidita.md anteprime/fluidita.md 2>/dev/null || true
               "Prisma.app/Contents/MacOS/Prisma" --prova-prospetti "$PWD/anteprime/prospetti" > /dev/null || true
+              # Le cose date al cliente («Luce» giro 15): le pagine del Prisma del cliente e i fotogrammi del film
+              "Prisma.app/Contents/MacOS/Prisma" --prova-file-cliente "$PWD/anteprime/file-cliente" > /dev/null || true
+              "Prisma.app/Contents/MacOS/Prisma" --prova-film "$PWD/anteprime/film" > /dev/null || true
               # Alcune schermate con il testo «molto grande» (Impostazioni → Dimensione del testo)
               "Prisma.app/Contents/MacOS/Prisma" --istantanee "$PWD/anteprime/testo-grande" --metodo "$metodo" --testo 1.2 \
                 --solo 1-scrivania,5-clienti-panoramica,8-posizioni-dettaglio,11-agenda,11a-agenda-mese,65-portafoglio,220-avvio-benvenuto,222-introduzione,225-guida-posizioni,234-posizioni-finestra-stretta > /dev/null || true

@@ -628,6 +628,8 @@ enum ProvaProspetti {
         ProvaProspettiTFR.esegui(verifica, cartella: cartella)
         // «Un anno insieme»: il report di fine anno per i 5 clienti di prova (avvertenze, canale, niente promesse)
         ProvaAnnoInsieme.esegui(verifica, cartella: cartella)
+        // «Luce» giro 15: la pagina della capsula del tempo su carta bianca (ProvaCapsulaPDF in Shell/StatoCapsule.swift)
+        ProvaCapsulaPDF.esegui(verifica, cartella: cartella)
 
         if errori == 0 {
             print("OK: prospetti verificati")

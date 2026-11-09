@@ -357,6 +357,11 @@ enum ProvaCalcoliMessaggi {
                 occasioni.append(ApplicaNotaVocale.occasioneMessaggio(p, nota: nota, cliente: giulia))
             }
         }
+        // L'aggiornamento del sinistro di prova di Marco («Luce» giro 15): titolo, fase e ultimo fatto, mai polizza né importi
+        if let marco = x.clienti.first(where: { $0.id == "marco" }),
+           let sinistro = SinistriDiProva.sinistri(oggi: oggi).first(where: { $0.id == SinistriDiProva.idMarco }) {
+            occasioni.append(MotoreSinistri.occasione(sinistro, cliente: marco, consulente: "Denis", oggi: oggi))
+        }
         return (x, occasioni)
     }
 

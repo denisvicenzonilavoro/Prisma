@@ -1,0 +1,70 @@
+/* Il lettore del Prisma del cliente: solo impaginazione. I colori arrivano da Prisma come variabili CSS
+   (Tema.Apple.MiniCliente), sempre chiari. Carattere di sistema del telefono: nessuna risorsa esterna. */
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: var(--fondo); color: var(--testo);
+  font-family: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif; -webkit-text-size-adjust: 100%; }
+main { max-width: 480px; margin: 0 auto; min-height: 100vh; }
+.porta { padding: 80px 28px 40px; text-align: center; }
+.porta h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; margin: 14px 0 8px; }
+.ripiego { color: var(--testo2); font-size: 14px; line-height: 1.45; }
+.accesso { display: flex; gap: 8px; margin-top: 18px; }
+.campo { flex: 1; font-size: 17px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--cerchio-vuoto);
+  background: var(--card); color: var(--testo); }
+.apri, .secondario { font-size: 16px; font-weight: 600; padding: 12px 18px; border-radius: 12px; border: 0;
+  background: var(--freccia); color: var(--card); }
+.secondario { background: var(--card); color: var(--freccia); border: 1px solid var(--cerchio-vuoto); }
+.errore { color: var(--non-basta); font-size: 14px; min-height: 20px; }
+.scaduto { margin: 80px 24px; padding: 20px; background: var(--card); border-radius: 16px; line-height: 1.5; }
+.testata { position: relative; height: 210px; overflow: hidden;
+  background: linear-gradient(165deg, var(--testata-da), var(--testata-a)); }
+.onda { position: absolute; width: 60px; height: 60px; margin: -30px 0 0 -30px; border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.8); animation: onda 3.3s ease-out infinite; opacity: 0; }
+.onda0 { left: 60px; top: 80px; }
+.onda1 { left: 190px; top: 60px; animation-delay: 1.1s; }
+.onda2 { left: 120px; top: 140px; animation-delay: 2.2s; }
+@keyframes onda { from { transform: scale(0.2); opacity: 0.9; } to { transform: scale(2.6); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .onda { animation: none; opacity: 0.35; transform: scale(1.4); } }
+.logo-piccolo { position: absolute; left: 20px; top: 58px; }
+.logo-piccolo svg { width: 25px; height: 22px; }
+.nome { position: absolute; left: 20px; bottom: 18px; }
+.sopra-nome { font-size: 11px; font-weight: 700; letter-spacing: 1px; opacity: 0.6; }
+.nome-grande { font-size: 34px; font-weight: 700; letter-spacing: -0.8px; }
+.prova { text-align: center; font-size: 10px; font-weight: 700; letter-spacing: 0.8px; color: var(--testo2); margin: 8px 0 0; }
+.corpo { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.card { background: var(--card); border-radius: 16px; padding: 12px 14px; box-shadow: 0 8px 18px -12px rgba(0, 0, 0, 0.25); }
+.card.riga { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+.card.film { background: var(--card-film); color: var(--card); }
+.occhiello { font-size: 11px; font-weight: 700; letter-spacing: 0.5px; color: var(--testo2); margin: 0 0 10px; }
+.anelli { display: flex; justify-content: space-around; }
+.obiettivo { width: 72px; text-align: center; }
+.nome-obiettivo { font-size: 10px; line-height: 1.2; color: var(--testo2); margin-top: 6px; }
+.frase { font-size: 11.5px; font-weight: 600; margin: 10px 0 0; }
+.frase.basta { color: var(--basta); }
+.frase.non-basta { color: var(--non-basta); }
+.eta { font-size: 24px; font-weight: 700; }
+.cursore { width: 100%; margin: 8px 0; accent-color: var(--linea); }
+.grafico { display: block; }
+.nota { font-size: 11px; color: var(--testo2); margin: 6px 0 0; line-height: 1.4; }
+.card.film .sotto-card { opacity: 0.65; }
+.quadrato { width: 38px; height: 38px; border-radius: 10px; background: var(--lettera); color: var(--card);
+  display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.testi { flex: 1; }
+.titolo-card { font-size: 13px; font-weight: 700; }
+.sotto-card { font-size: 11px; color: var(--testo2); }
+.freccia { color: var(--freccia); font-size: 22px; font-weight: 600; }
+.video { width: 100%; margin-top: 10px; border-radius: 10px; }
+.immagine { width: 100%; border-radius: 10px; display: block; }
+.fasi { list-style: none; padding: 0; margin: 10px 0 0; }
+.fase { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 3px 0; }
+.cerchio { width: 12px; height: 12px; border-radius: 50%; background: var(--cerchio-vuoto); }
+.fase.fatta .cerchio { background: var(--fatta); }
+.fase.adesso .cerchio { background: var(--adesso); box-shadow: 0 0 0 4px rgba(224, 138, 0, 0.2); }
+.fase.respinta .cerchio { background: var(--non-basta); }
+.fase.futura { color: var(--futuro); }
+.posizione { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-top: 1px solid var(--fondo); }
+.canale { font-size: 10.5px; font-weight: 600; }
+.valore { text-align: right; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.piede { text-align: center; font-size: 10px; color: var(--piede); padding: 14px 6px 24px; line-height: 1.5; }
+.lettera { position: fixed; inset: 0; overflow: auto; background: var(--card); padding: 24px; font-family: Georgia, serif;
+  font-size: 17px; line-height: 1.6; }
+.lettera p { margin: 0 0 10px; }

@@ -202,6 +202,8 @@ enum VoceConfronto: Hashable {
     var notaVeloceAperta = false
     /// La Sala di «Luce» (StatoSala.swift): l'esperienza sul palco, osservata solo dalla Sala.
     let sala = StatoSala()
+    /// Pratiche › Sinistri («Luce» giro 15): la scheda dei sinistri, a parte come la Sala.
+    let sinistri = StatoSinistri()
     /// La storia della settimana e dell'anno di «Luce» (giro 5, StoriaLuce.swift): le pagine e quella in corso,
     /// osservate solo dalla storia. Non si salva.
     let storia = StatoStoria()
@@ -873,6 +875,10 @@ enum VoceConfronto: Hashable {
             for i in note.indices where note[i].candidati.contains(id) { note[i].candidati.removeAll { $0 == id } }
             dati.noteInArrivo = note
         }
+        // Le cose date al cliente («Luce» giro 15): capsule del tempo, sinistri e traccia delle uscite se ne vanno con lui
+        if dati.capsule.contains(where: { $0.clienteId == id }) { dati.capsule.removeAll { $0.clienteId == id } }
+        if dati.sinistri.contains(where: { $0.clienteId == id }) { dati.sinistri.removeAll { $0.clienteId == id } }
+        if dati.uscite.contains(where: { $0.clienteId == id }) { dati.uscite.removeAll { $0.clienteId == id } }
         if dati.speseStudio.spese.contains(where: { $0.clienteId == id }) {
             var spese = dati.speseStudio
             for i in spese.spese.indices where spese.spese[i].clienteId == id { spese.spese[i].clienteId = nil }
@@ -2888,6 +2894,8 @@ enum VoceConfronto: Hashable {
             .sink { [weak self] _ in
                 // La finestra sparisce subito; poi si finisce di salvare (niente, se i dati non sono cambiati)
                 NSApplication.shared.windows.forEach { $0.orderOut(nil) }
+                // Le copie da spedire delle cose date al cliente («Luce» giro 15) non restano dopo la chiusura
+                CartellaUscite.svuota()
                 self?.salvaOra()
             }
             .store(in: &abbonamenti)
@@ -3453,6 +3461,13 @@ enum VoceConfronto: Hashable {
         // E le notti di prova di «Stanotte» («Luce» giro 14): le carte dei clienti di prova se ne vanno con loro
         if dati.notti.contains(where: { $0.carte.contains { $0.id.hasPrefix(NotteDiProva.prefisso) } }) {
             dati.notti = dati.notti.filter { !$0.carte.contains { $0.id.hasPrefix(NotteDiProva.prefisso) } }
+        }
+        // I sinistri e le capsule di prova («Luce» giro 15), anche se il cliente è rimasto
+        if dati.sinistri.contains(where: { $0.id.hasPrefix(SinistriDiProva.prefisso) }) {
+            dati.sinistri.removeAll { $0.id.hasPrefix(SinistriDiProva.prefisso) }
+        }
+        if dati.capsule.contains(where: { $0.diProva == true }) {
+            dati.capsule.removeAll { $0.diProva == true }
         }
     }
 

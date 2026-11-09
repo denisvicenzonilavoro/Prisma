@@ -43,6 +43,9 @@ struct AppPratiche: View {
         } else if stato.schedaPratiche == .moduli {
             // «Luce», giro 10: «Compila da solo» (Shell/PraticheModuli.swift)
             PraticheModuli()
+        } else if stato.schedaPratiche == .sinistri {
+            // «Luce», giro 15: il sinistro come una spedizione (Shell/PraticheSinistri.swift)
+            PraticheSinistri()
         } else {
             let n = stato.schedaPratiche.novita
             InArrivoAppLuce(app: .pratiche, glifo: n.glifo, titolo: n.titolo, frase: n.frase + ".",

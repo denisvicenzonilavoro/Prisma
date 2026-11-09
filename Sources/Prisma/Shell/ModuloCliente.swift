@@ -650,6 +650,14 @@ struct ModuloCliente: View {
                         ))
                         .stileCasella()
                     }
+                    CampoModulo(etichetta: "WhatsApp") {
+                        // «Luce» giro 15, decisione 1: senza questo consenso WhatsApp non compare nel foglio di condivisione
+                        Toggle("Accetta comunicazioni con WhatsApp", isOn: Binding(
+                            get: { bozza.consensi.whatsapp == true },
+                            set: { bozza.consensi.whatsapp = $0; bozza.consensi.dataWhatsapp = Appuntamento.alMinuto(Date()) }
+                        ))
+                        .stileCasella()
+                    }
                 }
             }
         } piede: {

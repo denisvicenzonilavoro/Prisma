@@ -138,6 +138,23 @@ enum SpazioOvunque {
 
     // MARK: - Istantanea (solo il Mac la scrive)
 
+    /// Il sinistro come va nello spazio («Luce» giro 15, decisione 44): titolo, fase, date, fatti e documenti; via la
+    /// descrizione, il numero di sinistro, le stime, l'importo pagato e i file dei documenti (`documentoId`).
+    static func sinistroPerOvunque(_ s: Sinistro) -> Sinistro {
+        var x = s
+        x.descrizione = ""
+        x.numeroSinistro = nil
+        x.stimaMinima = nil
+        x.stimaMassima = nil
+        x.pagato = nil
+        x.documenti = x.documenti.map { d in
+            var e = d
+            e.documentoId = nil
+            return e
+        }
+        return x
+    }
+
     /// L'archivio come va nell'istantanea: senza conversazioni di Vera, senza trascrizioni del copilota, senza le impostazioni
     /// del Mac (Vera, spazio) e senza giornale. I documenti (file) non ci sono: il telefono vede i dati estratti.
     static func datiIstantanea(_ d: DatiPrisma) -> DatiPrisma {
@@ -155,6 +172,11 @@ enum SpazioOvunque {
         // Le carte della notte e le sue impostazioni restano sul Mac («Luce» giro 14: le carte non vanno su iPhone/iPad)
         x.notti = []
         x.impostazioni.notte = ImpostazioniNotte()
+        // Le cose date al cliente («Luce» giro 15, decisione 44): le capsule del tempo e la traccia delle uscite restano
+        // sul Mac; i sinistri entrano limitati (titolo, fase, fatti e documenti senza file)
+        x.capsule = []
+        x.uscite = []
+        x.sinistri = x.sinistri.map(SpazioOvunque.sinistroPerOvunque)
         // L'IBAN dei clienti e i moduli compilati restano sul Mac (decisioni 40 e 44; i modelli stanno in Moduli/, fuori
         // dall'archivio)
         x.clienti = x.clienti.map { c in
@@ -485,6 +507,8 @@ enum SincroniaOvunque {
         nuovo.kmClienti = locale.kmClienti
         nuovo.noteInArrivo = locale.noteInArrivo
         nuovo.notti = locale.notti
+        nuovo.capsule = locale.capsule
+        nuovo.uscite = locale.uscite
         let mie = locale.impostazioni
         var imp = nuovo.impostazioni
         imp.vera = mie.vera

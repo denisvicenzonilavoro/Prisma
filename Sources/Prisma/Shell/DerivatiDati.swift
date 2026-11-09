@@ -539,6 +539,10 @@ extension DatiPrisma {
         // Le notti di lavoro di «Stanotte» («Luce» giro 14) non entrano in nessun calcolo in cache
         b.notti = a.notti
         b.impostazioni.notte = a.impostazioni.notte
+        // Le cose date al cliente («Luce» giro 15): capsule, sinistri e uscite non entrano in nessun calcolo in cache
+        b.capsule = a.capsule
+        b.sinistri = a.sinistri
+        b.uscite = a.uscite
         b.impostazioni.studio.spese = a.impostazioni.studio.spese
         return a == b
     }

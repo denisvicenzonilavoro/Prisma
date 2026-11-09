@@ -106,6 +106,15 @@ struct DatiPrisma: Codable, Equatable {
     /// carte preparate e il loro materiale (ultime 14). Sezione «relazione» della cartella a pezzi, nei backup, mai in
     /// «Prisma ovunque».
     var notti: [NotteDiLavoro] = []
+    /// Le capsule del tempo (versione 27, «Luce» giro 15, `Dati/CapsulaTempo.swift`): solo il testo sigillato e cifrato,
+    /// mai in chiaro. Nel file del cliente della cartella a pezzi e nei backup; mai in «Prisma ovunque».
+    var capsule: [CapsulaTempo] = []
+    /// I sinistri (versione 27, «Luce» giro 15, `Dati/Sinistro.swift`): fasi, fatti brevi, documenti e stime. Sezione
+    /// «pratiche» della cartella a pezzi, nei backup; in «Prisma ovunque» limitati (`SpazioOvunque.sinistroPerOvunque`).
+    var sinistri: [Sinistro] = []
+    /// La traccia delle cose date al cliente (versione 27, «Luce» giro 15, `Dati/UscitaCliente.swift`): data, cosa, via,
+    /// mai la password né il contenuto. Nel file del cliente e nei backup; mai in «Prisma ovunque».
+    var uscite: [UscitaCliente] = []
     var clienteAttivoId: String
     var impostazioni: Impostazioni
 
@@ -198,6 +207,10 @@ struct DatiPrisma: Codable, Equatable {
     ///     una nota illeggibile si scarta) e la cittadinanza del cliente (`Cliente.cittadinanza`).
     ///     Giro 14: il lavoro della notte (`notti`, ultime 14, lette con tolleranza) e le sue impostazioni
     ///     (`Impostazioni.notte`).
+    ///     Giro 15: le capsule del tempo (`capsule`, solo il sigillo cifrato), i sinistri (`sinistri`, sezione «pratiche»),
+    ///     la traccia delle cose date al cliente (`uscite`), lo stato del Prisma del cliente (`Cliente.prismaCliente`), il
+    ///     consenso a WhatsApp (`Consensi.whatsapp`) e le avvertenze del file e del film con l'interruttore dell'HTML
+    ///     (`ImpostazioniSala`), tutti letti con tolleranza (un elemento illeggibile si scarta).
     static let versioneAttuale = 27
 
     init(clienti: [Cliente], appuntamenti: [Appuntamento], attivita: [Attivita], posizioni: [Posizione],
@@ -249,6 +262,9 @@ struct DatiPrisma: Codable, Equatable {
         SpeseDiProva.applica(&d)
         // I potenziali clienti («Luce» giro 12): gli otto del template, segnati «dati di prova»
         PotenzialiDiProva.applica(&d)
+        // Le cose date al cliente («Luce» giro 15): capsule del tempo e sinistri, segnati «dati di prova»
+        CapsuleDiProva.applica(&d)
+        SinistriDiProva.applica(&d)
         return d
     }
 
@@ -272,6 +288,7 @@ struct DatiPrisma: Codable, Equatable {
         case potenziali, campagne
         case noteInArrivo
         case notti
+        case capsule, sinistri, uscite
     }
 
     /// Lettura tollerante: gli archivi delle versioni precedenti non hanno tutte le sezioni.
@@ -347,6 +364,10 @@ struct DatiPrisma: Codable, Equatable {
         noteInArrivo = ((try? c.decodeIfPresent(ElencoTollerante<NotaInArrivo>.self, forKey: .noteInArrivo)) ?? nil)?.elementi ?? []
         // Le notti di lavoro (versione 27, giro 14): una notte illeggibile si scarta, le altre restano
         notti = ((try? c.decodeIfPresent(ElencoTollerante<NotteDiLavoro>.self, forKey: .notti)) ?? nil)?.elementi ?? []
+        // Le cose date al cliente (versione 27, giro 15): un elemento illeggibile si scarta, gli altri restano
+        capsule = ((try? c.decodeIfPresent(ElencoTollerante<CapsulaTempo>.self, forKey: .capsule)) ?? nil)?.elementi ?? []
+        sinistri = ((try? c.decodeIfPresent(ElencoTollerante<Sinistro>.self, forKey: .sinistri)) ?? nil)?.elementi ?? []
+        uscite = ((try? c.decodeIfPresent(ElencoTollerante<UscitaCliente>.self, forKey: .uscite)) ?? nil)?.elementi ?? []
         clienteAttivoId = try c.decodeIfPresent(String.self, forKey: .clienteAttivoId) ?? (clienti.first?.id ?? "")
         impostazioni = try c.decodeIfPresent(Impostazioni.self, forKey: .impostazioni) ?? Impostazioni()
     }
@@ -406,6 +427,9 @@ struct DatiPrisma: Codable, Equatable {
         try metti(campagne, .campagne)
         try metti(noteInArrivo, .noteInArrivo)
         try metti(notti, .notti)
+        try metti(capsule, .capsule)
+        try metti(sinistri, .sinistri)
+        try metti(uscite, .uscite)
         try metti(clienteAttivoId, .clienteAttivoId)
         try metti(impostazioni, .impostazioni)
     }

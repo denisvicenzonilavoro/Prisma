@@ -94,6 +94,10 @@ struct Cliente: Identifiable, Codable, Hashable {
     /// La cittadinanza («Italiana»; versione 27, «Luce» giro 13): letta dalla carta d'identità o scritta a mano. nil = non
     /// inserita. Va nei backup e, come il luogo di nascita, in «Prisma ovunque» con il cliente.
     var cittadinanza: String?
+    /// Il Prisma del cliente (versione 27, «Luce» giro 15, `Dati/PrismaCliente.swift`): quando è uscito l'ultimo file, fino
+    /// a quando vale, quali voci aveva, le voci aggiunte dopo e l'impronta del film esportato. Mai la password né il
+    /// contenuto. nil = nessun file ancora.
+    var prismaCliente: StatoPrismaCliente?
 
     init(id: String, nome: String, iniziali: String, tinta: TintaAvatar, tema: String, email: String,
          telefono: String, preferito: Bool, nota: String, creatoIl: Date) {
@@ -140,6 +144,7 @@ struct Cliente: Identifiable, Codable, Hashable {
         case luogo
         case presentatoDa, presentatoIl
         case cittadinanza
+        case prismaCliente
     }
 
     /// Lettura tollerante: i campi aggiunti nelle versioni successive possono mancare.
@@ -194,6 +199,8 @@ struct Cliente: Identifiable, Codable, Hashable {
         // Cittadinanza (versione 27, giro 13): vuota o illeggibile = non inserita
         cittadinanza = ((try? c.decodeIfPresent(String.self, forKey: .cittadinanza)) ?? nil)
             .flatMap { $0.trimmingCharacters(in: .whitespaces).isEmpty ? nil : $0 }
+        // Il Prisma del cliente (versione 27, giro 15): illeggibile = nessun file ancora
+        prismaCliente = (try? c.decodeIfPresent(StatoPrismaCliente.self, forKey: .prismaCliente)) ?? nil
     }
 
     /// Le aziende registrate (vuoto se nessuna).
@@ -396,6 +403,11 @@ struct Consensi: Codable, Hashable {
     var marketing = false
     /// Quando il cliente ha dato (o tolto) il consenso commerciale (dalla versione 22).
     var dataMarketing: Date?
+    /// «Accetta comunicazioni con WhatsApp» (versione 27, «Luce» giro 15, decisione 1): senza, WhatsApp non compare nel
+    /// foglio di condivisione. nil = non segnato (vale come no).
+    var whatsapp: Bool?
+    /// Quando il consenso a WhatsApp è stato dato (o tolto).
+    var dataWhatsapp: Date?
 }
 
 /// Tipo di appuntamento: aiuta a capire a che punto è la relazione con il cliente.

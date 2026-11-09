@@ -35,14 +35,14 @@ enum EsperienzaSala: String, CaseIterable, Identifiable {
     var glifo: GlifoLuce { novita.glifo }
     var colore: Color { glifo.colore }
 
-    /// La frase della scheda (`ESP[].d`, diversa da quella del pannello Novità). Il film segue le decisioni 1 e 108:
-    /// niente invio diretto, un video breve da mostrare.
+    /// La frase della scheda (`ESP[].d`, diversa da quella del pannello Novità). Il Prisma del cliente e il film seguono
+    /// le decisioni 1, 3 e 108 (giro 15): un PDF protetto e un video di venti secondi che manda il consulente.
     var frase: String {
         switch self {
-        case .prismaCliente: return "La sua app personale, in un file da mandargli"
+        case .prismaCliente: return "Il suo piano in un file protetto, da mandargli"
         case .prismaLuce: return "Il patrimonio che si scompone in raggi"
         case .lettera: return "Scritta da sé stesso a 67 anni"
-        case .film: return "Un breve video da mostrare dopo l’incontro"
+        case .film: return "Venti secondi da mandare dopo l’incontro"
         case .disegna: return "Lo scarabocchio diventa un piano"
         case .giocoRischio: return "Il profilo vissuto, non dichiarato"
         case .giornataPensione: return "Il divario diventa una vita concreta"
@@ -145,6 +145,11 @@ enum VistaTerritorio: String, CaseIterable, Identifiable, Hashable {
     @ObservationIgnored var stesureLettera: [String: [VersioneLettera: TestoLettera]] = [:]
     /// La scheda della lettera ricordata per cliente, versione dei dati e giorno (`StatoShell.schedaLettera`).
     @ObservationIgnored var memoScheda: (chiave: String, scheda: SchedaLettera?)?
+    /// Solo istantanee (giro 15): lo stato da disegnare del Prisma del cliente, del film e della capsula. Non pubblicato.
+    @ObservationIgnored var provaUscite = ProvaUsciteSala()
+    /// La capsula da aprire entrando nel palco della capsula (giro 15: «Apri la capsula» dai traguardi); la azzera
+    /// `CapsulaDelTempo` appena apre la consegna. Non pubblicato.
+    @ObservationIgnored var capsulaDaAprire: String?
 }
 
 /// Solo istantanee: una partita di Lancia l'anno già giocata (seme fisso, anni, carte a mano per anno).

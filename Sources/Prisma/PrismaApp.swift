@@ -61,6 +61,15 @@ struct PrismaApp: App {
                 : URL(fileURLWithPath: FileManager.default.currentDirectoryPath, isDirectory: true).appendingPathComponent("fatture-di-prova")
             exit(ProvaFatturaPA.esegui(cartella: cartella))
         }
+        if let i = argomenti.firstIndex(of: "--prova-film") {
+            // Il film del piano («Luce» giro 15): il video dei dati di prova; con la cartella anche i cinque fotogrammi
+            let cartella = i + 1 < argomenti.count && !argomenti[i + 1].hasPrefix("--") ? URL(fileURLWithPath: argomenti[i + 1], isDirectory: true) : nil
+            exit(ProvaFilm.esegui(cartella: cartella))
+        }
+        if let i = argomenti.firstIndex(of: "--prova-file-cliente"), i + 1 < argomenti.count {
+            // Il Prisma del cliente («Luce» giro 15): il file di prova per il lettore (Node) e le pagine del PDF
+            exit(ProvaFileCliente.esegui(cartella: URL(fileURLWithPath: argomenti[i + 1], isDirectory: true)))
+        }
         if let i = argomenti.firstIndex(of: "--istantanee"), i + 1 < argomenti.count {
             func valore(_ opzione: String) -> String? {
                 argomenti.firstIndex(of: opzione).flatMap { $0 + 1 < argomenti.count ? argomenti[$0 + 1] : nil }
@@ -75,6 +84,10 @@ struct PrismaApp: App {
         if !argomenti.contains(where: { $0.hasPrefix("--") }) {
             AvvioArchivio.avvia()
             Preriscaldamento.avvia()
+            // Le cose date al cliente («Luce» giro 15): le chiavi delle capsule nei backup protetti e le copie da spedire
+            // rimaste da una chiusura forzata
+            CapsuleNelBackup.installa()
+            CartellaUscite.svuota()
         }
     }
 

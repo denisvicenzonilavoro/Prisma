@@ -52,6 +52,7 @@ locale sul Mac del 7-8 novembre 2026. Le regole vincolanti restano in `CLAUDE.md
 | `luce/unione-8-10` | Luce giri 8-10: Sala (lettera dal futuro, Lancia l'anno, Quanto vale avermi accanto), Studio › Spese (chilometri, spese e scadenze), Pratiche › Moduli (compila da solo); ognuno con revisione avversaria e correzioni | compila in debug sul Mac e le prove dei singoli giri erano verdi; manca la build completa con tutte le prove (la fa il workflow al primo push) |
 | `luce/giro-13-iphone` | Luce giro 13 «Dall'iPhone al Mac»: nuovo cliente in 10 secondi (carta d'identità letta sull'iPhone o trascinata sul Mac, codice fiscale «coerente (comune non controllato)», solo in memoria fino a «Crea il dossier») e la nota vocale (dettata sull'iPhone, coda cifrata, proposte confermate sul Mac); ponte versione 3 | scritto nel cloud, solo controllo della sintassi: manca la build con tutte le prove e lo sguardo alle istantanee 840-847, 770-774 e iOS 75, 775-777; aperto da `luce/unione-8-10` (senza i giri 11 e 12) |
 | `luce/giro-14-stanotte` | Luce giro 14 «Stanotte Prisma ha lavorato»: il lavoro della notte (finestra serale, solo alla corrente e con Prisma aperto e non in uso, `NSBackgroundActivityScheduler`; prima i lavori senza Qwen, poi al più 10 bozze di Vera una alla volta), le carte del mattino da approvare con un gesto (approva, più tardi, annulla), pulsante «☾ Stanotte» con il pallino, Impostazioni › Vera › Stanotte (spento di base) | scritto nel cloud, solo controllo della sintassi: manca la build con tutte le prove (`--prova-calcoli`, `--prova-vera`, `--prova-backup`, `--prova-ovunque`) e lo sguardo alle istantanee 760-767 (e 400, 410, 500, 616, 719 che cambiano per il pulsante e la vetrina); aperto da `main` con i giri 8-13 |
+| `luce/giro-15-cliente` | Luce giro 15 «Cose date al cliente»: il Prisma del cliente (PDF protetto da password, copia leggibile nei Documenti; il file HTML cifrato con il lettore JavaScript è costruito e provato con Node ma resta spento, «sperimentale»), il film del piano (MP4 di 20 secondi, foglio di condivisione), la capsula del tempo (sigillata, chiave nel Portachiavi e nei soli backup protetti), il biglietto dei traguardi condivisibile («Mostra la cifra» spento di base) e Pratiche › Sinistri (la spedizione, «Così lo vede …», aggiornamento in Messaggi, sollecito in Mail, iPhone in sola lettura); Novità accese, `CLAUDE.md` con l'eccezione delle uscite e l'elenco del backup, vetrina 400 | scritto nel cloud, solo controllo della sintassi: manca la build con tutte le prove (anche il passo Node del lettore e `--prova-film`) e lo sguardo alle istantanee 620-623, 644-648, 653-657, 730, 735, 830-835, iOS 836, `anteprime/file-cliente`, `anteprime/film` e 400 |
 | `vera/fase-4` | Vera, fase 4: funzioni 3, 4, 5, 7, 14, 15, 17, 20, collegate a chat, viste e archivio | due giri di revisione con correzioni, prove verdi in debug sul Mac (db982bc); contiene già `main` con il giro 0; si unisce in main solo con build verde e il via dell'utente |
 
 
@@ -100,6 +101,8 @@ del backup in `CLAUDE.md`, revisione avversaria, correzioni, unione solo con bui
   (https://claude.ai/artifact/EauRU1ohEGjHj4zvTomDvb).
 - «Misura Vera» con Ollama vero.
 - Controllo finale: tutte le voci del pannello Novità accese, `CLAUDE.md` aggiornato con le eccezioni approvate.
+  Dal giro 15 sono accese anche il Prisma del cliente, il film del piano, la capsula del tempo e il sinistro; l'eccezione
+  delle cose date al cliente è in `CLAUDE.md` › Dati e privacy.
 
 ## Dati che servono dall'utente
 
@@ -179,6 +182,45 @@ inventa):
       Alleanza non si compilano).
   17. Le bozze di Vera della notte diventano carte solo se le scrive Qwen e passano la verifica delle cifre; il modello
       fisso resta in Messaggi (non diventa una carta «messaggio»). Va bene?
+
+- **Giro 15, cose date al cliente** (branch `luce/giro-15-cliente`; domande aperte, con la proposta seguita fra
+  parentesi):
+  1. Avvertenze del file del cliente e del film (e di Alleanza, se servono): quali testi? (Segnaposto «Stime basate su
+     ipotesi, non garanzie di risultato.» e avviso nel palco › Impostazioni › Sala.)
+  2. Logo Alleanza nei materiali dati al cliente: Alleanza lo permette? (Solo nome e colore del canale, mai il logo.)
+  3. File per il browser (HTML cifrato): quando la prova su iPhone e Android veri è fatta, si accende «Prepara anche il
+     file per il browser» in Impostazioni › Sala? (Spento: esce solo il PDF protetto.)
+  4. Password di tre parole e un numero («Lago-Vela-Pino-27»): va bene da dettare al cliente? (Sì; scritta a mano
+     almeno 12 caratteri, mai con nome, cognome, data di nascita o codice fiscale.)
+  5. Nome del file con il solo nome di battesimo («Il-Prisma-di-Giulia.pdf»): va bene? (Sì.)
+  6. Chiave delle capsule nei backup protetti da password (decisione 42, «approvazione esplicita»): confermi? (Attiva
+     solo con i backup protetti; con i backup in chiaro l'avviso in Impostazioni › Archivio.)
+  7. Riga dell'informativa privacy per la capsula, il consenso a WhatsApp e gli aggiornamenti del sinistro: quali
+     testi? (Nessun testo inventato: Prisma registra solo il consenso e la data.)
+  8. Film: il formato 16:9 va bene o serve quadrato o verticale per il telefono? Se sul runner manca il codificatore
+     H.264, `--prova-film` scrive «AVVISO» e la build resta verde: va bene? (Sì, 16:9 e verde con l'avviso; sul Mac M1
+     il codificatore c'è.)
+  9. Sinistri: fasi per tipo (vita, malattia), documenti richiesti per tipo e compagnia, indirizzi dei sinistri,
+     compagnie che vogliono il portale; soglia del sinistro fermo. (Cinque fasi di base più «Respinto»; documenti per
+     tipo e indirizzi vuoti finché non li scrivi in Impostazioni › Pratiche; soglia **14 giorni, da confermare**.)
+  10. Sinistri dall'iPhone: si possono segnare fase e fatti dal giornale di Prisma ovunque, con testi brevi
+      (decisione 36)? (Oggi sola lettura.)
+  11. Biglietto dei traguardi: la frase scritta da Prisma dice ancora «Vera la riscriverà con un prossimo
+      aggiornamento»; serve «Riscrivi con Vera»? (Oggi frase modificabile a mano nel pannello del traguardo.)
+  12. «Disegna il tuo futuro» nel file del cliente come immagine? (Oggi no: entra solo come obiettivo salvato.)
+  13. WhatsApp senza consenso: se il menu di condivisione di macOS non permette di toglierlo (alcune estensioni non
+      passano dal delegato), basta l'avviso sotto il pulsante? (Sì: avviso, e la traccia nel dossier registra la via.)
+  14. «Riscrivi con Vera» per la frase del biglietto richiede istruzioni, schema e prova nuovi di Vera: si fa in un
+      giro di Vera? (Proposta: sì, fuori da questo giro.)
+  15. Il blocco «Il tuo sinistro» nel file del cliente: si accende per file, e solo per i sinistri con gli
+      aggiornamenti accesi; va bene che l'avviso dopo «Aggiorna …» ricordi di rifare il file? (Sì.)
+
+  Dati di prova dichiarati del giro (solo nei clienti di prova e nelle istantanee, mai dati veri): la password
+  «Lago-Vela-Pino-27» (istantanea 623) e «Prova-Lettore-Node-42» (prova Node); la dimensione del file pronto mostrata
+  nella 621 (non è misurata); un film senza file per Giulia (620); nel film di Giulia un versamento mensile di 553 €
+  aggiunto solo nella prova e nelle istantanee (nei dati di prova non ne ha, e la scena «Ogni mese» si salterebbe);
+  le capsule di Giulia, Marco, Laura e Sofia cifrate con la chiave di prova pubblica (non apre capsule vere); i
+  sinistri di Marco («Infortunio di Pietro»), Sofia (pagato 3.400 €) e Giulia (senza polizza collegata).
 
 ## Regole da non dimenticare
 

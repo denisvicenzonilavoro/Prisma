@@ -71,7 +71,8 @@ struct Traguardo: Identifiable, Hashable {
     let frase: String
     /// Solo da una frase delle note del dossier; nil se le note non dicono niente.
     let ideaRegalo: IdeaRegalo?
-    /// La capsula del tempo sigillata per questo traguardo (arriva con il giro 15: per ora sempre nil).
+    /// La capsula del tempo sigillata per l'obiettivo raggiunto («Luce» giro 15, `MotoreCapsule.perObiettivo`); nil per
+    /// gli altri tipi. La tile del pannello compare solo se la capsula è pronta (`StatoShell.capsulaProntaDelTraguardo`).
     let capsulaId: String?
     /// Festeggiato (telefonata messa o segnato a mano): quando.
     let festeggiatoIl: Date?
@@ -117,12 +118,12 @@ enum MotoreTraguardi {
             let idea = ideaRegalo(cliente: c, note: note[c.id] ?? [], obiettivi: obiettivi[c.id] ?? [])
             func aggiungi(_ tipo: TipoTraguardo, riferimento: String, data: Date, titolo: String, fraseBreve: String,
                           perche: String, saluto: String, cifra: Double?, didascalia: String?, frase: String,
-                          momento: String, peso: Double = 0) {
+                          momento: String, peso: Double = 0, capsula: String? = nil) {
                 let id = "\(tipo.rawValue)-\(c.id)-\(riferimento)"
                 guard !spenti.contains(tipo), !scartati.contains(id) else { return }
                 elenco.append(Traguardo(id: id, tipo: tipo, clienteId: c.id, data: data, titolo: titolo, fraseBreve: fraseBreve,
                                         perche: perche, saluto: saluto, cifra: cifra, didascaliaCifra: didascalia, frase: frase,
-                                        ideaRegalo: idea, capsulaId: nil, festeggiatoIl: regole.festeggiati[id],
+                                        ideaRegalo: idea, capsulaId: capsula, festeggiatoIl: regole.festeggiati[id],
                                         fraseMomento: momento, peso: peso))
             }
             let nome = TestiTraguardi.primoNome(c.nome)
@@ -137,7 +138,9 @@ enum MotoreTraguardi {
                          saluto: "Ce l’hai fatta, \(nome).", cifra: o.importo,
                          didascalia: TestiTraguardi.durata(da: o.creatoIl, a: quando, cal: cal).map { "messi al sicuro " + $0 },
                          frase: TestiTraguardi.fraseObiettivo,
-                         momento: "\(TestiTraguardi.ilGiorno(quando)) \(nome) ha raggiunto «\(o.titolo)».", peso: o.importo)
+                         momento: "\(TestiTraguardi.ilGiorno(quando)) \(nome) ha raggiunto «\(o.titolo)».", peso: o.importo,
+                         // «Luce» giro 15: la capsula del tempo sigillata per questo obiettivo (la tile «Apri la capsula»)
+                         capsula: MotoreCapsule.perObiettivo(dati.capsule, obiettivoId: o.id)?.id)
             }
 
             // Anniversari del rapporto
@@ -301,8 +304,8 @@ enum TestiTraguardi {
     static let scrittaDaPrisma = "Frase scritta da Prisma: Vera la riscriverà con un prossimo aggiornamento."
     static let senzaIdea = "Nessuna idea dalle note"
     static let titoloMomento = "Il momento, già pronto"
-    static let biglietto = "Il biglietto animato"
-    static let bigliettoNota = "si potrà mandare con un prossimo aggiornamento"
+    static let biglietto = "Il biglietto"
+    static let bigliettoNota = "da mandare dal foglio di condivisione"
     static let telefonata = "Una telefonata"
     static let regalo = "L’idea per un regalo"
     static let datiDiProva = "dati di prova"

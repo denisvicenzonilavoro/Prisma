@@ -335,8 +335,8 @@ private struct PalcoSala: View {
             .lineLimit(1)
             Spacer(minLength: P.spazioTestata)
             HStack(spacing: P.spazioPulsanti) {
-                // Il tavolo e il Prisma del cliente non sono ancora pronti per nessuna esperienza (decisioni 7 e 111):
-                // i pulsanti restano spenti anche dove l'esperienza c'è già
+                // Il tavolo non è ancora pronto per nessuna esperienza (decisione 111): il pulsante resta spento anche
+                // dove l'esperienza c'è già. «✦ Aggiungi al Prisma» si accende con il giro 15 (decisione 7)
                 if esperienza.mostraSulTavolo {
                     Button { } label: { Text("▣ Mostra sul tavolo") }
                         .buttonStyle(.apple)
@@ -344,10 +344,17 @@ private struct PalcoSala: View {
                         .help("Sull'iPad del tavolo: arriva con un prossimo aggiornamento")
                 }
                 if esperienza.aggiungeAlPrisma {
-                    Button { } label: { Text("✦ Aggiungi al Prisma di \(nome)") }
-                        .buttonStyle(.apple)
-                        .disabled(!esperienza.disponibile || !EsperienzaSala.prismaCliente.disponibile)
-                        .help("Nel file personale del cliente: arriva con «Il Prisma del cliente». Prisma non manda nulla da solo")
+                    // Giro 15: accende la voce nel file del cliente (Shell/StatoPrismaCliente.swift); il disegno entra
+                    // nel file solo come obiettivo salvato (decisione 7)
+                    let aggiunta = stato.voceAggiunta(esperienza, cliente: cliente)
+                    Button { stato.aggiungiAlPrismaCliente(esperienza, cliente: cliente) } label: {
+                        Text(aggiunta ? "✓ Nel Prisma di \(nome)" : "✦ Aggiungi al Prisma di \(nome)")
+                    }
+                    .buttonStyle(.apple)
+                    .disabled(esperienza == .disegna || !esperienza.disponibile || !EsperienzaSala.prismaCliente.disponibile)
+                    .help(esperienza == .disegna
+                          ? "Il disegno entra nel file quando lo salvi come obiettivo"
+                          : "Nel file personale del cliente (Il Prisma del cliente). Prisma non manda nulla da solo")
                 }
                 Button { stato.presentaEsperienza(esperienza) } label: { Text("▶︎ Presenta") }
                     .buttonStyle(.applePrimario)
@@ -398,6 +405,18 @@ struct ContenutoPalco: View {
         case .valoreConsulente:
             // Giro 8: Quanto vale avermi accanto (Shell/SalaValoreConsulente.swift)
             ValoreConsulenteVista(cliente: cliente, modificabile: !inSala)
+                .id(cliente.id)
+        case .prismaCliente:
+            // Giro 15: il Prisma del cliente (Shell/SalaPrismaCliente.swift)
+            PalcoPrismaCliente(cliente: cliente, inSala: inSala)
+                .id(cliente.id)
+        case .film:
+            // Giro 15: il film del piano (Shell/SalaFilm.swift)
+            FilmDelPiano(cliente: cliente, modificabile: !inSala)
+                .id(cliente.id)
+        case .capsula:
+            // Giro 15: la capsula del tempo (Shell/SalaCapsula.swift)
+            CapsulaDelTempo(cliente: cliente, modificabile: !inSala)
                 .id(cliente.id)
         default:
             InArrivoEsperienza(esperienza: esperienza, inSala: inSala)

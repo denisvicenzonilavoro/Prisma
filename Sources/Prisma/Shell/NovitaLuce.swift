@@ -85,10 +85,10 @@ enum NovitaLuce: String, CaseIterable, Identifiable {
     /// «in tempo reale» per il cliente) la frase dice ciò che Prisma fa davvero (decisioni 1, 10 e 19).
     var frase: String {
         switch self {
-        case .prismaCliente: return "La sua app personale, in un file"
+        case .prismaCliente: return "Il suo piano in un file protetto"
         case .territorio: return "I clienti come luci, la crescita, il giro"
         case .lettera: return "Da sé stesso a 67 anni"
-        case .film: return "Il piano in un breve video, da mostrare"
+        case .film: return "Venti secondi da mandare dopo l’incontro"
         case .disegna: return "Lo scarabocchio diventa un piano"
         case .settimanaAnno: return "Trenta secondi ogni lunedì"
         case .palestra: return "Vera fa il cliente difficile"
@@ -230,6 +230,8 @@ enum NovitaLuce: String, CaseIterable, Identifiable {
         case .passaparola, .campagne: return true   // giro 12: Clienti › Potenziali e Passaparola, Messaggi › Campagne
         case .nuovoCliente, .notaVocale: return true   // giro 13: Clienti › Nuovo cliente in 10 secondi, Incontri › Nota dall'iPhone
         case .stanotte: return true              // giro 14: la scrivania, «Stanotte»
+        case .prismaCliente, .film, .capsula: return true   // giro 15: Sala › Il Prisma del cliente, il film del piano, la capsula del tempo
+        case .sinistro: return true              // giro 15: Pratiche › Sinistri
         default: return false
         }
     }

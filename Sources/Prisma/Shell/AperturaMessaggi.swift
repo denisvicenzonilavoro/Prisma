@@ -116,8 +116,10 @@ enum AperturaMessaggi {
         }
     }
 
+    /// Mail con il destinatario dato (anche fuori dal dossier: il sollecito alla compagnia di Pratiche › Sinistri,
+    /// all'indirizzo scritto dall'utente). Interna dal giro 15 di «Luce».
     @MainActor
-    private static func apriMail(a: String, oggetto: String?, corpo: String) -> EsitoApertura {
+    static func apriMail(a: String, oggetto: String?, corpo: String) -> EsitoApertura {
         let fatto = EsitoApertura.aperto("Aperto in Mail: lo controlli e lo spedisci tu")
         #if os(macOS)
         if let s = NSSharingService(named: .composeEmail), s.canPerform(withItems: [corpo]) {

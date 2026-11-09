@@ -38,6 +38,7 @@ struct ObiettiviDossierApple: View {
                 ForEach(Array(elenco.enumerated()), id: \.element.id) { i, o in
                     SchedaObiettivoApple(obiettivo: o, posizioni: posizioni, indice: i) { apri(o) }
                         .overlay { evidenza(o) }
+                        .overlay(alignment: .topTrailing) { segnoCapsula(o) }
                         .entrataDossier(i)
                 }
                 if elenco.count < s.postiDelTemplate {
@@ -47,12 +48,55 @@ struct ObiettiviDossierApple: View {
             }
             seguito(elenco)
                 .entrataDossier(min(elenco.count, s.postiDelTemplate) + 1, sfocatura: false)
+            capsuleSenzaObiettivo(elenco)
         }
         .sheet(item: $modulo) { o in
             ModuloObiettivo(bozza: o, nuovo: !stato.dati.obiettivi.contains { $0.id == o.id }) { stato.salvaObiettivo($0) }
         }
         // «Luce» giro 13: l'evidenza dell'obiettivo proposto da una nota dall'iPhone si toglie lasciando Obiettivi
         .onDisappear { if stato.notaVocale.obiettivoEvidenziato != nil { stato.notaVocale.obiettivoEvidenziato = nil } }
+    }
+
+    /// «Luce» giro 15 (decisione 43): accanto all'obiettivo con una capsula del tempo il lucchetto e lo stato («sigillata a
+    /// novembre 2025», «capsula pronta»), per il consulente. Mai il testo.
+    @ViewBuilder private func segnoCapsula(_ o: Obiettivo) -> some View {
+        if let c = MotoreCapsule.perObiettivo(stato.dati.capsule, obiettivoId: o.id) {
+            let k = Tema.Apple.SalaRacconti.Capsula.self
+            let s = stato.statoCapsula(c)
+            Label(TestiCapsule.dossier(s, sigillataIl: c.sigillataIl), systemImage: s.chiusa ? "lock.fill" : "lock.open")
+                .carattereApple(k.segnoDossier)
+                .foregroundColor(k.coloreSegnoDossier)
+                .lineLimit(1)
+                .padding(k.paddingSegnoDossier)
+                .background(Capsule(style: .continuous).fill(k.colore.opacity(k.fondoSegnoDossier)))
+                .padding(k.margineSegnoDossier)
+                .help("La capsula del tempo di questo obiettivo: si apre e si consegna nella Sala")
+                .allowsHitTesting(false)
+        }
+    }
+
+    /// Le capsule del cliente che si aprono in una data (o con l'obiettivo eliminato): l'elenco completo resta qui, per
+    /// il consulente; nella Sala solo davanti al cliente giusto. Mai il testo.
+    @ViewBuilder private func capsuleSenzaObiettivo(_ elenco: [Obiettivo]) -> some View {
+        let ids = Set(elenco.map(\.id))
+        let altre = stato.dati.capsule.filter { c in
+            guard c.clienteId == cliente.id else { return false }
+            if case .obiettivo(let id) = c.apertura { return !ids.contains(id) }
+            return true
+        }
+        if !altre.isEmpty {
+            let k = Tema.Apple.SalaRacconti.Capsula.self
+            VStack(alignment: .leading, spacing: k.spazioSegnoDossier) {
+                ForEach(altre) { c in
+                    let s = stato.statoCapsula(c)
+                    Label(TestiCapsule.riga(c, stato: s, quando: MotoreCapsule.quando(c, obiettivo: nil)),
+                          systemImage: s.chiusa ? "lock.fill" : "lock.open")
+                        .carattereApple(k.segnoDossier)
+                        .foregroundColor(k.coloreSegnoDossier)
+                        .help("Capsula del tempo: si apre e si consegna nella Sala")
+                }
+            }
+        }
     }
 
     /// L'obiettivo con la modifica proposta da una nota dettata sull'iPhone («Luce» giro 13): contorno nel colore della

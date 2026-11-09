@@ -37,7 +37,7 @@ import Observation
     @ObservationIgnored private var inCarica = false
 
     /// Numero dei campi di `DatiPrisma` copiati qui (la prova lo confronta con Mirror).
-    static let numeroCampi = 45
+    static let numeroCampi = 48
 
     var versione: Int { didSet { segnala(.calcoli) } }
     var clienti: [Cliente] { didSet(prima) { segnalaClienti(prima, clienti, \.id) } }
@@ -89,6 +89,11 @@ import Observation
     var noteInArrivo: [NotaInArrivo] { didSet { segnala(.neutro) } }
     /// Le notti di lavoro di «Stanotte» («Luce» giro 14): nessun calcolo in cache.
     var notti: [NotteDiLavoro] { didSet { segnala(.neutro) } }
+    /// Le cose date al cliente («Luce» giro 15): capsule, sinistri e traccia delle uscite; nessun calcolo in cache (i
+    /// traguardi leggono le capsule vive).
+    var capsule: [CapsulaTempo] { didSet { segnala(.neutro) } }
+    var sinistri: [Sinistro] { didSet { segnala(.neutro) } }
+    var uscite: [UscitaCliente] { didSet { segnala(.neutro) } }
     var clienteAttivoId: String { didSet(prima) { segnala(.clienteAttivo(prima: prima)) } }
     var impostazioni: Impostazioni { didSet(prima) { segnala(.impostazioni(prima: prima)) } }
 
@@ -136,6 +141,9 @@ import Observation
         campagne = d.campagne
         noteInArrivo = d.noteInArrivo
         notti = d.notti
+        capsule = d.capsule
+        sinistri = d.sinistri
+        uscite = d.uscite
         clienteAttivoId = d.clienteAttivoId
         impostazioni = d.impostazioni
     }
@@ -230,6 +238,9 @@ import Observation
         d.campagne = campagne
         d.noteInArrivo = noteInArrivo
         d.notti = notti
+        d.capsule = capsule
+        d.sinistri = sinistri
+        d.uscite = uscite
         return d
     }
 
@@ -278,6 +289,9 @@ import Observation
         d.campagne = _campagne
         d.noteInArrivo = _noteInArrivo
         d.notti = _notti
+        d.capsule = _capsule
+        d.sinistri = _sinistri
+        d.uscite = _uscite
         return d
     }
 
@@ -329,6 +343,9 @@ import Observation
         if campagne != d.campagne { campagne = d.campagne }
         if noteInArrivo != d.noteInArrivo { noteInArrivo = d.noteInArrivo }
         if notti != d.notti { notti = d.notti }
+        if capsule != d.capsule { capsule = d.capsule }
+        if sinistri != d.sinistri { sinistri = d.sinistri }
+        if uscite != d.uscite { uscite = d.uscite }
         if clienteAttivoId != d.clienteAttivoId { clienteAttivoId = d.clienteAttivoId }
         if impostazioni != d.impostazioni { impostazioni = d.impostazioni }
         inCarica = false

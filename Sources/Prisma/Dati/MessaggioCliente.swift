@@ -36,6 +36,10 @@ enum TipoOccasioneMessaggio: String, Codable, CaseIterable, Identifiable {
     /// La richiesta del documento d'identità nuovo prima della scadenza («Luce» giro 14, «Stanotte»: la carta «Documento»).
     /// Non commerciale. In fondo all'enum: un Prisma di prima salta questi messaggi (ElencoTollerante).
     case documentoIdentita
+    /// L'aggiornamento di un sinistro al cliente (Pratiche › Sinistri, «Luce» giro 15, decisioni 10 e 11): solo titolo,
+    /// fase e ultimo fatto scritti dal consulente, mai referti, diagnosi, numeri di polizza o importi (salvo «Mostra
+    /// l'importo pagato»). Non commerciale. In fondo all'enum; un Prisma di prima salta questi messaggi (ElencoTollerante).
+    case sinistro
 
     var id: String { rawValue }
 
@@ -58,6 +62,7 @@ enum TipoOccasioneMessaggio: String, Codable, CaseIterable, Identifiable {
         case .richiestaPresentazione: return "Richiesta di presentazione"
         case .notaVocale: return "Dalla nota vocale"
         case .documentoIdentita: return "Documento d'identità"
+        case .sinistro: return "Sinistro"
         }
     }
 
@@ -66,7 +71,7 @@ enum TipoOccasioneMessaggio: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .riesame, .occasioneAgenda, .avvisoMercato, .provaFuoco, .campagna, .richiestaPresentazione: return true
         case .riepilogoIncontro, .scadenzaPosizione, .compleanno, .consenso, .parcella, .richiestaVera, .pratica, .traguardo, .datiMancanti,
-             .notaVocale, .documentoIdentita: return false
+             .notaVocale, .documentoIdentita, .sinistro: return false
         }
     }
 
@@ -180,6 +185,13 @@ enum VoceCifraMessaggio: String, CaseIterable {
     case etaProssima = "Età il prossimo anno"
     /// Il documento d'identità in scadenza («Luce» giro 14): «Carta d'identità».
     case documento = "Documento"
+    /// L'aggiornamento del sinistro («Luce» giro 15): titolo, fase, ultimo fatto scritto dal consulente, giorno e, solo
+    /// se acceso nel sinistro, l'importo pagato. Mai numeri di polizza o di sinistro.
+    case sinistro = "Sinistro"
+    case faseSinistro = "Fase del sinistro"
+    case ultimoFatto = "Ultimo fatto"
+    case aggiornatoIl = "Aggiornato il"
+    case importoPagato = "Importo pagato"
 }
 
 /// A che punto è un messaggio. Prisma non spedisce: «aperto» vuol dire aperto già compilato nell'app del Mac
