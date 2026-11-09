@@ -380,7 +380,12 @@ enum ProvaFluidita {
                               verifica: { !stato.aperta(.pratiche) }),
             ])
         }
-        if stato.appConsentita(.posizioni) {
+        if MetalPrisma.spento {
+            // Sul runner di GitHub (PRISMA_SENZA_METAL=1) il radar (gradiente conico nel Canvas, composto da SwiftUI con
+            // uno shader Metal creato al momento) fermava il processo con l'asserzione della GPU virtuale: il passo si
+            // salta lì e resta sul Mac dell'utente
+            print("PASSO fluidità · Luce · radar saltato (senza Metal sul runner)")
+        } else if stato.appConsentita(.posizioni) {
             let vista = stato.provaFuoco.vista
             let portafoglio = stato.portafoglio
             let dettaglio = stato.posizioneInDettaglio
