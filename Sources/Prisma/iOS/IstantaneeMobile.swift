@@ -60,6 +60,22 @@ enum IstantaneeMobile {
         ]
         if iPad {
             elenco += [
+                // «Luce» giro 3: la proposta che si costruisce da sola sull'iPad come sul Mac (§7.1.4), costruita fino in
+                // fondo sul primo bisogno dei clienti di prova che arriva a «Proposta pronta»
+                Scena(nome: "808-pratiche-proposta-ipad", orizzontale: true) { m in
+                    m.stato.schedaPratiche = .proposta
+                    m.apri(.pratiche)
+                    m.stato.moduli.carica()
+                    guard let b = m.stato.bisogniProposta().first(where: { m.stato.propostaCostruita($0)?.pronta == true }) else { return }
+                    m.stato.scegliBisognoProposta(b.id)
+                    m.stato.costruisciProposta(b, animato: false)
+                },
+                // «Luce» §9.3.7: il dossier di Marco sull'iPad, scheda «L'azienda» in sola lettura (azienda di prova)
+                Scena(nome: "77-azienda-ipad", orizzontale: true) { m in
+                    m.stato.clienteAttivoId = "marco"
+                    m.stato.schedaCliente = .azienda
+                    m.apri(.clienti)
+                },
                 Scena(nome: "8-simulazioni") { m in m.apri(.simulazioni) },
                 Scena(nome: "9-vera", attesaInPiu: IstantaneeMobile.attesaScrivania) { m in m.apri(.vera) },
                 Scena(nome: "10-impostazioni-archivio") { m in
@@ -285,6 +301,14 @@ enum IstantaneeMobile {
                 Scena(nome: "76-potenziali-iphone") { m in
                     m.apri(.clienti)
                     m.percorsoClienti = [.potenziali]
+                },
+                // «Luce» §7.3.4: «Dopo la firma» sull'iPhone con le quattro pratiche di prova (una ferma in alto, poi le
+                // aperte), in sola lettura: senza «Prisma ovunque» acceso i passi si segnano dal Mac
+                Scena(nome: "824-pratiche-iphone") { m in m.apri(.pratiche) },
+                // «Luce» §9.3.4: il dossier di Marco sull'iPhone con la riga «L'azienda» (nome e fatturato di prova)
+                Scena(nome: "78-azienda-iphone") { m in
+                    m.apri(.clienti)
+                    m.percorsoClienti = [.cliente("marco")]
                 },
                 // «Luce» giro 15: i sinistri in sola lettura (i tre sinistri di prova, ridotti come nell'istantanea di
                 // «Prisma ovunque»: niente descrizione, numeri, stime né importi)

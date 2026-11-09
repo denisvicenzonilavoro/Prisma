@@ -224,7 +224,10 @@ private struct PianoPagina: View {
                     let i = ordine.firstIndex(of: c.id)
                     let ritardo = Tema.Apple.Pratiche.Moto.Campo.ritardo(i ?? Int(ultimo))
                     CasellaModulo(campo: c, aspetto: aspetto, k: k, ritardo: ritardo, giro: moduli.giro,
-                                  inModifica: modificaBinding(c), salva: { stato.correggiCampoModulo(c.id, $0) })
+                                  inModifica: modificaBinding(c), salva: { stato.correggiCampoModulo(c.id, $0) },
+                                  dossier: stato.campoAggiornabileModulo(c) ? { stato.aggiornaDossierDaModulo(c.id, $0) } : nil,
+                                  valoreDossier: stato.valoreDossierModulo(c),
+                                  nomeCliente: stato.clienteModulo.map(StatoShell.nomeDiBattesimo) ?? "il cliente")
                         .frame(width: r.width * k, height: r.height * k)
                         .position(x: (r.midX - b.minX) * k, y: (b.maxY - r.midY) * k)
                 }
@@ -269,6 +272,11 @@ private struct CasellaModulo: View {
     let giro: Int
     @Binding var inModifica: Bool
     let salva: (String) -> Void
+    /// «Aggiorna anche il dossier» (nil se il dato non si riporta nel dossier).
+    var dossier: ((String) -> Bool)? = nil
+    /// Il valore che il dossier ha oggi, per la conferma «da … a …».
+    var valoreDossier: String? = nil
+    var nomeCliente = "il cliente"
 
     @Environment(\.prismaCalmo) private var calmo
     @Environment(\.prismaStatoFinale) private var fermo
@@ -276,6 +284,9 @@ private struct CasellaModulo: View {
     @State private var scritto: Double = 0
     @State private var respira = false
     @State private var bozza = ""
+    /// «Aggiorna anche il dossier» acceso nella finestrella, e la conferma prima di cambiare il dossier.
+    @State private var ancheDossier = false
+    @State private var confermaDossier = false
 
     private typealias M = Tema.Apple.Pratiche.Moduli
     private typealias T = Tema.Apple.Pratiche.Moto
@@ -323,6 +334,8 @@ private struct CasellaModulo: View {
         .onTapGesture {
             guard modificabile else { return }
             if case .piena(let t, _) = aspetto { bozza = t } else { bozza = "" }
+            ancheDossier = false
+            confermaDossier = false
             inModifica = true
         }
         .popover(isPresented: $inModifica) { correzione }
@@ -349,7 +362,40 @@ private struct CasellaModulo: View {
         }
     }
 
-    private var correzione: some View {
+    @ViewBuilder private var correzione: some View {
+        if confermaDossier { domandaDossier(bozza) } else { scrittura }
+    }
+
+    /// La conferma prima di cambiare il dossier: il dato, il valore di oggi e quello nuovo.
+    private func domandaDossier(_ valore: String) -> some View {
+        VStack(alignment: .leading, spacing: M.spazioRighe) {
+            Text("Aggiornare anche il dossier di \(nomeCliente)?")
+                .carattereApple(M.rigaManca)
+                .foregroundColor(Tema.Apple.Colore.inchiostro)
+            Text("\(campo.dato?.nome ?? campo.etichetta): \(valoreDossier.map { "«\($0)»" } ?? "non c'è") → «\(valore)»")
+                .carattereApple(Tema.Apple.Carattere.secondario)
+                .foregroundColor(Tema.Apple.Colore.inchiostro2)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(width: Tema.Apple.Pratiche.Moduli.larghezzaPopover, alignment: .leading)
+            HStack {
+                Spacer()
+                Button("Solo nel modulo") {
+                    confermaDossier = false
+                    salva(valore)
+                }
+                .buttonStyle(.apple)
+                Button("Aggiorna il dossier") {
+                    confermaDossier = false
+                    if dossier?(valore) != true { salva(valore) }
+                }
+                .buttonStyle(.applePrimario)
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(Tema.Apple.Pratiche.Moduli.paddingPopover)
+    }
+
+    private var scrittura: some View {
         VStack(alignment: .leading, spacing: M.spazioRighe) {
             Text(campo.etichetta)
                 .carattereApple(M.rigaManca)
@@ -360,11 +406,24 @@ private struct CasellaModulo: View {
                 .onSubmit(conferma)
             Text(campo.dato == .iban && !bozza.isEmpty && !IBAN.valido(bozza)
                  ? "Il codice di controllo dell'IBAN non torna: ricontrollalo."
-                 : "Vale solo per questo modulo: il dossier non cambia.")
+                 : (ancheDossier ? "Vale per questo modulo e, dopo la conferma, anche per il dossier."
+                                 : "Vale solo per questo modulo: il dossier non cambia."))
                 .carattereApple(Tema.Apple.Carattere.secondario)
                 .foregroundColor(campo.dato == .iban && !bozza.isEmpty && !IBAN.valido(bozza) ? Tema.Apple.Colore.rosso : Tema.Apple.Colore.inchiostro2)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(width: Tema.Apple.Pratiche.Moduli.larghezzaPopover, alignment: .leading)
+            if dossier != nil {
+                HStack {
+                    Text("Aggiorna anche il dossier")
+                        .carattereApple(Tema.Apple.Carattere.secondario)
+                        .foregroundColor(Tema.Apple.Colore.inchiostro)
+                    Spacer(minLength: 8)
+                    Toggle(isOn: $ancheDossier) { EmptyView() }
+                        .toggleStyle(.appleSenzaEtichetta)
+                        .accessibilityLabel("Aggiorna anche il dossier")
+                }
+                .frame(width: Tema.Apple.Pratiche.Moduli.larghezzaPopover)
+            }
             HStack {
                 Spacer()
                 Button("Annulla") { inModifica = false }
@@ -380,7 +439,14 @@ private struct CasellaModulo: View {
 
     private func conferma() {
         if campo.dato == .iban, !bozza.isEmpty, !IBAN.valido(bozza) { return }
-        salva(campo.dato == .iban ? IBAN.aGruppi(bozza) : bozza)
+        let valore = campo.dato == .iban ? IBAN.aGruppi(bozza) : bozza
+        // Con «Aggiorna anche il dossier» si chiede prima conferma: niente cambia nel dossier senza un sì
+        if ancheDossier, dossier != nil, !valore.trimmingCharacters(in: .whitespaces).isEmpty {
+            bozza = valore
+            confermaDossier = true
+            return
+        }
+        salva(valore)
     }
 
     private func avvia() {

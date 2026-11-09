@@ -117,6 +117,9 @@ enum EntitaOvunque: String, Codable, CaseIterable {
     case sessioneCopilota
     /// Posizioni inquadrate dall'iPhone: bozze da confermare sul Mac (`DatiPrisma.inquadratureDaConfermare`).
     case inquadratura
+    /// I passi segnati dall'iPhone sulle pratiche dopo la firma (`DatiPrisma.pratiche`, solo `passi` e `conclusaIl`;
+    /// «Luce» §7.3.4): la pratica nasce e si chiude sul Mac.
+    case pratica
 
     /// Il nome per l'utente («una nota», «due attività»), al singolare.
     var nome: String {
@@ -128,6 +131,7 @@ enum EntitaOvunque: String, Codable, CaseIterable {
         case .eventoVita: return "evento della linea della vita"
         case .sessioneCopilota: return "scheda del copilota"
         case .inquadratura: return "posizione inquadrata"
+        case .pratica: return "pratica"
         }
     }
 }

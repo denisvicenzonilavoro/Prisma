@@ -64,6 +64,9 @@ enum FaseInquadra: Equatable {
     var ricevuta: RicevutaPonte?
     /// Ogni apertura, foglio nuovo o chiusura cambia il giro: i passi in attesa di un giro vecchio non fanno nulla.
     @ObservationIgnored private(set) var giro = 0
+    /// Aperta dallo Smontaggio («Luce» §8.2.4): la scena chiede l'estratto conto o il rendiconto e le righe lette vanno a
+    /// MotoreSmontaggio, non a MotoreInquadra.
+    private(set) var perSmontaggio = false
 
     /// Le righe della scheda (cinque per le polizze), con il canale proposto.
     func righeScheda(canale: Canale) -> [RigaInquadra] {
@@ -77,16 +80,18 @@ enum FaseInquadra: Equatable {
     }
 
     /// Apre la scena in attesa (o sul trascinamento), senza foglio.
-    func apri(fase: FaseInquadra) {
+    func apri(fase: FaseInquadra, perSmontaggio: Bool = false) {
         giro += 1
         svuota()
         self.fase = fase
+        self.perSmontaggio = perSmontaggio
         aperto = true
     }
 
     func chiudi() {
         giro += 1
         aperto = false
+        perSmontaggio = false
         svuota()
     }
 
@@ -240,6 +245,18 @@ extension StatoShell {
         inquadra.chiudi()
     }
 
+    /// «Inquadra un altro documento» dello Smontaggio: la scena chiede l'estratto conto o il rendiconto e le righe lette
+    /// (dall'iPhone o da un file trascinato) vanno allo Smontaggio, che le legge con MotoreSmontaggio.
+    func apriInquadraSmontaggio() {
+        guard presentazione == nil, !bloccato else { return }
+        guard !inModoCliente else {
+            mostraAvviso("In modalità cliente Inquadra e capisci non si apre: parla anche degli altri clienti.")
+            return
+        }
+        if pannelloNovita { chiudiNovita() }
+        inquadra.apri(fase: ponteInquadraAcceso ? .attesa : .trascina, perSmontaggio: true)
+    }
+
     /// «Riprova»: di nuovo in attesa del documento.
     func riprovaInquadra() {
         inquadra.ricomincia(fase: ponteInquadraAcceso ? .attesa : .trascina)
@@ -265,6 +282,12 @@ extension StatoShell {
 
     /// Un testo inquadrato arrivato dall'iPhone entra nella scena.
     func prendiInquadratura(_ x: InquadraturaPonte) {
+        if inquadra.perSmontaggio {
+            smontaggio.ultimaInquadratura = x.id
+            prendiInquadraturaSmontaggio(x)
+            inquadra.chiudi()
+            return
+        }
         inquadra.mostra(righe: x.righe, origine: x.dispositivo, inquadratura: x.id, cliente: x.clienteId)
     }
 
@@ -320,6 +343,13 @@ extension StatoShell {
                 guard let self, self.inquadra.aperto else { return }
                 guard let letto, !letto.righe.isEmpty else {
                     self.inquadra.illeggibile(origine: nome, giroAtteso: giro)
+                    return
+                }
+                // Dallo Smontaggio le righe vanno a MotoreSmontaggio (la foto non si conserva, decisione 47)
+                if self.inquadra.perSmontaggio {
+                    self.smontaggio.carica(righe: letto.righe, titolo: url.deletingPathExtension().lastPathComponent,
+                                           origine: nome, clienteId: self.clienteAttivoId)
+                    self.inquadra.chiudi()
                     return
                 }
                 self.inquadra.mostra(righe: letto.righe, immagine: letto.immagine, origine: nome, giroAtteso: giro)

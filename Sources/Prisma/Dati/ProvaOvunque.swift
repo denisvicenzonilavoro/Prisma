@@ -121,6 +121,7 @@ enum ProvaOvunque {
             try provaScattoRealta()
             try provaSpese()
             try provaTerritorio()
+            try provaPraticheOvunque()
             try provaModuliIban()
             try provaLuceClienti()
             try provaNoteInArrivo()
@@ -380,6 +381,39 @@ enum ProvaOvunque {
             try controlla(mac.appuntamenti[i].daConfermare == nil,
                           "la conferma fatta sul dispositivo non arriva sul Mac (esito \(esito))")
         }
+    }
+
+    /// Le pratiche dopo la firma sull'iPhone («Luce» §7.3.4, decisione 44): entrano nell'istantanea; un passo segnato sul
+    /// dispositivo diventa un'operazione del giornale sui soli passi (e sulla chiusura) e il Mac la unisce; le note scritte
+    /// sul dispositivo non viaggiano, e le pratiche non si creano né si eliminano dal giornale.
+    private static func provaPraticheOvunque() throws {
+        var mac = DatiPrisma.demo()
+        guard let i = mac.pratiche.indices.first else { throw Fallita(motivo: "nessuna pratica nei dati di prova") }
+        let originale = mac
+        let istantanea = SpazioOvunque.datiIstantanea(mac)
+        try controlla(istantanea.pratiche == mac.pratiche, "le pratiche non entrano nell'istantanea di Prisma ovunque")
+        let regole = CampiOvunque.regole(.pratica)
+        try controlla(regole.campi == ["passi", "conclusaIl"] && !regole.creabile && !regole.eliminabile,
+                      "dal giornale le pratiche si devono poter cambiare solo nei passi")
+        var dispositivo = mac
+        var p = dispositivo.pratiche[i]
+        let passo = PassoPratica.allCases.first { p.segno($0) == nil } ?? .consegnata
+        MotorePratiche.segna(passo, fatto: true, il: ora(3), pratica: &p, dati: dispositivo)
+        p.note = (p.note ?? []) + [NotaPratica(data: ora(3), testo: "Nota scritta sul telefono")]
+        dispositivo.pratiche[i] = p
+        let differenze = RegistroOvunque.differenze(da: mac, a: dispositivo)
+        try controlla(!differenze.isEmpty && differenze.allSatisfy { $0.entita == .pratica && $0.tipo == .modificaCampo
+                        && ($0.campo == "passi" || $0.campo == "conclusaIl") },
+                      "segnare un passo sul dispositivo non registra un'operazione sui passi della pratica (o porta altro)")
+        for (k, d) in differenze.enumerated() {
+            let op = OperazioneOvunque(id: "op-passo-\(k)", dispositivo: idTelefono, lamport: k + 1, seq: k + 1, data: ora(3), base: 1,
+                                       entita: d.entita, entitaId: d.entitaId, tipo: d.tipo, campo: d.campo, prima: d.prima, dopo: d.dopo)
+            let esito = MotoreUnioneOvunque.applica(op, a: &mac)
+            try controlla(mac.pratiche[i].segno(passo) == dispositivo.pratiche[i].segno(passo) || d.campo != "passi",
+                          "il passo segnato sul dispositivo non arriva sul Mac (esito \(esito))")
+        }
+        try controlla(mac.pratiche[i].segno(passo)?.fatto == true, "il passo segnato sul dispositivo non arriva sul Mac")
+        try controlla(mac.pratiche[i].note == originale.pratiche[i].note, "le note della pratica non devono arrivare dal giornale")
     }
 
     /// «Compila da solo» («Luce» giro 10, decisioni 40 e 44): l'IBAN dei clienti e i moduli compilati non entrano mai

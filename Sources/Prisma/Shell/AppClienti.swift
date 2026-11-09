@@ -303,6 +303,36 @@ struct AppClienti: View {
         }
     }
 
+    private func portafoglioModello(_ c: Cliente) -> some View {
+        let modelli = stato.dati.portafogliModello
+        return VStack(alignment: .leading, spacing: 4) {
+            OcchielloSezione(titolo: "Portafoglio modello")
+            HStack(spacing: 10) {
+                Picker("Portafoglio modello", selection: Binding(
+                    get: { c.modelloId ?? "" },
+                    set: { assegnaModello(c.id, $0.isEmpty ? nil : $0) })) {
+                    Text("Nessun modello").tag("")
+                    ForEach(modelli) { m in Text(m.nome.isEmpty ? "Senza nome" : m.nome).tag(m.id) }
+                }
+                .labelsHidden()
+                .frame(width: Tema.Apple.Posizioni.Radar.Impostazioni.sceltaModello)
+                .disabled(stato.solaLettura || modelli.isEmpty)
+                Button(modelli.isEmpty ? "Imposta i modelli" : "I modelli") { stato.apriImpostazioniModelli() }
+                    .buttonStyle(.appleSobrio)
+            }
+            .padding(.vertical, 6)
+            Text("Il modello è una scelta tua, separata dal profilo MiFID: il radar segnala se chiede più rischio del profilo.")
+                .font(Tipo.rubricaTema)
+                .foregroundColor(Colori.Rubrica.secondario)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func assegnaModello(_ clienteId: String, _ modelloId: String?) {
+        guard !stato.solaLettura, let i = stato.dati.clienti.firstIndex(where: { $0.id == clienteId }) else { return }
+        stato.dati.clienti[i].modelloId = modelloId
+    }
+
     private func profilo(_ c: Cliente) -> some View {
         VStack(alignment: .leading, spacing: 18) {
             VStack(alignment: .leading, spacing: 4) {
@@ -330,6 +360,11 @@ struct AppClienti: View {
                     ForEach(c.canali) { EtichettaCanale(canale: $0) }
                 }
                 .padding(.vertical, 8)
+            }
+            // Il portafoglio modello del radar («Luce» §8.3.5): scelta del consulente, separata dal profilo MiFID. In
+            // modalità cliente non si vede (il radar e i modelli sono riservati, decisione 50)
+            if !stato.inModoCliente {
+                portafoglioModello(c)
             }
             VStack(alignment: .leading, spacing: 4) {
                 OcchielloSezione(titolo: "Consensi")

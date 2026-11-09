@@ -141,6 +141,8 @@ struct AppTelefono: View {
         case .mercato: MercatoTelefono()
         // Incontri sull'iPhone («Luce» giro 13): «Nota veloce» in alto e le note in partenza (NotaVocaleTelefono.swift)
         case .incontri: IncontriTelefono().navigationTitle(app.titolo)
+        // Pratiche sull'iPhone («Luce» §7.3.4): «Dopo la firma» in sola lettura più «segna il passo» (PraticheTelefono.swift)
+        case .pratiche: PraticheTelefono()
         default:
             InArrivoMobile(app: app, titolo: "\(app.titolo) è sul Mac", testo: StatoShell.soloSulMacPerOra)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -584,8 +586,34 @@ private struct SchedaClienteTelefono: View {
         .superficieApple(E.superficie, raggio: E.raggio)
     }
 
-    /// Sintesi: da fare (scadenze e attività aperte), obiettivi con la barra che si riempie, recapiti, nota.
+    /// Sintesi: l'azienda dei clienti imprenditori, da fare (scadenze e attività aperte), obiettivi con la barra che si
+    /// riempie, recapiti, nota.
     @ViewBuilder private func sintesi(_ c: Cliente) -> some View {
+        // «L'azienda» («Luce» §9.3.4): nome e fatturato, a un tocco le quattro aree come elenco (sola lettura)
+        let aziende = c.elencoAziende
+        if !aziende.isEmpty {
+            SezioneTelefono(titolo: "L'azienda")
+            ForEach(aziende) { a in
+                NavigationLink { AziendaTelefono(clienteId: c.id, aziendaId: a.id) } label: {
+                    HStack(spacing: E.spazioRiga) {
+                        VStack(alignment: .leading, spacing: E.spazioTesto) {
+                            Text(a.ragioneSociale)
+                                .carattereApple(E.nome)
+                                .foregroundColor(E.coloreNome)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Text(a.fatturato.map { "Fatturato \(TestiAzienda.fatturatoBreve($0))" + (a.annoFatturato.map { " nel \($0)" } ?? "") }
+                                 ?? "Fatturato da inserire")
+                                .carattereApple(E.dettaglio)
+                                .foregroundColor(E.coloreDettaglio)
+                        }
+                        Spacer(minLength: 0)
+                        ChevronTelefono()
+                    }
+                    .schedaTelefono(premibile: true)
+                }
+                .buttonStyle(.plain)
+            }
+        }
         let attivita = stato.attivitaAperte.filter { $0.clienteId == c.id }.sorted { $0.scadenza < $1.scadenza }
         let scadenze = stato.riepilogoPosizioniCliente(c.id).inScadenza
         if !attivita.isEmpty || !scadenze.isEmpty {

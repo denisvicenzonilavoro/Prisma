@@ -195,6 +195,9 @@ extension StatoShell {
         case .eventoVita: return dati.eventiVita.first { $0.id == id }?.clienteId
         case .sessioneCopilota: return dati.sessioniCopilota.first { $0.id == id }?.clienteId
         case .inquadratura: return dati.inquadratureDaConfermare.first { $0.id == id }?.clienteId
+        case .pratica:
+            let posizione = dati.pratiche.first { $0.id == id }?.posizioneId
+            return posizione.flatMap { pid in dati.posizioni.first { $0.id == pid }?.clienteId }
         case .bisogni: return dati.clienti.first { $0.id == id }?.id
         }
     }

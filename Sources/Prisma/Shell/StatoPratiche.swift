@@ -91,6 +91,20 @@ extension StatoShell {
         apriPosizione(pos)
     }
 
+    /// Sull'iPhone un passo si segna solo se il giornale di «Prisma ovunque» lo porta al Mac (modifiche dai dispositivi
+    /// ammesse dal Mac); altrimenti la vista resta in sola lettura.
+    var passiDalTelefono: Bool { !solaLettura && dati.impostazioni.ovunque.scriveGiornale }
+
+    /// «Apri i moduli»: Pratiche › Moduli per il cliente e la posizione della pratica, sul primo modello del suo canale.
+    func apriModuliDellaPratica(_ praticaId: String) {
+        guard let pid = dati.pratiche.first(where: { $0.id == praticaId })?.posizioneId,
+              let pos = dati.posizioni.first(where: { $0.id == pid }) else { return }
+        moduli.carica()
+        let prodotto = pos.prodottoId.flatMap { id in dati.prodotti.first { $0.id == id } }
+        let primo = MotoreProposta.modelli(per: pos, prodotto: prodotto, tra: moduli.tutti).first
+        apriModuliProposta(pos, modulo: primo?.id)
+    }
+
     /// «Vai alle proposte»: il Portafoglio di Posizioni sull'elenco delle proposte da riprendere.
     func vaiAlleProposte() {
         posizioneInDettaglio = nil

@@ -14,7 +14,8 @@ import SwiftUI
 // - Le cifre e le frasi vengono da MotorePratiche (passi riconosciuti dai dati, segno a mano che vince, soglia delle
 //   Impostazioni, mese scorso calcolato); qui solo la disposizione. Il canale resta in vista su ogni card.
 // - Clic sulla card: il dettaglio nasce dalla card e ci torna (`presentatoreDettaglio`, come il radar) con i passi, la
-//   loro data, «riconosciuto da …» o «segnato a mano», i documenti collegati, le note e «Apri in Posizioni».
+//   loro data, «riconosciuto da …» o «segnato a mano», i documenti collegati, le note, «Apri in Posizioni» e «Apri i
+//   moduli» (Pratiche › Moduli per il cliente e la posizione della pratica).
 //   Clic su un passo (nella card o nel dettaglio): lo segna o lo toglie a mano, con la data di oggi modificabile.
 // - «Sollecita» prepara la bozza in Messaggi (niente parte da solo) e diventa «✓ Sollecito pronto» finché il messaggio
 //   non viene aperto; se manca l'emissione dice «Sollecita la compagnia».
@@ -606,6 +607,8 @@ struct DettaglioPratica: View {
             HStack(spacing: D.spazioPallino) {
                 Button("Apri in Posizioni", action: apriPosizioni)
                     .buttonStyle(StilePulsanteApple(.principale, grande: true))
+                Button("Apri i moduli") { stato.apriModuliDellaPratica(s.id) }
+                    .buttonStyle(StilePulsanteApple(.secondaria, grande: true))
                 if !s.conclusa {
                     Button(stato.sollecitoPronto(s.pratica) ? "✓ Sollecito pronto"
                            : (s.sollecitoCompagnia ? "Sollecita la compagnia" : "Sollecita")) {
