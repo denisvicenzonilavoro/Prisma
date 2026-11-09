@@ -162,6 +162,10 @@ enum ProvaCalcoliPassaparola {
                       && MotorePassaparola.potenzialeCorrispondente(nome: "Elena Marchetti", potenziali: elenco, clienti: []) == nil)
         verifica.vero("Passaparola: un potenziale già in «Cliente» non si riconosce di nuovo",
                       MotorePassaparola.potenzialeCorrispondente(nome: "Paolo Ferri", potenziali: elenco, clienti: []) == nil)
+        verifica.vero("Passaparola: la carta di un'altra persona non prende il potenziale da cui si è aperta la scena",
+                      MotorePassaparola.nomiCompatibili("Elena Maria Marchi", "MARCHI Élena")
+                        && !MotorePassaparola.nomiCompatibili("Elena Marchetti", "Elena Marchi")
+                        && !MotorePassaparola.nomiCompatibili("", "Elena Marchi"))
         var collegata = elena
         collegata.clienteId = "sofia"
         verifica.vero("Passaparola: un potenziale collegato a un dossier che esiste non si riconosce",

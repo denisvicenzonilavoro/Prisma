@@ -446,6 +446,14 @@ enum MotorePassaparola {
             .max { a, b in a.creatoIl != b.creatoIl ? a.creatoIl < b.creatoIl : a.id > b.id }
     }
 
+    /// Due nomi della stessa persona: le parole dell'uno (senza accenti, maiuscole né ordine) stanno tutte nell'altro
+    /// («Elena Maria Marchi» e «Marchi Elena» sì, «Elena Marchetti» e «Elena Marchi» no). Un nome vuoto: no.
+    static func nomiCompatibili(_ a: String, _ b: String) -> Bool {
+        let x = Set(ImportaPosizioni.piega(a).split(separator: " ")), y = Set(ImportaPosizioni.piega(b).split(separator: " "))
+        guard !x.isEmpty, !y.isEmpty else { return false }
+        return x.isSubset(of: y) || y.isSubset(of: x)
+    }
+
     /// Il cliente nato dalla carta che porta con sé il potenziale: chi l'ha presentato (con la data dell'inserimento,
     /// cioè la presentazione) e i recapiti e la nota scritti dall'utente, solo dove la carta non dice nulla. Il nome
     /// resta quello della carta; senza nome letto, quello del potenziale.

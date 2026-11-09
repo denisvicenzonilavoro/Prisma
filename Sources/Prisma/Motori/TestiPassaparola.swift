@@ -45,7 +45,7 @@ enum TestiPassaparola {
     }
 
     /// La nota sotto la frase: prima della lettura (aperta da «Diventa cliente») e a lettura finita.
-    static let notaPotenzialeAttesa = "Inquadra la sua carta d’identità o scrivi a mano: il dossier ricorderà chi l’ha presentato."
+    static let notaPotenzialeAttesa = "Inquadra la sua carta d’identità o scrivi a mano: il dossier ricorderà la presentazione."
     static let notaPotenzialeLetto = "Con «Crea il dossier» la scheda passa in «Cliente» ed entra nell’albero del passaparola."
 
     /// «2 senza stima».

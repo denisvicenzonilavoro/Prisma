@@ -173,9 +173,13 @@ extension StatoShell {
 
     /// Il potenziale della scena (§9.1, «È un potenziale cliente»): quello da cui la scena è stata aperta, se c'è ancora;
     /// altrimenti, a lettura avviata, quello con lo stesso nome della carta. Mai se la carta è di un cliente già in Prisma.
+    /// Aperta da un potenziale, la carta di un'altra persona (nomi che non si contengono) non prende quel potenziale.
     var potenzialeDaCarta: PotenzialeCliente? {
-        if let id = nuovoCliente.potenzialeId, let p = dati.potenziali.first(where: { $0.id == id }) { return p }
         let l = nuovoCliente.letturaCorretta
+        if let id = nuovoCliente.potenzialeId, let p = dati.potenziali.first(where: { $0.id == id }),
+           l.nomeCompleto.map({ MotorePassaparola.nomiCompatibili($0, p.nome) }) ?? true {
+            return p
+        }
         guard !l.vuota, clienteGiaPresenteDaCarta == nil else { return nil }
         return MotorePassaparola.potenzialeCorrispondente(nome: l.nomeCompleto, potenziali: dati.potenziali, clienti: dati.clienti)
     }
