@@ -1005,6 +1005,9 @@ enum ProvaVera {
         // «Luce» giro 13: la nota vocale (busta, arrivo, cliente, proposte, conferma senza doppioni, coda cifrata dell'iPhone,
         // fuori da Prisma ovunque, Novità) (ProvaNotaVocale.swift)
         ProvaNotaVocale.esegui(controlla)
+        // «Luce» giro 14: Stanotte Prisma ha lavorato (Novità, modalità cliente, approva e annulla per tipo senza invii, più
+        // tardi, fascicolo senza cambiare il cliente attivo, fase 1 con id stabili, blocco, Prisma ovunque, memoria) (ProvaNotte.swift)
+        ProvaNotte.esegui(controlla)
         // La palestra della trattativa («Luce» giro 5): schema, livelli, cifre solo di Prisma, Qwen finto (ProvaPalestraVera.swift)
         ProvaPalestraVera.esegui(controlla)
         // «Luce», giro 8: la lettera dal futuro (scheda dei fatti, streaming, cifre, promesse, «senza il piano», Qwen finto) (ProvaLetteraVera.swift)

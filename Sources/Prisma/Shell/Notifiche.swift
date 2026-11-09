@@ -269,6 +269,14 @@ enum MotoreNotifiche {
                                        dettaglio: n.clienteId.map { nome($0) } ?? "Di chi si parla?", data: n.quando))
             }
         }
+        // «Luce» giro 14: le carte della notte da decidere (decisione 29: «Stanotte ho preparato N cose», senza nomi né
+        // cifre; in modalità cliente no). Il clic apre le carte
+        let carteNotte = stato.carteDaDecidere
+        if carteNotte > 0, let n = stato.notteDiOggi {
+            elenco.append(Notifica(id: "notte-\(n.giornoChiave)-\(carteNotte)", gruppo: .oggi, app: .studio,
+                                   titolo: TestiNotte.voceNotifica(carteNotte), dettaglio: TestiNotte.dettaglioNotifica,
+                                   data: n.fine ?? n.giorno))
+        }
         // Fine anno: clienti che possono ancora dedurre versando alla previdenza (negli ultimi due mesi dell'anno)
         let deducibili = stato.deducibiliFineAnno(oggi: oggi)
         if let primo = deducibili.first {
@@ -454,6 +462,12 @@ extension StatoShell {
             pannelloNotifiche = false
             testoRicerca = t
             cercaOvunque()
+            return
+        }
+        // «Luce» giro 14: la voce di «Stanotte» apre le carte della notte
+        if n.id.hasPrefix("notte-") {
+            pannelloNotifiche = false
+            apriNotte()
             return
         }
         if let d = n.destinazione {
@@ -674,6 +688,20 @@ extension MotoreNotifiche {
                                                         titolo: titolo, corpo: corpo, gruppo: "occasioni",
                                                         data: quando, destinazione: destinazione))
                 }
+            }
+        }
+
+        // «Luce» giro 14: la notifica del mattino di «Stanotte», solo con l'interruttore (spento di base) e con carte da
+        // decidere: «Stanotte ho preparato N cose», mai nomi né cifre dei clienti (decisione 29)
+        if dati.impostazioni.notte.notificaAlMattino {
+            let oggi = cal.startOfDay(for: adesso)
+            for n in dati.notti where n.giorno >= oggi {
+                let quante = MotoreNotte.daDecidere(n, cal: cal)
+                guard quante > 0, let quando = cal.date(byAdding: .minute, value: dati.impostazioni.orari.mattina.inizio,
+                                                        to: cal.startOfDay(for: n.giorno)), quando > adesso else { continue }
+                elenco.append(PromemoriaPianificato(id: "\(prefissoPromemoria)notte-\(n.giornoChiave)", titolo: "Prisma",
+                                                    corpo: TestiNotte.notifica(quante), gruppo: "notte", data: quando,
+                                                    destinazione: nil))
             }
         }
 

@@ -152,6 +152,9 @@ enum SpazioOvunque {
         x.impostazioni.studio.spese = ImpostazioniSpese()
         // Le note dettate sull'iPhone restano sul Mac (decisione 44, «Luce» giro 13)
         x.noteInArrivo = []
+        // Le carte della notte e le sue impostazioni restano sul Mac («Luce» giro 14: le carte non vanno su iPhone/iPad)
+        x.notti = []
+        x.impostazioni.notte = ImpostazioniNotte()
         // L'IBAN dei clienti e i moduli compilati restano sul Mac (decisioni 40 e 44; i modelli stanno in Moduli/, fuori
         // dall'archivio)
         x.clienti = x.clienti.map { c in
@@ -481,10 +484,12 @@ enum SincroniaOvunque {
         nuovo.speseStudio = locale.speseStudio
         nuovo.kmClienti = locale.kmClienti
         nuovo.noteInArrivo = locale.noteInArrivo
+        nuovo.notti = locale.notti
         let mie = locale.impostazioni
         var imp = nuovo.impostazioni
         imp.vera = mie.vera
         imp.studio.spese = mie.studio.spese
+        imp.notte = mie.notte
         imp.aspetto = mie.aspetto
         imp.dimensioneTesto = mie.dimensioneTesto
         imp.sfondoAnimato = mie.sfondoAnimato

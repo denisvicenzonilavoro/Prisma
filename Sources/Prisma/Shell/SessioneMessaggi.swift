@@ -62,6 +62,11 @@ final class SessioneMessaggi: ObservableObject {
             riapri(m, elenco: base, stato: stato)
             return
         }
+        // «Apri ›» di una carta della notte: la bozza preparata, non ancora nel dossier (salvandola nasce il messaggio)
+        if let b = r.bozza {
+            riapri(b, elenco: base, stato: stato, ricordaId: false)
+            return
+        }
         if r.occasioneId == nil && r.clienteId == nil {
             // Dal pannello Novità: la prima occasione
             scelta = nil
@@ -77,7 +82,7 @@ final class SessioneMessaggi: ObservableObject {
     }
 
     /// Un messaggio salvato torna nel pannello con il suo tono, il suo canale e il suo testo.
-    private func riapri(_ m: MessaggioCliente, elenco base: OccasioniMessaggi, stato: StatoShell) {
+    private func riapri(_ m: MessaggioCliente, elenco base: OccasioniMessaggi, stato: StatoShell, ricordaId: Bool = true) {
         let daOrigine = OccasioneMessaggio.id(tipo: m.origine.tipo, clienteId: m.clienteId, riferimento: m.origine.riferimento)
         let occasione: String
         if let o = base.occasione(m.occasioneId) ?? base.occasione(daOrigine) {
@@ -93,7 +98,7 @@ final class SessioneMessaggi: ObservableObject {
         testi[k] = TestoScrittoMessaggio(oggetto: m.oggetto, testo: m.testo, autore: m.autore, modello: m.modello, avviso: nil)
         correzioni[k] = nil
         comparsi.insert(k)
-        salvati[k] = m.id
+        if ricordaId { salvati[k] = m.id }
         scelta = occasione
     }
 

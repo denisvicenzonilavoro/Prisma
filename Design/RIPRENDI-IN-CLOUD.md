@@ -51,6 +51,7 @@ locale sul Mac del 7-8 novembre 2026. Le regole vincolanti restano in `CLAUDE.md
 |---|---|---|
 | `luce/unione-8-10` | Luce giri 8-10: Sala (lettera dal futuro, Lancia l'anno, Quanto vale avermi accanto), Studio › Spese (chilometri, spese e scadenze), Pratiche › Moduli (compila da solo); ognuno con revisione avversaria e correzioni | compila in debug sul Mac e le prove dei singoli giri erano verdi; manca la build completa con tutte le prove (la fa il workflow al primo push) |
 | `luce/giro-13-iphone` | Luce giro 13 «Dall'iPhone al Mac»: nuovo cliente in 10 secondi (carta d'identità letta sull'iPhone o trascinata sul Mac, codice fiscale «coerente (comune non controllato)», solo in memoria fino a «Crea il dossier») e la nota vocale (dettata sull'iPhone, coda cifrata, proposte confermate sul Mac); ponte versione 3 | scritto nel cloud, solo controllo della sintassi: manca la build con tutte le prove e lo sguardo alle istantanee 840-847, 770-774 e iOS 75, 775-777; aperto da `luce/unione-8-10` (senza i giri 11 e 12) |
+| `luce/giro-14-stanotte` | Luce giro 14 «Stanotte Prisma ha lavorato»: il lavoro della notte (finestra serale, solo alla corrente e con Prisma aperto e non in uso, `NSBackgroundActivityScheduler`; prima i lavori senza Qwen, poi al più 10 bozze di Vera una alla volta), le carte del mattino da approvare con un gesto (approva, più tardi, annulla), pulsante «☾ Stanotte» con il pallino, Impostazioni › Vera › Stanotte (spento di base) | scritto nel cloud, solo controllo della sintassi: manca la build con tutte le prove (`--prova-calcoli`, `--prova-vera`, `--prova-backup`, `--prova-ovunque`) e lo sguardo alle istantanee 760-767 (e 400, 410, 500, 616, 719 che cambiano per il pulsante e la vetrina); aperto da `main` con i giri 8-13 |
 | `vera/fase-4` | Vera, fase 4: funzioni 3, 4, 5, 7, 14, 15, 17, 20, collegate a chat, viste e archivio | due giri di revisione con correzioni, prove verdi in debug sul Mac (db982bc); contiene già `main` con il giro 0; si unisce in main solo con build verde e il via dell'utente |
 
 
@@ -144,6 +145,40 @@ inventa):
   7. I testi di `Supporto/iOS/Info.plist` per fotocamera, microfono e riconoscimento vanno bene?
   8. Il messaggio nato da una nota («mandarle il confronto…») è non commerciale? (Proposta seguita: sì, non serve il
      consenso commerciale.)
+- **Giro 14, Stanotte** (domande aperte, con la scelta seguita fra parentesi):
+  1. Il lavoro della notte acceso di base o spento? E l'ora di inizio? (Spento: lo accendi in Impostazioni › Vera ›
+     Stanotte; dalle 22:00 alle 6:00.)
+  2. Quali tipi di carta preparare? (Tutti; uno per uno si spengono nelle Impostazioni.)
+  3. «Documento» approvato crea anche l'attività «Chiedere il documento nuovo»? (Sì.) «Domani» va nella nota
+     dell'appuntamento o in un'attività? (Nella nota: riga «Da portare: …», tolta identica con «Annulla».)
+  4. Il testo della bozza di richiesta del documento d'identità (`ModelliMessaggi`, tipo nuovo `documentoIdentita`, non
+     commerciale): «il tuo documento d'identità scade il …: quando ti è comodo, mi mandi una copia di quello nuovo?» va bene?
+  5. Notifica di macOS al mattino «Stanotte ho preparato N cose» (spenta di base, senza nomi né cifre): va bene il testo?
+  6. Aprire Prisma all'accesso al Mac (`SMAppService`) o un risveglio programmato (`pmset`, lo imposti tu)? (No: Prisma
+     non cambia nulla del sistema; il controllo statico del workflow lo vieta.)
+  7. Carte anche su iPhone/iPad («Le trovi sul Mac»)? (No in questo giro: le carte e le impostazioni restano fuori da
+     «Prisma ovunque».)
+  8. La partenza consigliata dalla stima in linea d'aria del Territorio, con «(stima)»: va bene? (Sì; senza partenza
+     del Territorio nessun orario e nessun km.)
+  9. Campagne di notte: una per notte, il gruppo più grande, con il modello fisso, niente Qwen? (Sì.) Qwen solo per le
+     bozze dei messaggi singoli (al più 10).
+  10. Tetti: 6 fascicoli, 3 riesami, documenti entro 30 giorni, riesami entro 14 giorni, «da ieri» al più 7 giorni:
+      vanno bene?
+  11. La memoria di Qwen 3.5 4B di notte va misurata sul tuo Mac con `ollama ps` (stima 3-3,5 GB, non scritta nel codice).
+  12. Il saluto finale usa il nome di Impostazioni › Profilo (`nomeUtente`): va bene?
+  13. Il lavoro parte solo con Prisma non in uso (bloccato o in secondo piano): se lavori fino a tardi parte quando
+      lasci il Mac. Va bene?
+  14. Di notte il MacBook alla corrente dorme quando lo schermo si spegne, salvo l'opzione di sistema «Evita lo stop
+      automatico quando lo schermo è spento». Prisma non la cambia: vuoi attivarla tu, o va bene che di solito sia
+      «Prepara adesso» al mattino? (Prisma non tocca le impostazioni di energia.)
+  15. Il fascicolo e il riesame nascono come PDF solo all'approvazione (di notte si preparano la scelta dei report e la
+      carta: niente PDF in memoria con 8 GB); per farli Prisma cambia per un attimo il cliente attivo e lo rimette. Se
+      il fascicolo dell'incontro è già nei Documenti non si rifà. Va bene, o serve un PDF già pronto al mattino?
+  16. Il titolo della borsa è «La borsa di oggi» (al mattino è il giorno dell'incontro), non «La borsa di domani» del
+      template: va bene? Le carte dei moduli di prova stanno su Sofia (la proposta di Giulia è Alleanza e i moduli
+      Alleanza non si compilano).
+  17. Le bozze di Vera della notte diventano carte solo se le scrive Qwen e passano la verifica delle cifre; il modello
+      fisso resta in Messaggi (non diventa una carta «messaggio»). Va bene?
 
 ## Regole da non dimenticare
 

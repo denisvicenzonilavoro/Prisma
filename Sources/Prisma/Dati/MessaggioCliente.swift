@@ -33,6 +33,9 @@ enum TipoOccasioneMessaggio: String, Codable, CaseIterable, Identifiable {
     /// confronto…»): solo la cosa detta, nessuna cifra in più. Non commerciale: è un seguito chiesto dal cliente
     /// (proposta seguita, domanda per l'utente). In fondo all'enum: l'ordine e il valore salvato restano stabili.
     case notaVocale
+    /// La richiesta del documento d'identità nuovo prima della scadenza («Luce» giro 14, «Stanotte»: la carta «Documento»).
+    /// Non commerciale. In fondo all'enum: un Prisma di prima salta questi messaggi (ElencoTollerante).
+    case documentoIdentita
 
     var id: String { rawValue }
 
@@ -54,6 +57,7 @@ enum TipoOccasioneMessaggio: String, Codable, CaseIterable, Identifiable {
         case .campagna: return "Campagna"
         case .richiestaPresentazione: return "Richiesta di presentazione"
         case .notaVocale: return "Dalla nota vocale"
+        case .documentoIdentita: return "Documento d'identità"
         }
     }
 
@@ -62,7 +66,7 @@ enum TipoOccasioneMessaggio: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .riesame, .occasioneAgenda, .avvisoMercato, .provaFuoco, .campagna, .richiestaPresentazione: return true
         case .riepilogoIncontro, .scadenzaPosizione, .compleanno, .consenso, .parcella, .richiestaVera, .pratica, .traguardo, .datiMancanti,
-             .notaVocale: return false
+             .notaVocale, .documentoIdentita: return false
         }
     }
 
@@ -174,6 +178,8 @@ enum VoceCifraMessaggio: String, CaseIterable {
     case appuntamentiProposti = "Appuntamenti proposti"
     case ultimoVersamento = "Ultimo versamento"
     case etaProssima = "Età il prossimo anno"
+    /// Il documento d'identità in scadenza («Luce» giro 14): «Carta d'identità».
+    case documento = "Documento"
 }
 
 /// A che punto è un messaggio. Prisma non spedisce: «aperto» vuol dire aperto già compilato nell'app del Mac

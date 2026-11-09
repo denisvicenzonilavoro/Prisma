@@ -37,7 +37,7 @@ import Observation
     @ObservationIgnored private var inCarica = false
 
     /// Numero dei campi di `DatiPrisma` copiati qui (la prova lo confronta con Mirror).
-    static let numeroCampi = 44
+    static let numeroCampi = 45
 
     var versione: Int { didSet { segnala(.calcoli) } }
     var clienti: [Cliente] { didSet(prima) { segnalaClienti(prima, clienti, \.id) } }
@@ -87,6 +87,8 @@ import Observation
     var campagne: [Campagna] { didSet { segnala(.calcoli) } }
     /// Le note dall'iPhone («Luce» giro 13): nessun calcolo in cache.
     var noteInArrivo: [NotaInArrivo] { didSet { segnala(.neutro) } }
+    /// Le notti di lavoro di «Stanotte» («Luce» giro 14): nessun calcolo in cache.
+    var notti: [NotteDiLavoro] { didSet { segnala(.neutro) } }
     var clienteAttivoId: String { didSet(prima) { segnala(.clienteAttivo(prima: prima)) } }
     var impostazioni: Impostazioni { didSet(prima) { segnala(.impostazioni(prima: prima)) } }
 
@@ -133,6 +135,7 @@ import Observation
         potenziali = d.potenziali
         campagne = d.campagne
         noteInArrivo = d.noteInArrivo
+        notti = d.notti
         clienteAttivoId = d.clienteAttivoId
         impostazioni = d.impostazioni
     }
@@ -226,6 +229,7 @@ import Observation
         d.potenziali = potenziali
         d.campagne = campagne
         d.noteInArrivo = noteInArrivo
+        d.notti = notti
         return d
     }
 
@@ -273,6 +277,7 @@ import Observation
         d.potenziali = _potenziali
         d.campagne = _campagne
         d.noteInArrivo = _noteInArrivo
+        d.notti = _notti
         return d
     }
 
@@ -323,6 +328,7 @@ import Observation
         if potenziali != d.potenziali { potenziali = d.potenziali }
         if campagne != d.campagne { campagne = d.campagne }
         if noteInArrivo != d.noteInArrivo { noteInArrivo = d.noteInArrivo }
+        if notti != d.notti { notti = d.notti }
         if clienteAttivoId != d.clienteAttivoId { clienteAttivoId = d.clienteAttivoId }
         if impostazioni != d.impostazioni { impostazioni = d.impostazioni }
         inCarica = false
@@ -351,6 +357,8 @@ extension Impostazioni {
         b.studio.spese = studio.spese
         // Il Territorio non entra nei calcoli in cache: le sue cache hanno le impostazioni nella chiave («Luce» giro 11)
         b.territorio = territorio
+        // Il lavoro della notte («Luce» giro 14) non entra nei calcoli in cache
+        b.notte = notte
         return self == b
     }
 }

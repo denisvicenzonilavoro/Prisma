@@ -75,8 +75,13 @@ extension Istantanee {
 
     /// La misura della scena: alcune vogliono la finestra minima.
     static func misuraLuce(_ nome: String) -> CGSize? {
-        nome.hasSuffix("-stretta") ? dimensioneStretta : nil
+        // «Stanotte» (giro 14): la finestra stretta ma alta, perché il registro sotto i comandi stia nell'istantanea
+        if nome == "766-notte-stretta" { return dimensioneStrettaAlta }
+        return nome.hasSuffix("-stretta") ? dimensioneStretta : nil
     }
+
+    /// La finestra alla larghezza minima ma alta (766: le carte della notte con il registro sotto i comandi).
+    static let dimensioneStrettaAlta = CGSize(width: 1100, height: 1000)
 }
 
 /// Le icone nell'ordine del dock (Scrivania e le quindici app) su fondo chiaro e su fondo scuro.

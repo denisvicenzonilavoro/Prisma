@@ -15,7 +15,7 @@ import Foundation
 ///       agenda.json, attivita.json, conversazioni.json, prodotti.json, spazi.json, pratiche.json,
 ///       mercato.json, ovunque.json, studio.json,
 ///       relazione.json                               le sezioni comuni (relazione: potenziali clienti e campagne,
-///                                                    «Luce» giro 12)
+///                                                    «Luce» giro 12, e le notti di lavoro, giro 14)
 ///
 /// La divisione (`pezzo(_:)`, uno `switch` completo su tutte le chiavi di `DatiPrisma`):
 /// - nell'indice solo ciò che è piccolo e serve subito (le impostazioni danno aspetto, misura del testo e nome della
@@ -72,8 +72,9 @@ enum ArchivioPezzi {
         // così un archivio di prima non ha un file «mancante» nell'indice
         case .giornaleOvunque, .conflittiOvunque, .arriviOvunque, .inquadratureDaConfermare, .noteInArrivo: return .sezione("ovunque")
         case .famiglie, .ocf, .portafogliModello, .speseStudio: return .sezione("studio")
-        // «Luce» giro 12: i potenziali clienti (non sono clienti: niente file per cliente) e lo storico delle campagne
-        case .potenziali, .campagne: return .sezione("relazione")
+        // «Luce» giro 12: i potenziali clienti (non sono clienti: niente file per cliente) e lo storico delle campagne;
+        // giro 14: le notti di lavoro (leggere; non «studio», che ha le tabelle importate e si riscriverebbe a ogni carta)
+        case .potenziali, .campagne, .notti: return .sezione("relazione")
         }
     }
 
@@ -193,6 +194,7 @@ enum ArchivioPezzi {
         case .potenziali: return a.potenziali == b.potenziali
         case .campagne: return a.campagne == b.campagne
         case .noteInArrivo: return a.noteInArrivo == b.noteInArrivo
+        case .notti: return a.notti == b.notti
         case .clienteAttivoId: return a.clienteAttivoId == b.clienteAttivoId
         case .impostazioni: return a.impostazioni == b.impostazioni
         }
@@ -243,6 +245,7 @@ enum ArchivioPezzi {
         case .potenziali: b.potenziali = a.potenziali
         case .campagne: b.campagne = a.campagne
         case .noteInArrivo: b.noteInArrivo = a.noteInArrivo
+        case .notti: b.notti = a.notti
         case .clienteAttivoId: b.clienteAttivoId = a.clienteAttivoId
         case .impostazioni: b.impostazioni = a.impostazioni
         }
@@ -536,7 +539,7 @@ extension ArchivioPezzi {
         case "mercato": return "i dati di Mercato"
         case "ovunque": return "Prisma ovunque e le note arrivate dall’iPhone"
         case "studio": return "lo studio (portafogli modello, famiglie, esame OCF)"
-        case "relazione": return "i potenziali clienti e le campagne"
+        case "relazione": return "i potenziali clienti, le campagne e il lavoro della notte"
         default: return "la sezione «\(nome)»"
         }
     }

@@ -205,6 +205,9 @@ enum VoceConfronto: Hashable {
     /// La storia della settimana e dell'anno di «Luce» (giro 5, StoriaLuce.swift): le pagine e quella in corso,
     /// osservate solo dalla storia. Non si salva.
     let storia = StatoStoria()
+    /// «Stanotte Prisma ha lavorato» («Luce» giro 14, StatoNotte.swift): la pila delle carte di questa apertura, il
+    /// registro delle decisioni e il lavoro in corso, osservati solo dalle carte. Le notti si salvano in `dati.notti`.
+    let notte = StatoNotte()
     /// La palestra della trattativa (Studio › Palestra, «Luce» giro 5, StatoPalestra.swift): un oggetto a parte, ogni
     /// parola di Vera ridisegna solo la conversazione. Non si salva (solo l'esito, in `dati.impostazioni.palestra`).
     let palestra = StatoPalestra()
@@ -566,6 +569,8 @@ enum VoceConfronto: Hashable {
         avviaSalvataggio()
         #if os(macOS)
         avviaBackupAutomatico()
+        // Stanotte («Luce» giro 14): il pianificatore di macOS controlla la finestra serale (niente Timer)
+        avviaPianificatoreNotte()
         // Le cartelle di lavoro di un pacchetto per il commercialista interrotto (Studio › Spese, «Luce» giro 9)
         DispatchQueue.global(qos: .utility).async { PacchettoCommercialista.pulisciAvanzi() }
         #elseif os(iOS)
@@ -577,6 +582,8 @@ enum VoceConfronto: Hashable {
         aggiornaElencoBackup()
         // La nota vocale («Luce» giro 13): via le note decise da più di 30 giorni; allo sblocco la scheda in attesa
         if !caricati.solaLettura { potaNoteInArrivo() }
+        // Stanotte («Luce» giro 14): ultime 14 notti, le «in corso» lasciate a metà diventano «interrotte»
+        if !caricati.solaLettura { potaNotti() }
         osservaSbloccoNote()
         // Promemoria del Mac: solo qui, con l'archivio sul disco (mai nelle istantanee e nelle prove)
         avviaPromemoria()
@@ -824,11 +831,14 @@ enum VoceConfronto: Hashable {
             spese.visiteTolte.append(contentsOf: tolte)
             dati.speseStudio = spese
         }
+        let appuntamentiTolti = Set(dati.appuntamenti.filter { $0.clienteId == id }.map(\.id))
         dati.appuntamenti.removeAll { $0.clienteId == id }
         dati.attivita.removeAll { $0.clienteId == id }
         dati.posizioni.removeAll { $0.clienteId == id }
         dati.simulazioni.removeAll { $0.clienteId == id }
         dati.analisi[id] = nil
+        // Stanotte («Luce» giro 14): le carte del cliente se ne vanno con lui (una sola assegnazione, solo se serve)
+        if let notti = NotteDiLavoro.togliCliente(id, appuntamenti: appuntamentiTolti, da: dati.notti) { dati.notti = notti }
         // Le partite del gioco del rischio della Sala («Luce» giro 4)
         dati.partiteRischio.removeAll { $0.clienteId == id }
         // Vera, fase 3: promesse, confronti e coperture del cliente
@@ -2948,6 +2958,8 @@ enum VoceConfronto: Hashable {
             self.ricalcolaNotifiche()
             self.aggiornaPromemoria()
             self.controllaBackupAutomatico()
+            // Stanotte («Luce» giro 14): il controllo al risveglio
+            self.controllaNotte()
         }
         ripresaLavori = lavoro
         DispatchQueue.main.asyncAfter(deadline: .now() + attesa, execute: lavoro)
@@ -3437,6 +3449,10 @@ enum VoceConfronto: Hashable {
         // E le note vocali di prova, se ce ne sono («Luce» giro 13)
         if dati.noteInArrivo.contains(where: { $0.id.hasPrefix(NotaVocaleDiProva.prefisso) }) {
             dati.noteInArrivo.removeAll { $0.id.hasPrefix(NotaVocaleDiProva.prefisso) }
+        }
+        // E le notti di prova di «Stanotte» («Luce» giro 14): le carte dei clienti di prova se ne vanno con loro
+        if dati.notti.contains(where: { $0.carte.contains { $0.id.hasPrefix(NotteDiProva.prefisso) } }) {
+            dati.notti = dati.notti.filter { !$0.carte.contains { $0.id.hasPrefix(NotteDiProva.prefisso) } }
         }
     }
 

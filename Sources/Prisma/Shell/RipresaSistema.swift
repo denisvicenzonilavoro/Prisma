@@ -30,6 +30,11 @@ extension StatoShell {
                 }
                 .store(in: &abbonamenti)
         }
+        // Stanotte («Luce» giro 14): solo lo stop vero del Mac ferma il lavoro della notte (lo schermo spento no)
+        centro.publisher(for: NSWorkspace.willSleepNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.fermaLavoroNotte(.riposo) }
+            .store(in: &abbonamenti)
         // Lo schermo bloccato (⌃⌘Q, salvaschermo con la password) e il cambio di utente: solo il blocco
         centro.publisher(for: NSWorkspace.sessionDidResignActiveNotification)
             .receive(on: DispatchQueue.main)
