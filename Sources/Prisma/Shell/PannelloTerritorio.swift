@@ -167,7 +167,7 @@ struct PannelloOggi: View {
                     Button { stato.apriCliente(l.id) } label: {
                         HStack(spacing: P.spazio) {
                             AvatarCliente(iniziali: l.cliente.iniziali, tinta: l.cliente.tinta.colori, lato: P.avatar)
-                            VStack(alignment: .leading, spacing: 1) {
+                            VStack(alignment: .leading, spacing: P.spazioRighe) {
                                 Text(l.cliente.nome).carattereApple(P.testoForte).foregroundColor(P.coloreTesto)
                                 Text(l.daFare?.perche ?? "").carattereApple(P.piccolo).foregroundColor(P.testoDaFare).lineLimit(2)
                             }
@@ -239,13 +239,13 @@ struct PannelloCrescita: View {
                     .foregroundColor(P.coloreTesto)
                     .contentTransition(.numericText())
                 HStack(alignment: .top, spacing: P.spazioSezione) {
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: P.spazioRigheLargo) {
                         NumeroCheConta(Double(a.clienti), formato: .intero, da: nil, durataCambio: Mo.conteggio)
                             .carattereApple(P.valoreCrescita)
                             .foregroundColor(P.coloreTesto)
                         Text(a.clienti == 1 ? "cliente" : "clienti").carattereApple(P.piccolo).foregroundColor(P.coloreTesto2)
                     }
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: P.spazioRigheLargo) {
                         if let p = a.patrimonio {
                             NumeroCheConta(p, formato: .euro, da: nil, durataCambio: Mo.conteggio)
                                 .carattereApple(P.valoreCrescita)
@@ -410,7 +410,7 @@ struct PannelloGiro: View {
     @ViewBuilder private var note: some View {
         ForEach(giro.luogoDaIndicare) { a in
             HStack(spacing: P.spazio) {
-                VStack(alignment: .leading, spacing: 1) {
+                VStack(alignment: .leading, spacing: P.spazioRighe) {
                     Text(nomeCliente(a.clienteId)).carattereApple(P.testoForte).foregroundColor(P.coloreTesto)
                     Text("\(Formati.ora.string(from: a.inizio)) · luogo da indicare").carattereApple(P.piccolo).foregroundColor(P.coloreTesto2)
                 }
@@ -466,7 +466,7 @@ struct PannelloGiro: View {
                     .foregroundColor(P.coloreTesto2)
                     .frame(width: G.avatar, height: G.avatar)
             }
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: P.spazioRighe) {
                 Text(t.cliente?.nome ?? (t.genere == .partenza ? "Partenza" : "Rientro"))
                     .carattereApple(G.nome)
                     .foregroundColor(P.coloreTesto)
@@ -546,7 +546,7 @@ struct PannelloGiro: View {
     private func altroSuggerimento(_ s: SuggerimentoGiro) -> some View {
         let nome = MotoreTerritorio.nomeBattesimo(s.cliente)
         return HStack(spacing: P.spazio) {
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: P.spazioRighe) {
                 Text(s.cliente.nome).carattereApple(P.testoForte).foregroundColor(P.coloreTesto)
                 Text("\(s.deviazioneMinuti) min in più · \(s.motivo)").carattereApple(P.piccolo).foregroundColor(P.coloreTesto2).lineLimit(2)
             }
@@ -597,14 +597,14 @@ struct ElencoSenzaLuogo: View {
                     ForEach(senzaLuogo) { s in
                         HStack(alignment: .top, spacing: P.spazio) {
                             AvatarCliente(iniziali: s.cliente.iniziali, tinta: s.cliente.tinta.colori, lato: P.avatar)
-                            VStack(alignment: .leading, spacing: 2) {
+                            VStack(alignment: .leading, spacing: P.spazioRigheLargo) {
                                 Text(s.cliente.nome).carattereApple(P.testoForte).foregroundColor(P.coloreTesto)
                                 Text(s.cliente.indirizzo.isEmpty ? "—" : s.cliente.indirizzo)
                                     .carattereApple(P.piccolo).foregroundColor(P.coloreTesto2)
                                 Text(s.motivo.testo).carattereApple(P.piccolo).foregroundColor(P.testoDaFare)
                             }
                             Spacer(minLength: 0)
-                            VStack(alignment: .trailing, spacing: 2) {
+                            VStack(alignment: .trailing, spacing: P.spazioRigheLargo) {
                                 Button("Apri l'anagrafica") {
                                     stato.territorio.elencoSenzaLuogo = false
                                     stato.clienteAttivoId = s.cliente.id

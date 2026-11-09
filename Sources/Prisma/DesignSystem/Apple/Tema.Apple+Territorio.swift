@@ -114,6 +114,9 @@ extension Tema.Apple {
             static let sopraTile: CGFloat = 16
             static let spazio: CGFloat = 8
             static let spazioSezione: CGFloat = 14
+            /// Fra le righe di testo di una stessa voce (nome e motivo, valore e nota).
+            static let spazioRighe: CGFloat = 1
+            static let spazioRigheLargo: CGFloat = 2
             // Le tile del pannello
             static let raggioTile = Tema.Apple.Raggio.tile
             static let paddingTile = Tema.Apple.Misura.Padding.tile
