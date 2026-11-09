@@ -83,6 +83,35 @@ enum MotoreSinistri {
         return giorniFermo(s, oggi: oggi, cal: cal) > soglia
     }
 
+    /// I nodi della linea della spedizione: le cinque fasi del percorso (fatte, adesso, future; a «Pagato» tutte fatte)
+    /// o, per un respinto, le fasi raggiunte prima del rifiuto (dai fatti) e il nodo rosso. Come `Sinistro.perIlCliente`.
+    static func linea(_ s: Sinistro) -> [(fase: FaseSinistro, stato: SinistroMini.StatoFase)] {
+        if s.fase == .respinto {
+            let raggiunte = s.eventi.compactMap(\.fase).compactMap { FaseSinistro.percorso.firstIndex(of: $0) }
+            let ultima = raggiunte.max() ?? 0
+            var nodi: [(fase: FaseSinistro, stato: SinistroMini.StatoFase)] = []
+            for (i, f) in FaseSinistro.percorso.enumerated() where i <= ultima && f != .pagato {
+                nodi.append((fase: f, stato: .fatta))
+            }
+            nodi.append((fase: .respinto, stato: .respinta))
+            return nodi
+        }
+        let attuale = FaseSinistro.percorso.firstIndex(of: s.fase) ?? 0
+        return FaseSinistro.percorso.enumerated().map { (i, f) -> (fase: FaseSinistro, stato: SinistroMini.StatoFase) in
+            let stato: SinistroMini.StatoFase
+            if i < attuale || s.fase == .pagato { stato = .fatta } else if i == attuale { stato = .adesso } else { stato = .futura }
+            return (fase: f, stato: stato)
+        }
+    }
+
+    /// Fin dove arriva la barra della linea (0…1): alla fase di adesso; piena a «Pagato» e al nodo rosso.
+    static func riempimento(_ s: Sinistro) -> Double {
+        if s.fase == .pagato || s.fase == .respinto { return 1 }
+        let n = FaseSinistro.percorso.count
+        guard n > 1, let i = FaseSinistro.percorso.firstIndex(of: s.fase) else { return 0 }
+        return Double(i) / Double(n - 1)
+    }
+
     /// Il giorno della chiusura (o dell'ultimo fatto, o della denuncia) di un sinistro chiuso.
     static func dataChiusura(_ s: Sinistro) -> Date {
         s.chiusoIl ?? s.ultimoEvento?.data ?? s.apertoIl
