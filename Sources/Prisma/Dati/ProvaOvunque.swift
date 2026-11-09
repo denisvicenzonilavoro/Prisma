@@ -123,6 +123,7 @@ enum ProvaOvunque {
             try provaModuliIban()
             try provaLuceClienti()
             try provaNoteInArrivo()
+            try provaNotteOvunque()
             try provaSpazio(radice: radice)
             print("Prova di Prisma ovunque riuscita")
             return 0
@@ -453,6 +454,27 @@ enum ProvaOvunque {
         try controlla(SincroniaOvunque.accogli(ist, in: telefono).dati.noteInArrivo.isEmpty,
                       "accogliendo l'istantanea il dispositivo riceve note dettate")
         try controlla(dati.noteInArrivo.count == 1, "l'istantanea ha toccato le note dell'archivio del Mac")
+    }
+
+    /// «Stanotte» («Luce» giro 14): le carte della notte e le sue impostazioni non entrano mai nell'istantanea dello spazio,
+    /// e il dispositivo, accogliendola, tiene le sue (le carte non vanno su iPhone/iPad).
+    private static func provaNotteOvunque() throws {
+        var dati = DatiPrisma.demo()
+        dati.notti = [NotteDiProva.notte(dati, oggi: ora(0))]
+        dati.impostazioni.notte.attivo = true
+        let istantanea = SpazioOvunque.datiIstantanea(dati)
+        try controlla(istantanea.notti.isEmpty, "le carte della notte entrano nell'istantanea di Prisma ovunque")
+        try controlla(istantanea.impostazioni.notte == ImpostazioniNotte(), "le impostazioni di «Stanotte» entrano nell'istantanea")
+        let chiaro = try JSONOvunque.codificatore().encode(istantanea)
+        try controlla(!String(decoding: chiaro, as: UTF8.self).contains(NotteDiProva.prefisso),
+                      "una carta della notte è nell'istantanea di Prisma ovunque")
+        var telefono = DatiPrisma.demo()
+        telefono.notti = []
+        let ist = IstantaneaOvunque(generazione: 1, mac: "mac-prova", nomeMac: "Mac", scrittaIl: Date(), vistoFinoA: [:], lamport: 0,
+                                    modificheAmmesse: true, dati: istantanea)
+        try controlla(SincroniaOvunque.accogli(ist, in: telefono).dati.notti.isEmpty,
+                      "accogliendo l'istantanea il dispositivo riceve carte della notte")
+        try controlla(dati.notti.count == 1, "l'istantanea ha toccato le notti dell'archivio del Mac")
     }
 
     private static func provaSpaziLuce() throws {

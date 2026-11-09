@@ -643,6 +643,11 @@ enum ProvaBackup {
                 print("ERRORE: \(errore)")
                 return 1
             }
+            // «Stanotte» di «Luce» (giro 14): le notti di lavoro e le loro impostazioni (ProvaBackupNotte.swift)
+            if let errore = try provaNotte(radice: radice) {
+                print("ERRORE: \(errore)")
+                return 1
+            }
             // L'archivio a pezzi su disco: conversione, backup, file rovinati, soli file cambiati, interruzioni (ProvaBackupArchivioPezzi.swift)
             if let errore = try provaArchivioPezzi(radice: radice, originale: originale) {
                 print("ERRORE: \(errore)")
