@@ -52,10 +52,10 @@ enum ProvaTavolo {
         controlla(!String(decoding: scatola, as: UTF8.self).contains("sessione-di-prova"), "Tavolo: il contenuto non si legge in chiaro")
 
         // Un contenuto di una versione più nuova non rompe il messaggio: si ignora
-        let futuro = "{\"versione\":2,\"sessione\":\"s\",\"numero\":1,\"quando\":\(Date().timeIntervalSince1970),\"contenuto\":{\"ologramma\":{}}}"
+        let futuro = "{\"versione\":3,\"sessione\":\"s\",\"numero\":1,\"quando\":\(Date().timeIntervalSince1970),\"contenuto\":{\"ologramma\":{}}}"
         let sigillato = (try? PonteVera.sigilla(Data(futuro.utf8), k)) ?? Data()
         let aperto = ProtocolloTavolo.apri(sigillato, chiave: k)
-        controlla(aperto != nil && aperto?.messaggio.contenuto == nil, "Tavolo: un contenuto sconosciuto (versione 2) si ignora")
+        controlla(aperto != nil && aperto?.messaggio.contenuto == nil, "Tavolo: un contenuto sconosciuto (versione 3) si ignora")
 
         let x = CursoreTavolo(id: "c", titolo: "Versamento mensile", unita: "€ al mese", valore: 100, minimo: 50, massimo: 1_000,
                               passo: 25, posizione: "Piano", canale: .alleanza, risultato: nil)
@@ -66,6 +66,69 @@ enum ProvaTavolo {
         let testi = [ProtocolloTavolo.testoPresaVisione] + TavoloMac(stato: StatoShell(persistente: false))
             .azioni(ContestoTavolo(documento: nil, pagina: 0, clienteId: presente)).flatMap { [$0.titolo, $0.aiuto] }
         controlla(!testi.contains { $0.lowercased().contains(parolaVietata) }, "Tavolo: nessun testo promette una firma con valore legale")
+        doppioSenso(k, controlla)
+    }
+
+    /// Il doppio senso (giro 16): ogni contenuto nuovo si cifra e si riapre uguale, le regole di direzione, un genere
+    /// sconosciuto (iPad vecchio) e il tratto valido.
+    private static func doppioSenso(_ k: SymmetricKey, _ controlla: (Bool, String) -> Void) {
+        controlla(ProtocolloTavolo.versione == 2 && ProtocolloTavolo.sale == "Prisma · Tavolo · 1",
+                  "Tavolo: versione 2 dei messaggi, stesso sale della chiave")
+        let realta = RealtaTavolo(nome: "Giulia", strati: [StratoRealtaTavolo(classe: "azionario", nome: "Azionario", quota: 0.62, valoreOggi: 81_234)],
+                                  anni: [AnnoRealtaTavolo(anno: 2_031, eta: 50, totale: 131_017)], totaleOggi: 131_017, stimata: true,
+                                  motivoSenzaAnni: nil, scattoConStanza: false, ultimoScatto: nil)
+        let scenario = MotoreGiocoRischio.caricati?.scenari.first
+        let rischio = RischioTavolo(indice: 0, totale: 3, scenario: scenario, avvertenza: "Avvertenza di prova", testiDiProva: true,
+                                    emerso: nil, punteggio: nil, massimo: nil)
+        let lancia = LanciaAnnoTavolo(nome: "Giulia", annoCorrente: 2_031, anniLanciati: 1, anniMassimi: 12, serieCon: [1, 2],
+                                      serieSenza: [1, 1.5], valoreCon: 2, valoreSenza: 1.5,
+                                      ultimaCarta: CartaLanciaTavolo(anno: 2_031, titolo: "Un anno di prova", fraseCon: "con", fraseSenza: "senza", tono: "verde"),
+                                      finita: false, avvertenza: "Avvertenza di prova")
+        let disegno = DisegnoTavolo(etaOggi: 45, etaFine: 90, etaPensione: 67, etichetteAsse: ["0", "100 mila"], risultato: nil,
+                                    frase: TestiRealta.dopoPensioneDisegno)
+        let capsula = CapsulaTavolo(nome: "Giulia", siApre: "Si apre a 67 anni", aiuto: TestiRealta.aiutoCapsula)
+        let tratto = TrattoTavolo(id: "m", punti: [PuntoTavolo(x: 0, y: 0.1), PuntoTavolo(x: 0.5, y: 0.4), PuntoTavolo(x: 1, y: 0.9)])
+        let base = MostraTavolo(id: "m", genere: .realtaAumentata, titolo: "La realtà aumentata", cliente: "Giulia Rossi")
+        var mostre: [MostraTavolo] = []
+        var x = base; x.realta = realta; mostre.append(x)
+        x = base; x.genere = .rischio; x.rischio = rischio; mostre.append(x)
+        x = base; x.genere = .lanciaAnno; x.lancia = lancia; mostre.append(x)
+        x = base; x.genere = .disegno; x.disegno = disegno; mostre.append(x)
+        x = base; x.genere = .capsula; x.capsula = capsula; mostre.append(x)
+        let dallIPad: [ContenutoTavolo] = [
+            .rispostaRischio(RispostaRischioTavolo(id: "m", scenario: "calo", scelta: 1, secondi: 2.5)),
+            .lancioAnno(LancioAnnoTavolo(id: "m")),
+            .tratto(tratto),
+            .testoCapsula(TestoCapsulaTavolo(id: "m", testo: "Testo di prova della capsula.")),
+            .fotoRealta(FotoRealtaTavolo(id: "m", immagine: Data([0x89, 0x50, 0x4E, 0x47]), conStanza: false, anno: 2_031, esploso: true)),
+        ]
+        var uguali = true
+        for c in mostre.map(ContenutoTavolo.mostra) + dallIPad {
+            let m = MessaggioTavolo(sessione: "s", numero: 1, contenuto: c)
+            guard let cornice = try? ProtocolloTavolo.cornice(m, chiave: k),
+                  ProtocolloTavolo.apri(Data(cornice.dropFirst(4)), chiave: k)?.messaggio == m else { uguali = false; continue }
+        }
+        controlla(uguali, "Tavolo: i contenuti del doppio senso si cifrano e si riaprono uguali (\(mostre.count + dallIPad.count))")
+        controlla(dallIPad.allSatisfy { $0.dellIPad && !$0.delMac }, "Tavolo: risposte, lanci, tratto, capsula e scatto vengono solo dall'iPad")
+        controlla(mostre.allSatisfy { ContenutoTavolo.mostra($0).delMac && !ContenutoTavolo.mostra($0).dellIPad },
+                  "Tavolo: i generi nuovi li manda solo il Mac")
+        // Un iPad vecchio: un genere che non conosce lascia il contenuto vuoto, il messaggio resta
+        let vecchio = "{\"versione\":2,\"sessione\":\"s\",\"numero\":1,\"quando\":\(Date().timeIntervalSince1970),\"contenuto\":{\"mostra\":{\"_0\":{\"id\":\"m\",\"genere\":\"ologramma\",\"titolo\":\"t\",\"cliente\":\"c\",\"pagine\":[]}}}}"
+        let aperto = (try? PonteVera.sigilla(Data(vecchio.utf8), k)).flatMap { ProtocolloTavolo.apri($0, chiave: k) }
+        controlla(aperto != nil && aperto?.messaggio.contenuto == nil, "Tavolo: un genere sconosciuto si ignora (iPad di una versione vecchia)")
+        controlla(tratto.valido(), "Tavolo: un tratto con punti fra 0 e 1 è valido")
+        let fuori = TrattoTavolo(id: "m", punti: [PuntoTavolo(x: 0, y: 0), PuntoTavolo(x: 1.2, y: 0.5)])
+        let nan = TrattoTavolo(id: "m", punti: [PuntoTavolo(x: 0, y: 0), PuntoTavolo(x: .nan, y: 0.5)])
+        let troppi = TrattoTavolo(id: "m", punti: Array(repeating: PuntoTavolo(x: 0.3, y: 0.3), count: ProtocolloTavolo.massimiPuntiTratto + 1))
+        controlla(!fuori.valido() && !nan.valido() && !troppi.valido(), "Tavolo: punti fuori da 0…1, NaN o più di 2.000 non valgono")
+        // Lo scatto con la stanza: ridotto a 1.600 pixel e in JPEG resta sotto i 4 MB
+        if let grande = TrattoProvaTavolo.immagine(), let ridotta = ProtocolloTavolo.riduci(grande, lato: 64),
+           let jpeg = ProtocolloTavolo.jpeg(ridotta, qualita: 0.8) {
+            controlla(max(ridotta.width, ridotta.height) <= 64 && ProtocolloTavolo.immagine(jpeg) != nil && jpeg.count <= ProtocolloTavolo.massimoFoto,
+                      "Tavolo: lo scatto si riduce e si codifica in JPEG, e si riapre")
+        } else {
+            controlla(false, "Tavolo: lo scatto si riduce e si codifica in JPEG")
+        }
     }
 
     // MARK: - Mac e iPad su 127.0.0.1
