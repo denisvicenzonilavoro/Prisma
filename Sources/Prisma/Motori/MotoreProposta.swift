@@ -312,7 +312,7 @@ enum MotoreProposta {
             if let fabbisogno, let mesi {
                 let manca = fabbisogno - coperto
                 capitale = manca > 0 ? manca : nil
-                motivo = "Con \(TestiAzienda.mesi(mesi)) di fatturato a rischio servono \(CifreDoc.euro(fabbisogno)); "
+                motivo = "Con \(TestiAzienda.mesi(mesi)) \(mesi == 1 ? "mese" : "mesi") di fatturato a rischio servono \(CifreDoc.euro(fabbisogno)); "
                     + (coperto > 0 ? "le coperture key man ne coprono \(CifreDoc.euro(coperto))." : "nessuna copertura key man.")
             } else {
                 motivo = fraseServonoDatiAzienda

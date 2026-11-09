@@ -92,6 +92,20 @@ extension StatoShell {
         p.scelto = b.id
     }
 
+    /// «Proponi una key man ›» e «Proponi un piano ›» del dossier dell'azienda (§9.3.4): Pratiche › Proposta sul
+    /// bisogno «persona chiave» (con il capitale che manca, da MotoreAzienda) o «welfare per i dipendenti».
+    func proponiDaAzienda(clienteId: String, aziendaId: String, area: AreaAzienda) {
+        guard let fonte = fonteProposta(clienteId), let a = fonte.cliente.elencoAziende.first(where: { $0.id == aziendaId }) else { return }
+        clienteAttivoId = clienteId
+        if let b = MotoreProposta.bisognoAzienda(a, area: area, fonte: fonte, bozze: bozzeAperteProposta(clienteId)) {
+            richiediBisognoProposta(b)
+            apriPratiche(.proposta)
+        } else {
+            apriPratiche(.proposta)
+            mostraAvviso(TestiAzienda.avvisoProposta(area, nome: TestiAzienda.nome(fonte.cliente)))
+        }
+    }
+
     /// Le bozze aperte di un cliente (proposte con esito bozza).
     func bozzeAperteProposta(_ clienteId: String) -> [Posizione] {
         posizioniCliente(clienteId).filter { $0.stato == .proposta && $0.esito == .bozza }

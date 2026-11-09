@@ -70,6 +70,12 @@ enum IstantaneeMobile {
                     m.stato.scegliBisognoProposta(b.id)
                     m.stato.costruisciProposta(b, animato: false)
                 },
+                // «Luce» §9.3.7: il dossier di Marco sull'iPad, scheda «L'azienda» in sola lettura (azienda di prova)
+                Scena(nome: "77-azienda-ipad", orizzontale: true) { m in
+                    m.stato.clienteAttivoId = "marco"
+                    m.stato.schedaCliente = .azienda
+                    m.apri(.clienti)
+                },
                 Scena(nome: "8-simulazioni") { m in m.apri(.simulazioni) },
                 Scena(nome: "9-vera", attesaInPiu: IstantaneeMobile.attesaScrivania) { m in m.apri(.vera) },
                 Scena(nome: "10-impostazioni-archivio") { m in
@@ -298,6 +304,11 @@ enum IstantaneeMobile {
                 // «Luce» §7.3.4: «Dopo la firma» sull'iPhone con le quattro pratiche di prova (una ferma in alto, poi le
                 // aperte), in sola lettura: senza «Prisma ovunque» acceso i passi si segnano dal Mac
                 Scena(nome: "824-pratiche-iphone") { m in m.apri(.pratiche) },
+                // «Luce» §9.3.4: il dossier di Marco sull'iPhone con la riga «L'azienda» (nome e fatturato di prova)
+                Scena(nome: "78-azienda-iphone") { m in
+                    m.apri(.clienti)
+                    m.percorsoClienti = [.cliente("marco")]
+                },
                 Scena(nome: "836-sinistri-iphone") { m in
                     m.stato.dati.sinistri = m.stato.dati.sinistri.map(SpazioOvunque.sinistroPerOvunque)
                     m.apri(.clienti)

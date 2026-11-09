@@ -135,12 +135,12 @@ struct AziendaDossier: View {
             // In modalità cliente niente collegamenti verso Pratiche
             guard !stato.inModoCliente, !stato.solaLettura else { return nil }
             let id = cliente.id
-            let nome = TestiAzienda.nome(cliente)
             let area = v.area
+            let azienda = a.id
+            // La proposta che si costruisce da sola sul bisogno dell'azienda (persona chiave con il capitale che manca,
+            // welfare per i dipendenti): canale dal prodotto scelto, prodotti solo dal catalogo
             return (v.area.collegamento, {
-                stato.clienteAttivoId = id
-                stato.apriPratiche(.proposta)
-                stato.mostraAvviso(TestiAzienda.avvisoProposta(area, nome: nome))
+                stato.proponiDaAzienda(clienteId: id, aziendaId: azienda, area: area)
             })
         case .dettaglio:
             return (v.area.collegamento, { apriDettaglio(a, v.area) })
