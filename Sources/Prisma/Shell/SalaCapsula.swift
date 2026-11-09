@@ -135,7 +135,7 @@ struct CapsulaDelTempo: View {
     private func colonnaSinistra(nome: String, obiettivi: [Obiettivo]) -> some View {
         let attuale = sceltaAttuale(obiettivi)
         VStack(alignment: .leading, spacing: 0) {
-            Text(TestiCapsule.titolo(femminile: MotoreAree360.femminile(cliente)))
+            Text(TestiCapsule.titolo(femminile: TestiAree360.femminile(cliente)))
                 .carattereApple(K.titolo)
                 .foregroundColor(K.coloreTitolo)
                 .fixedSize(horizontal: false, vertical: true)

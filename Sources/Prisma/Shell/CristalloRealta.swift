@@ -175,7 +175,10 @@ final class CristalloRealta {
     /// I puntini del piano trovato (0…1).
     func puntiniVisibili(_ opacita: Float) {
         puntini.isEnabled = opacita > 0.001
-        puntini.components.set(OpacityComponent(opacity: min(1, max(0, opacita))))
+        // L'opacità graduale c'è da iOS 18 / macOS 15; prima i puntini si accendono e si spengono soltanto
+        if #available(iOS 18.0, macOS 15.0, *) {
+            puntini.components.set(OpacityComponent(opacity: min(1, max(0, opacita))))
+        }
     }
 
     /// L'anello della posa che si allarga e svanisce (avanzamento 0…1).
@@ -184,7 +187,9 @@ final class CristalloRealta {
         anello.isEnabled = a > 0 && a < 1
         let r = T.Puntini.anello * a
         anello.scale = SIMD3(max(0.001, r), 1, max(0.001, r))
-        anello.components.set(OpacityComponent(opacity: 1 - a))
+        if #available(iOS 18.0, macOS 15.0, *) {
+            anello.components.set(OpacityComponent(opacity: 1 - a))
+        }
     }
 
     /// Il punto 3D sopra la faccia alta (per la targhetta), in coordinate del mondo.
