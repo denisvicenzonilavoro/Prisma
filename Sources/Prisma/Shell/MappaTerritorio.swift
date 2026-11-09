@@ -571,7 +571,7 @@ struct AnelloPulsante: View {
             .frame(width: 2 * raggio, height: 2 * raggio)
             .scaleEffect(pulsa ? Mo.scalaPulsazione : 1)
             .opacity(pulsa ? Mo.opacitaPulsazione : 1)
-            .animation(fermo ? nil : .easeOut(duration: Mo.pulsazione).repeatForever(autoreverses: false), value: pulsa)
+            .animation(fermo ? nil : Mo.animazionePulsazione, value: pulsa)
             .onAppear { if !fermo { acceso = true } }
     }
 }
