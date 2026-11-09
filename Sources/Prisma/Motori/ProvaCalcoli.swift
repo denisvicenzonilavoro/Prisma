@@ -1299,6 +1299,9 @@ enum ProvaCalcoli {
         // anni dalla linea della vita, geometria, shader) e «Disegna il tuo futuro» (versamento in più verificato)
         ProvaCalcoliLuce.esegui(verificaEsterna)
         ProvaCalcoliDisegno.esegui(verificaEsterna)
+        // «Luce», giro 16: la realtà aumentata (strati dalla composizione, anni fino alla pensione, maglia chiusa e
+        // orientata, crescita con il rimbalzo, passaggio dal tavolo, testi senza cifre inventate)
+        ProvaCalcoliRealta.esegui(verificaEsterna)
         // «Luce», giro 4: la Sala, una giornata della pensione (resto, priorità, voci senza importo, senza e con il piano)
         // e il gioco del rischio (soglie, confronto con il dichiarato, testi di prova dalla risorsa, partite incomplete)
         ProvaCalcoliSala.esegui(verificaEsterna)
