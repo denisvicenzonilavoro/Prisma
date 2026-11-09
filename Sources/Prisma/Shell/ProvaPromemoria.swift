@@ -146,7 +146,7 @@ enum ProvaPromemoria {
 
         // La destinazione del clic va e torna dal testo del promemoria
         let destinazioni: [DestinazioneRicerca] = [.app(.agenda), .cliente("c:1"), .posizione("p"), .documento("d"), .nota("n"),
-                                                   .appuntamento("a"), .attivita("t"), .obiettivo("o"), .incontro("i"), .prodotto("x")]
+                                                   .appuntamento("a"), .attivita("t"), .obiettivo("o"), .incontro("i"), .prodotto("x"), .biblioteca("norma-ab12", pagina: 14)]
         controlla(destinazioni.allSatisfy { DestinazioneRicerca(testo: $0.testo) == $0 }
                     && DestinazioneRicerca(testo: "boh") == nil && DestinazioneRicerca(testo: "app:inesistente") == nil,
                   "destinazione del clic in testo e ritorno")

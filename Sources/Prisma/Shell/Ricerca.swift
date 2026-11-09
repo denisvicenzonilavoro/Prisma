@@ -2,10 +2,10 @@ import Foundation
 import CoreGraphics
 
 /// «Cerca ovunque» (⌘K): una sola ricerca su app, clienti, posizioni, documenti (anche nel testo
-/// delle pagine), appuntamenti, attività, obiettivi, incontri e prodotti. Tutto avviene sul Mac,
-/// sui dati dell'archivio locale.
+/// delle pagine), appuntamenti, attività, obiettivi, incontri, prodotti e (sul Mac, «Luce» §8.1.5.2 punto 6) i
+/// documenti della Biblioteca, nei titoli e nel testo. Tutto avviene sul Mac, sui dati dell'archivio locale.
 enum GruppoRicerca: String, CaseIterable, Identifiable {
-    case app, clienti, posizioni, documenti, note, appuntamenti, attivita, obiettivi, incontri, prodotti
+    case app, clienti, posizioni, documenti, note, appuntamenti, attivita, obiettivi, incontri, prodotti, biblioteca
     /// Comandi rapidi del pannello (nuovo appuntamento, crea backup…): solo nella ricerca a parole.
     case azioni
 
@@ -23,6 +23,7 @@ enum GruppoRicerca: String, CaseIterable, Identifiable {
         case .obiettivi: return "Obiettivi"
         case .incontri: return "Incontri"
         case .prodotti: return "Prodotti"
+        case .biblioteca: return "Biblioteca"
         case .azioni: return "Azioni"
         }
     }
@@ -40,6 +41,7 @@ enum GruppoRicerca: String, CaseIterable, Identifiable {
         case .obiettivi: return .obiettivi
         case .incontri: return .incontri
         case .prodotti: return .prodotti
+        case .biblioteca: return .biblioteca
         case .azioni: return .ricerca
         }
     }
@@ -123,6 +125,8 @@ enum DestinazioneRicerca: Hashable {
     case obiettivo(String)
     case incontro(String)
     case prodotto(String)
+    /// Un documento della Biblioteca, alla pagina in cui compare la parola cercata (1 se è nel titolo).
+    case biblioteca(String, pagina: Int)
 }
 
 /// Chiave unica di un risultato: le azioni portano tutte al pannello, si distinguono per l'azione.
@@ -132,7 +136,8 @@ struct ChiaveRisultato: Hashable {
 }
 
 struct RisultatoRicerca: Identifiable, Hashable {
-    let destinazione: DestinazioneRicerca
+    /// `var`: per la Biblioteca la pagina si scopre valutando il testo.
+    var destinazione: DestinazioneRicerca
     let gruppo: GruppoRicerca
     let titolo: String
     let dettaglio: String
@@ -235,7 +240,11 @@ enum MotoreRicerca {
             for (i, pagina) in c.pagine.enumerated() {
                 let trovate = mancanti.filter { contiene(pagina, $0) }
                 guard !trovate.isEmpty else { continue }
-                if estratto == nil { estratto = "pag. \(i + 1): \(riga(pagina, attorno: trovate[0]))" }
+                if estratto == nil {
+                    estratto = "pag. \(i + 1): \(riga(pagina, attorno: trovate[0]))"
+                    // La Biblioteca si apre sulla pagina trovata
+                    if case .biblioteca(let id, _) = r.destinazione { r.destinazione = .biblioteca(id, pagina: i + 1) }
+                }
                 mancanti.removeAll { trovate.contains($0) }
                 if mancanti.isEmpty { break }
             }
@@ -373,6 +382,17 @@ enum MotoreRicerca {
                       campi: [("Emittente", p.emittente), ("Tipologia", p.tipologia), ("Canale", p.canale.nomeBreve),
                               ("Garanzie", p.garanzie), ("Liquidabilità", p.liquidabilita), ("Fonte", p.fonte), ("Note", p.note)])
         }
+        #if os(macOS)
+        // «Luce» §8.1.5.2 punto 6: i documenti della Biblioteca, nel titolo, nell'edizione e nel testo delle pagine
+        // (gli illeggibili non hanno testo); su iPhone e iPad la Biblioteca non c'è (decisione 114)
+        candidati[.biblioteca] = stato.biblioteca.tutti.filter { !$0.illeggibile }.map { d in
+            Candidato(risultato: RisultatoRicerca(destinazione: .biblioteca(d.id, pagina: 1), gruppo: .biblioteca, titolo: d.titolo,
+                                                  dettaglio: [d.dettaglio, d.edizione].filter { !$0.isEmpty }.joined(separator: " · "),
+                                                  canale: d.canale),
+                      campi: [("Edizione", d.edizione), ("Sigla", d.sigla)],
+                      pagine: stato.trovaPagina.pagine(d))
+        }
+        #endif
 
         candidati[.azioni] = AzioneRicerca.allCases.filter { $0 != .modoCliente || !stato.inModoCliente }.map { a in
             Candidato(risultato: RisultatoRicerca(destinazione: .app(.ricerca), gruppo: .azioni, titolo: a.titolo,
@@ -612,6 +632,12 @@ extension StatoShell {
             filtroAreaProdotti = nil
             prodottoSelezionato = id
             apri(.prodotti)
+        case .biblioteca(let id, let pagina):
+            guard documentoBiblioteca(id) != nil else { return }
+            biblioteca.scelto = id
+            apriApp(.biblioteca)
+            trovaPagina.preparaIndice()
+            apriDocumentoBiblioteca(id, pagina: pagina)
         }
     }
 }

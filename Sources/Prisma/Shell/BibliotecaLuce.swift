@@ -288,6 +288,57 @@ extension StatoShell {
         #endif
     }
 
+    // MARK: - Collegamenti (§8.1.5.2 punto 6) ed edizioni (§8.1.6 punto 3)
+
+    /// «C'è anche un'edizione più vecchia: …» sotto l'edizione della risposta (stesso prodotto, edizioni diverse).
+    func avvisoEdizioneBiblioteca(_ d: DocumentoBiblioteca) -> String? {
+        MotoreBiblioteca.avvisoEdizione(d, tra: biblioteca.tutti)
+    }
+
+    /// Il documento collegato a un prodotto, per «Condizioni nella Biblioteca» nella scheda di Prodotti. Solo sul Mac:
+    /// la Biblioteca non va su iPhone e iPad (decisione 114).
+    func condizioniInBiblioteca(_ prodottoId: String) -> DocumentoBiblioteca? {
+        #if os(macOS)
+        return MotoreBiblioteca.condizioniDelProdotto(prodottoId, tra: biblioteca.tutti)
+        #else
+        return nil
+        #endif
+    }
+
+    /// «Condizioni nella Biblioteca»: la Biblioteca con il documento collegato aperto alla prima pagina.
+    func apriCondizioniInBiblioteca(_ prodottoId: String) {
+        guard let d = condizioniInBiblioteca(prodottoId) else { return }
+        biblioteca.scelto = d.id
+        apriApp(.biblioteca)
+        trovaPagina.preparaIndice()
+        apriDocumentoBiblioteca(d.id)
+    }
+
+    /// «Cerca nella Biblioteca» da Vera (app e scrivania): la stessa ricerca di «Trova la pagina», con la risposta e il
+    /// collegamento alla pagina nella Biblioteca.
+    /// `subito`: come in `chiediBiblioteca` (prove e istantanee, senza Qwen).
+    func cercaNellaBiblioteca(_ domanda: String, subito: Bool = false) {
+        apriApp(.biblioteca)
+        trovaPagina.preparaIndice()
+        chiediBiblioteca(domanda, subito: subito)
+    }
+
+    /// La domanda dell'ultima risposta di Vera, se parla di condizioni o normativa e la Biblioteca ha documenti in cui
+    /// cercare: Vera propone «Cerca nella Biblioteca». Solo sul Mac (decisione 114); nil durante una risposta in corso.
+    func domandaPerBiblioteca(in elenco: [MessaggioVera]) -> String? {
+        #if os(macOS)
+        guard !veraInCorso, let ultima = elenco.last, ultima.autore == .vera, elenco.count >= 2 else { return nil }
+        let domanda = elenco[elenco.count - 2]
+        guard domanda.autore == .utente else { return nil }
+        let noti = dati.clienti.map { ClienteNoto(id: $0.id, nome: $0.nome) }
+        guard TrovaPaginaVera.proponeBiblioteca(domanda.testo, clienti: noti),
+              biblioteca.tutti.contains(where: { !$0.illeggibile && ($0.testo != nil || !$0.articoli.isEmpty) }) else { return nil }
+        return domanda.testo
+        #else
+        return nil
+        #endif
+    }
+
     // MARK: - Fac-simile di prova
 
     /// I sei fac-simile (Risorse/Biblioteca), con i clienti di prova di Impostazioni › Strumenti.

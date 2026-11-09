@@ -101,6 +101,14 @@ struct AppProdotti: View {
                         }
                         .buttonStyle(StileVetro(accento: true))
                     }
+                    // «Luce» §8.1.5.2 punto 6: il documento della Biblioteca collegato al prodotto (solo sul Mac)
+                    if let d = stato.condizioniInBiblioteca(p.id) {
+                        Button { stato.apriCondizioniInBiblioteca(p.id) } label: {
+                            Label("Condizioni nella Biblioteca", systemImage: "books.vertical")
+                        }
+                        .buttonStyle(StileVetro())
+                        .help("Apri «\(d.titolo)»" + (d.edizione.isEmpty ? "" : " (\(d.edizione))") + " nella Biblioteca")
+                    }
                 }
                 .padding(.top, 8)
             }

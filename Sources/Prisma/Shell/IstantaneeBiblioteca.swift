@@ -11,7 +11,12 @@ import CoreGraphics
 /// - 874: risposta non trovata con le pagine più vicine;
 /// - 875: Vera non pronta, la pagina con i passi trovati evidenziati;
 /// - 876: «Mostra al cliente», la pagina a tutto schermo con la frase;
-/// - 877: la finestra alla larghezza minima (1100).
+/// - 877: la finestra alla larghezza minima (1100);
+/// - 878 (§8.1.6 punto 3): la risposta dal piano rivalutabile con una seconda edizione più vecchia dello stesso prodotto,
+///   «C'è anche un'edizione più vecchia», chiaro e scuro; la scheda del prodotto collegato con «Condizioni nella
+///   Biblioteca» (§8.1.5.2 punto 6), chiaro e scuro;
+/// - 879 (§8.1.5.2 punto 6): «Cerca ovunque» (⌘K) con il gruppo «Biblioteca», chiaro e scuro; Vera che propone «Cerca
+///   nella Biblioteca» sotto una risposta su condizioni, chiaro e scuro.
 /// DATI DI PROVA DICHIARATI: i documenti sono i sei fac-simile scritti per Prisma (Risorse/Biblioteca); le risposte di
 /// Vera sono JSON di prova passati dalla stessa verifica di Prisma che vale per Qwen.
 extension Istantanee {
@@ -64,7 +69,63 @@ extension Istantanee {
             s.alternaIngrandimento(.biblioteca)
             s.ridimensiona(.biblioteca, dimensione: CGSize(width: 1100, height: 760))
         }
+        coppia("878-biblioteca-edizioni") { s in
+            preparaRispostaBiblioteca(s)
+            _ = edizionePrecedenteDiProva(s)
+            s.apri(.biblioteca)
+        }
+        coppia("878-biblioteca-prodotto") { s in
+            s.caricaEsempiBiblioteca()
+            if let prodotto = edizionePrecedenteDiProva(s) {
+                s.filtroCanaleProdotti = nil
+                s.filtroAreaProdotti = nil
+                s.prodottoSelezionato = prodotto
+            }
+            s.apri(.prodotti)
+        }
+        coppia("879-biblioteca-cerca-ovunque") { s in
+            s.caricaEsempiBiblioteca()
+            s.testoRicerca = "riscatto penali"
+            s.cercaOvunque()
+        }
+        coppia("879-biblioteca-da-vera") { s in
+            s.caricaEsempiBiblioteca()
+            s.rispostePreparate = true
+            s.disponibilitaLocale = .pronto
+            s.clienteAttivoId = "marco"
+            s.veraPortafoglio = false
+            s.aggiungiMessaggio(MessaggioVera(autore: .utente, testo: "Il riscatto nei primi anni ha penali?"), cliente: "marco", parla: false)
+            s.aggiungiMessaggio(MessaggioVera(autore: .vera, testo: "Nelle posizioni di Marco non c'è scritto: le penali le dicono le condizioni del prodotto. (Risposta di prova.)"),
+                                cliente: "marco", parla: false)
+            s.apri(.vera)
+        }
         return scene
+    }
+
+    /// DATI DI PROVA DICHIARATI: una seconda edizione (06/2024, stesso testo del fac-simile) del piano rivalutabile, e
+    /// tutte e due collegate al primo prodotto Alleanza dei dati di prova. Restituisce l'id del prodotto.
+    nonisolated static func edizionePrecedenteDiProva(_ s: StatoShell) -> String? {
+        guard let prodotto = (s.dati.prodotti.first { $0.canale == .alleanza } ?? s.dati.prodotti.first)?.id,
+              let attuale = s.biblioteca.tutti.first(where: { $0.titolo.hasPrefix("Piano rivalutabile") }),
+              let pagine = EsempiBiblioteca.pagine("piano-rivalutabile") else { return nil }
+        let scelto = s.biblioteca.scelto
+        let d = s.biblioteca.aggiungi(titolo: "Piano rivalutabile · Condizioni (edizione precedente)", sigla: "",
+                                      edizione: "fac-simile, ed. 06/2024", file: "esempio", pagine: [])
+        s.biblioteca.aggiorna(d.id) { x in
+            x.file = "\(d.id).txt"
+            x.testo = "\(d.id).txt"
+            x.genere = .condizioni
+            x.canale = .alleanza
+            x.confermato = true
+            x.pagine = pagine.count
+            x.pagineOCR = 0
+            x.diProva = true
+            x.prodottoId = prodotto
+        }
+        s.trovaPagina.salvaTesto(d.id, pagine)
+        s.collegaProdottoBiblioteca(attuale.id, prodotto: prodotto)
+        s.biblioteca.scelto = scelto
+        return prodotto
     }
 
     /// La domanda sul riscatto con la risposta di prova di Vera, verificata come quella di Qwen.

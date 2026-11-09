@@ -456,6 +456,13 @@ struct VistaBiblioteca: View {
                     if !d.edizione.isEmpty {
                         Text(d.edizione).carattereApple(B.notaCercate).foregroundColor(C.inchiostro2)
                     }
+                    // §8.1.6 punto 3: lo stesso prodotto con un'altra edizione
+                    if let altra = stato.avvisoEdizioneBiblioteca(d) {
+                        Text(altra)
+                            .carattereApple(B.notaCercate)
+                            .foregroundColor(C.arancio)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
                 .padding(.top, B.sopraChip - 10)
             }
