@@ -387,12 +387,12 @@ enum ProvaOvunque {
         let ist = IstantaneaOvunque(generazione: 1, mac: idMac, nomeMac: "Mac di prova", scrittaIl: ora(1), vistoFinoA: [:],
                                     lamport: 1, modificheAmmesse: true, dati: spento)
         let locale = DatiPrisma.demo()
-        let senza = SpazioOvunque.accogli(ist, in: locale).dati
+        let senza = SincroniaOvunque.accogli(ist, in: locale).dati
         try controlla(senza.potenziali.isEmpty && senza.campagne == dati.campagne,
                       "sul dispositivo arrivano potenziali che lo spazio non aveva (o non arrivano le campagne)")
         let ist2 = IstantaneaOvunque(generazione: 2, mac: idMac, nomeMac: "Mac di prova", scrittaIl: ora(2), vistoFinoA: [:],
                                      lamport: 2, modificheAmmesse: true, dati: acceso)
-        try controlla(SpazioOvunque.accogli(ist2, in: locale).dati.potenziali == dati.potenziali,
+        try controlla(SincroniaOvunque.accogli(ist2, in: locale).dati.potenziali == dati.potenziali,
                       "sul dispositivo non arrivano i potenziali dello spazio")
     }
 
