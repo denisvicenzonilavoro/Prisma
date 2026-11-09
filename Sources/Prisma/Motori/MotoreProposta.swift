@@ -240,7 +240,8 @@ enum MotoreProposta {
         let catalogo = f.prodotti.filter { c.canali.isEmpty || c.canali.contains($0.canale) }
         let aperte = Set(f.posizioni.filter { $0.stato == .proposta && $0.esito != .rifiutata && $0.esito != .accettata }.map(\.area))
         var elenco: [BisognoScoperto] = []
-        for p in f.posizioni where p.stato == .inEssere && (p.area == .investimento || p.area == .risparmio) {
+        // Senza un valore non c'è nulla da trasferire: niente bisogno (mai una cifra inventata)
+        for p in f.posizioni where p.stato == .inEssere && (p.area == .investimento || p.area == .risparmio) && p.valore > 0 {
             let bozza = bozze.first { b in schede.contains { $0.posizioneId == b.id && $0.posizioneSostituitaId == p.id } }
             if bozza == nil && aperte.contains(p.area) { continue }
             let alternativa = MotoreCosti.alternativa(p, prodotti: catalogo, cliente: c.id)
