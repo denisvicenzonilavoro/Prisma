@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import PDFKit
 
 // La capsula del tempo nello stato («Luce» giro 15, §3.4): sigillare, aprire (il testo si decifra solo in memoria e non
 // si salva mai), consegnare, cambiare quando si apre, eliminare, il PDF su carta bianca e l'apertura dai traguardi.
@@ -150,5 +151,44 @@ extension StatoShell {
     private func titoloObiettivo(_ a: CapsulaTempo.Apertura) -> String? {
         guard case .obiettivo(let id) = a else { return nil }
         return dati.obiettivi.first { $0.id == id }?.titolo
+    }
+}
+
+/// La pagina PDF della capsula del tempo dentro `--prova-prospetti` («Luce» giro 15, §3.4.7): la capsula di prova di Sofia
+/// (DATI DI PROVA DICHIARATI) aperta con la chiave di prova, su carta bianca, una pagina A4 con il sopratitolo, il nome, il
+/// testo e il piede; il PDF condiviso è protetto da password (password di prova). Salvata come «capsula-sofia.pdf».
+@MainActor
+enum ProvaCapsulaPDF {
+    static func esegui(_ verifica: (String, Bool, String) -> Void, cartella: URL?) {
+        let dati = DatiPrisma.demo()
+        guard let c = dati.capsule.first(where: { $0.id == CapsuleDiProva.idSofia }),
+              let testo = try? SigilloCapsule.apri(c, chiave: SigilloCapsule.chiaveDiProva),
+              let cliente = dati.clienti.first(where: { $0.id == c.clienteId }) else {
+            verifica("Capsula: la capsula di prova di Sofia si apre", false, "")
+            return
+        }
+        let aperta = Date(timeIntervalSinceReferenceDate: 815_204_317)
+        let d = PaginaCapsula.documento(testo: testo, sigillataIl: c.sigillataIl, apertaIl: aperta, cliente: cliente.nome)
+        guard let pdf = StampaCarta.pdf(d), let documento = PDFDocument(data: pdf) else {
+            verifica("Capsula: PDF creato", false, "")
+            return
+        }
+        let pagina = documento.page(at: 0)?.bounds(for: .mediaBox) ?? .zero
+        verifica("Capsula: PDF di una pagina A4 verticale", documento.pageCount == 1 && pagina.height > pagina.width,
+                 "\(documento.pageCount) pagine, \(pdf.count / 1024) KB")
+        let scritto = ProvaProspetti.spazi(StampaCarta.testo(pdf).joined(separator: "\n"))
+        // Il sopratitolo ha la spaziatura larga (le lettere possono uscire separate dal testo del PDF): si controllano
+        // nome, testo e piede
+        verifica("Capsula: nome, testo e piede nel PDF",
+                 scritto.contains(cliente.nome) && scritto.contains("goderti i nipoti")
+                     && scritto.contains(ProvaProspetti.spazi(TestiCapsule.piede(apertaIl: aperta))), "")
+        let password = TestiCapsule.passwordDiProvaIstantanee
+        if let protetto = StampaCarta.protetto(pdf, password: password), let chiuso = PDFDocument(data: protetto) {
+            verifica("Capsula: il PDF condiviso è chiuso senza la password e si apre con la password",
+                     chiuso.isLocked && !chiuso.unlock(withPassword: "Pino-Vela-Lago-72") && chiuso.unlock(withPassword: password), "")
+        } else {
+            verifica("Capsula: PDF protetto creato", false, "")
+        }
+        if let cartella { try? pdf.write(to: cartella.appendingPathComponent("capsula-sofia.pdf")) }
     }
 }

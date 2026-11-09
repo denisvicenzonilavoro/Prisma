@@ -191,6 +191,9 @@ extension Tema.Apple.SalaRacconti {
         static let titoloTraguardo = C(dimensione: 14, peso: .bold)
         static let percheTraguardo = Tema.Apple.Carattere.secondario
         static let spazioTraguardo: CGFloat = 8
+        /// Il sigillo viola della tile, ridotto (lato 36).
+        static let scalaSigilloTraguardo: CGFloat = 0.7
+        static let latoSigilloTraguardo: CGFloat = 36
     }
 }
 

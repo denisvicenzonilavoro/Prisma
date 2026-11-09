@@ -63,6 +63,11 @@ extension AppImpostazioni {
                 NotaImpostazioni("Se dimentichi la password, i backup protetti non si aprono più.")
                     .cascataImpostazioni(6)
             }
+            // «Luce» giro 15 (decisione 42): la chiave delle capsule del tempo entra solo nei backup protetti
+            if !b.cifrato && !stato.dati.capsule.isEmpty {
+                NotaImpostazioni(TestiCapsule.avvisoBackup, colore: Tema.Apple.Colore.arancio)
+                    .cascataImpostazioni(6)
+            }
 
             // «Luce» giro 6: la Biblioteca (PDF di condizioni, KID, circolari) nel backup di base, con l'interruttore
             GruppoImpostazioni(titolo: "Biblioteca") {

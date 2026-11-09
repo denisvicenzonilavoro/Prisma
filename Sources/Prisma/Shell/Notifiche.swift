@@ -269,6 +269,14 @@ enum MotoreNotifiche {
                                        dettaglio: n.clienteId.map { nome($0) } ?? "Di chi si parla?", data: n.quando))
             }
         }
+        // «Luce» giro 15: le capsule del tempo pronte dei clienti visibili (solo dentro Prisma, decisione 29; mai il testo,
+        // mai a Vera). Il clic apre la Sala sulla griglia: aprire la capsula resta un gesto del consulente nel palco
+        for id in MotoreCapsule.pronte(dati.capsule, obiettivi: dati.obiettivi, oggi: oggi, cal: cal) {
+            guard let c = dati.capsule.first(where: { $0.id == id }), let n = nomi[c.clienteId] else { continue }
+            elenco.append(Notifica(id: "capsula-pronta-\(c.id)", gruppo: .oggi, app: .sala,
+                                   titolo: TestiCapsule.titoloNotifica(nome: TestiTraguardi.primoNome(n)),
+                                   dettaglio: TestiCapsule.dettaglioNotifica, data: inizio))
+        }
         // Fine anno: clienti che possono ancora dedurre versando alla previdenza (negli ultimi due mesi dell'anno)
         let deducibili = stato.deducibiliFineAnno(oggi: oggi)
         if let primo = deducibili.first {
