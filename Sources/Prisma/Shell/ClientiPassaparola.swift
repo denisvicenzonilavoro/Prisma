@@ -36,7 +36,13 @@ struct VistaPassaparola: View {
         let ambasciatori = MotorePassaparola.ambasciatori(clienti: clienti, potenziali: potenziali, posizioni: posizioni)
         let quota = MotorePassaparola.quotaPassaparola(clienti: clienti, posizioni: posizioni, oggi: oggi)
         let anni = MotorePassaparola.nuoviPerAnno(clienti: clienti, oggi: oggi)
-        let momenti = stato.solaLettura ? [] : MotorePassaparola.momentoGiusto(dati: stato.datiDeiCalcoli(), oggi: oggi)
+        // Le pratiche non entrano nei calcoli in cache (DatiPrisma.stessiCalcoli): si leggono vive per la data della firma
+        let momenti: [MomentoPerChiedere] = {
+            guard !stato.solaLettura else { return [] }
+            var x = stato.datiDeiCalcoli()
+            x.pratiche = stato.dati.pratiche
+            return MotorePassaparola.momentoGiusto(dati: x, oggi: oggi)
+        }()
         let mostra = tracciati || statoFinale
         return HStack(alignment: .top, spacing: P.spazio) {
             VStack(alignment: .leading, spacing: P.spazio) {
@@ -445,7 +451,7 @@ private struct ColonneAnniPassaparola: View {
     private typealias M = Tema.Apple.Moto.Passaparola
 
     var body: some View {
-        let massimo = max(1, anni.map(\.dalPassaparola).max() ?? 1)
+        let massimo = max(1, anni.map { $0.dalPassaparola }.max() ?? 1)
         VStack(alignment: .leading, spacing: P.spazioRighe) {
             Text(TestiPassaparola.nuoviTitolo.uppercased())
                 .carattereApple(Tema.Apple.Carattere.etichetta)

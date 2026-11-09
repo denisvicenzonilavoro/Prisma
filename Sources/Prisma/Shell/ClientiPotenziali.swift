@@ -322,7 +322,7 @@ private struct ColonnaPotenziali: View {
                 Text(fase.titolo)
                     .carattereApple(P.titoloColonna)
                     .foregroundColor(Tema.Apple.Colore.inchiostro)
-                Spacer(minLength: 4)
+                Spacer(minLength: P.spazioPiccolo)
                 Text("\(elenco.count)")
                     .carattereApple(P.contoColonna)
                     .foregroundColor(P.coloreConto)

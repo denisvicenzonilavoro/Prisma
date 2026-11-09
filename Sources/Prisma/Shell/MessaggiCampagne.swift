@@ -598,7 +598,7 @@ private struct RigaMembroCampagna: View {
         .onChange(of: bozza?.id) { _ in
             mostrata = false
             guard bozza != nil else { return }
-            // «✓ bozza pronta» una riga dopo l'altra, al ritmo di Tiprepara (niente Timer: animazione con ritardo)
+            // «✓ bozza pronta» una riga dopo l'altra, come le prepara Prisma (niente Timer: animazione con ritardo)
             withAnimation(Tema.Apple.Moto.animazione(Tema.Apple.Moto.Curva.easeOut.animazione(Tema.Apple.Moto.Campagne.lampo), calmo: calmo)
                 .delay(calmo ? 0 : Double(indice) * Tema.Apple.Moto.Campagne.passoBozze)) {
                 mostrata = true
