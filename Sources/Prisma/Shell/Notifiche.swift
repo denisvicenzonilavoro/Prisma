@@ -256,7 +256,7 @@ enum MotoreNotifiche {
         }
         // «Luce» giro 13: la carta d'identità arrivata dall'iPhone, **senza il nome** (decisione 25: solo dentro Prisma,
         // mai nel Centro notifiche del Mac; la carta vive solo in memoria)
-        for c in stato.carteInArrivo {
+        for c in stato.carteInArrivo where c.id != stato.nuovoCliente.cartaId {
             elenco.append(Notifica(id: "carta-iphone-\(c.id)", gruppo: .oggi, app: .clienti,
                                    titolo: "Una carta d’identità dall’iPhone",
                                    dettaglio: "Crea il cliente: i dati letti aspettano qui", data: c.quando))

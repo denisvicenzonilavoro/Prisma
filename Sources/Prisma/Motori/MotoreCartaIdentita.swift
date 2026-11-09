@@ -84,6 +84,8 @@ struct LetturaCartaIdentita: Equatable {
                 continue
             }
             if vecchio.fonte == .aMano { continue }
+            // I nomi della zona ottica non hanno accenti né apostrofi: quelli del fronte restano
+            if (chiave == .cognome || chiave == .nome) && vecchio.fonte == .fronte { continue }
             let nuovoVince = nuovo.fonte == .zonaOttica && !nuovo.daGuardare && (vecchio.fonte != .zonaOttica || vecchio.daGuardare)
             if nuovoVince { r.campi[chiave] = nuovo }
         }

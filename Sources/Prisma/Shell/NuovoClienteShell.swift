@@ -30,11 +30,7 @@ extension StatoShell {
 
     /// Chiude la scena e scarta tutto ciò che si è letto (lo svuotamento lo fa `chiudiSovrapposizione`).
     func chiudiNuovoCliente() {
-        guard sovrapposizione == .scena(.cartaIdentita) else {
-            nuovoCliente.chiudi()
-            return
-        }
-        chiudiSovrapposizione()
+        chiudiScenaNuovoCliente()
     }
 
     /// La scena del nuovo cliente è aperta.
@@ -54,11 +50,28 @@ extension StatoShell {
         #endif
     }
 
-    /// Una carta arrivata dall'iPhone entra nella scena (fronte e retro già insieme). La carta esce da quelle in arrivo.
+    /// Una carta arrivata dall'iPhone entra nella scena (fronte e retro già insieme). Resta in memoria fino a «Crea il
+    /// dossier» o alla chiusura della scena (che la scartano).
     func prendiCarta(_ c: CartaIdentitaPonte) {
         nuovoCliente.mostra(righe: c.righe, origine: c.dispositivo, carta: c.id)
-        carteInArrivo.removeAll { $0.id == c.id }
         ricalcolaNotifiche()
+    }
+
+    /// La carta in uso nella scena se ne va (chiusura, «Crea», «Aggiorna il documento», «Scrivi a mano»).
+    func scartaCartaInUso() {
+        guard let id = nuovoCliente.cartaId, carteInArrivo.contains(where: { $0.id == id }) else { return }
+        carteInArrivo.removeAll { $0.id == id }
+        ricalcolaNotifiche()
+    }
+
+    /// Chiude la scena dopo un'azione (o, se la scena non è aperta, svuota lo stato e scarta la carta in uso).
+    private func chiudiScenaNuovoCliente() {
+        if nuovoClienteAperto {
+            chiudiSovrapposizione()
+        } else {
+            scartaCartaInUso()
+            nuovoCliente.chiudi()
+        }
     }
 
     /// Una carta arrivata sul ponte: in memoria (al massimo tre, senza doppioni), notifica interna **senza il nome**, la
@@ -215,7 +228,7 @@ extension StatoShell {
         }
         // Pratiche › Moduli ha già il cliente scelto: i moduli si compilano da lì (nessun PDF scritto da solo)
         if conModuli { moduli.clienteId = c.id }
-        if nuovoClienteAperto { chiudiSovrapposizione() } else { nuovoCliente.chiudi() }
+        chiudiScenaNuovoCliente()
         #if os(macOS)
         apri(.clienti)
         #else
@@ -236,12 +249,12 @@ extension StatoShell {
         c.conformita = k
         dati.clienti[i] = c
         mostraAvviso("Documento di \(c.nome) aggiornato.")
-        if nuovoClienteAperto { chiudiSovrapposizione() } else { nuovoCliente.chiudi() }
+        chiudiScenaNuovoCliente()
     }
 
     /// «Apri il suo dossier» per un cliente già in Prisma.
     func apriDossierDaCarta(_ clienteId: String) {
-        if nuovoClienteAperto { chiudiSovrapposizione() }
+        chiudiScenaNuovoCliente()
         clienteAttivoId = clienteId
         schedaCliente = .panoramica
         #if os(macOS)
@@ -254,7 +267,7 @@ extension StatoShell {
     /// «Scrivi a mano» (o «Completa e crea il dossier»): il modulo del cliente con i dati letti fin lì.
     func scriviAManoDaCarta() {
         bozzaNuovoCliente = clienteDaCarta()
-        if nuovoClienteAperto { chiudiSovrapposizione() } else { nuovoCliente.chiudi() }
+        chiudiScenaNuovoCliente()
         #if os(macOS)
         apri(.clienti)
         #else
