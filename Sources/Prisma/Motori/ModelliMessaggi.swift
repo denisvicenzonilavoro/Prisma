@@ -219,6 +219,15 @@ enum ModelliMessaggi {
                    "Grazie, resto a disposizione per qualsiasi chiarimento."]
                 : ["per completare il modulo\(modulo) mi servono ancora questi dati: \(cosa). Mandameli quando ti è comodo, nel modo che preferisci.",
                    "Grazie, scrivimi pure per qualsiasi cosa."]
+        case .documentoIdentita:
+            // Il documento d'identità in scadenza («Luce» giro 14, «Stanotte»): la data scritta, mai il numero del documento
+            let doc = v(.documento).map { minuscolaIniziale($0) } ?? "documento d'identità"
+            let quando = v(.scadenza).map { (o.inRitardo ? " è scaduto " : " scade ") + il($0) } ?? (o.inRitardo ? " è scaduto" : " è in scadenza")
+            return lei
+                ? ["il suo \(doc)\(quando): quando le è comodo, mi manda una copia di quello nuovo? Mi serve per tenere in ordine la sua pratica.",
+                   "Grazie, resto a disposizione per qualsiasi chiarimento."]
+                : ["il tuo \(doc)\(quando): quando ti è comodo, mi mandi una copia di quello nuovo? Mi serve per tenere in ordine la tua pratica.",
+                   "Grazie, scrivimi pure per qualsiasi cosa."]
         case .notaVocale:
             // Detto nella nota vocale («Luce» giro 13): solo la cosa promessa, nessuna cifra in più
             let cosa = v(.occasione) ?? (lei ? "quanto ci eravamo detti" : "quanto ci eravamo detti")
@@ -325,6 +334,9 @@ enum ModelliMessaggi {
         case .notaVocale:
             let cosa = v(.occasione) ?? "quanto ci eravamo detti"
             return (["come d'accordo, ti mando \(cosa)."], ["A presto."])
+        case .documentoIdentita:
+            let quando = v(.scadenza).map { (o.inRitardo ? " è scaduto " : " scade ") + il($0) } ?? " è in scadenza"
+            return (["il tuo documento d'identità\(quando): mi mandi una copia di quello nuovo?"], ["Grazie!"])
         case .traguardo:
             let cosa = v(.traguardo).map { " («\(minuscolaIniziale($0))»)" } ?? ""
             return (["oggi è un giorno da ricordare\(cosa): complimenti!"], ["Grazie per la fiducia."])
