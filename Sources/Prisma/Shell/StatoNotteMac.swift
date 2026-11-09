@@ -191,13 +191,14 @@ extension StatoShell {
     func scriviBozzeNotte(_ occasioni: [OccasioneMessaggio], giorno: Date) async {
         let imp = dati.impostazioni.notte
         let massimo = min(ImpostazioniNotte.tettoBozze, imp.massimoBozze)
-        let lista: [CompitoBozzaNotte] = occasioni.prefix(massimo).compactMap { o in
+        let lista: [CompitoBozzaNotte] = occasioni.prefix(massimo).compactMap { (o: OccasioneMessaggio) -> CompitoBozzaNotte? in
             guard let c = dati.clienti.first(where: { $0.id == o.clienteId }) else { return nil }
             return CompitoBozzaNotte(occasione: o, cliente: c, firma: firmaMessaggio(o.canale, tono: .cordiale))
         }
         guard !lista.isEmpty else { return }
-        var vera = dati.impostazioni.vera
-        vera.restaInMemoria = ImpostazioniNotte.restaInMemoriaNotte
+        var impostazioniVera = dati.impostazioni.vera
+        impostazioniVera.restaInMemoria = ImpostazioniNotte.restaInMemoriaNotte
+        let vera = impostazioniVera
         let disponibilita = await MotoreLocale.verifica(vera)
         guard disponibilita.pronto, notte.lavoro.fermatoPer == nil else {
             aggiungiDaFinire(lista.count, motivo: notte.lavoro.fermatoPer ?? .qwenNonPronto, giorno: giorno)
