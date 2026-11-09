@@ -179,7 +179,10 @@ struct MappaCampagne: View {
                     if let c = clienti.first(where: { $0.id == m.clienteId }) {
                         AvatarCliente(iniziali: c.iniziali, tinta: c.tinta.colori, lato: C.avatar)
                             .overlay(Circle().strokeBorder(Tema.Apple.Colore.card, lineWidth: C.bordoAvatar))
+                            #if os(macOS)
+                            // ⌘-clic sull'avatar: il dossier (sul Mac; l'iPad è in sola lettura)
                             .simultaneousGesture(TapGesture().modifiers(.command).onEnded { apriDossier(c.id) })
+                            #endif
                             .help(c.nome + (m.anchein.isEmpty ? "" : " · " + TestiCampagne.ancheIn(m.anchein)))
                     }
                 }
