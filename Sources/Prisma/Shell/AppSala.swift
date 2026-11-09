@@ -335,8 +335,8 @@ private struct PalcoSala: View {
             .lineLimit(1)
             Spacer(minLength: P.spazioTestata)
             HStack(spacing: P.spazioPulsanti) {
-                // Il tavolo e il Prisma del cliente non sono ancora pronti per nessuna esperienza (decisioni 7 e 111):
-                // i pulsanti restano spenti anche dove l'esperienza c'è già
+                // Il tavolo non è ancora pronto per nessuna esperienza (decisione 111): il pulsante resta spento anche
+                // dove l'esperienza c'è già. «✦ Aggiungi al Prisma» si accende con il giro 15 (decisione 7)
                 if esperienza.mostraSulTavolo {
                     Button { } label: { Text("▣ Mostra sul tavolo") }
                         .buttonStyle(.apple)

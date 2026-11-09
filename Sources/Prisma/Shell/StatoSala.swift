@@ -35,14 +35,14 @@ enum EsperienzaSala: String, CaseIterable, Identifiable {
     var glifo: GlifoLuce { novita.glifo }
     var colore: Color { glifo.colore }
 
-    /// La frase della scheda (`ESP[].d`, diversa da quella del pannello Novità). Il film segue le decisioni 1 e 108:
-    /// niente invio diretto, un video breve da mostrare.
+    /// La frase della scheda (`ESP[].d`, diversa da quella del pannello Novità). Il Prisma del cliente e il film seguono
+    /// le decisioni 1, 3 e 108 (giro 15): un PDF protetto e un video di venti secondi che manda il consulente.
     var frase: String {
         switch self {
-        case .prismaCliente: return "La sua app personale, in un file da mandargli"
+        case .prismaCliente: return "Il suo piano in un file protetto, da mandargli"
         case .prismaLuce: return "Il patrimonio che si scompone in raggi"
         case .lettera: return "Scritta da sé stesso a 67 anni"
-        case .film: return "Un breve video da mostrare dopo l’incontro"
+        case .film: return "Venti secondi da mandare dopo l’incontro"
         case .disegna: return "Lo scarabocchio diventa un piano"
         case .giocoRischio: return "Il profilo vissuto, non dichiarato"
         case .giornataPensione: return "Il divario diventa una vita concreta"
