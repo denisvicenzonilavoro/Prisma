@@ -123,6 +123,11 @@ enum SuMisuraVera {
     static let quantizzazione = "q4_k_m"
     /// I punti della curva dell'errore tenuti con la versione.
     static let puntiCurva = 60
+    /// L'uscita del pacchetto dal Mac (portato a mano dall'utente all'addestramento) è un'eccezione alla regola «i dati
+    /// restano sul Mac» e aspetta il sì dell'utente (domanda 2 della fase 5): finché è false l'esportazione resta spenta
+    /// (pulsante disattivato con il perché) e CLAUDE.md non scrive l'eccezione. Tutto il resto (anteprima, esame,
+    /// importazione, sostituzione) funziona già.
+    static let esportazioneApprovata = false
 }
 
 // MARK: - Nomi dei modelli

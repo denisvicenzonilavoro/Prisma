@@ -411,7 +411,7 @@ enum ProvaSuMisuraVera {
         } else {
             controlla(false, "Su misura nell'app: con 12 esempi la pagina dice quanti ne mancano (\(p.faseSuMisura))")
         }
-        controlla((try? p.esportaPacchettoSuMisura(a: FileManager.default.temporaryDirectory.appendingPathComponent("non-\(UUID().uuidString).zip"))) == nil
+        controlla((try? p.esportaPacchettoSuMisura(a: FileManager.default.temporaryDirectory.appendingPathComponent("non-\(UUID().uuidString).zip"), ammessa: true)) == nil
                   && p.dati.impostazioni.vera.suMisura.ultimoPacchetto == nil,
                   "Su misura nell'app: sotto il minimo il pacchetto non si esporta")
         let anteprima = p.anteprimaSuMisura()
@@ -425,7 +425,9 @@ enum ProvaSuMisuraVera {
         for e in molti(80) { p.memoriaVera.approva(domanda: e.domanda, risposta: e.risposta, modalita: e.modalita) }
         let zip = FileManager.default.temporaryDirectory.appendingPathComponent("Prisma-prova-pacchetto-\(UUID().uuidString).zip")
         defer { try? FileManager.default.removeItem(at: zip) }
-        let m = try? p.esportaPacchettoSuMisura(a: zip, oggi: oggi)
+        controlla(SuMisuraVera.esportazioneApprovata || (try? p.esportaPacchettoSuMisura(a: zip, oggi: oggi)) == nil,
+                  "Su misura nell'app: senza il sì dell'utente l'esportazione resta spenta")
+        let m = try? p.esportaPacchettoSuMisura(a: zip, oggi: oggi, ammessa: true)
         let su = p.dati.impostazioni.vera.suMisura
         controlla(m != nil && FileManager.default.fileExists(atPath: zip.path) && su.ultimoPacchetto == oggi && !su.esame.isEmpty
                   && Set(su.esame).isDisjoint(with: Set(su.usati)) && su.esempiNelPacchetto == m?.esempi,

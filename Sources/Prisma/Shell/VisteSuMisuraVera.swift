@@ -133,6 +133,9 @@ struct PaginaSuMisuraVista: View {
         }
     }
 
+    /// Finché l'utente non approva l'eccezione di privacy del pacchetto (SuMisuraVera.esportazioneApprovata).
+    static let attesaSi = "L'esportazione aspetta il tuo sì: il pacchetto, anche se anonimo, uscirebbe dal Mac portato da te."
+
     private func esegui(_ c: ConfermaSuMisura) {
         conferma = nil
         switch c {
@@ -276,7 +279,12 @@ struct PaginaSuMisuraVista: View {
         case .pronti(let n):
             Button("Esporta questi \(n) esempi") { conferma = .esporta(n) }
                 .buttonStyle(.applePrimario).fixedSize()
-                .disabled(stato.solaLettura)
+                .disabled(stato.solaLettura || !SuMisuraVera.esportazioneApprovata)
+                .help(SuMisuraVera.esportazioneApprovata ? "Prima una conferma, poi scegli dove salvare lo zip" : Self.attesaSi)
+            if !SuMisuraVera.esportazioneApprovata {
+                Text(Self.attesaSi).carattereApple(G.testo).foregroundColor(C.inchiostro2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         case .inAttesaModello, .nonSuperata, .ritirata, .superata:
             Button("Importa il modello addestrato") { stato.scegliModelloDaImportare() }
                 .buttonStyle(.apple).fixedSize()
@@ -507,8 +515,10 @@ struct AnteprimaSuMisuraVista: View {
                     .buttonStyle(.apple).fixedSize()
                 Button("Esporta questi \(entrano) esempi") { esporta(entrano) }
                     .buttonStyle(.applePrimario).fixedSize()
-                    .disabled(entrano < SuMisuraVera.minimoEsempi || stato.solaLettura || stato.dati.impostazioni.vera.fornitore != .ollama)
-                    .help(entrano < SuMisuraVera.minimoEsempi ? "Servono almeno \(SuMisuraVera.minimoEsempi) esempi" : "Prima una conferma, poi scegli dove salvare lo zip")
+                    .disabled(entrano < SuMisuraVera.minimoEsempi || stato.solaLettura || stato.dati.impostazioni.vera.fornitore != .ollama
+                              || !SuMisuraVera.esportazioneApprovata)
+                    .help(!SuMisuraVera.esportazioneApprovata ? PaginaSuMisuraVista.attesaSi
+                          : (entrano < SuMisuraVera.minimoEsempi ? "Servono almeno \(SuMisuraVera.minimoEsempi) esempi" : "Prima una conferma, poi scegli dove salvare lo zip"))
             }
             ScrollView(.vertical, showsIndicators: false) {
                 LazyVStack(alignment: .leading, spacing: G.spazioRighe) {

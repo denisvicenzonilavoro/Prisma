@@ -114,7 +114,9 @@ extension StatoShell {
         case .lavoro(let l): return "Vera su misura: \(l)"
         case .nessunEsempio: return "Nessun esempio approvato: segna con 👍 le risposte che ti piacciono e diventano esempi."
         case .pochiEsempi(let p, let m): return "Vera su misura: \(p) esempi pronti, ne mancano \(m) per il primo addestramento."
-        case .pronti(let n): return "Vera su misura: \(n) esempi pronti. Guarda l'anteprima e prepara il pacchetto."
+        case .pronti(let n):
+            return "Vera su misura: \(n) esempi pronti." + (SuMisuraVera.esportazioneApprovata ? " Guarda l'anteprima e prepara il pacchetto."
+                                                                                  : " L'esportazione del pacchetto aspetta il tuo sì.")
         case .inAttesaModello(let d): return "Pacchetto preparato il \(Formati.dataLunga.string(from: d)): in attesa del modello addestrato."
         case .daEsaminare: return "Il modello addestrato è in Ollama: manca l'esame."
         case .superata(let v): return "Esame superato (\(v.esame?.percentualeAttuale ?? 0)% → \(v.esame?.percentualeNuova ?? 0)%): puoi usare la Vera su misura."
@@ -200,7 +202,10 @@ extension StatoShell {
     /// Scrive il pacchetto nello zip scelto dall'utente e ricorda quali esempi sono usciti (mai più nell'esame) e quali
     /// restano per l'esame (mai nel pacchetto). Nessuna richiesta di rete.
     @discardableResult
-    func esportaPacchettoSuMisura(a zip: URL, oggi: Date = Date()) throws -> ManifestoSuMisura {
+    func esportaPacchettoSuMisura(a zip: URL, oggi: Date = Date(), ammessa: Bool = SuMisuraVera.esportazioneApprovata) throws -> ManifestoSuMisura {
+        guard ammessa else {
+            throw ErroreVera(messaggio: "L'esportazione del pacchetto aspetta il tuo sì: è un'eccezione alla regola «i dati restano sul Mac».")
+        }
         guard !inModoCliente, !solaLettura, dati.impostazioni.vera.fornitore == .ollama else {
             throw ErroreVera(messaggio: "Il pacchetto si prepara da Prisma sul Mac, con Ollama e fuori dalla modalità cliente.")
         }
