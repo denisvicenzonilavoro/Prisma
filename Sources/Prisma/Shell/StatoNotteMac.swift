@@ -2,7 +2,7 @@
 import AppKit
 
 // Il lavoro della notte e le decisioni sulle carte, solo sul Mac («Luce» giro 14, §6.1, decisioni 30, 31, 101).
-// Il lavoro: controllo con `NSBackgroundActivityScheduler` (niente Timer), solo nella finestra serale, alla corrente, con
+// Il lavoro: controllo con `NSBackgroundActivityScheduler` (nessun temporizzatore), solo nella finestra serale, alla corrente, con
 // Prisma aperto e non in uso; prima i lavori senza Qwen (fase 1, sincrona), poi al più 10 bozze di Vera una alla volta
 // (fase 2: il modello si carica una volta e si libera subito; al primo avviso di memoria si ferma). Mai in rete (Qwen è su
 // 127.0.0.1). «Approva» non manda mai nulla: le bozze entrano in Messaggi come bozze, i PDF nei Documenti; ogni

@@ -108,6 +108,18 @@ jobs:
             exit 1
           fi
 
+      - name: Privacy della notte
+        run: |
+          # «Luce» giro 14 (decisioni 30, 31, 101): la notte non va in rete, non usa Timer, non apre Prisma all'accesso
+          # né cambia il risveglio del Mac, non scarica Mercato
+          if grep -nE 'URLSession|URLRequest|NWConnection|ClienteMercato|aggiornaMercato|SMAppService|pmset|\bTimer\b' \
+              Sources/Prisma/Motori/MotoreNotte.swift Sources/Prisma/Motori/TestiNotte.swift \
+              Sources/Prisma/Motori/EsecutoreBozzeNotte.swift Sources/Prisma/Dati/LavoroNotte.swift \
+              Sources/Prisma/Shell/*Notte*.swift Sources/Prisma/Shell/AlimentazioneMac.swift; then
+            echo "::error::Il lavoro della notte non deve usare la rete, Timer, SMAppService o pmset"
+            exit 1
+          fi
+
       - name: Verifica Prisma.app
         run: |
           APP=Prisma.app
