@@ -662,6 +662,11 @@ enum ProvaBackup {
                 print("ERRORE: \(errore)")
                 return 1
             }
+            // Le lettere dal futuro conservate («Aggiungi al Prisma» e PDF, §3.1.5) (ProvaBackupRacconti.swift)
+            if let errore = try provaLettere(radice: radice) {
+                print("ERRORE: \(errore)")
+                return 1
+            }
             if let errore = try provaCapsule(radice: radice) {
                 print("ERRORE: \(errore)")
                 return 1

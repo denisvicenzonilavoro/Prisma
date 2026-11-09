@@ -879,6 +879,8 @@ enum VoceConfronto: Hashable {
         if dati.capsule.contains(where: { $0.clienteId == id }) { dati.capsule.removeAll { $0.clienteId == id } }
         if dati.sinistri.contains(where: { $0.clienteId == id }) { dati.sinistri.removeAll { $0.clienteId == id } }
         if dati.uscite.contains(where: { $0.clienteId == id }) { dati.uscite.removeAll { $0.clienteId == id } }
+        // Le lettere dal futuro conservate se ne vanno con lui
+        if dati.lettere.contains(where: { $0.clienteId == id }) { dati.lettere.removeAll { $0.clienteId == id } }
         if dati.speseStudio.spese.contains(where: { $0.clienteId == id }) {
             var spese = dati.speseStudio
             for i in spese.spese.indices where spese.spese[i].clienteId == id { spese.spese[i].clienteId = nil }

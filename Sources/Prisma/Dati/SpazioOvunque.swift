@@ -176,6 +176,8 @@ enum SpazioOvunque {
         // sul Mac; i sinistri entrano limitati (titolo, fase, fatti e documenti senza file)
         x.capsule = []
         x.uscite = []
+        // Le lettere dal futuro conservate restano sul Mac (D-L8, decisione 44)
+        x.lettere = []
         x.sinistri = x.sinistri.map(SpazioOvunque.sinistroPerOvunque)
         // L'IBAN dei clienti e i moduli compilati restano sul Mac (decisioni 40 e 44; i modelli stanno in Moduli/, fuori
         // dall'archivio)
@@ -510,6 +512,7 @@ enum SincroniaOvunque {
         nuovo.notti = locale.notti
         nuovo.capsule = locale.capsule
         nuovo.uscite = locale.uscite
+        nuovo.lettere = locale.lettere
         let mie = locale.impostazioni
         var imp = nuovo.impostazioni
         imp.vera = mie.vera
