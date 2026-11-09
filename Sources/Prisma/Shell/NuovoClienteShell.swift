@@ -15,7 +15,7 @@ extension StatoShell {
 
     /// Apre la scena (testata di Clienti, ⌘N, Novità, notifica). Mai in modalità cliente, sotto il benvenuto o in
     /// presentazione. Se c'è una carta arrivata dall'iPhone, la mostra subito.
-    func apriNuovoCliente() {
+    func apriNuovoCliente(potenziale: String? = nil) {
         guard presentazione == nil, !bloccato else { return }
         guard !inModoCliente else {
             mostraAvviso("In modalità cliente il nuovo cliente non si crea: la scena mostra i dati di un'altra persona.")
@@ -25,7 +25,7 @@ extension StatoShell {
         moduli.carica()
         apriSovrapposizione(.scena(.cartaIdentita))
         guard sovrapposizione == .scena(.cartaIdentita) else { return }
-        nuovoCliente.apri(fase: ponteInquadraAcceso ? .attesa : .trascina)
+        nuovoCliente.apri(fase: ponteInquadraAcceso ? .attesa : .trascina, potenziale: potenziale)
         if let ultima = carteInArrivo.last { prendiCarta(ultima) }
     }
 
@@ -71,8 +71,15 @@ extension StatoShell {
             chiudiSovrapposizione()
         } else {
             scartaCartaInUso()
-            nuovoCliente.chiudi()
+            svuotaNuovoCliente()
         }
+    }
+
+    /// Svuota la scena (chiusura, blocco, riposo, un'altra sovrapposizione). Se era aperta da «Diventa cliente» e il
+    /// dossier non è nato, il potenziale torna in «Proposta» (§9.2.4, come il modulo annullato).
+    func svuotaNuovoCliente() {
+        if let p = nuovoCliente.potenzialeId { annullaClienteDaPotenziale(p) }
+        nuovoCliente.chiudi()
     }
 
     /// Una carta arrivata sul ponte: in memoria (al massimo tre, senza doppioni), notifica interna **senza il nome**, la
@@ -164,6 +171,28 @@ extension StatoShell {
         MotoreCartaIdentita.righe(nuovoCliente.lettura, correzioni: nuovoCliente.correzioni, oggi: oggi)
     }
 
+    /// Il potenziale della scena (§9.1, «È un potenziale cliente»): quello da cui la scena è stata aperta, se c'è ancora;
+    /// altrimenti, a lettura avviata, quello con lo stesso nome della carta. Mai se la carta è di un cliente già in Prisma.
+    /// Aperta da un potenziale, la carta di un'altra persona (nomi che non si contengono) non prende quel potenziale.
+    var potenzialeDaCarta: PotenzialeCliente? {
+        let l = nuovoCliente.letturaCorretta
+        if let id = nuovoCliente.potenzialeId, let p = dati.potenziali.first(where: { $0.id == id }),
+           l.nomeCompleto.map({ MotorePassaparola.nomiCompatibili($0, p.nome) }) ?? true {
+            return p
+        }
+        guard !l.vuota, clienteGiaPresenteDaCarta == nil else { return nil }
+        return MotorePassaparola.potenzialeCorrispondente(nome: l.nomeCompleto, potenziali: dati.potenziali, clienti: dati.clienti)
+    }
+
+    /// «Elena Marchi è tra i potenziali, presentata da Sofia»: il nome letto (o quello del potenziale) e il genere dalla
+    /// carta (sesso letto o codice fiscale), mai indovinato.
+    func frasePotenzialeDaCarta(_ p: PotenzialeCliente) -> String {
+        let l = nuovoCliente.letturaCorretta
+        let sesso = l.sessoLetto ?? l.codiceFiscale.flatMap { CodiceFiscale.sesso($0) }
+        let femminile: Bool? = sesso.map { $0 == .femmina }
+        return TestiPassaparola.traIPotenziali(p, nome: l.nomeCompleto, clienti: dati.clienti, femminile: femminile)
+    }
+
     /// Il cliente già in Prisma con lo stesso codice fiscale (o stesso nome e data di nascita).
     var clienteGiaPresenteDaCarta: Cliente? {
         let l = nuovoCliente.letturaCorretta
@@ -210,7 +239,9 @@ extension StatoShell {
             mostraAvviso("Archivio in sola lettura: aggiorna Prisma per creare il cliente.")
             return nil
         }
-        let c = clienteDaCarta()
+        let potenziale = clienteGiaPresenteDaCarta == nil ? potenzialeDaCarta : nil
+        var c = clienteDaCarta()
+        if let p = potenziale { c = MotorePassaparola.cliente(c, dalPotenziale: p) }
         guard !c.nome.trimmingCharacters(in: .whitespaces).isEmpty else {
             mostraAvviso("Manca il nome: scrivilo nella scheda o usa «Scrivi a mano».")
             return nil
@@ -218,8 +249,14 @@ extension StatoShell {
         let copia = nuovoCliente.salvaCopia ? nuovoCliente.fileOrigine : nil
         let conModuli = !modelliPrivacyEVerifica.isEmpty
         salvaCliente(c)
+        // «È un potenziale cliente»: la scheda passa in «Cliente», collegata al dossier, ed entra nell'albero
+        if let p = potenziale, let i = dati.potenziali.firstIndex(where: { $0.id == p.id }) {
+            dati.potenziali[i] = MotorePassaparola.diventato(dati.potenziali[i], cliente: c.id, il: MessaggioCliente.adesso)
+        }
+        nuovoCliente.lasciaPotenziale()
         clienteAttivoId = c.id
         schedaCliente = .panoramica
+        vistaClienti = .rubrica
         if let url = copia {
             let prima = Set(dati.documenti.map(\.id))
             importaDocumenti([url])
@@ -266,8 +303,16 @@ extension StatoShell {
     }
 
     /// «Scrivi a mano» (o «Completa e crea il dossier»): il modulo del cliente con i dati letti fin lì.
+    /// Se la scena è di un potenziale, il modulo porta chi l'ha presentato e, salvato, collega la scheda (AppClienti).
     func scriviAManoDaCarta() {
-        bozzaNuovoCliente = clienteDaCarta()
+        var c = clienteDaCarta()
+        if clienteGiaPresenteDaCarta == nil, let p = potenzialeDaCarta {
+            c = MotorePassaparola.cliente(c, dalPotenziale: p)
+            potenzialeDellaBozza = p.id
+            nuovoCliente.lasciaPotenziale()
+        }
+        bozzaNuovoCliente = c
+        vistaClienti = .rubrica
         chiudiScenaNuovoCliente()
         #if os(macOS)
         apri(.clienti)

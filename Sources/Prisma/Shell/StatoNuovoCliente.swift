@@ -59,6 +59,9 @@ enum FaseNuovoCliente: Equatable {
     var ricevuta: RicevutaPonte?
     /// Le facce lette sul telefono (1 o 2), per «Aggiungi il retro».
     private(set) var facce = 0
+    /// Il potenziale da cui si è aperta la scena (Clienti › Potenziali, «Diventa cliente», §9.2.4): il nome è già scritto
+    /// e la scheda dice chi l'ha presentato. Solo in memoria, come il resto; nil = scena aperta dalla testata.
+    private(set) var potenzialeId: String?
     /// Ogni apertura, foglio nuovo o chiusura cambia il giro: i passi in attesa di un giro vecchio non fanno nulla.
     @ObservationIgnored private(set) var giro = 0
 
@@ -79,10 +82,16 @@ enum FaseNuovoCliente: Equatable {
         return accesi
     }
 
-    func apri(fase: FaseNuovoCliente) {
+    func apri(fase: FaseNuovoCliente, potenziale: String? = nil) {
         giro += 1
         svuota()
         self.fase = fase
+        potenzialeId = potenziale
+    }
+
+    /// Il potenziale è passato al dossier (creato, o al modulo di «Scrivi a mano»): chiudere non lo riporta in «Proposta».
+    func lasciaPotenziale() {
+        potenzialeId = nil
     }
 
     func chiudi() {
@@ -93,9 +102,11 @@ enum FaseNuovoCliente: Equatable {
 
     /// Torna all'attesa (o al trascinamento) dopo «Riprova».
     func ricomincia(fase: FaseNuovoCliente) {
+        let potenziale = potenzialeId
         giro += 1
         svuota()
         self.fase = fase
+        potenzialeId = potenziale
     }
 
     private func svuota() {
@@ -115,6 +126,7 @@ enum FaseNuovoCliente: Equatable {
         ricevuta = nil
         inInvio = false
         facce = 0
+        potenzialeId = nil
     }
 
     /// Il Mac comincia a leggere un file: il giro nuovo, da passare a `mostra`. Le facce già lette restano.

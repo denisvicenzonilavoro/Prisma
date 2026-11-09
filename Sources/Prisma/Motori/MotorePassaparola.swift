@@ -427,6 +427,59 @@ enum MotorePassaparola {
         return c
     }
 
+    // MARK: - Dalla carta d'identità (§9.1, stato «È un potenziale cliente»)
+
+    /// Il potenziale con lo stesso nome della carta letta (nome e cognome in qualsiasi ordine, senza accenti né
+    /// maiuscole): solo fra quelli non ancora diventati clienti (fuori dalla colonna «Cliente» e senza un dossier che
+    /// esiste). Con più omonimi, il più recente. Nessun nome o nessun potenziale: nil (mai un potenziale indovinato).
+    static func potenzialeCorrispondente(nome: String?, potenziali: [PotenzialeCliente], clienti: [Cliente]) -> PotenzialeCliente? {
+        guard let nome else { return nil }
+        let chiave = ImportaPosizioni.piega(nome)
+        guard !chiave.isEmpty else { return nil }
+        let dossier = Set(clienti.map(\.id))
+        return potenziali
+            .filter { p in
+                guard p.fase != .cliente, ImportaPosizioni.piega(p.nome) == chiave else { return false }
+                if let cid = p.clienteId, dossier.contains(cid) { return false }
+                return true
+            }
+            .max { a, b in a.creatoIl != b.creatoIl ? a.creatoIl < b.creatoIl : a.id > b.id }
+    }
+
+    /// Due nomi della stessa persona: le parole dell'uno (senza accenti, maiuscole né ordine) stanno tutte nell'altro
+    /// («Elena Maria Marchi» e «Marchi Elena» sì, «Elena Marchetti» e «Elena Marchi» no). Un nome vuoto: no.
+    static func nomiCompatibili(_ a: String, _ b: String) -> Bool {
+        let x = Set(ImportaPosizioni.piega(a).split(separator: " ")), y = Set(ImportaPosizioni.piega(b).split(separator: " "))
+        guard !x.isEmpty, !y.isEmpty else { return false }
+        return x.isSubset(of: y) || y.isSubset(of: x)
+    }
+
+    /// Il cliente nato dalla carta che porta con sé il potenziale: chi l'ha presentato (con la data dell'inserimento,
+    /// cioè la presentazione) e i recapiti e la nota scritti dall'utente, solo dove la carta non dice nulla. Il nome
+    /// resta quello della carta; senza nome letto, quello del potenziale.
+    static func cliente(_ c: Cliente, dalPotenziale p: PotenzialeCliente) -> Cliente {
+        var c = c
+        if c.nome.trimmingCharacters(in: .whitespaces).isEmpty {
+            c.nome = p.nome
+            c.iniziali = Cliente.iniziali(di: p.nome)
+        }
+        c.presentatoDa = p.presentatoDa
+        c.presentatoIl = p.presentatoDa == nil ? nil : p.creatoIl
+        if c.email.isEmpty { c.email = p.email }
+        if c.telefono.isEmpty { c.telefono = p.telefono }
+        if c.nota.isEmpty { c.nota = p.nota }
+        return c
+    }
+
+    /// Il potenziale diventato cliente: fase «Cliente», collegato al dossier, la storia che cresce.
+    static func diventato(_ p: PotenzialeCliente, cliente clienteId: String, il: Date) -> PotenzialeCliente {
+        var q = p
+        q.fase = .cliente
+        q.clienteId = clienteId
+        q.storia.append(CambioFase(fase: .cliente, il: il))
+        return q
+    }
+
     /// L'occasione «richiesta di presentazione» per Messaggi (commerciale): il fatto come sola cifra.
     static func occasioneRichiesta(_ m: MomentoPerChiedere, cliente: Cliente, posizioni: [Posizione]) -> OccasioneMessaggio {
         let fatto = TestiPassaparola.maiuscola(m.fatto)

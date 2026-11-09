@@ -118,6 +118,9 @@ enum VoceConfronto: Hashable {
     /// Il potenziale per cui si apre il modulo del nuovo cliente (Clienti › Potenziali, arrivo in «Cliente»): lo legge
     /// AppClienti, che apre `ModuloCliente` già compilato.
     var richiestaClienteDaPotenziale: String?
+    /// «Scrivi a mano» dalla scena del nuovo cliente aperta per un potenziale (§9.1-9.2): il modulo della bozza, salvato,
+    /// collega la scheda al dossier; annullato, la riporta in «Proposta» (lo legge AppClienti con `bozzaNuovoCliente`).
+    var potenzialeDellaBozza: String?
     /// Da dove si apre Messaggi (cliente, occasione, messaggio salvato): la scrivono le altre app con `preparaMessaggio`,
     /// l'app Messaggi la prende con `prendiRichiestaMessaggi()` (CollegamentiMessaggi.swift).
     var richiestaMessaggi: RichiestaMessaggi?

@@ -17,8 +17,10 @@ import SwiftUI
 //   conta solo chi le ha tutte e chiude entro il 31 dicembre); qui solo la disposizione.
 // - Clic sulla scheda: un passo avanti (volo con `matchedGeometryEffect`); clic sul nome: il dettaglio che nasce dalla
 //   scheda; trascinamento fra le colonne; menu «Avanti · Indietro · Modifica… · Non interessato · Elimina»; frecce,
-//   ⌘→ / ⌘←, Invio e Canc. L'arrivo in «Cliente» apre il modulo del nuovo cliente (AppClienti).
-// - iPad (`solaLettura`): sola lettura, il clic apre solo il dettaglio senza i pulsanti che scrivono.
+//   ⌘→ / ⌘←, Invio e Canc. L'arrivo in «Cliente» apre la scena del nuovo cliente con il nome già scritto e
+//   «presentato da …» (`proponiCliente`, §9.2.4).
+// - iPad (`potenzialiInSolaLettura`, §9.2.4: l'iPad è una copia) e archivio in sola lettura: si guarda soltanto, il clic
+//   apre solo il dettaglio senza i pulsanti che scrivono.
 // - «Riduci movimento» e istantanee: tutto fermo nello stato finale.
 
 struct VistaPotenziali: View {
@@ -49,7 +51,7 @@ private struct CorpoPotenziali: View {
                                  ?? StatoDettaglio())
     }
 
-    private var modificabile: Bool { !stato.solaLettura }
+    private var modificabile: Bool { !stato.potenzialiInSolaLettura }
 
     var body: some View {
         let oggi = Date()

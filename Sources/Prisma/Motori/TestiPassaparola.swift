@@ -27,6 +27,27 @@ enum TestiPassaparola {
         return p.fonte
     }
 
+    /// La scena del nuovo cliente (§9.1, «È un potenziale cliente»): «Elena Marchi è tra i potenziali, presentata da
+    /// Sofia». Il genere viene dalla carta (sesso o codice fiscale); se non si sa, «su presentazione di Sofia». Senza un
+    /// presentatore cliente, la fonte libera tra parentesi.
+    static func traIPotenziali(_ p: PotenzialeCliente, nome: String? = nil, clienti: [Cliente], femminile: Bool?) -> String {
+        let chi = (nome?.isEmpty == false ? nome : nil) ?? p.nome
+        if let da = p.presentatoDa, let c = clienti.first(where: { $0.id == da }) {
+            let primo = TestiTraguardi.primoNome(c.nome)
+            switch femminile {
+            case .some(true): return "\(chi) è tra i potenziali, presentata da \(primo)"
+            case .some(false): return "\(chi) è tra i potenziali, presentato da \(primo)"
+            case .none: return "\(chi) è tra i potenziali, su presentazione di \(primo)"
+            }
+        }
+        if let f = p.fonte { return "\(chi) è tra i potenziali (\(f))" }
+        return "\(chi) è tra i potenziali"
+    }
+
+    /// La nota sotto la frase: prima della lettura (aperta da «Diventa cliente») e a lettura finita.
+    static let notaPotenzialeAttesa = "Inquadra la sua carta d’identità o scrivi a mano: il dossier ricorderà la presentazione."
+    static let notaPotenzialeLetto = "Con «Crea il dossier» la scheda passa in «Cliente» ed entra nell’albero del passaparola."
+
     /// «2 senza stima».
     static func senzaStima(_ n: Int) -> String { "\(n) senza stima" }
 

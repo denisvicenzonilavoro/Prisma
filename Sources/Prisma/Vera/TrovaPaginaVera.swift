@@ -116,4 +116,20 @@ enum TrovaPaginaVera {
         guard let primo = passi.first else { return .nonTrovata }
         return .nonVerificata(passo: primo.passo, motivo: "Vera non ha dato una risposta leggibile.")
     }
+
+    // MARK: - «Cerca nella Biblioteca» da Vera (§8.1.5.2 punto 6)
+
+    /// Le parole delle condizioni e dei documenti di prodotto: riscatto, penali, carenze, franchigie, esclusioni,
+    /// massimali, premi non pagati, deducibilità, KID, set informativo, nota informativa, circolari, condizioni.
+    private static let paroleCondizioni = #"\b(condizion\w*|riscatt\w*|penal[ei]\b|penalit\w*|carenz\w*|franchigi\w*|esclusion\w*|massimal\w*|non pag\w*|sospension\w*|rivalutazion\w*|deduc\w*|kid\b|set informativo|nota informativa|circolar\w*|recesso)"#
+
+    /// Una domanda su condizioni o normativa a cui la Biblioteca può rispondere con la pagina («Il riscatto nei primi
+    /// anni ha penali?», «Cosa dice la norma sul recesso?»): una domanda (punto di domanda o «cosa dice…») con le parole
+    /// delle condizioni, oppure una domanda sulle norme come per «Il codice in tasca» (`NormeVera.eUnaDomanda`).
+    static func proponeBiblioteca(_ domanda: String, clienti: [ClienteNoto] = []) -> Bool {
+        if NormeVera.eUnaDomanda(domanda, clienti: clienti) { return true }
+        let t = InterpreteComandi.pulisci(domanda)
+        guard domanda.contains("?") || DateItaliane.cerca(#"^(cosa dice|che dice|cosa dicono|che dicono|secondo|in base a)"#, t) != nil else { return false }
+        return DateItaliane.cerca(paroleCondizioni, t) != nil
+    }
 }
