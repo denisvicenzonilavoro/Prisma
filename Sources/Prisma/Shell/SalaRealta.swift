@@ -146,7 +146,7 @@ struct PalcoRealtaAumentata: View {
     }
 
     private var trascinamento: some Gesture {
-        DragGesture(minimumDistance: 2)
+        DragGesture(minimumDistance: RA.Camera.trascinamentoMinimo)
             .onChanged { g in
                 let inizio = inizioTrascinamento ?? (azimut: controllo.azimutTrascinato, elevazione: controllo.elevazione)
                 if inizioTrascinamento == nil { inizioTrascinamento = inizio }

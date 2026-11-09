@@ -232,19 +232,19 @@ final class CristalloRealta {
         m.color = .init(tint: .white, texture: .init(tex))
         m.blending = .transparent(opacity: .init(floatLiteral: Float(T.Ombra.opacita)))
         ombra.model = ModelComponent(mesh: .generatePlane(width: lato, depth: lato), materials: [m])
-        ombra.position = SIMD3(T.Ombra.spostamento.x, 0.001, T.Ombra.spostamento.y)
+        ombra.position = SIMD3(T.Ombra.spostamento.x, T.Ombra.quota, T.Ombra.spostamento.y)
     }
 
     private func preparaPuntini() {
         var m = UnlitMaterial(color: .white)
-        m.blending = .transparent(opacity: .init(floatLiteral: 0.9))
+        m.blending = .transparent(opacity: .init(floatLiteral: T.Puntini.opacita))
         let mesh = MeshResource.generatePlane(width: T.Puntini.lato, depth: T.Puntini.lato, cornerRadius: T.Puntini.lato / 2)
         let n = T.Puntini.quanti
         for i in 0..<n {
             for j in 0..<n {
                 let p = ModelEntity()
                 p.model = ModelComponent(mesh: mesh, materials: [m])
-                p.position = SIMD3(Float(i - n / 2) * T.Puntini.passo, 0.0005, Float(j - n / 2) * T.Puntini.passo)
+                p.position = SIMD3(Float(i - n / 2) * T.Puntini.passo, T.Puntini.quota, Float(j - n / 2) * T.Puntini.passo)
                 puntini.addChild(p)
             }
         }
@@ -257,8 +257,8 @@ final class CristalloRealta {
         var m = UnlitMaterial()
         m.color = .init(tint: .white, texture: .init(tex))
         m.blending = .transparent(opacity: .init(floatLiteral: 1))
-        anello.model = ModelComponent(mesh: .generatePlane(width: 2, depth: 2), materials: [m])
-        anello.position = SIMD3(0, 0.002, 0)
+        anello.model = ModelComponent(mesh: .generatePlane(width: T.AnelloPosa.piano, depth: T.AnelloPosa.piano), materials: [m])
+        anello.position = SIMD3(0, T.AnelloPosa.quota, 0)
         anelloPosa(0)
     }
 
@@ -315,7 +315,7 @@ final class CristalloRealta {
             for k in 0..<passi {
                 let f = 1 - CGFloat(k) / CGFloat(passi)
                 let indice = colori.isEmpty ? 0 : min(colori.count - 1, Int(CGFloat(colori.count) * (1 - f)))
-                let col = colori.isEmpty ? SIMD3<Float>(0.3, 0.4, 0.5) : colori[indice]
+                let col = colori.isEmpty ? T.Ombra.ripiego : colori[indice]
                 c.setFillColor(CGColor(srgbRed: CGFloat(col.x), green: CGFloat(col.y), blue: CGFloat(col.z), alpha: T.Ombra.alfaPasso))
                 c.beginPath()
                 let allarga = CGFloat(T.Ombra.allargamento) * f
@@ -343,6 +343,7 @@ final class CristalloRealta {
     /// Il legno del tavolo virtuale: un gradiente caldo con le venature.
     static func immagineLegno() -> CGImage? {
         let lato = T.Tavolo.lato
+        let k = T.Tavolo.self
         let chiaro = ColoriLuce.srgb(T.Tavolo.legnoChiaro)
         let scuro = ColoriLuce.srgb(T.Tavolo.legnoScuro)
         let venatura = ColoriLuce.srgb(T.Tavolo.venatura)
@@ -353,14 +354,17 @@ final class CristalloRealta {
                 c.setFillColor(CGColor(srgbRed: CGFloat(col.x), green: CGFloat(col.y), blue: CGFloat(col.z), alpha: 1))
                 c.fill(CGRect(x: 0, y: riga, width: lato, height: 1))
             }
-            c.setStrokeColor(CGColor(srgbRed: CGFloat(venatura.x), green: CGFloat(venatura.y), blue: CGFloat(venatura.z), alpha: 0.18))
-            c.setLineWidth(1.5)
-            for k in 0..<24 {
-                let y = CGFloat(k) * CGFloat(lato) / 24 + 6
+            c.setStrokeColor(CGColor(srgbRed: CGFloat(venatura.x), green: CGFloat(venatura.y), blue: CGFloat(venatura.z),
+                                     alpha: k.alfaVenatura))
+            c.setLineWidth(k.spessoreVenatura)
+            let w = CGFloat(lato)
+            for v in 0..<k.quanteVenature {
+                let y = CGFloat(v) * w / CGFloat(k.quanteVenature) + k.scartoVenatura
                 c.beginPath()
                 c.move(to: CGPoint(x: 0, y: y))
-                c.addCurve(to: CGPoint(x: CGFloat(lato), y: y + 4), control1: CGPoint(x: CGFloat(lato) * 0.3, y: y - 5),
-                           control2: CGPoint(x: CGFloat(lato) * 0.7, y: y + 9))
+                c.addCurve(to: CGPoint(x: w, y: y + k.salitaVenatura),
+                           control1: CGPoint(x: w * k.controlloVenatura1.x, y: y + k.controlloVenatura1.y),
+                           control2: CGPoint(x: w * k.controlloVenatura2.x, y: y + k.controlloVenatura2.y))
                 c.strokePath()
             }
         }
@@ -396,8 +400,8 @@ final class ScenaVirtualeRealta {
         ancora.addChild(camera)
         let l = Tema.Apple.RealtaAumentata.Luce.self
         luce.light.intensity = l.intensita
-        luce.shadow = DirectionalLightComponent.Shadow(maximumDistance: l.ombra, depthBias: 1)
-        luce.look(at: .zero, from: -l.direzione * 4, relativeTo: nil)
+        luce.shadow = DirectionalLightComponent.Shadow(maximumDistance: l.ombra, depthBias: l.scartoOmbra)
+        luce.look(at: .zero, from: -l.direzione * l.distanza, relativeTo: nil)
         ancora.addChild(luce)
         arView.scene.addAnchor(ancora)
         orbita(azimut: K.azimutIniziale, elevazione: K.elevazione, altezza: Float(cristallo.esito.altezza(anno: nil)), esploso: 0)

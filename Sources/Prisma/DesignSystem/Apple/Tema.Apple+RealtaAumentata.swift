@@ -259,6 +259,8 @@ extension Tema.Apple {
             static let puntiPerRadianteOrizzontale: CGFloat = 220
             static let puntiPerRadianteVerticale: CGFloat = 320
             static let campoVisivo: Float = 38
+            /// Il trascinamento comincia dopo 2 pt (un clic resta un clic).
+            static let trascinamentoMinimo: CGFloat = 2
         }
 
         /// La luce della scena.
@@ -266,6 +268,9 @@ extension Tema.Apple {
             static let intensita: Float = 2_600
             static let direzione = SIMD3<Float>(-0.5, -1, -0.35)
             static let ombra: Float = 6
+            /// La luce guarda il cristallo da 4 unità, contro la sua direzione; lo scarto di profondità dell'ombra.
+            static let distanza: Float = 4
+            static let scartoOmbra: Float = 1
         }
 
         /// Il tavolo virtuale: 5,2 × 3,1 unità, legno caldo.
@@ -277,6 +282,15 @@ extension Tema.Apple {
             static let venatura = Color(r: 90, g: 55, b: 30, a: 0.18)
             static let lato: Int = 512
             static let ruvidita: Float = 0.55
+            /// Le venature dipinte nella texture del legno (px): quante, spessore, opacità, primo scarto, salita a destra e
+            /// i due punti di controllo della curva (frazione della larghezza, scarto verticale).
+            static let quanteVenature = 24
+            static let spessoreVenatura: CGFloat = 1.5
+            static let alfaVenatura: CGFloat = 0.18
+            static let scartoVenatura: CGFloat = 6
+            static let salitaVenatura: CGFloat = 4
+            static let controlloVenatura1 = CGPoint(x: 0.3, y: -5)
+            static let controlloVenatura2 = CGPoint(x: 0.7, y: 9)
         }
 
         /// L'ombra colorata dipinta sul tavolo.
@@ -290,6 +304,10 @@ extension Tema.Apple {
             static let margine: Float = 1.4
             static let passi = 10
             static let alfaPasso: CGFloat = 0.12
+            /// Appena sopra il tavolo (unità), per non sfarfallare con il piano.
+            static let quota: Float = 0.001
+            /// Il colore dell'ombra senza strati (sRGB 0…1).
+            static let ripiego = SIMD3<Float>(0.3, 0.4, 0.5)
         }
 
         /// I puntini del piano trovato e l'anello della posa.
@@ -300,6 +318,9 @@ extension Tema.Apple {
             static let anello: Float = 1.3
             /// La targhetta guarda 0,12 unità sopra la faccia alta.
             static let sopraTarghetta: Float = 0.12
+            /// L'opacità dei puntini e la loro quota sopra il tavolo (unità).
+            static let opacita: Float = 0.9
+            static let quota: Float = 0.0005
         }
 
         /// La texture dell'anello bianco della posa (px): lato, spessore del filo, margine e opacità del bianco.
@@ -308,6 +329,9 @@ extension Tema.Apple {
             static let spessore: CGFloat = 5
             static let margine: CGFloat = 6
             static let opacita: CGFloat = 0.9
+            /// Il piano dell'anello: 2 × 2 unità (raggio 1, poi scalato da `Puntini.anello`), appena sopra il tavolo.
+            static let piano: Float = 2
+            static let quota: Float = 0.002
         }
 
         /// Il fermo-immagine in SwiftUI (`CristalloFermo`): assonometria del prisma triangolare.
