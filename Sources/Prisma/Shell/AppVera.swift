@@ -166,6 +166,21 @@ struct AppVera: View {
                     .help("Chiede di nuovo a Ollama se Qwen è pronto")
                     .padding(.top, col.verificaSopra)
             }
+            // Fase 5: come smista Vera, e la pagina dei motori (Due velocità, Il cervello grande); mai in modalità cliente
+            if !stato.inModoCliente {
+                HStack(spacing: col.spazioSpia) {
+                    Text("Smista: regole e Qwen · Apple spento")
+                        .carattereApple(col.notaMotore)
+                        .foregroundColor(col.coloreNota)
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                    Button("Motori") { stato.apriPaginaMotori() }
+                        .buttonStyle(.appleSobrio)
+                        .fixedSize()
+                        .help("Due velocità e il cervello grande")
+                }
+                .padding(.top, col.verificaSopra)
+            }
         }
         .multilineTextAlignment(.leading)
         .padding(col.paddingScheda)
