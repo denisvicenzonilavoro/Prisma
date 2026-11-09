@@ -54,7 +54,7 @@ enum ProgrammaLuce {
 
     /// Compila lo shader adesso (prova del motore, `--prova-calcoli`): true se si compila.
     static func provaCompilazione() -> Bool {
-        guard let d = MTLCreateSystemDefaultDevice() else { return true }
+        guard let d = MetalPrisma.device() else { return true }
         return pronto(d) != nil
     }
 }
@@ -105,7 +105,7 @@ final class RendererLuce: NSObject {
     private let serratura = NSLock()
     private var stato = Stato()
     private let coda = DispatchQueue(label: "prisma.luce.disegno", qos: .userInteractive, autoreleaseFrequency: .workItem)
-    private let device = MTLCreateSystemDefaultDevice()
+    private let device = MetalPrisma.device()
     private lazy var comandi: MTLCommandQueue? = device?.makeCommandQueue()
     /// Solo coda del disegno.
     private var strato: CAMetalLayer?
@@ -114,7 +114,7 @@ final class RendererLuce: NSObject {
     /// Sul thread principale: lo shader non si compila.
     var rinuncia: (() -> Void)?
 
-    static let disponibile = MTLCreateSystemDefaultDevice() != nil
+    static let disponibile = MetalPrisma.device() != nil
 
     func collega(_ s: CAMetalLayer) {
         s.device = device
