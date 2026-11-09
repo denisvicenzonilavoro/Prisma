@@ -6,12 +6,19 @@ import SwiftUI
 //   ◉  DA FESTEGGIARE · OBIETTIVO RAGGIUNTO IERI
 //      Sofia Romano: ha raggiunto «Rendita integrativa»
 //   ┌──────────── biglietto 560×420 ────────────┐   IL MOMENTO, GIÀ PRONTO
-//   │ ◯✓  Ce l’hai fatta, Sofia.                 │   Il biglietto animato         [Manda]  (arriva con il giro 15)
-//   │ 120.000 €  messi al sicuro in …            │   Una telefonata               [Aggiungi] → ✓ In agenda
-//   │ …                                — Denis   │   L’idea per un regalo         [Annota]   → ✓ Annotata
-//   └────────────────────────────────────────────┘   Prisma si accorge da solo dei traguardi: …
+//   │ ◯✓  Ce l’hai fatta, Sofia.                 │   Il biglietto                 [⇪ Condividi…] […]
+//   │ (120.000 €  messi al sicuro in …)          │     Mostra la cifra                         ( ○)
+//   │ …                                — Denis   │   Una telefonata               [Aggiungi] → ✓ In agenda
+//   └────────────────────────────────────────────┘   L’idea per un regalo         [Annota]   → ✓ Annotata
+//                                                     [◉ La capsula del tempo di Sofia è pronta  Apri la capsula]
+//                                                     Prisma si accorge da solo dei traguardi: …
 //
-// - Il biglietto si vede ma non si condivide ancora: «Manda» è spento e dice che arriva con un prossimo aggiornamento.
+// - «Luce» giro 15 (§5.4, decisioni 1, 9 e 115): «Condividi…» disegna il biglietto in PNG nella cartella delle uscite e
+//   apre il foglio di condivisione del sistema (lo spedisce il consulente; WhatsApp solo con il consenso del dossier);
+//   il file si cancella dopo l'esito, al blocco e alla chiusura. Dopo la condivisione il traguardo è festeggiato e il
+//   dossier ne tiene traccia («Dato al cliente»). «Mostra la cifra» è spento di base e vale anche per l'anteprima: si
+//   vede ciò che parte. Il menu «…» ha «Salva su file…». Un clic sulla frase la rende modificabile, con «Torna alla
+//   frase di Prisma». Sotto le tre righe la tile della capsula del tempo pronta (TileCapsulaTraguardo, se c'è).
 // - «Aggiungi» mette una telefonata nel primo spazio libero da domani (StatoTraguardi.swift); il clic dopo apre l'Agenda.
 // - L'idea per il regalo viene solo da una frase delle note del dossier; senza, «Nessuna idea dalle note» e «Annota»
 //   apre un campo per scriverla. È una nota privata del consulente: in modalità cliente la colonna destra non c'è.
@@ -26,11 +33,21 @@ struct PannelloTraguardo: View {
     var base: Double = Tema.Apple.Messaggi.Moto.baseApertura
     var primoIndice = 0
 
+    @Environment(\.modoIstantanea) private var istantanea
     @State private var scrivendoIdea = false
     @State private var idea = ""
+    /// «Mostra la cifra»: spento di base (decisione 9).
+    @State private var mostraCifra = false
+    /// La frase scritta a mano (nil = quella di Prisma); vale solo per questo biglietto.
+    @State private var fraseModificata: String?
+    @State private var modificaFrase = false
+    /// Se il biglietto preparato per l'ultima condivisione aveva la cifra (per la traccia nel dossier).
+    @State private var cifraCondivisa = false
 
     private typealias P = Tema.Apple.Messaggi.Pannello
     private typealias T = Tema.Apple.Messaggi.Traguardo
+    private typealias F = Tema.Apple.Messaggi.Traguardo.Frase
+    private typealias C = Tema.Apple.Messaggi.Traguardo.Condividi
 
     var body: some View {
         let _ = ContaCorpi.segna()
@@ -45,12 +62,12 @@ struct PannelloTraguardo: View {
                         Group {
                             if affiancato {
                                 HStack(alignment: .top, spacing: T.spazioColonne) {
-                                    BigliettoTraguardo(traguardo: t, firma: firma)
+                                    biglietto(t)
                                     if !stato.inModoCliente { colonna(t).frame(maxWidth: .infinity, alignment: .leading) }
                                 }
                             } else {
                                 VStack(alignment: .leading, spacing: T.spazioColonne) {
-                                    BigliettoTraguardo(traguardo: t, firma: firma)
+                                    biglietto(t)
                                     if !stato.inModoCliente { colonna(t) }
                                 }
                             }
@@ -73,6 +90,67 @@ struct PannelloTraguardo: View {
 
     private var diProva: Bool {
         stato.haDatiDiProva && StatoShell.clientiDiProva.contains(cliente.id)
+    }
+
+    // MARK: Il biglietto e la sua frase
+
+    /// La frase si cambia solo fuori dalla modalità cliente e fuori dalla sola lettura.
+    private var fraseModificabile: Bool {
+        !stato.inModoCliente && !stato.solaLettura
+    }
+
+    /// Il clic sulla frase apre il campo (nil = la frase non si tocca).
+    private var aperturaFrase: (() -> Void)? {
+        guard fraseModificabile else { return nil }
+        return { modificaFrase = true }
+    }
+
+    private func biglietto(_ t: Traguardo) -> some View {
+        VStack(alignment: .leading, spacing: F.spazio) {
+            BigliettoTraguardo(traguardo: t, firma: firma, mostraCifra: mostraCifra, frase: fraseModificata,
+                               suFrase: aperturaFrase)
+            if modificaFrase && fraseModificabile {
+                campoFrase(t)
+            }
+        }
+    }
+
+    private func campoFrase(_ t: Traguardo) -> some View {
+        let testo = Binding<String>(
+            get: { fraseModificata ?? t.frase },
+            set: { nuovo in
+                fraseModificata = String(nuovo.prefix(T.Esporta.massimoFrase))
+            })
+        let forma = RoundedRectangle(cornerRadius: F.raggio, style: .continuous)
+        return VStack(alignment: .leading, spacing: F.spazioComandi) {
+            TextEditor(text: testo)
+                .carattereApple(F.carattere)
+                .foregroundColor(F.coloreTesto)
+                .scrollContentBackground(.hidden)
+                .padding(F.padding)
+                .frame(width: T.biglietto.width, height: F.altezza)
+                .background(forma.fill(F.fondo))
+                .overlay(forma.strokeBorder(F.bordo, lineWidth: F.spessoreBordo))
+                .accessibilityLabel(Text("Frase del biglietto"))
+            HStack(spacing: F.spazioComandi) {
+                Button(TestiBiglietto.fatto) {
+                    fraseModificata = TestiBiglietto.fraseScritta(fraseModificata, traguardo: t)
+                    modificaFrase = false
+                }
+                .buttonStyle(.apple)
+                Button(TestiBiglietto.tornaAllaFrase) {
+                    fraseModificata = nil
+                }
+                .buttonStyle(.appleSobrio)
+                .disabled(TestiBiglietto.fraseScritta(fraseModificata, traguardo: t) == nil)
+                Text(TestiBiglietto.notaFrase)
+                    .carattereApple(F.nota)
+                    .foregroundColor(F.coloreNota)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+        }
+        .frame(width: T.biglietto.width, alignment: .leading)
     }
 
     // MARK: Testata
@@ -112,14 +190,12 @@ struct PannelloTraguardo: View {
                 .foregroundColor(T.coloreEtichetta)
                 .padding(.bottom, T.sottoEtichetta)
                 .accessibilityAddTraits(.isHeader)
-            riga(TestiTraguardi.biglietto, nota: TestiTraguardi.bigliettoNota) {
-                Button("Manda") {}
-                    .buttonStyle(.apple)
-                    .disabled(true)
-                    .help("Il biglietto si potrà mandare con un prossimo aggiornamento: per ora si guarda qui")
-            }
+            rigaBiglietto(t)
             rigaTelefonata(t)
             rigaRegalo(t)
+            // «Luce» giro 15: la capsula del tempo pronta per questo traguardo (compare solo se c'è)
+            TileCapsulaTraguardo(traguardo: t)
+                .padding(.top, T.sopraNotaFondo)
             Text(TestiTraguardi.notaColonna)
                 .carattereApple(T.notaFondo)
                 .foregroundColor(T.coloreNotaFondo)
@@ -131,6 +207,85 @@ struct PannelloTraguardo: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, T.sopraNotaFondo / 2)
         }
+    }
+
+    // MARK: Il biglietto da condividere
+
+    private func rigaBiglietto(_ t: Traguardo) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            riga(TestiTraguardi.biglietto, nota: TestiTraguardi.bigliettoNota, ultima: true) {
+                HStack(spacing: C.spazioAzioni) {
+                    PulsanteCondividi(titolo: TestiBiglietto.condividi, consensoWhatsApp: cliente.consensi.whatsapp == true,
+                                      prepara: { preparaCopia(t) },
+                                      esito: { e in dopoCondivisione(e, traguardo: t) })
+                        .disabled(stato.solaLettura || istantanea)
+                    Menu {
+                        Button(TestiBiglietto.salva) { salvaSuFile(t) }
+                    } label: {
+                        Image(systemName: C.altro)
+                    }
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
+                    .disabled(istantanea)
+                    .accessibilityLabel(Text(TestiBiglietto.altro))
+                }
+            }
+            VStack(alignment: .leading, spacing: C.spazioSotto) {
+                if t.cifra != nil {
+                    Toggle(isOn: $mostraCifra) {
+                        Text(TestiBiglietto.mostraCifra)
+                            .carattereApple(C.interruttore)
+                            .foregroundColor(C.coloreInterruttore)
+                    }
+                    .toggleStyle(StileInterruttoreApple())
+                }
+                if stato.primaUscita(clienteId: cliente.id) {
+                    Text(TestiBiglietto.avvisoPrimaVolta(nome: TestiTraguardi.primoNome(cliente.nome),
+                                                         conCifra: mostraCifra && t.cifra != nil))
+                        .carattereApple(C.nota)
+                        .foregroundColor(C.coloreNota)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(.bottom, T.paddingRiga)
+            Rectangle().fill(T.filo).frame(height: T.spessoreFilo)
+        }
+    }
+
+    /// Al clic su «Condividi…»: il PNG nella cartella delle uscite (mai in Download).
+    private func preparaCopia(_ t: Traguardo) -> [URL]? {
+        let conCifra = mostraCifra && t.cifra != nil
+        guard let url = EsportaBiglietto.copiaDaCondividere(t, nome: cliente.nome, firma: firma, mostraCifra: mostraCifra,
+                                                            frase: fraseModificata) else {
+            stato.mostraAvviso(TestiBiglietto.nonDisegnato)
+            return nil
+        }
+        cifraCondivisa = conCifra
+        return [url]
+    }
+
+    /// Dopo il foglio: condiviso → festeggiato e traccia nel dossier (mai il file, mai il contenuto).
+    private func dopoCondivisione(_ e: EsitoCondivisione, traguardo t: Traguardo) {
+        switch e {
+        case .condiviso(let via):
+            stato.segnaFesteggiato(t)
+            stato.registraUscita(clienteId: cliente.id, genere: .biglietto,
+                                 descrizione: TestiBiglietto.descrizioneUscita(t, conCifra: cifraCondivisa),
+                                 via: via, documentoId: nil, protetto: false)
+        case .annullato:
+            break
+        case .nonRiuscito(let motivo):
+            stato.mostraAvviso(motivo)
+        }
+    }
+
+    /// «Salva su file…»: solo se lo sceglie il consulente; il file resta dove lo salva.
+    private func salvaSuFile(_ t: Traguardo) {
+        guard let dati = EsportaBiglietto.png(t, firma: firma, mostraCifra: mostraCifra, frase: fraseModificata) else {
+            stato.mostraAvviso(TestiBiglietto.nonDisegnato)
+            return
+        }
+        EsportaBiglietto.salvaSuFile(dati, nome: TestiBiglietto.nomeFile(t, nome: cliente.nome))
     }
 
     private func rigaTelefonata(_ t: Traguardo) -> some View {
