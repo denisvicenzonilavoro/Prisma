@@ -362,6 +362,12 @@ enum ProvaCalcoliMessaggi {
            let sinistro = SinistriDiProva.sinistri(oggi: oggi).first(where: { $0.id == SinistriDiProva.idMarco }) {
             occasioni.append(MotoreSinistri.occasione(sinistro, cliente: marco, consulente: "Denis", oggi: oggi))
         }
+        // La richiesta del documento d'identità della notte («Luce» giro 14), su Giulia, con una scadenza fra 20 giorni
+        if let giulia = x.clienti.first(where: { $0.id == "giulia" }),
+           let scadenza = Calendar.current.date(byAdding: .day, value: 20, to: oggi) {
+            occasioni.append(MotoreNotte.occasioneDocumento(giulia, scadenza: scadenza, scaduto: false, documento: "Carta d'identità",
+                                                            riferimento: "campionario-documento"))
+        }
         return (x, occasioni)
     }
 

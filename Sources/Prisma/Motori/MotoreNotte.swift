@@ -293,15 +293,22 @@ enum MotoreNotte {
         return Date(timeIntervalSinceReferenceDate: (d.timeIntervalSinceReferenceDate / passo).rounded(.down) * passo)
     }
 
+    /// L'occasione della richiesta del documento (la bozza della notte e il campionario della prova dei messaggi).
+    static func occasioneDocumento(_ c: Cliente, scadenza: Date, scaduto: Bool, documento: String,
+                                   riferimento: String) -> OccasioneMessaggio {
+        let cifre = [CifraMessaggio(.documento, documento), CifraMessaggio(.scadenza, Formati.giornoMese.string(from: scadenza))]
+        return OccasioneMessaggio(origine: OrigineMessaggio(tipo: .documentoIdentita, riferimento: riferimento), clienteId: c.id,
+                                  canale: nil, gruppo: .settimana, titolo: TestiNotte.titoloDocumento(nome: c.nome, documento: documento,
+                                                                                                      scadenza: scadenza, scaduto: scaduto),
+                                  perche: TestiNotte.descrizioneDocumento, oggetto: "Il documento d'identità nuovo", cifre: cifre,
+                                  priorita: .media, data: scadenza, inRitardo: scaduto)
+    }
+
     /// La bozza della richiesta del documento, con il modello fisso (niente Qwen sulle richieste: sono brevi e uguali).
     static func bozzaDocumento(_ c: Cliente, scadenza: Date, scaduto: Bool, documento: String, riferimento: String, giorno: Date,
                                impostazioni: Impostazioni, cal: Calendar = .current) -> MessaggioCliente {
-        let cifre = [CifraMessaggio(.documento, documento), CifraMessaggio(.scadenza, Formati.giornoMese.string(from: scadenza))]
-        let o = OccasioneMessaggio(origine: OrigineMessaggio(tipo: .documentoIdentita, riferimento: riferimento), clienteId: c.id,
-                                   canale: nil, gruppo: .settimana, titolo: TestiNotte.titoloDocumento(nome: c.nome, documento: documento,
-                                                                                                       scadenza: scadenza, scaduto: scaduto),
-                                   perche: TestiNotte.descrizioneDocumento, oggetto: "Il documento d'identità nuovo", cifre: cifre,
-                                   priorita: .media, data: scadenza, inRitardo: scaduto)
+        let o = occasioneDocumento(c, scadenza: scadenza, scaduto: scaduto, documento: documento, riferimento: riferimento)
+        let cifre = o.cifre
         let firma = ModelliMessaggi.firma(nil, tono: .cordiale, impostazioni: impostazioni)
         let t = ModelliMessaggi.testo(o, tono: .cordiale, canale: .mail, cliente: c, firma: firma)
         var m = MessaggioCliente(clienteId: c.id, occasioneId: o.id, origine: o.origine, canaleLavoro: nil, tono: .cordiale,
