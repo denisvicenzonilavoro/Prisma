@@ -130,7 +130,8 @@ final class RegistaFilm: @unchecked Sendable {
                         input.markAsFinished()
                         // Se cade già il primo fotogramma il codificatore non c'è (macchine virtuali senza H.264)
                         let motivo = writer.error?.localizedDescription ?? "fotogramma \(i + 1) non accettato"
-                        fine.resume(returning: i == 0 ? .codificatoreNonDisponibile : .scrittura(motivo))
+                        let mancante = i == 0 || Self.codificatoreMancante(writer.error)
+                        fine.resume(returning: mancante ? .codificatoreNonDisponibile : .scrittura(motivo))
                         return
                     }
                     ciclo.indice += 1
@@ -153,12 +154,18 @@ final class RegistaFilm: @unchecked Sendable {
         guard writer.status == .completed else {
             let motivo = writer.error?.localizedDescription ?? "scrittura non completata"
             try? fm.removeItem(at: url)
-            throw ErroreFilm.scrittura(motivo)
+            throw Self.codificatoreMancante(writer.error) ? ErroreFilm.codificatoreNonDisponibile : ErroreFilm.scrittura(motivo)
         }
         if annullato {
             try? fm.removeItem(at: url)
             throw ErroreFilm.annullato
         }
+    }
+
+    /// true se l'errore dice che il codificatore H.264 non c'è (o non è disponibile su questa macchina).
+    static func codificatoreMancante(_ errore: Error?) -> Bool {
+        guard let e = errore as NSError?, e.domain == AVFoundationErrorDomain else { return false }
+        return [AVError.Code.encoderNotFound.rawValue, AVError.Code.encoderTemporarilyUnavailable.rawValue].contains(e.code)
     }
 
     /// Un fotogramma nel pixel buffer del pool: contesto sRGB BGRA capovolto (origine in alto), disegno, aggiunta.
