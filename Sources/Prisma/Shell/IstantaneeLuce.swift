@@ -69,6 +69,8 @@ extension Istantanee {
         case "619-glifi-luce": return AnyView(TavolaGlifiIstantanea())
         // «Luce» giro 5: il biglietto del traguardo da solo (IstantaneeTraguardi.swift)
         case "735-biglietto-traguardo": return tavolaBiglietto()
+        // «Luce» giro 15: lo stesso PNG con «Mostra la cifra» acceso
+        case "735-biglietto-traguardo-con-cifra": return tavolaBiglietto(conCifra: true)
         default: return nil
         }
     }
