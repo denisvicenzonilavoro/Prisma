@@ -3,13 +3,15 @@ import AppKit
 #elseif os(iOS)
 import UIKit
 #endif
+import AVKit
 import PDFKit
 import SwiftUI
 
 /// L'anteprima di un documento: il foglio è il protagonista, a tutta altezza e con lo zoom adatto alla larghezza;
 /// in basso galleggia la barra delle pagine (sfoglia, zoom − + e «adatta», apri fuori da Prisma).
-/// Tre casi: il PDF vero (`VistaPDF`, un solo `PDFDocument` aperto alla volta), l'immagine ridotta con ImageIO, oppure
-/// (senza file o nelle istantanee) la pagina ricostruita dal testo letto. Il foglio è carta: bianco anche in scuro.
+/// Quattro casi: il PDF vero (`VistaPDF`, un solo `PDFDocument` aperto alla volta), il video (il film del piano, «Luce»
+/// giro 15: `VideoPlayer` di AVKit), l'immagine ridotta con ImageIO, oppure (senza file o nelle istantanee) la pagina
+/// ricostruita dal testo letto. Il foglio è carta: bianco anche in scuro.
 struct AnteprimaDocumento: View {
     @Environment(StatoShell.self) var stato
     @Environment(\.modoIstantanea) private var modoIstantanea
@@ -18,7 +20,7 @@ struct AnteprimaDocumento: View {
     /// Lo zoom rispetto alla larghezza: 1 = il foglio largo quanto l'anteprima. Torna a 1 a ogni documento.
     @State private var zoom: CGFloat = 1
 
-    private enum Foglio { case pdf(URL), immagine(URL), testo }
+    private enum Foglio { case pdf(URL), video(URL), immagine(URL), testo }
 
     /// Il file del documento, se c'è sul Mac.
     private var file: URL? {
@@ -30,13 +32,17 @@ struct AnteprimaDocumento: View {
         let url = file
         let foglio: Foglio = {
             guard !modoIstantanea, let url else { return .testo }
-            return url.pathExtension.lowercased() == "pdf" ? .pdf(url) : .immagine(url)
+            switch url.pathExtension.lowercased() {
+            case "pdf": return .pdf(url)
+            case "mp4", "mov", "m4v": return .video(url)
+            default: return .immagine(url)
+            }
         }()
         let pagine = stato.testoDocumento(documento)
         let totale: Int = {
             switch foglio {
             case .pdf: return max(documento.pagine, pagine.count, 1)
-            case .immagine: return 1
+            case .video, .immagine: return 1
             case .testo: return max(pagine.count, 1)
             }
         }()
@@ -60,6 +66,10 @@ struct AnteprimaDocumento: View {
                      pagina: Binding(get: { stato.vistaDocumenti.pagina }, set: { stato.vistaDocumenti.pagina = $0 }),
                      evidenzia: estrattoEvidenziato(pagina: nil),
                      zoom: zoom)
+        case .video(let u):
+            VideoDocumento(url: u)
+                .padding(m.margineTavolo)
+                .padding(.bottom, m.spazioSottoFoglio)
         case .immagine(let u):
             GeometryReader { geo in
                 ScrollView(Self.assi(zoom)) {
@@ -99,6 +109,29 @@ struct AnteprimaDocumento: View {
         #endif
         if vuoto { return "Il testo di questo documento non è ancora disponibile." }
         return documento.file == nil ? "Documento di prova: pagina ricostruita dal testo" : "Pagina ricostruita dal testo letto"
+    }
+}
+
+/// Il video di un documento (il film del piano): il lettore di AVKit. L'`AVPlayer` nasce all'apparire e a ogni documento
+/// (mai nel `body`, che lo ricreerebbe a ogni disegno) e si ferma alla scomparsa.
+private struct VideoDocumento: View {
+    let url: URL
+    @State private var lettore: AVPlayer?
+
+    var body: some View {
+        VideoPlayer(player: lettore)
+            .onAppear { prepara() }
+            .onChange(of: url) { _, _ in prepara() }
+            .onDisappear {
+                lettore?.pause()
+                lettore = nil
+            }
+            .accessibilityLabel(Text("Video del documento"))
+    }
+
+    private func prepara() {
+        lettore?.pause()
+        lettore = AVPlayer(url: url)
     }
 }
 
