@@ -892,6 +892,10 @@ struct NuvolaVera: View {
                     }
                     azioni
                         .padding(.top, b.sopraAzioni)
+                    // Fase 5, «Il cervello grande» (regola bloccata): sotto ogni risposta chi l'ha scritta, anche sotto le
+                    // risposte delle regole (fuori dalla condizione dei pollici)
+                    EtichettaMotoreVista(messaggio: messaggio)
+                        .padding(.top, Tema.Apple.EtichettaMotore.sopra)
                 }
                 .entrataSchedaCalcoli(nuova)
             }
