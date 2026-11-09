@@ -119,7 +119,10 @@ jobs:
           # I file che non esistono ancora (parti del giro non scritte) si saltano; quelli che ci sono si controllano tutti
           FILE_USCITE=$(ls Sources/Prisma/Shell/FoglioCondivisione.swift Sources/Prisma/Shell/UsciteCliente.swift \
               Sources/Prisma/Dati/FilePrismaCliente.swift Sources/Prisma/Shell/*Film*.swift Sources/Prisma/Dati/*Capsul*.swift \
-              Sources/Prisma/Dati/Sinistro.swift 2>/dev/null || true)
+              Sources/Prisma/Dati/Sinistro.swift Sources/Prisma/Dati/*PrismaCliente*.swift Sources/Prisma/Motori/*PrismaCliente*.swift \
+              Sources/Prisma/Shell/*PrismaCliente*.swift Sources/Prisma/Motori/*Film*.swift Sources/Prisma/Motori/*Capsul*.swift \
+              Sources/Prisma/Shell/*Capsul*.swift Sources/Prisma/Motori/*Sinistr*.swift Sources/Prisma/Shell/*Sinistr*.swift \
+              Sources/Prisma/iOS/*Sinistr*.swift Sources/Prisma/Shell/EsportaBiglietto.swift 2>/dev/null || true)
           if [ -n "$FILE_USCITE" ] && grep -nE 'URLSession|URLRequest|NWConnection' $FILE_USCITE; then
             echo "::error::Le cose date al cliente non devono usare la rete"
             exit 1
