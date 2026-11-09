@@ -1701,7 +1701,23 @@ enum Istantanee {
         tutteLeScene += sceneAzienda
         // «Luce», giro 6: Biblioteca · Trova la pagina (Shell/IstantaneeBiblioteca.swift)
         tutteLeScene += sceneBiblioteca
+        // Ripresa (PRISMA_ISTANTANEE_RIPRESA=1, solo il workflow): sulla GPU virtuale dei runner Metal può fermare il
+        // processo su una scena. Prima di ogni scena se ne scrive il nome in `.in-corso`; il workflow, se il processo si
+        // ferma, aggiunge quel nome a `.saltate` e riparte: le scene già scritte e quelle saltate non si rifanno.
+        let ripresa = ProcessInfo.processInfo.environment["PRISMA_ISTANTANEE_RIPRESA"] == "1"
+        let fileInCorso = cartella.appendingPathComponent(".in-corso")
+        let saltate: Set<String> = ripresa
+            ? Set(((try? String(contentsOf: cartella.appendingPathComponent(".saltate"), encoding: .utf8)) ?? "")
+                .split(separator: "\n").map { String($0).trimmingCharacters(in: .whitespaces) })
+            : []
         for scena in tutteLeScene where solo?.contains(scena.nome) ?? true {
+            if ripresa {
+                if saltate.contains(scena.nome)
+                    || FileManager.default.fileExists(atPath: cartella.appendingPathComponent("\(scena.nome).png").path) {
+                    continue
+                }
+                try? Data(scena.nome.utf8).write(to: fileInCorso)
+            }
             // Un pool per scena: senza il ciclo degli eventi (si esce in PrismaApp.init) niente lo svuoterebbe,
             // e stato, finestra e bitmap di ogni scena resterebbero in memoria fino all'ultima istantanea
             let riuscita: Bool = autoreleasepool { () -> Bool in
@@ -1757,6 +1773,7 @@ enum Istantanee {
             }
             guard riuscita else { return 1 }
         }
+        if ripresa { try? FileManager.default.removeItem(at: fileInCorso) }
         return 0
     }
 
