@@ -225,6 +225,18 @@ enum ModelliMessaggi {
             return lei
                 ? ["le scrivo come ci eravamo detti: le mando \(cosa).", "Resto a disposizione per qualsiasi chiarimento."]
                 : ["ti scrivo come ci eravamo detti: ti mando \(cosa).", "Scrivimi pure per qualsiasi dubbio."]
+        case .sinistro:
+            // L'aggiornamento del sinistro («Luce» giro 15, decisione 11): titolo, fase e ultimo fatto scritti dal
+            // consulente; mai referti, diagnosi, numeri di polizza o importi (l'importo pagato solo se acceso)
+            let titolo = v(.sinistro).map { " «\($0)»" } ?? ""
+            let fase = v(.faseSinistro).map { "«\($0)»" } ?? "in corso"
+            var parti = [lei ? "la aggiorno sul sinistro\(titolo): adesso siamo alla fase \(fase)."
+                             : "ti aggiorno sul sinistro\(titolo): adesso siamo alla fase \(fase)."]
+            if let f = v(.ultimoFatto) { parti[0] += " " + frase(f) }
+            if let p = v(.importoPagato) { parti[0] += lei ? " L'importo pagato è di \(p)." : " Ti hanno pagato \(p)." }
+            parti.append(lei ? "La terrò aggiornata a ogni passo. Resto a disposizione per qualsiasi chiarimento."
+                             : "Ti tengo aggiornato a ogni passo: per qualsiasi dubbio scrivimi pure.")
+            return parti
         case .traguardo:
             // Un traguardo da festeggiare: il fatto, mai una cifra in più né una proposta (decisione 87)
             let cosa = v(.traguardo).map { " («\(minuscolaIniziale($0))»)" } ?? ""
@@ -325,6 +337,13 @@ enum ModelliMessaggi {
         case .notaVocale:
             let cosa = v(.occasione) ?? "quanto ci eravamo detti"
             return (["come d'accordo, ti mando \(cosa)."], ["A presto."])
+        case .sinistro:
+            let titolo = v(.sinistro).map { " «\($0)»" } ?? ""
+            let fase = v(.faseSinistro).map { "«\($0)»" } ?? "in corso"
+            var facoltative: [String] = []
+            if let f = v(.ultimoFatto) { facoltative.append(frase(f)) }
+            if let p = v(.importoPagato) { facoltative.append("Pagati \(p).") }
+            return (["il sinistro\(titolo) è alla fase \(fase)."], facoltative)
         case .traguardo:
             let cosa = v(.traguardo).map { " («\(minuscolaIniziale($0))»)" } ?? ""
             return (["oggi è un giorno da ricordare\(cosa): complimenti!"], ["Grazie per la fiducia."])

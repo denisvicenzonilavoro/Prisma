@@ -33,6 +33,10 @@ enum TipoOccasioneMessaggio: String, Codable, CaseIterable, Identifiable {
     /// confronto…»): solo la cosa detta, nessuna cifra in più. Non commerciale: è un seguito chiesto dal cliente
     /// (proposta seguita, domanda per l'utente). In fondo all'enum: l'ordine e il valore salvato restano stabili.
     case notaVocale
+    /// L'aggiornamento di un sinistro al cliente (Pratiche › Sinistri, «Luce» giro 15, decisioni 10 e 11): solo titolo,
+    /// fase e ultimo fatto scritti dal consulente, mai referti, diagnosi, numeri di polizza o importi (salvo «Mostra
+    /// l'importo pagato»). Non commerciale. In fondo all'enum; un Prisma di prima salta questi messaggi (ElencoTollerante).
+    case sinistro
 
     var id: String { rawValue }
 
@@ -54,6 +58,7 @@ enum TipoOccasioneMessaggio: String, Codable, CaseIterable, Identifiable {
         case .campagna: return "Campagna"
         case .richiestaPresentazione: return "Richiesta di presentazione"
         case .notaVocale: return "Dalla nota vocale"
+        case .sinistro: return "Sinistro"
         }
     }
 
@@ -62,7 +67,7 @@ enum TipoOccasioneMessaggio: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .riesame, .occasioneAgenda, .avvisoMercato, .provaFuoco, .campagna, .richiestaPresentazione: return true
         case .riepilogoIncontro, .scadenzaPosizione, .compleanno, .consenso, .parcella, .richiestaVera, .pratica, .traguardo, .datiMancanti,
-             .notaVocale: return false
+             .notaVocale, .sinistro: return false
         }
     }
 
@@ -174,6 +179,13 @@ enum VoceCifraMessaggio: String, CaseIterable {
     case appuntamentiProposti = "Appuntamenti proposti"
     case ultimoVersamento = "Ultimo versamento"
     case etaProssima = "Età il prossimo anno"
+    /// L'aggiornamento del sinistro («Luce» giro 15): titolo, fase, ultimo fatto scritto dal consulente, giorno e, solo
+    /// se acceso nel sinistro, l'importo pagato. Mai numeri di polizza o di sinistro.
+    case sinistro = "Sinistro"
+    case faseSinistro = "Fase del sinistro"
+    case ultimoFatto = "Ultimo fatto"
+    case aggiornatoIl = "Aggiornato il"
+    case importoPagato = "Importo pagato"
 }
 
 /// A che punto è un messaggio. Prisma non spedisce: «aperto» vuol dire aperto già compilato nell'app del Mac

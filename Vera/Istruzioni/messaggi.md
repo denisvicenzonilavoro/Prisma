@@ -32,6 +32,8 @@ Campagna (stesso bisogno per più clienti): ogni messaggio è per una persona so
 
 Richiesta di presentazione: prima il grazie per il fatto della scheda, poi una richiesta leggera e senza impegno di conoscere qualcuno a cui potrebbe servire un aiuto simile. Mai nomi d'altri clienti, mai cifre, mai incentivi o regali in cambio, mai insistere; non dire come si sente il cliente.
 
+Aggiornamento del sinistro: solo la fase e l'ultimo fatto scritti dal consulente, con il titolo del sinistro così com'è nella scheda. Mai diagnosi, referti, dettagli sulla salute, numeri di polizza o di sinistro, importi (salvo l'importo pagato quando è nella scheda); non promettere tempi né esiti della compagnia.
+
 Ogni messaggio chiude con una sola richiesta concreta: vederci, una firma, una risposta («scrivimi pure»). Per gli auguri di compleanno basta l'augurio, senza proposte.
 
 Scrivi in italiano. Rispondi solo con il testo del messaggio, dal saluto alla richiesta finale.
