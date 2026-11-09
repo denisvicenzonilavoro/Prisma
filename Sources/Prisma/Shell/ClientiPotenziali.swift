@@ -37,6 +37,7 @@ private struct CorpoPotenziali: View {
     @FocusState private var fuoco: Bool
     @Environment(\.prismaCalmo) private var calmo
     @Environment(\.prismaScatto) private var scatto
+    @Environment(\.modoIstantanea) private var modoIstantanea
 
     private typealias P = Tema.Apple.Potenziali
     private static let misuraDettaglio = CGSize(width: Tema.Apple.Potenziali.larghezzaDettaglio,
@@ -111,6 +112,11 @@ private struct CorpoPotenziali: View {
             Button("Annulla", role: .cancel) { stato.potenziali.daEliminare = nil }
         } message: {
             Text("Si toglie dal percorso e dall'albero del passaparola. I clienti non cambiano.")
+        }
+        .onAppear {
+            // Il dettaglio chiesto da fuori (clic su un potenziale nell'albero del passaparola) si apre una volta sola:
+            // tornando in Potenziali non si riapre. Nelle istantanee resta (la scena può costruire la vista più volte).
+            if !modoIstantanea, stato.potenziali.dettaglioIstantanea != nil { stato.potenziali.dettaglioIstantanea = nil }
         }
         .onDisappear { dettaglio.chiudi(subito: true) }
     }
