@@ -474,7 +474,8 @@ enum ProvaFaseDueVera {
         s.correggiCampoCaduto(messaggio: id.id, campo: .scadenza, valore: "15/03/2031")
         let corretta = s.messaggioVera(id.id)?.conferma
         controlla(RegistroStrumenti.daIso(corretta?.azioni.last?.argomenti["scadenza"]).map { Calendar.current.component(.day, from: $0) } == 15
-                  && corretta?.azioni.first?.argomenti["campi"]?.contains("15/03/2031") == true,
+                  && (corretta?.azioni.first?.argomenti["campi"]?.data(using: .utf8)).flatMap({ try? JSONDecoder().decode([CampoEstratto].self, from: $0) })?
+                      .first(where: { $0.chiave == .scadenza })?.valore == "15/03/2031",
                   "Lascia cadere: un dato letto corretto prima di «Conferma» cambia la scheda e le righe che ne dipendono")
         _ = s.confermaSchedaVera(messaggio: id.id)
         let andrea = s.cliente("andrea")

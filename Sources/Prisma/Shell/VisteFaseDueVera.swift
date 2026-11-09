@@ -282,10 +282,10 @@ struct LezioniAndamentoVista: View {
     let andamento: AndamentoApprovazioni
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: F.spazioLezioni) {
             Text("Risposte approvate al primo colpo").carattereApple(F.fonteRicordo).foregroundColor(F.testoPillola)
             if let p = andamento.percentuale {
-                HStack(alignment: .bottom, spacing: 12) {
+                HStack(alignment: .bottom, spacing: F.spazioPercentualeLezioni) {
                     Text("\(p)%").carattereApple(F.percentualeLezioni).monospacedDigit()
                     Spacer(minLength: 0)
                     HStack(alignment: .bottom, spacing: F.spazioBarreLezioni) {
@@ -318,8 +318,8 @@ struct FiloConversazioneVista: View {
 
     var body: some View {
         if let f = stato.filoConversazione(chiave: chiave) {
-            VStack(alignment: .leading, spacing: 5) {
-                HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: F.spazioFilo) {
+                HStack(spacing: F.spazioTestataFilo) {
                     Text("IL FILO DELLA CONVERSAZIONE").carattereApple(F.titoloFilo).foregroundColor(F.coloreAnelloTrenta)
                     Spacer(minLength: 0)
                     Text("\(f.messaggi) messaggi · circa \(Formati.numeroFormatter.string(from: NSNumber(value: f.token)) ?? "\(f.token)") di \(Formati.numeroFormatter.string(from: NSNumber(value: f.finestra)) ?? "\(f.finestra)") token")
@@ -504,7 +504,7 @@ struct TrentaSecondiDossierVista: View {
             let primo = cliente.nome.split(separator: " ").first.map(String.init) ?? cliente.nome
             HStack(spacing: F.spazioAscolto) {
                 SferaVera(misura: F.sferaCardTrenta, viva: true, pensa: false)
-                VStack(alignment: .leading, spacing: 1) {
+                VStack(alignment: .leading, spacing: F.spazioTitoliCardTrenta) {
                     Text("Il cliente in 30 secondi").carattereApple(F.titoloCardTrenta).foregroundColor(F.coloreAnelloTrenta)
                     Text("Prima di chiamarlo, te lo racconto io").carattereApple(F.sottotitoloCardTrenta).foregroundColor(F.coloreFonte)
                 }

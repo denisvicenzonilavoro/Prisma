@@ -122,7 +122,8 @@ enum LasciaCadereVera {
                       let ultimo = re.matches(in: riga, range: NSRange(riga.startIndex..., in: riga)).last,
                       let r = Range(ultimo.range, in: riga),
                       let valore = EstrattoreDocumento.numero(String(riga[r])), valore > 0 else { continue }
-                let isin = DateItaliane.cerca(#"\b([A-Z]{2}[A-Z0-9]{9}\d)\b"#, riga).map { $0.1[1] }
+                // L'ISIN in maiuscolo (DateItaliane.cerca ignora le maiuscole: una parola di 12 lettere finita in cifra passerebbe)
+                let isin = riga.range(of: #"\b[A-Z]{2}[A-Z0-9]{9}\d\b"#, options: .regularExpression).map { String(riga[$0]) }
                 // Il nome: il testo prima del primo numero o dell'ISIN, senza le parole del valore
                 var nome = String(riga[..<r.lowerBound])
                 if let i = nome.range(of: #"\bISIN\b|[A-Z]{2}[A-Z0-9]{9}\d|\d"#, options: .regularExpression) { nome = String(nome[..<i.lowerBound]) }

@@ -128,7 +128,7 @@ extension StatoShell {
     /// conversazione lunga, quanta finestra occupa (stima dei token di Prisma) e, se delle battute sono già uscite, il
     /// riassunto che Vera porta con sé. nil per le conversazioni brevi.
     func filoConversazione(chiave: String) -> FiloMostrato? {
-        let storia = storiaPerQwen(chiave).storia
+        let (storia, senzaFilo) = storiaPerQwen(chiave)
         guard storia.count >= FiloMostrato.minimoMessaggi else { return nil }
         // La finestra scelta in Impostazioni › Vera (la stessa che Prisma passa al nucleo)
         let finestra = FinestraVera.valida(dati.impostazioni.vera.finestra)
@@ -138,7 +138,9 @@ extension StatoShell {
         let dentro = storia.suffix(max(0, storia.count - uscite.count))
         let usati = istruzioni + dentro.reduce(0) { $0 + NucleoVera.token($1.testo) + 4 }
         return FiloMostrato(messaggi: storia.count, token: min(finestra, usati), finestra: finestra, uscite: uscite.count,
-                            riassunto: riassuntoVera(chiave: chiave, uscite: uscite))
+                            // In modalità cliente (con appunti riservati nella conversazione) il riassunto salvato non si mostra:
+                            // solo quello di Prisma delle battute visibili, come per Qwen
+                            riassunto: riassuntoPerQwen(chiave: chiave, uscite: uscite, senzaFilo: senzaFilo))
     }
 
     /// Il riassunto delle battute uscite dalla finestra: quello di Qwen se copre già tutte le uscite, altrimenti quello di

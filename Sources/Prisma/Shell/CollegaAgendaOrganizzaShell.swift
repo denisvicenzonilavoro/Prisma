@@ -30,6 +30,9 @@ extension StatoShell {
             return n == 1 ? "Un orario per il nostro incontro" : "Due orari per il nostro incontro"
         case "conferma_orario"?:
             return "Il nostro incontro"
+        case "resoconto"?:
+            // «Manda una sintesi a …» dal resoconto dell'incontro (LetturaControlloShell.swift)
+            return "Il riepilogo del nostro incontro"
         default:
             return nil
         }

@@ -36,6 +36,7 @@ extension Tema.Apple {
         static let sferaCardTrenta: CGFloat = 30
         static let titoloCardTrenta = Carattere(dimensione: 14, peso: .bold)
         static let sottotitoloCardTrenta = Carattere(dimensione: 12.5, peso: .regular)
+        static let spazioTitoliCardTrenta: CGFloat = 1
 
         // MARK: Lascia cadere qui · dati letti, scelta del cliente, «Archiviati da Vera oggi»
 
@@ -54,6 +55,9 @@ extension Tema.Apple {
         static let foglietto = CGSize(width: 22, height: 28)
         static let raggioFoglietto: CGFloat = 3
         static let testataFoglietto: CGFloat = 4
+        static let raggioTestataFoglietto: CGFloat = 1
+        static let paddingFoglietto: CGFloat = 3
+        static let spazioRigaArchiviato: CGFloat = 1
         static let fondoFoglietto = Color.white
         static let massimoArchiviati = 4
         static let spazioArchiviati: CGFloat = 8
@@ -85,11 +89,15 @@ extension Tema.Apple {
         static let testoFilo = Carattere(dimensione: 12.5, peso: .regular, interlinea: 1.4)
         static let righeRiassunto = 2
         static let sottoFilo: CGFloat = 8
+        static let spazioFilo: CGFloat = 5
+        static let spazioTestataFilo: CGFloat = 8
         /// «Le lezioni di Vera»: la percentuale delle risposte approvate al primo colpo e le barre delle ultime settimane.
         static let percentualeLezioni = Carattere(dimensione: 26, peso: .bold)
         static let altezzaBarreLezioni: CGFloat = 30
         static let larghezzaBarraLezioni: CGFloat = 9
         static let spazioBarreLezioni: CGFloat = 4
+        static let spazioLezioni: CGFloat = 4
+        static let spazioPercentualeLezioni: CGFloat = 12
 
         // MARK: Citazioni delle norme
 

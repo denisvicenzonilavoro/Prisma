@@ -256,9 +256,9 @@ struct PannelloNovitaVera: View {
             HStack(alignment: .top, spacing: N.spazioColonne) {
                 ForEach(NovitaVera.Gruppo.allCases) { g in
                     VStack(alignment: .leading, spacing: 0) {
-                        HStack(spacing: 6) {
+                        HStack(spacing: N.spazioPunto) {
                             Circle().fill(g.colore).frame(width: N.puntoGruppo, height: N.puntoGruppo)
-                            Text(g.titolo).carattereApple(N.gruppo).foregroundColor(g.colore).lineLimit(1).minimumScaleFactor(0.85)
+                            Text(g.titolo).carattereApple(N.gruppo).foregroundColor(g.colore).lineLimit(1).minimumScaleFactor(N.riduzioneTesto)
                         }
                         .padding(N.paddingGruppo)
                         .accessibilityAddTraits(.isHeader)
@@ -297,7 +297,7 @@ private struct VoceNovitaVera: View {
                     .carattereApple(N.voce)
                     .foregroundColor(Tema.Apple.Colore.inchiostro)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.85)
+                    .minimumScaleFactor(N.riduzioneTesto)
                 Spacer(minLength: 0)
             }
             .padding(N.paddingVoce)

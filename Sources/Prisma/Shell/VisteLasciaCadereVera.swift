@@ -148,14 +148,14 @@ struct ArchiviatiOggiVeraVista: View {
         let colore = F.coloreTipo(a.tipo, categoria: a.categoria)
         return HStack(alignment: .top, spacing: F.spazioScelta) {
             VStack(spacing: 0) {
-                RoundedRectangle(cornerRadius: 1, style: .continuous).fill(colore).frame(height: F.testataFoglietto)
+                RoundedRectangle(cornerRadius: F.raggioTestataFoglietto, style: .continuous).fill(colore).frame(height: F.testataFoglietto)
                 Spacer(minLength: 0)
             }
-            .padding(3)
+            .padding(F.paddingFoglietto)
             .frame(width: F.foglietto.width, height: F.foglietto.height)
             .background(RoundedRectangle(cornerRadius: F.raggioFoglietto, style: .continuous).fill(F.fondoFoglietto))
             .ombraApple(.carta)
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: F.spazioRigaArchiviato) {
                 Text(a.titolo).carattereApple(F.titoloArchiviato).foregroundColor(Tema.Apple.Colore.inchiostro).lineLimit(1)
                 Text("→ \(a.cliente) · \(a.dove)").carattereApple(F.dettaglioArchiviato).foregroundColor(colore).lineLimit(1)
                 Text(a.dettaglio).carattereApple(F.dettaglioArchiviato).foregroundColor(F.coloreFonte).lineLimit(1)

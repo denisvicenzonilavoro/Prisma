@@ -19,6 +19,9 @@ extension Tema.Apple {
         static let spazioColonne: CGFloat = 14
         static let gruppo = Carattere(dimensione: 12, peso: .bold)
         static let puntoGruppo: CGFloat = 7
+        static let spazioPunto: CGFloat = 6
+        /// Quanto si stringono titoli dei gruppi e voci prima di andare a capo (mai: una riga sola).
+        static let riduzioneTesto: CGFloat = 0.85
         static let paddingGruppo = EdgeInsets(top: 0, leading: 8, bottom: 6, trailing: 0)
         static let voce = Carattere(dimensione: 13, peso: .semibold)
         static let paddingVoce = EdgeInsets(top: 6, leading: 8, bottom: 6, trailing: 8)
