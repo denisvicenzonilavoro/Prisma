@@ -64,3 +64,39 @@ struct VeloScena: View {
         .accessibilityHidden(true)
     }
 }
+
+/// L'iPad disegnato del palco della realtà aumentata («Luce» giro 16, §2.3.1): 944×560, raggio 42, corpo scuro con il
+/// gradiente a 145°, filo interno, fotocamera frontale sul lato sinistro e schermo nero rientrato di 15 con raggio 28.
+/// Lo schermo lo dà chi lo usa, ritagliato nella sua forma.
+struct CorniceiPad<Schermo: View>: View {
+    let schermo: Schermo
+
+    private typealias I = Tema.Apple.RealtaAumentata.CorniceiPad
+
+    init(@ViewBuilder schermo: () -> Schermo) {
+        self.schermo = schermo()
+    }
+
+    var body: some View {
+        let corpo = RoundedRectangle(cornerRadius: I.raggio, style: .continuous)
+        ZStack(alignment: .leading) {
+            corpo
+                .fill(LinearGradient(stops: [.init(color: I.fondoInizio, location: 0),
+                                             .init(color: I.fondoFine, location: I.fermataFondo)],
+                                     startPoint: I.inizio, endPoint: I.fine))
+                .shadow(color: I.ombra, radius: I.raggioOmbra, x: 0, y: I.scostamentoOmbra - I.rientroOmbra)
+            corpo.strokeBorder(I.filo, lineWidth: I.spessoreFilo)
+            Circle()
+                .fill(I.coloreFotocamera)
+                .frame(width: I.fotocamera, height: I.fotocamera)
+                .padding(.leading, (I.margine - I.fotocamera) / 2)
+            ZStack {
+                RoundedRectangle(cornerRadius: I.raggioSchermo, style: .continuous).fill(I.schermo)
+                schermo
+            }
+            .clipShape(RoundedRectangle(cornerRadius: I.raggioSchermo, style: .continuous))
+            .padding(I.margine)
+        }
+        .frame(width: I.dimensione.width, height: I.dimensione.height)
+    }
+}

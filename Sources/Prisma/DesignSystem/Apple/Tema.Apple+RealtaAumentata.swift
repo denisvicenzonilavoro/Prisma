@@ -285,7 +285,20 @@ extension Tema.Apple {
         /// Il fermo-immagine in SwiftUI (`CristalloFermo`): assonometria del prisma triangolare.
         enum Fermo {
             /// Punti per unità del cristallo nel fermo-immagine (rispetto al lato corto dell'area).
-            static let quotaScala: CGFloat = 0.21
+            static let quotaScala: CGFloat = 0.26
+            /// La targhetta guarda un po' verso il fondo della faccia alta, le pillole accanto al lato destro.
+            static let quotaTarghetta: Float = 0.2
+            static let quotaPillole: Float = 0.85
+            /// Il logo schiacciato come la faccia alta.
+            static let schiacciamentoLogo: CGFloat = 1.6
+            /// Le luci a bolle della stanza.
+            static let quanteBolle = 6
+            static let bollaX: CGFloat = 0.12
+            static let bollaPassoX: CGFloat = 0.16
+            static let bollaY: CGFloat = 0.14
+            static let bollaPassoY: CGFloat = 0.09
+            static let bollaLato: CGFloat = 0.10
+            static let bollaPassoLato: CGFloat = 0.03
             /// Lo schiacciamento verticale della pianta (assonometria) e l'angolo di vista.
             static let schiacciamento: CGFloat = 0.42
             static let rotazione: Double = -0.55
@@ -331,6 +344,12 @@ extension Tema.Apple {
             static let filo = Color(hex: "#E2E8EE")
             static let altezzaImmagine: CGFloat = 420
             static let lato: CGFloat = 1_200
+            static let spazio: CGFloat = 18
+            static let spazioRiga: CGFloat = 8
+            static let quadratino: CGFloat = 10
+            static let raggioQuadratino: CGFloat = 3
+            static let paddingRiga: CGFloat = 6
+            static let larghezzaValore: CGFloat = 90
         }
     }
 }
