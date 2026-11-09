@@ -13,7 +13,7 @@ import Foundation
 /// - 806: la sostituzione «costi più bassi» costruita, con il prospetto di sostituzione e i costi da … a …, chiaro e scuro;
 /// - 807: nessun bisogno scoperto;
 /// - 809: «Proponi una key man ›» dal dossier di Marco: il bisogno della persona chiave di Bianchi Serramenti (azienda di
-///   prova) con il capitale che manca, costruito.
+///   prova) con il capitale che manca, costruito, chiaro e scuro.
 /// La 806 usa il bisogno di sostituzione dei motori dei costi se i dati di prova ne hanno uno; altrimenti la prima
 /// posizione in essere di investimento o risparmio con un prodotto del catalogo di prova della stessa area, come se la
 /// sostituzione arrivasse dallo Smontaggio (dichiarato: è la strada di «Crea la proposta di sostituzione»).
@@ -67,7 +67,7 @@ extension Istantanee {
             s.apriPratiche(.proposta)
             costruisciSostituzione(s)
         }
-        una("809-pratiche-proposta-azienda") { s in
+        coppia("809-pratiche-proposta-azienda") { s in
             s.proponiDaAzienda(clienteId: "marco", aziendaId: AziendeDiProva.idBianchi, area: .personaChiave)
             guard let b = s.bisogniProposta().first(where: { $0.areaAzienda == .personaChiave }) else { return }
             if case .daScegliere(let prodotti)? = s.propostaCostruita(b)?.prodotto, let primo = prodotti.first {
