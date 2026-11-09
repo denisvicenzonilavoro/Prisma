@@ -90,6 +90,11 @@ enum DisegnoFilm {
     /// Un gruppo disegnato con un'opacità comune (strato di trasparenza: gli elementi non si vedono attraverso).
     private static func strato(_ ctx: CGContext, alfa: Double, _ disegno: () -> Void) {
         guard alfa > 0.001 else { return }
+        // Già del tutto visibile: niente strato (ogni strato costa un fotogramma intero in memoria)
+        if alfa >= 0.999 {
+            disegno()
+            return
+        }
         ctx.saveGState()
         ctx.setAlpha(CGFloat(min(1, alfa)))
         ctx.beginTransparencyLayer(auxiliaryInfo: nil)
@@ -102,6 +107,10 @@ enum DisegnoFilm {
     private static func entrata(_ ctx: CGContext, indice: Int, t: Double, fermo: Bool, centro: CGPoint, _ disegno: () -> Void) {
         let p = fermo ? 1 : progresso(t, ritardo: Double(indice) * M.Elemento.passo, durata: M.Elemento.durata, curva: uscita)
         guard p > 0.001 else { return }
+        if p >= 0.999 {
+            disegno()
+            return
+        }
         ctx.saveGState()
         ctx.translateBy(x: centro.x, y: centro.y + M.Elemento.spostamento * CGFloat(1 - p))
         let s = M.Elemento.scala + (1 - M.Elemento.scala) * CGFloat(p)
