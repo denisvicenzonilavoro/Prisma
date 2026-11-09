@@ -229,6 +229,7 @@ enum NovitaLuce: String, CaseIterable, Identifiable {
         case .territorio: return true            // giro 11: Territorio, il tuo territorio
         case .passaparola, .campagne: return true   // giro 12: Clienti › Potenziali e Passaparola, Messaggi › Campagne
         case .nuovoCliente, .notaVocale: return true   // giro 13: Clienti › Nuovo cliente in 10 secondi, Incontri › Nota dall'iPhone
+        case .realtaAumentata: return true       // giro 16: Sala › La realtà aumentata, il tavolo a doppio senso
         default: return false
         }
     }
