@@ -26,6 +26,11 @@ extension ProvaBackup {
         c.ricordi = [RicordoVera(testo: segreto, clienteId: "sofia", fonte: "in chat", data: Date(timeIntervalSinceReferenceDate: 800_000_000))]
         c.lezioni = [LezioneVera(testo: "Con i clienti Alleanza parla di «piano», non di «prodotto»", data: Date(timeIntervalSinceReferenceDate: 800_000_000))]
         c.fili = ["laura": FiloVera(riassunto: "Laura vuole smettere a 60 anni.", finoA: "msg-1", data: Date(timeIntervalSinceReferenceDate: 800_000_000))]
+        // Fase 5: un esempio approvato con id, modalità ed esclusione (Vera su misura)
+        var esempio = EsempioVera(domanda: "Come spiego il rischio a un cliente prudente?", risposta: "Partirei da una domanda semplice.",
+                                  data: Date(timeIntervalSinceReferenceDate: 800_000_000), modalita: .conversazione)
+        esempio.escluso = true
+        c.esempi = [esempio]
         let cifrato = try MemoriaVera.scrivi(c, chiave: chiave)
         guard cifrato.range(of: Data("Paolo".utf8)) == nil else { return "memoria di Vera: il file non è cifrato" }
         try cifrato.write(to: dati.appendingPathComponent("Vera/memoria.cifrato"))
@@ -54,6 +59,17 @@ extension ProvaBackup {
             return "memoria di Vera: la chiave non torna con la password dei backup"
         }
         guard (try? MemoriaVera.svolgi(fileChiave, password: "sbagliata")) == nil else { return "memoria di Vera: la chiave si apre con una password sbagliata" }
+        // Un esempio scritto prima della fase 5 (senza id, modalità ed esclusione) riceve sempre lo stesso id
+        let vecchio = Data(#"{"domanda":"Che cos'è un PIP?","risposta":"Un piano previdenziale.","data":"2026-01-10T10:00:00Z"}"#.utf8)
+        let lettore = JSONDecoder()
+        lettore.dateDecodingStrategy = .iso8601
+        guard let e1 = try? lettore.decode(EsempioVera.self, from: vecchio), let e2 = try? lettore.decode(EsempioVera.self, from: vecchio),
+              e1.id == e2.id, e1.id == EsempioVera.impronta(domanda: e1.domanda, risposta: e1.risposta), e1.modalita == nil, !e1.escluso else {
+            return "memoria di Vera: un esempio di prima non riceve sempre lo stesso id"
+        }
+        guard (try? MemoriaVera.leggi(tornato, chiave: chiave))?.esempi == [esempio] else {
+            return "memoria di Vera: l'esempio con id, modalità ed esclusione non torna uguale"
+        }
         // La biblioteca torna con i suoi articoli
         let biblio = try? JSONDecoder().decode([TestoNorma].self, from: Data(contentsOf: estratto.cartella.appendingPathComponent("Biblioteca/biblioteca.json")))
         guard biblio?.first?.articoli.first?.numero == "177" else { return "biblioteca: i testi non tornano dal backup" }
