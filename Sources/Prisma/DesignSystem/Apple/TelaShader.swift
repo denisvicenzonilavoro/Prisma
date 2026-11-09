@@ -64,7 +64,7 @@ enum ShaderTela {
     }
 
     /// Metal c'è (mai falso sui Mac supportati; possibile nel simulatore).
-    static let disponibile = MTLCreateSystemDefaultDevice() != nil
+    static let disponibile = MetalPrisma.device() != nil
 
     private static let serratura = NSLock()
     private static var programmi: [String: MTLRenderPipelineState] = [:]
@@ -158,7 +158,7 @@ final class RendererTelaShader: NSObject {
     private let serratura = NSLock()
     private var condiviso = Condiviso()
     private let coda = DispatchQueue(label: "prisma.tela.shader", qos: .userInteractive, autoreleaseFrequency: .workItem)
-    private let device = MTLCreateSystemDefaultDevice()
+    private let device = MetalPrisma.device()
     private lazy var comandi: MTLCommandQueue? = device?.makeCommandQueue()
     /// Solo coda del disegno.
     private var strato: CAMetalLayer?
