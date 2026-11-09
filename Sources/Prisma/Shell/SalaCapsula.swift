@@ -311,14 +311,20 @@ struct CapsulaDelTempo: View {
         case .data: apertura = .data(Calendar.current.startOfDay(for: dataScelta))
         }
         let prima = Set(stato.dati.capsule.map(\.id))
-        guard stato.sigillaCapsula(testo, apertura: apertura, cliente: cliente) else {
+        // Riduci movimento: il campo si svuota e la riga nuova compare con la dissolvenza di 0,15 s
+        let sigillata: Bool
+        if calmo {
+            sigillata = withAnimation(Tema.Moto.dissolvenzaCalma) { stato.sigillaCapsula(testo, apertura: apertura, cliente: cliente) }
+        } else {
+            sigillata = stato.sigillaCapsula(testo, apertura: apertura, cliente: cliente)
+        }
+        guard sigillata else {
             stato.mostraAvviso(TestiCapsule.toastNonSigillata)
             return
         }
         let nuova = stato.dati.capsule.first { !prima.contains($0.id) }?.id
         if calmo {
             testo = ""
-            withAnimation(Tema.Moto.dissolvenzaCalma) { lampo = nil }
             stato.mostraAvviso(TestiCapsule.toastSigillata)
             return
         }
