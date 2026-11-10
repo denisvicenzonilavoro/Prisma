@@ -50,6 +50,8 @@ enum MotoreNotifiche {
         // I nomi per id una volta sola (i clienti visibili, come `cliente(_:)`: in modalità cliente solo il suo)
         let nomi = Dictionary(stato.clienti.map { ($0.id, $0.nome) }, uniquingKeysWith: { primo, _ in primo })
         func nome(_ id: String) -> String { nomi[id] ?? "Senza cliente" }
+        // I clienti veri (senza le schede unite dal tagliando) una volta sola: `clientiAttivi` rifà il filtro a ogni lettura
+        let attivi = stato.clientiAttivi
         var elenco: [Notifica] = []
 
         // Appuntamenti di oggi, ancora da fare
@@ -111,7 +113,7 @@ enum MotoreNotifiche {
         // Proposte ferme: presentate da più dei giorni del seguito senza un appuntamento in agenda, o rimandate e da
         // riprendere. Una voce sola per tutte, come i clienti da ricontattare (apre il Portafoglio)
         let sogliaSeguito = dati.impostazioni.giorniSeguitoProposte
-        let ferme = MotoreSeguitoProposte.inSospeso(posizioni: dati.posizioni, clienti: stato.clientiAttivi, appuntamenti: dati.appuntamenti,
+        let ferme = MotoreSeguitoProposte.inSospeso(posizioni: dati.posizioni, clienti: attivi, appuntamenti: dati.appuntamenti,
                                                     attivita: dati.attivita, adesso: oggi, soglia: sogliaSeguito)
         if ferme.count == 1, let s = ferme.first {
             let p = s.posizione
@@ -132,7 +134,7 @@ enum MotoreNotifiche {
                                    data: inizio, canale: canaleFerme, destinazione: nil))
         }
         // Compleanni dei clienti
-        for c in stato.clientiAttivi {
+        for c in attivi {
             guard let nascita = c.dataNascita, let prossimo = prossimoCompleanno(nascita, da: inizio, cal: cal) else { continue }
             let giorni = cal.dateComponents([.day], from: inizio, to: prossimo).day ?? 99
             guard giorni <= giorniCompleanno else { continue }
@@ -152,9 +154,14 @@ enum MotoreNotifiche {
                                    dettaglio: nome(d.clienteId), data: d.importatoIl, destinazione: .documento(d.id)))
         }
         // Estratti conto con il valore confermato ma non ancora nello storico della posizione
+        // Le posizioni per cliente una volta sola (nell'ordine dell'archivio): `posizioneProbabile` guarda solo quelle del
+        // cliente del documento, quindi il risultato è lo stesso, senza rileggere tutte le posizioni per ogni documento
+        var posizioniPerCliente: [String: [Posizione]]?
         for d in dati.documenti where d.lettura == .letto && ValoriDaDocumento.pertinente(d) {
-            guard let v = ValoriDaDocumento.valore(d),
-                  let p = ValoriDaDocumento.posizioneProbabile(d, tra: dati.posizioni), !ValoriDaDocumento.registrato(v, in: p) else { continue }
+            guard let v = ValoriDaDocumento.valore(d) else { continue }
+            if posizioniPerCliente == nil { posizioniPerCliente = Dictionary(grouping: dati.posizioni, by: \.clienteId) }
+            guard let p = ValoriDaDocumento.posizioneProbabile(d, tra: posizioniPerCliente?[d.clienteId] ?? []),
+                  !ValoriDaDocumento.registrato(v, in: p) else { continue }
             elenco.append(Notifica(id: "valore-\(d.id)-\(Int(v.data.timeIntervalSince1970))", gruppo: .daSistemare, app: .documenti,
                                    titolo: "Valore di «\(p.nome)» da registrare",
                                    dettaglio: "\(nome(d.clienteId)) · \(Formati.euro(v.valore)) al \(Formati.dataEstesa.string(from: v.data)), da «\(d.titolo)»",
@@ -170,7 +177,7 @@ enum MotoreNotifiche {
                                    destinazione: daVerificare.count == 1 ? .prodotto(primo.id) : .app(.prodotti)))
         }
         // Clienti da ricontattare (nessun contatto da mesi e niente in agenda): una voce sola, apre il Portafoglio
-        let richiamare = MotorePortafoglio.daRicontattare(dati.posizioni, clienti: stato.clientiAttivi, appuntamenti: dati.appuntamenti,
+        let richiamare = MotorePortafoglio.daRicontattare(dati.posizioni, clienti: attivi, appuntamenti: dati.appuntamenti,
                                                           incontri: dati.incontri, oggi: oggi)
         if let primo = richiamare.first {
             elenco.append(Notifica(id: "ricontattare-\(richiamare.map(\.id).joined(separator: ","))", gruppo: .daSistemare, app: .clienti,
@@ -181,11 +188,12 @@ enum MotoreNotifiche {
         }
         // Polizze e previdenza senza beneficiari: il capitale andrebbe agli eredi legittimi
         let perCliente = Dictionary(grouping: dati.posizioni.filter { $0.stato == .inEssere }, by: \.clienteId)
-        let senzaBeneficiari = stato.clientiAttivi.filter { c in
+        let senzaBeneficiari = attivi.filter { c in
             guard let mie = perCliente[c.id] else { return false }
             return mie.contains { p in
-                MotoreSuccessione.classifica(p).1 == .beneficiari && p.senzaBeneficiari
-                    && abs(MotoreSuccessione.classifica(p).0) > 0.5
+                // La classificazione una volta sola per posizione (prima due)
+                let (valore, voce, _) = MotoreSuccessione.classifica(p)
+                return voce == .beneficiari && p.senzaBeneficiari && abs(valore) > 0.5
             }
         }
         if let primo = senzaBeneficiari.first {
@@ -195,7 +203,7 @@ enum MotoreNotifiche {
                                    data: inizio, destinazione: nil))
         }
         // Proposte di un tipo che il cliente dice di non conoscere (griglia dell'esperienza nel profilo)
-        let ignoti = MotoreEsperienza.daSegnalare(clienti: stato.clientiAttivi, posizioni: dati.posizioni, prodotti: dati.prodotti)
+        let ignoti = MotoreEsperienza.daSegnalare(clienti: attivi, posizioni: dati.posizioni, prodotti: dati.prodotti)
         if let primo = ignoti.first {
             // Una sola proposta di un solo cliente: la notifica porta alla proposta
             var una: Posizione?
@@ -296,8 +304,9 @@ enum MotoreNotifiche {
         }
         // «Luce» giro 15: le capsule del tempo pronte dei clienti visibili (solo dentro Prisma, decisione 29; mai il testo,
         // mai a Vera). Il clic apre la Sala sulla griglia: aprire la capsula resta un gesto del consulente nel palco
+        let capsulePerId = Dictionary(dati.capsule.map { ($0.id, $0) }, uniquingKeysWith: { prima, _ in prima })
         for id in MotoreCapsule.pronte(dati.capsule, obiettivi: dati.obiettivi, oggi: oggi, cal: cal) {
-            guard let c = dati.capsule.first(where: { $0.id == id }), let n = nomi[c.clienteId] else { continue }
+            guard let c = capsulePerId[id], let n = nomi[c.clienteId] else { continue }
             elenco.append(Notifica(id: "capsula-pronta-\(c.id)", gruppo: .oggi, app: .sala,
                                    titolo: TestiCapsule.titoloNotifica(nome: TestiTraguardi.primoNome(n)),
                                    dettaglio: TestiCapsule.dettaglioNotifica, data: inizio))

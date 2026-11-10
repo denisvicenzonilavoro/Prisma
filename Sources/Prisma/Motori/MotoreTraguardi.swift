@@ -115,7 +115,15 @@ enum MotoreTraguardi {
         func dentro(_ d: Date) -> Bool { d >= da && d < a }
 
         for c in dati.clienti {
-            let idea = ideaRegalo(cliente: c, note: note[c.id] ?? [], obiettivi: obiettivi[c.id] ?? [])
+            // L'idea per il regalo (le frasi di tutte le note) solo per i clienti che hanno un traguardo, una volta sola:
+            // il centro notifiche chiede i traguardi a ogni ricalcolo e quasi nessun cliente ne ha uno
+            var ideaCalcolata: IdeaRegalo?? = nil
+            func idea() -> IdeaRegalo? {
+                if let gia = ideaCalcolata { return gia }
+                let nuova = ideaRegalo(cliente: c, note: note[c.id] ?? [], obiettivi: obiettivi[c.id] ?? [])
+                ideaCalcolata = .some(nuova)
+                return nuova
+            }
             func aggiungi(_ tipo: TipoTraguardo, riferimento: String, data: Date, titolo: String, fraseBreve: String,
                           perche: String, saluto: String, cifra: Double?, didascalia: String?, frase: String,
                           momento: String, peso: Double = 0, capsula: String? = nil) {
@@ -123,7 +131,7 @@ enum MotoreTraguardi {
                 guard !spenti.contains(tipo), !scartati.contains(id) else { return }
                 elenco.append(Traguardo(id: id, tipo: tipo, clienteId: c.id, data: data, titolo: titolo, fraseBreve: fraseBreve,
                                         perche: perche, saluto: saluto, cifra: cifra, didascaliaCifra: didascalia, frase: frase,
-                                        ideaRegalo: idea, capsulaId: capsula, festeggiatoIl: regole.festeggiati[id],
+                                        ideaRegalo: idea(), capsulaId: capsula, festeggiatoIl: regole.festeggiati[id],
                                         fraseMomento: momento, peso: peso))
             }
             let nome = TestiTraguardi.primoNome(c.nome)

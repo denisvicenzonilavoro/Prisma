@@ -102,7 +102,10 @@ enum MotoreOccasioni {
     /// Il primo mese da `oggi` in cui le coperture caso morte di una persona scendono sotto il debito a suo carico.
     /// Nil se la persona non ha coperture o debiti, se il capitale è già sotto oggi (lo dice già l'avviso della
     /// protezione per persona) o se non scende mai sotto nei mesi guardati.
-    static func sottoDebito(persona: String, cliente: Cliente, posizioni: [Posizione], oggi: Date,
+    /// Con `fino` (inizio di un giorno) si guarda solo prima di quel giorno: chi cerca le occasioni di una finestra (le
+    /// notifiche guardano un mese, non 40 anni) scarterebbe comunque un mese che cade dopo, quindi il risultato nella
+    /// finestra non cambia e il calcolo si ferma presto.
+    static func sottoDebito(persona: String, cliente: Cliente, posizioni: [Posizione], oggi: Date, fino: Date? = nil,
                             cal: Calendar = .current) -> (data: Date, capitale: Double, debito: Double, posizioneId: String)? {
         let mie = posizioni.filter { $0.clienteId == cliente.id && $0.stato == .inEssere }
         // 1. Le coperture caso morte in essere di cui la persona è l'assicurato
@@ -139,6 +142,8 @@ enum MotoreOccasioni {
         // 6. Il primo mese sotto
         for m in 1...mMax {
             guard let t = cal.date(byAdding: .month, value: m, to: oggi) else { break }
+            // Oltre la finestra di chi chiede: quel mese verrebbe scartato, e i successivi anche
+            if let fino, cal.startOfDay(for: t) >= fino { break }
             let attuali = coperture.map { contributo($0, t) }
             let capitale = attuali.reduce(0, +)
             let deb = debito(m)
@@ -418,7 +423,7 @@ enum MotoreOccasioni {
         }
         if regole.attivo(.capitaleSottoDebito) {
             for x in protette {
-                guard let r = sottoDebito(persona: x.id, cliente: c, posizioni: mie, oggi: oggi, cal: cal), dentro(r.data) else { continue }
+                guard let r = sottoDebito(persona: x.id, cliente: c, posizioni: mie, oggi: oggi, fino: fine, cal: cal), dentro(r.data) else { continue }
                 let copertura = mie.first { $0.id == r.posizioneId }
                 aggiungi(.capitaleSottoDebito, r.data, posizione: r.posizioneId, familiare: x.familiare, canale: copertura?.canale,
                          titolo: TestiOccasioni.titoloSottoDebito(x.nome),
