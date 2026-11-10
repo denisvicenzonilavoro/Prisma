@@ -196,6 +196,11 @@ enum ProvaAdeguatezza {
                 let inizioNotifiche = Date()
                 _ = MotoreNotifiche.calcola(s)
                 let tempoNotifiche = Date().timeIntervalSince(inizioNotifiche)
+                // Diagnosi: il secondo calcolo (cache piene) dice quanto del primo è riempimento delle cache
+                let inizioSecondo = Date()
+                _ = MotoreNotifiche.calcola(s)
+                print("INFO Adeguatezza: centro notifiche a freddo \(Int((tempoNotifiche * 1000).rounded())) ms, "
+                      + "con le cache piene \(Int((Date().timeIntervalSince(inizioSecondo) * 1000).rounded())) ms")
                 controlla(schede == 200 && tempoNotifiche < limiteNotifiche,
                           "Centro notifiche con \(schede) schede incomplete in \(Int((tempoNotifiche * 1000).rounded())) ms (limite \(Int(limiteNotifiche * 1000)) ms)")
             } else {
