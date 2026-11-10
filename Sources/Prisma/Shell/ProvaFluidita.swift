@@ -200,7 +200,8 @@ enum ProvaFluidita {
         }
 
         // Ogni app del dock, una alla volta: apertura e chiusura (le app già aperte: chiusura e riapertura)
-        for app in AppPrisma.delDock where stato.appConsentita(app) {
+        // Sul runner senza Metal il Territorio si salta anche qui (la mappa ferma il processo sulla GPU virtuale)
+        for app in AppPrisma.delDock where stato.appConsentita(app) && !(MetalPrisma.spento && app == .territorio) {
             let apri = PassoFluidita(nome: "apri \(app.titolo)", azione: { stato.apri(app) },
                                      verifica: { stato.appAttiva == app })
             let chiudi = PassoFluidita(nome: "chiudi \(app.titolo)", azione: { stato.chiudi(app) },
