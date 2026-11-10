@@ -24,7 +24,10 @@ enum ProvaCarico {
     static let limiteClientePiuLento = 2.0 * fattoreTempo
     static let limitePDF = 8.0 * fattoreTempo
     static let limiteRicerca = 1.0 * fattoreTempo
-    static let limiteNotifiche = 0.1 * fattoreTempo
+    /// 150 ms sul runner (prima 100): con Vera (fasi 4-5) e Luce (giri 11-16) le notifiche sono passate da 18 a 25 e il
+    /// ricalcolo con le cache piene sta fra 78 ms (runner normale) e 130 ms (runner lento); sul Mac M1 dell'utente è circa
+    /// tre volte più veloce. Il limite resta una guardia contro i disastri, non la misura della fluidità.
+    static let limiteNotifiche = 0.15 * fattoreTempo
     static let limiteNotifichePrimaVolta = 1.0 * fattoreTempo
     static let limiteMemoriaMB = 1_200.0
     /// Il fascicolo e il portafoglio calcolati la prima volta, e poi ripresi dalla cache (DerivatiDati).
