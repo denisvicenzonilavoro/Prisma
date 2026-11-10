@@ -131,24 +131,7 @@ struct BarraSuperiore: View {
             if stato.inModoCliente {
                 ContrassegnoModoCliente()
             } else {
-                #if os(macOS)
-                // «✦ Novità» con il numero delle funzioni nuove, subito prima di Cerca (template-novita §1.1, §2.1)
-                PulsanteBarra(aiuto: "Le novità di Prisma: \(NovitaLuce.allCases.count) funzioni da provare",
-                              forma: .pillola, azione: { stato.alternaNovita() }) {
-                    HStack(spacing: B.spazioNovita) {
-                        Text("✦ Novità")
-                            .carattereApple(Tema.Apple.Carattere.barra)
-                            .foregroundColor(B.testoNovita)
-                        Text("\(NovitaLuce.allCases.count)")
-                            .carattereApple(B.pastigliaNovita)
-                            .foregroundColor(B.testoSuColore)
-                            .lineLimit(1)
-                            .padding(B.paddingPastigliaNovita)
-                            .background { Capsule(style: .continuous).fill(B.fondoPastigliaNovita) }
-                            .fixedSize()
-                    }
-                }
-                #endif
+                // La pillola «✦ Novità» non c'è più (scelta dell'utente, 10 novembre 2026): le novità non si mostrano nell'app
 
                 PulsanteBarra(aiuto: "Cerca in Prisma (⌘K)", forma: .pillola, azione: { stato.alternaRicerca() }) {
                     HStack(spacing: B.spazioCerca) {
@@ -186,6 +169,9 @@ struct BarraSuperiore: View {
                 // nell'evento «notifica nuova» (EventiShell.swift)
                 .puntoAcqua(.campanella)
                 .segnaCampanella()
+                // Il numero esce dal cerchio verso destra: la campanella si disegna sopra il pulsante che le sta accanto,
+                // se no il numero finisce sotto («?» della guida)
+                .zIndex(1)
             }
 
             // La guida di Prisma (anche in modalità cliente): come funziona, le app, le parole

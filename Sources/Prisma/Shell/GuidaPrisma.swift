@@ -352,7 +352,7 @@ extension StatoShell {
         if !dati.impostazioni.introduzioneVista {
             apriGuida(.introduzione(0))
         } else {
-            proponiNovitaDopoSblocco()
+            // Le novità non si aprono più da sole (scelta dell'utente, 10 novembre 2026)
             // «Luce» giro 14: le carte della notte si aprono da sole una volta (prima della storia: vince la notte)
             proponiNotteDopoSblocco()
             // «Luce» giro 5: il lunedì la storia della settimana NON si apre da sola (decisione 128): la scrivania mostra
