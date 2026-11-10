@@ -17,6 +17,10 @@ jobs:
   build:
     permissions:
       contents: read
+    # Su main (e per la release) Prisma universale, Apple Silicon e Intel. Sugli altri branch solo l'architettura del
+    # runner (Intel): la compilazione dura circa la metà e le prove girano lo stesso.
+    env:
+      ARCHITETTURE: ${{ github.ref == 'refs/heads/main' && '--arch arm64 --arch x86_64' || '--arch x86_64' }}
     # Non usare macos-latest: le code dei runner Apple Silicon gratuiti vanno in timeout.
     runs-on: macos-15-intel
     # La pubblicazione sul branch anteprime la fa il job «pubblica» (Mac e iOS insieme)
@@ -46,7 +50,7 @@ jobs:
           xcrun --show-sdk-version
 
       - name: Compila (Apple Silicon + Intel)
-        run: swift build -c release --arch arm64 --arch x86_64
+        run: swift build -c release $ARCHITETTURE
 
       - name: Genera AppIcon.icns
         run: |
@@ -66,7 +70,7 @@ jobs:
 
       - name: Crea Prisma.app
         run: |
-          BIN_DIR="$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)"
+          BIN_DIR="$(swift build -c release $ARCHITETTURE --show-bin-path)"
           APP=Prisma.app
           mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
           cp "$BIN_DIR/Prisma" "$APP/Contents/MacOS/Prisma"
@@ -179,8 +183,8 @@ jobs:
           APP=Prisma.app
           set -e
           test -x "$APP/Contents/MacOS/Prisma"
-          lipo -info "$APP/Contents/MacOS/Prisma" | tee /dev/stderr | grep -q arm64
-          lipo -info "$APP/Contents/MacOS/Prisma" | grep -q x86_64
+          lipo -info "$APP/Contents/MacOS/Prisma" | tee /dev/stderr | grep -q x86_64
+          if [ "$GITHUB_REF" = refs/heads/main ]; then lipo -info "$APP/Contents/MacOS/Prisma" | grep -q arm64; fi
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP/Contents/Info.plist")" = Prisma
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Contents/Info.plist")" = local.prisma
           if [ -f Design/Icone/AppIcon.png ]; then
@@ -387,6 +391,8 @@ jobs:
   # Niente .xcodeproj: xcodebuild apre Package.swift, il .app si assembla con Supporto/iOS/assembla.sh.
   # Bloccante dal giro 2: tutto il target compila su iOS, e da qui vale «iOS rosso = niente merge».
   ios:
+    # Solo su main (o lanciato a mano): sugli altri branch la compilazione per iPhone e iPad la controlla già il job ipa
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
     permissions:
       contents: read
     # Non usare macos-latest: le code dei runner Apple Silicon gratuiti vanno in timeout.
