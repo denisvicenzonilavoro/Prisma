@@ -81,7 +81,7 @@ struct SchermataBenvenuto: View {
             OrologioBlocco()
                 .padding(.top, L.oraSottoLogo)
             Spacer(minLength: 0)
-            CursoreEntraBlocco(fermo: fermo) { velocita in entra(velocita: velocita) }
+            CursoreEntraBlocco(fermo: istantanea || calmo) { velocita in entra(velocita: velocita) }
                 .padding(.bottom, L.pulsanteDalFondo)
         }
         .foregroundColor(Tema.Apple.Colore.inchiostroAcqua)
