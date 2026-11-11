@@ -126,7 +126,8 @@ struct PagineScrivania: View {
                 // Sotto una finestra ingrandita, a transizione finita, la scrivania non si disegna (resta montata)
                 .opacity(nascosti ? 0 : Double(1 - visibile))
                 .allowsHitTesting(!sistema.scrivaniaNascosta && p < Tema.Moto.VeraScrivania.sogliaPagina)
-                .gesture(trascinamento(larghezza: w))
+                // Simultaneo: il tocco della goccia sul fondo e i riquadri non devono inghiottire il trascinamento
+                .simultaneousGesture(trascinamento(larghezza: w))
 
             if veraMontata || visibile > 0 {
                 ZStack {

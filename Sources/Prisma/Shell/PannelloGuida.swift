@@ -54,17 +54,6 @@ struct PannelloGuida: View {
             ControlloSegmenti(opzioni: SchedaGuida.allCases.map { ($0, $0.nome) }, selezione: schedaScelta)
                 .fixedSize()
             Spacer(minLength: m.spazio)
-            #if os(macOS)
-            // Le novità di «Orizzonte» restano raggiungibili anche da qui (come dalla pillola ✦ Novità della barra)
-            Button {
-                stato.chiudiGuida()
-                stato.apriNovitaDaMenu()
-            } label: {
-                Text("✦ Le novità")
-            }
-            .buttonStyle(StileVetro())
-            .help("Le \(NovitaOrizzonte.allCases.count) funzioni nuove di Prisma")
-            #endif
             // Un solo blu nel pannello: «Avanti / Comincia» (o «Apri…»); «Chiudi» è di vetro, con Esc
             Button { stato.chiudiGuida() } label: {
                 Label("Chiudi", systemImage: "xmark")

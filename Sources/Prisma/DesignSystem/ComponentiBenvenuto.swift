@@ -64,6 +64,13 @@ extension Misure {
         static let scrittaSinistra: CGFloat = 82
         /// Oltre questa parte della corsa il cursore apre.
         static let soglia: CGFloat = 0.8
+        /// Il pallino: freccia, bordo e ombra (manopola del tema: 0 4 14 rgba(0,0,0,.3)).
+        static let freccia: CGFloat = 18
+        static let bordoCursore: CGFloat = 0.5
+        static let ombraCursore: CGFloat = 7
+        static let ombraCursoreY: CGFloat = 4
+        /// Quanto svanisce la scritta quando il pallino arriva in fondo.
+        static let svanisceScritta: Double = 1
         static let alto: CGFloat = 0.08
         static let basso: CGFloat = 0.05
         // Riepilogo delle app aperte

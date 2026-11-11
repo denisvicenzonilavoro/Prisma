@@ -167,8 +167,6 @@ struct ComandiPrisma: Commands {
                     .keyboardShortcut("?", modifiers: .command)
                 Button("Come funziona Prisma (introduzione)") { stato.apriGuida(.introduzione(0)) }
                 Button("Le parole della finanza") { stato.apriGuida(.glossario(nil)) }
-                // Il pannello «Le novità» di «Orizzonte», come la pillola ✦ Novità della barra
-                Button("Le novità di Prisma") { stato.apriNovitaDaMenu() }
             }
             .disabled(menu.inPresentazione)
             Divider()

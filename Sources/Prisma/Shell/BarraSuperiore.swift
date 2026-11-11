@@ -131,24 +131,7 @@ struct BarraSuperiore: View {
             if stato.inModoCliente {
                 ContrassegnoModoCliente()
             } else {
-                #if os(macOS)
-                // «✦ Novità» con il numero delle funzioni nuove, subito prima di Cerca (template-novita §1.1, §2.1)
-                PulsanteBarra(aiuto: "Le novità di Prisma: \(NovitaLuce.allCases.count) funzioni da provare",
-                              forma: .pillola, azione: { stato.alternaNovita() }) {
-                    HStack(spacing: B.spazioNovita) {
-                        Text("✦ Novità")
-                            .carattereApple(Tema.Apple.Carattere.barra)
-                            .foregroundColor(B.testoNovita)
-                        Text("\(NovitaLuce.allCases.count)")
-                            .carattereApple(B.pastigliaNovita)
-                            .foregroundColor(B.testoSuColore)
-                            .lineLimit(1)
-                            .padding(B.paddingPastigliaNovita)
-                            .background { Capsule(style: .continuous).fill(B.fondoPastigliaNovita) }
-                            .fixedSize()
-                    }
-                }
-                #endif
+                // La pillola «✦ Novità» non c'è più (scelta dell'utente, 10 novembre 2026): le novità non si mostrano nell'app
 
                 PulsanteBarra(aiuto: "Cerca in Prisma (⌘K)", forma: .pillola, azione: { stato.alternaRicerca() }) {
                     HStack(spacing: B.spazioCerca) {
@@ -173,15 +156,9 @@ struct BarraSuperiore: View {
                 PulsanteBarra(aiuto: "Notifiche", azione: { stato.alternaNotifiche() }) {
                     simbolo("bell")
                 }
-                .overlay(alignment: .topTrailing) {
-                    // Il numero sta sul bordo del cerchio, fuori dal vetro
-                    let n = stato.notificheNuove
-                    if n > 0 {
-                        BadgeCampanella(numero: n)
-                            .offset(x: B.spostamentoBadge.width, y: B.spostamentoBadge.height)
-                            .allowsHitTesting(false)
-                    }
-                }
+                // Il numero si disegna fuori dal gruppo di vetro (qui sotto, dopo .gruppoVetro()): dentro il
+                // GlassEffectContainer di macOS 26 il vetro del cerchio gli passava sopra
+                .anchorPreference(key: AncoraCampanella.self, value: .bounds) { $0 }
                 // Una notifica nuova arriva come una goccia qui (OsservatoreAcqua) e porta la sua posizione
                 // nell'evento «notifica nuova» (EventiShell.swift)
                 .puntoAcqua(.campanella)
@@ -213,6 +190,23 @@ struct BarraSuperiore: View {
         .frame(height: B.tasto)
         // Vetri separati (spazio 0: non si fondono), campionati insieme sul vetro nativo di macOS 26
         .gruppoVetro()
+        .overlayPreferenceValue(AncoraCampanella.self) { ancora in
+            GeometryReader { geo in
+                let n = stato.notificheNuove
+                if let ancora, n > 0 {
+                    let r = geo[ancora]
+                    // Il numero sta sul bordo del cerchio, in alto a destra, come prima
+                    Color.clear
+                        .frame(width: r.width, height: r.height)
+                        .overlay(alignment: .topTrailing) {
+                            BadgeCampanella(numero: n)
+                                .offset(x: B.spostamentoBadge.width, y: B.spostamentoBadge.height)
+                        }
+                        .offset(x: r.minX, y: r.minY)
+                        .allowsHitTesting(false)
+                }
+            }
+        }
     }
 
     /// Un simbolo di sistema al centro di un tasto tondo.
@@ -278,6 +272,12 @@ private struct PulsanteBarra<Etichetta: View>: View {
 /// Forma del vetro di un pulsante della barra.
 private enum FormaElementoBarra {
     case cerchio, pillola
+}
+
+/// Dove sta la campanella nella barra: il numero si mette lì, sopra il vetro.
+private struct AncoraCampanella: PreferenceKey {
+    static var defaultValue: Anchor<CGRect>? = nil
+    static func reduce(value: inout Anchor<CGRect>?, nextValue: () -> Anchor<CGRect>?) { value = value ?? nextValue() }
 }
 
 /// Il numero delle notifiche nuove sulla campanella: capsula `#FF3B30`, 9 bold bianco, padding 1×4.

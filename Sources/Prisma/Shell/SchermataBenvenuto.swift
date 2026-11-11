@@ -7,8 +7,9 @@ import UIKit
 
 /// La schermata di blocco del template Apple (Design/template-apple-specifica.md §3.2): sopra l'acqua un velo
 /// leggero e, al centro, il logo, l'ora grande e sottile, la data e in basso «Tocca per entrare in Prisma», un vetro
-/// attraversato da una luce ogni 2,6 s. Si entra con un clic ovunque, con Invio o trascinando la schermata (come il
-/// cursore di prima: oltre la soglia, o con un colpo rapido, si entra; altrimenti torna al suo posto).
+/// attraversato da una luce ogni 2,6 s. Si entra con un clic ovunque, con Invio o trascinando il pallino del cursore
+/// in fondo (come nella prima versione, scelta dell'utente del 10 novembre 2026: si trascina il pallino, non la
+/// schermata; oltre la soglia, o con un colpo rapido, si entra; altrimenti torna al suo posto).
 /// È una schermata di cortesia: non protegge i dati (per quello c'è il blocco del Mac). Torna da sola quando il Mac
 /// va a riposo o lo schermo si spegne (RipresaSistema). Lo sblocco passa da `StatoShell.sblocca`, che chiama il
 /// punto unico `allaSblocco()` (EventiShell.swift); al primo avvio l'introduzione parte dopo (`dopoSblocco`).
@@ -38,9 +39,6 @@ struct SchermataBenvenuto: View {
     @State private var arrivata = false
     /// Si entra: il gesto non conta più (una volta sola).
     @State private var entrata = false
-    /// Quanto la schermata segue il dito; torna a zero con una molla, anche se il gesto si interrompe (⌘Tab).
-    @GestureState(resetTransaction: Transaction(animation: Tema.Moto.Sblocco.ritorno()))
-    private var trascinamento: CGSize = .zero
 
     private typealias L = Tema.Apple.Lucchetto
 
@@ -52,12 +50,11 @@ struct SchermataBenvenuto: View {
             // Il velo sopra l'acqua (la scrivania sotto è nascosta: niente sfocatura a tutto schermo)
             Tema.Apple.Colore.veloBlocco
             colonna
-                .offset(fermo ? .zero : trascinamento)
         }
         .opacity(dentro ? 1 : 0)
         .offset(y: dentro || fermo ? 0 : Tema.Apple.Moto.Blocco.spostamento)
         .contentShape(Rectangle())
-        .gesture(gestoSblocco)
+        .onTapGesture { entra() }
         // Invio: un pulsante senza scritta e senza misura, solo per il tasto
         .background {
             Button("") { entra() }
@@ -84,7 +81,7 @@ struct SchermataBenvenuto: View {
             OrologioBlocco()
                 .padding(.top, L.oraSottoLogo)
             Spacer(minLength: 0)
-            PulsanteEntraBlocco()
+            CursoreEntraBlocco(fermo: istantanea || calmo) { velocita in entra(velocita: velocita) }
                 .padding(.bottom, L.pulsanteDalFondo)
         }
         .foregroundColor(Tema.Apple.Colore.inchiostroAcqua)
@@ -105,31 +102,6 @@ struct SchermataBenvenuto: View {
             return
         }
         withAnimation(Tema.Apple.Moto.animazione(Tema.Apple.Moto.Blocco.animazione, calmo: calmo)) { arrivata = true }
-    }
-
-    /// Un clic (pressione quasi ferma) fa entrare; un trascinamento oltre la soglia, o un colpo rapido, anche.
-    private var gestoSblocco: some Gesture {
-        DragGesture(minimumDistance: 0, coordinateSpace: .local)
-            .updating($trascinamento) { g, valore, _ in
-                valore = CGSize(width: g.translation.width * L.seguito, height: g.translation.height * L.seguito)
-            }
-            .onEnded { g in rilascia(g) }
-    }
-
-    private func rilascia(_ g: DragGesture.Value) {
-        let d = SchermataBenvenuto.lunghezza(g.translation)
-        let prevista = SchermataBenvenuto.lunghezza(g.predictedEndTranslation)
-        let clic = Tema.Misura.Shell.clicManopola
-        if d <= clic {
-            entra()
-            return
-        }
-        guard d >= L.sogliaTrascinamento || prevista >= L.sogliaTrascinamento * L.quotaPrevista else { return }
-        entra(velocita: Movimenti.velocita(traslazione: d, prevista: prevista, distanza: L.sogliaTrascinamento))
-    }
-
-    private static func lunghezza(_ s: CGSize) -> CGFloat {
-        (s.width * s.width + s.height * s.height).squareRoot()
     }
 
     /// Si entra una volta sola.
@@ -182,16 +154,70 @@ private struct OrologioBlocco: View {
 
 /// «Tocca per entrare in Prisma»: capsula di vetro con la luce che la attraversa. Non prende i clic: li prende
 /// la schermata intera.
-private struct PulsanteEntraBlocco: View {
+/// Il cursore «Scorri per entrare»: una capsula di vetro con il pallino a sinistra. Si trascina il pallino verso
+/// destra: oltre la soglia, o con un colpo rapido, si entra; altrimenti torna al suo posto con una molla. Un clic sul
+/// pallino fa entrare come un clic ovunque. Misure del cursore della prima versione (Misure.Benvenuto).
+private struct CursoreEntraBlocco: View {
+    let fermo: Bool
+    let entra: (Double) -> Void
+    /// Quanto il pallino segue il dito; torna a zero con una molla, anche se il gesto si interrompe (⌘Tab).
+    @GestureState(resetTransaction: Transaction(animation: Tema.Moto.Sblocco.ritorno()))
+    private var trascinamento: CGFloat = 0
+    /// Dopo la soglia il pallino resta in fondo mentre la schermata se ne va.
+    @State private var arrivato = false
+
+    private typealias M = Misure.Benvenuto
+
+    private var corsa: CGFloat { M.binario.width - M.cursore.width - 2 * M.margineCursore }
+
     var body: some View {
         let L = Tema.Apple.Lucchetto.self
-        Text("Tocca per entrare in Prisma")
-            .carattereApple(L.pulsante)
-            .lineLimit(1)
-            .padding(L.paddingPulsante)
-            .superficieApple(L.superficiePulsante)
-            .overlay { LuceDelPulsante().clipShape(Capsule(style: .continuous)) }
-            .allowsHitTesting(false)
+        let x = arrivato ? corsa : min(max(trascinamento, 0), corsa)
+        let quota = corsa > 0 ? x / corsa : 0
+        ZStack(alignment: .leading) {
+            Text("Scorri per entrare in Prisma")
+                .carattereApple(L.pulsante)
+                .lineLimit(1)
+                .padding(.leading, M.scrittaSinistra)
+                .opacity(1 - Double(quota) * M.svanisceScritta)
+                .overlay { LuceDelPulsante() }
+                .allowsHitTesting(false)
+            Image(systemName: "chevron.right")
+                .font(.system(size: M.freccia, weight: .semibold))
+                .foregroundColor(Colori.Benvenuto.freccia)
+                .frame(width: M.cursore.width, height: M.cursore.height)
+                .background { Circle().fill(Gradienti.cursoreBenvenuto) }
+                .overlay { Circle().strokeBorder(Colori.Benvenuto.cursoreBordo, lineWidth: M.bordoCursore) }
+                .shadow(color: Colori.Benvenuto.cursoreOmbra, radius: M.ombraCursore, y: M.ombraCursoreY)
+                .padding(.leading, M.margineCursore)
+                .offset(x: x)
+                .contentShape(Circle())
+                .gesture(trascina)
+                .accessibilityHidden(true)
+        }
+        .frame(width: M.binario.width, height: M.binario.height, alignment: .leading)
+        .superficieApple(L.superficiePulsante)
+        .clipShape(Capsule(style: .continuous))
+    }
+
+    private var trascina: some Gesture {
+        DragGesture(minimumDistance: 0, coordinateSpace: .local)
+            .updating($trascinamento) { g, valore, _ in
+                if !fermo { valore = g.translation.width }
+            }
+            .onEnded { g in
+                let d = g.translation.width
+                let prevista = g.predictedEndTranslation.width
+                if abs(d) <= Tema.Misura.Shell.clicManopola && abs(g.translation.height) <= Tema.Misura.Shell.clicManopola {
+                    entra(0)
+                    return
+                }
+                guard d >= corsa * M.soglia || prevista >= corsa * M.soglia * Tema.Apple.Lucchetto.quotaPrevista else { return }
+                var t = Transaction()
+                t.disablesAnimations = fermo
+                withTransaction(t) { arrivato = true }
+                entra(Movimenti.velocita(traslazione: d, prevista: prevista, distanza: corsa))
+            }
     }
 }
 
