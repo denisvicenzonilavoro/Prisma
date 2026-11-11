@@ -39,7 +39,7 @@ extension AnyTransition {
             active: EffettoPaginaApple(scala: scala, x: 0, y: d * m.spostamentoEntrata, opacita: 0),
             identity: EffettoPaginaApple.riposo
         )
-        .animation(m.entrata.delay(m.durataUscita))
+        .animation(m.entrata.ritardoPrisma(m.durataUscita))
         let uscita = AnyTransition.modifier(
             active: EffettoPaginaApple(scala: scala, x: 0, y: -d * m.spostamentoUscita, opacita: 0),
             identity: EffettoPaginaApple.riposo
@@ -58,7 +58,7 @@ extension AnyTransition {
             active: EffettoPaginaApple(scala: scala, x: d * m.spostamentoEntrata, y: 0, opacita: 0),
             identity: EffettoPaginaApple.riposo
         )
-        .animation(m.entrata.delay(m.durataUscita))
+        .animation(m.entrata.ritardoPrisma(m.durataUscita))
         let uscita = AnyTransition.modifier(
             active: EffettoPaginaApple(scala: scala, x: -d * m.spostamentoUscita, y: 0, opacita: 0),
             identity: EffettoPaginaApple.riposo

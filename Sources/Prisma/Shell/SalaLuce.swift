@@ -454,8 +454,8 @@ private struct StratoEtichetteLuce: View {
         guard !fermo else { return calmo ? .opacity.animation(Tema.Moto.dissolvenzaCalma) : .identity }
         let sposta = dopoCambio ? M.cambioSpostamento : M.etichetteSpostamento
         let animazione = dopoCambio
-            ? M.etichetteCambio.delay(M.cambioRitardoEtichette + Double(i) * M.cambioPasso)
-            : M.etichette.delay(M.etichetteRitardo + Double(i) * M.etichettePasso)
+            ? M.etichetteCambio.ritardoPrisma(M.cambioRitardoEtichette + Double(i) * M.cambioPasso)
+            : M.etichette.ritardoPrisma(M.etichetteRitardo + Double(i) * M.etichettePasso)
         return .asymmetric(insertion: AnyTransition.modifier(active: EntrataEtichetta(x: sposta, opacita: 0),
                                                              identity: EntrataEtichetta(x: 0, opacita: 1)).animation(animazione),
                            removal: .identity)

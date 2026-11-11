@@ -280,7 +280,7 @@ private struct VoceNotaVocale: View {
         .onAppear {
             guard !dentro else { return }
             let m = Tema.Apple.Moto.NotaVocale.self
-            withAnimation(m.voce.delay(Double(indice) * m.passo)) { entrata = true }
+            withAnimation(m.voce.ritardoPrisma(Double(indice) * m.passo)) { entrata = true }
         }
         .accessibilityElement(children: .contain)
     }

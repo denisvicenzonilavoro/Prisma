@@ -32,7 +32,7 @@ extension Tema.Apple {
             static let fondoSopra = Colore.chip
             static let fondoScelta = Colore.selezioneVoce
             static let durataFondo = 0.25
-            static var animazioneFondo: Animation { .easeInOut(duration: durataFondo) }
+            static var animazioneFondo: Animation { .easeInOut(duration: durataFondo * Tema.Apple.Moto.ritmo) }
             /// Prisma ha più sezioni del template: sono raccolte sotto etichette `.lbl` (la prima senza).
             static let etichetta = Carattere.etichetta
             static let coloreEtichetta = Colore.inchiostro2

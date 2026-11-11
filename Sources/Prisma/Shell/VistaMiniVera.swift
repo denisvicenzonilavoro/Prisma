@@ -797,7 +797,7 @@ private struct ComparsaMiniVera: ViewModifier {
             .offset(y: fermo || visibile ? 0 : Tema.Misura.MiniVera.salitaComparsa)
             .onAppear {
                 guard !fermo else { return }
-                withAnimation(Tema.Moto.MiniVera.comparsa.delay(Tema.Moto.MiniVera.ritardoBlocco * Double(indice))) { visibile = true }
+                withAnimation(Tema.Moto.MiniVera.comparsa.ritardoPrisma(Tema.Moto.MiniVera.ritardoBlocco * Double(indice))) { visibile = true }
             }
     }
 }

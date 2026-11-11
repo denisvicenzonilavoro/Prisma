@@ -222,10 +222,10 @@ extension Tema.Apple.Moto {
         static let spostamentoRiga: CGFloat = 20
         static let ritardoAnello = 0.10
 
-        static var animazioneApre: Animation { .linear(duration: apertura) }
-        static var animazioneChiude: Animation { .linear(duration: chiusura) }
+        static var animazioneApre: Animation { .linear(duration: apertura * Tema.Apple.Moto.ritmo) }
+        static var animazioneChiude: Animation { .linear(duration: chiusura * Tema.Apple.Moto.ritmo) }
         static func animazioneEntrata(_ k: Int) -> Animation {
-            Curva.mollaLeggera.animazione(entrata).delay(ritardo + Double(k) * passo)
+            Curva.mollaLeggera.animazione(entrata).ritardoPrisma(ritardo + Double(k) * passo)
         }
         static var animazioneRitorno: Animation { Curva.molla.animazione(ritorno) }
         static var animazioneVolo: Animation { Curva.backup.animazione(volo) }

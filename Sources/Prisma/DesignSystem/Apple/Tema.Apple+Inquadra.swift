@@ -234,8 +234,8 @@ extension Tema.Apple.Moto {
         /// Il velo appare in 0,3 s (lineare); se ne va in 0,22 s.
         static let durataVelo = 0.30
         static let durataChiusura = 0.22
-        static var velo: Animation { .linear(duration: durataVelo) }
-        static var chiusura: Animation { .linear(duration: durataChiusura) }
+        static var velo: Animation { .linear(duration: durataVelo * Tema.Apple.Moto.ritmo) }
+        static var chiusura: Animation { .linear(duration: durataChiusura * Tema.Apple.Moto.ritmo) }
         /// L'iPhone entra da y +60 e −4° in 0,7 s con la molla leggera `cubic-bezier(.34,1.3,.64,1)`.
         static let durataTelefono = 0.70
         static let curvaTelefono = Curva.mollaLeggera

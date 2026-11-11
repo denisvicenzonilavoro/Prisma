@@ -81,7 +81,7 @@ extension Tema.Apple {
             static let fondoScelta = Colore.selezioneVoce
             static let opacitaSpenta: Double = 0.45
             static let durataFondo = 0.25
-            static var animazioneFondo: Animation { .easeInOut(duration: durataFondo) }
+            static var animazioneFondo: Animation { .easeInOut(duration: durataFondo * Tema.Apple.Moto.ritmo) }
             /// «Nessun incontro in agenda oggi.» (`.k`) e il pulsante sotto.
             static let vuoto = Carattere(dimensione: 12.5, peso: .regular, interlinea: 1.45)
             static let coloreVuoto = Colore.inchiostro2
@@ -184,7 +184,7 @@ extension Tema.Apple {
             static let tempoIstantanea: Double = 2
             /// Il microfono dà un picco ogni ~0,1 s: fra un valore e l'altro le barre scorrono in 0,1 s.
             static let durataPasso = 0.10
-            static var passoAnimato: Animation { .linear(duration: durataPasso) }
+            static var passoAnimato: Animation { .linear(duration: durataPasso * Tema.Apple.Moto.ritmo) }
         }
 
         // MARK: La trascrizione (§8.2.3)
@@ -315,7 +315,7 @@ extension Tema.Apple.Moto {
         static let spostamentoRiga: CGFloat = 10
         /// Parola nuova della riga in corso: dissolvenza di 0,11 s.
         static let durataParola = 0.11
-        static var parola: Animation { .easeOut(duration: durataParola) }
+        static var parola: Animation { .easeOut(duration: durataParola * Tema.Apple.Moto.ritmo) }
         /// Scheda nuova: da x +40, scala 0,92, trasparente, 0,62 s con la molla.
         static let durataScheda = 0.62
         static let spostamentoScheda: CGFloat = 40

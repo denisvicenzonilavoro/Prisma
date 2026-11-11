@@ -159,7 +159,7 @@ struct MappaCampagne: View {
         .onAppear {
             guard !statoFinale, !radunati else { return }
             withAnimation(Tema.Apple.Moto.animazione(Tema.Apple.Moto.Campagne.raduno, calmo: calmo)
-                .delay(calmo ? 0 : Tema.Apple.Moto.Campagne.attesa)) {
+                .ritardoPrisma(calmo ? 0 : Tema.Apple.Moto.Campagne.attesa)) {
                 radunati = true
             }
         }
@@ -600,7 +600,7 @@ private struct RigaMembroCampagna: View {
             guard bozza != nil else { return }
             // «✓ bozza pronta» una riga dopo l'altra, come le prepara Prisma (niente Timer: animazione con ritardo)
             withAnimation(Tema.Apple.Moto.animazione(Tema.Apple.Moto.Curva.easeOut.animazione(Tema.Apple.Moto.Campagne.lampo), calmo: calmo)
-                .delay(calmo ? 0 : Double(indice) * Tema.Apple.Moto.Campagne.passoBozze)) {
+                .ritardoPrisma(calmo ? 0 : Double(indice) * Tema.Apple.Moto.Campagne.passoBozze)) {
                 mostrata = true
             }
         }

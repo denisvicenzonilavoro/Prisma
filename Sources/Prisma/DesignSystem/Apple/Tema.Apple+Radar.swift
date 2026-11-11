@@ -182,7 +182,7 @@ extension Tema.Apple.Posizioni {
             static func ritardo(_ k: Int) -> Double { ritardoPunti + Double(min(k, passiMassimi)) * passoPunti }
             /// Il fascio gira in 4,5 s, lineare, all'infinito.
             static let giroFascio = 4.5
-            static var animazioneFascio: Animation { .linear(duration: giroFascio).repeatForever(autoreverses: false) }
+            static var animazioneFascio: Animation { .linear(duration: giroFascio * Tema.Apple.Moto.ritmo).repeatForever(autoreverses: false) }
             /// Gli anelli fuori tolleranza pulsano in 1,9 s: da scala 0,75 opacità 0,95 a scala 1,7 opacità 0.
             static let durataPulso = 1.90
             static let scalaPulsoDa: CGFloat = 0.75

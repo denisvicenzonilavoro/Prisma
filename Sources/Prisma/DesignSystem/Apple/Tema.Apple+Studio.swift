@@ -317,7 +317,7 @@ extension Tema.Apple {
             /// Cambio di scheda (`rimonta`): il contenuto svanisce in 0,13 s fino a scala 0,99, poi rientra a cascata da 0.
             static let durataRimonta = 0.13
             static let scalaRimonta: CGFloat = 0.99
-            static var uscitaRimonta: Animation { .linear(duration: durataRimonta) }
+            static var uscitaRimonta: Animation { .linear(duration: durataRimonta * Tema.Apple.Moto.ritmo) }
             /// Cascata: 0,14 all'apertura della finestra, 0 dopo un cambio di scheda; anelli 0,32 e 0,15.
             static let baseApertura = Tema.Apple.Moto.Cascata.baseFinestra
             static let baseCambio = Tema.Apple.Moto.Cascata.baseDentroApp

@@ -604,7 +604,7 @@ private struct StratoGiro: View {
                     tappa(t, numero: numeroVisita(i))
                         .scaleEffect(fermo || tappeDentro ? 1 : 0)
                         .animation(fermo ? nil : Tema.Apple.Moto.Curva.molla.animazione(Mo.tappa)
-                                    .delay(Mo.ritardoTappa + Double(i) * Mo.passoTappa), value: tappeDentro)
+                                    .ritardoPrisma(Mo.ritardoTappa + Double(i) * Mo.passoTappa), value: tappeDentro)
                         .position(punti[i])
                 }
             }

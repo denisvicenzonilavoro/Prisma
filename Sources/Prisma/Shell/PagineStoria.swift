@@ -29,7 +29,7 @@ private struct SaltoStoria: ViewModifier {
             .scaleEffect(fermo || dentro ? 1 : 0.001)
             .onAppear {
                 guard !fermo, !dentro else { return }
-                withAnimation(Tema.Apple.Moto.Storia.animazioneSalto.delay(ritardo)) { dentro = true }
+                withAnimation(Tema.Apple.Moto.Storia.animazioneSalto.ritardoPrisma(ritardo)) { dentro = true }
             }
     }
 }
@@ -49,7 +49,7 @@ private struct ColonnaStoria: View {
             .scaleEffect(x: 1, y: fermo || cresciuta ? 1 : 0.001, anchor: .bottom)
             .onAppear {
                 guard !fermo, !cresciuta else { return }
-                withAnimation(Tema.Apple.Moto.Storia.animazioneColonne.delay(ritardo)) { cresciuta = true }
+                withAnimation(Tema.Apple.Moto.Storia.animazioneColonne.ritardoPrisma(ritardo)) { cresciuta = true }
             }
     }
 }

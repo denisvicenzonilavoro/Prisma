@@ -253,7 +253,7 @@ extension Tema.Apple {
             static let scalaPulsazione: CGFloat = 1.35
             static let opacitaPulsazione = 0.35
             /// La pulsazione dell'anello arancio: uscita in 1,8 s, ripetuta (si ferma con calmo e nelle istantanee).
-            static var animazionePulsazione: Animation { .easeOut(duration: pulsazione).repeatForever(autoreverses: false) }
+            static var animazionePulsazione: Animation { .easeOut(duration: pulsazione * Tema.Apple.Moto.ritmo).repeatForever(autoreverses: false) }
             static let pulsantiMassimi = 12
             static let rimonta = Tema.Apple.Studio.Moto.durataRimonta
             static let dissolvenzaCalma = 0.15

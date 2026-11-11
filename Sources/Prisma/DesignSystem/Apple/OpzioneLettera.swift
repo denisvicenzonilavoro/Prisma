@@ -46,7 +46,7 @@ extension Tema.Apple {
         /// Tremolio della sbagliata: 0 → −8 → +8 → −5 → 0 in 0,38 s, a passo lineare.
         static let durataTremolio = 0.38
         static let passiTremolio: [CGFloat] = [0, -8, 8, -5, 0]
-        static var animazioneTremolio: Animation { .linear(duration: durataTremolio) }
+        static var animazioneTremolio: Animation { .linear(duration: durataTremolio * Tema.Apple.Moto.ritmo) }
         /// Lo spostamento del tremolio a una fase 0…1 (interpolazione lineare fra i passi).
         static func spostamentoTremolio(fase: CGFloat) -> CGFloat {
             let t = min(max(fase, 0), 1)

@@ -78,7 +78,7 @@ struct BarraPiena: View {
         }
         guard mostrata != frazione else { return }
         let moto = Tema.Apple.Moto.Barra.self
-        withAnimation(moto.animazione.delay(moto.ritardo(indice: indice))) {
+        withAnimation(moto.animazione.ritardoPrisma(moto.ritardo(indice: indice))) {
             mostrata = frazione
         }
     }
@@ -285,12 +285,12 @@ struct TracciatoGrafico: View {
         guard disegno < 1 else { return }
         let linea = Tema.Apple.Moto.Linea.self
         let fondo = Tema.Apple.Moto.Area.self
-        let animazione = durata.map { Tema.Apple.Moto.Curva.uscita.animazione($0).delay(ritardo) }
-            ?? linea.animazione.delay(ritardo + linea.ritardo(indice: indice))
+        let animazione = durata.map { Tema.Apple.Moto.Curva.uscita.animazione($0).ritardoPrisma(ritardo) }
+            ?? linea.animazione.ritardoPrisma(ritardo + linea.ritardo(indice: indice))
         withAnimation(animazione) {
             disegno = 1
         }
-        withAnimation(fondo.animazione.delay(ritardo + fondo.ritardo)) {
+        withAnimation(fondo.animazione.ritardoPrisma(ritardo + fondo.ritardo)) {
             comparsa = 1
         }
     }
@@ -335,7 +335,7 @@ struct FasciaGrafico: View {
                 }
                 guard comparsa < 1 else { return }
                 let fondo = Tema.Apple.Moto.Area.self
-                withAnimation(fondo.animazione.delay(ritardo + fondo.ritardo)) {
+                withAnimation(fondo.animazione.ritardoPrisma(ritardo + fondo.ritardo)) {
                     comparsa = 1
                 }
             }
@@ -556,10 +556,10 @@ struct GraficoPortafoglio: View {
         guard disegno < 1 else { return }
         let linea = Tema.Apple.Moto.Linea.self
         let fondo = Tema.Apple.Moto.Area.self
-        withAnimation(linea.animazione.delay(ritardo + linea.ritardo(indice: 0))) {
+        withAnimation(linea.animazione.ritardoPrisma(ritardo + linea.ritardo(indice: 0))) {
             disegno = 1
         }
-        withAnimation(fondo.animazione.delay(ritardo + fondo.ritardo)) {
+        withAnimation(fondo.animazione.ritardoPrisma(ritardo + fondo.ritardo)) {
             comparsa = 1
         }
     }

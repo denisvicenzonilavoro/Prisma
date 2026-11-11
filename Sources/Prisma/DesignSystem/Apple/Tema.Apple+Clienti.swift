@@ -55,7 +55,7 @@ extension Tema.Apple {
             static let fondoSopra = Colore.chip
             static let fondoScelta = Colore.selezioneVoce
             static let durataFondo = 0.25
-            static var animazioneFondo: Animation { .easeInOut(duration: durataFondo) }
+            static var animazioneFondo: Animation { .easeInOut(duration: durataFondo * Tema.Apple.Moto.ritmo) }
             /// Riga vuota dell'elenco e piede («5 contatti», «+ 30 clienti di prova»): `.k`.
             static let piede = Carattere.secondario
             static let colorePiede = Colore.inchiostro2

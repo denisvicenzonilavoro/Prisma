@@ -162,7 +162,7 @@ extension Tema.Apple.Moto {
         static let durataArrivo = 0.30
         static let opacitaGiro: Double = 0.4
         static var animazione: Animation { curva.animazione(durata) }
-        static var arrivo: Animation { Curva.easeOut.animazione(durataArrivo).delay(durata) }
+        static var arrivo: Animation { Curva.easeOut.animazione(durataArrivo).ritardoPrisma(durata) }
     }
 
     /// L'evidenziatore si stende da sinistra a destra in 1,30 s con la curva `uscita`: ogni riga dopo la precedente,
@@ -172,6 +172,6 @@ extension Tema.Apple.Moto {
         static let curva = Curva.uscita
         /// Parte quando il foglio è arrivato.
         static let ritardo = GiroPagine.durata
-        static var animazione: Animation { curva.animazione(durata).delay(ritardo) }
+        static var animazione: Animation { curva.animazione(durata).ritardoPrisma(ritardo) }
     }
 }

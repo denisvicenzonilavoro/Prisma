@@ -31,7 +31,7 @@ struct BlocchiMesi: View {
                 blocco(i)
                     .scaleEffect(x: 1, y: mostrati ? 1 : m.scalaIniziale, anchor: .center)
                     .opacity(mostrati ? 1 : 0)
-                    .animation(fermo ? nil : m.animazione.delay(m.ritardo(i)), value: entrati)
+                    .animation(fermo ? nil : m.animazione.ritardoPrisma(m.ritardo(i)), value: entrati)
             }
         }
         .frame(height: m.altezza)

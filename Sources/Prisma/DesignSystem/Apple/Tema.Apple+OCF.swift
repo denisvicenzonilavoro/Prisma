@@ -211,7 +211,7 @@ extension Tema.Apple.Studio {
             /// Tremolio della risposta sbagliata: 0 → −8 → +8 → −5 → 0 in 0,38 s, a passo lineare.
             static let durataTremolio = 0.38
             static let passiTremolio: [CGFloat] = [0, -8, 8, -5, 0]
-            static var animazioneTremolio: Animation { .linear(duration: durataTremolio) }
+            static var animazioneTremolio: Animation { .linear(duration: durataTremolio * Tema.Apple.Moto.ritmo) }
             /// Lo spostamento del tremolio a una fase 0…1 (interpolazione lineare fra i passi).
             static func spostamentoTremolio(fase: CGFloat) -> CGFloat {
                 let t = min(max(fase, 0), 1)
@@ -230,9 +230,9 @@ extension Tema.Apple.Studio {
             static let spostamentoUscitaDomanda: CGFloat = -30
             static let durataEntrataDomanda = 0.48
             static let spostamentoEntrataDomanda: CGFloat = 40
-            static var uscitaDomanda: Animation { .linear(duration: durataUscitaDomanda) }
+            static var uscitaDomanda: Animation { .linear(duration: durataUscitaDomanda * Tema.Apple.Moto.ritmo) }
             static var entrataDomanda: Animation {
-                Tema.Apple.Moto.uscita(durataEntrataDomanda).delay(durataUscitaDomanda)
+                Tema.Apple.Moto.uscita(durataEntrataDomanda).ritardoPrisma(durataUscitaDomanda)
             }
             /// Il riquadro della data: entra come i riquadri che salgono (molla 0,45 s).
             static var riquadro: Animation { Tema.Apple.Moto.RiquadroSopra.animazione }

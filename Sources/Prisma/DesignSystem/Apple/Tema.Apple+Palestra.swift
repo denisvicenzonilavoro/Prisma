@@ -175,14 +175,14 @@ extension Tema.Apple.Moto {
         static let passoOpzione = 0.07
         static let spostamentoOpzione: CGFloat = 10
         static func opzione(indice: Int) -> Animation {
-            Curva.uscita.animazione(durataOpzione).delay(Double(indice) * passoOpzione)
+            Curva.uscita.animazione(durataOpzione).ritardoPrisma(Double(indice) * passoOpzione)
         }
         /// Il giudizio: scala 0,8 → 1, 0,4 s dopo 0,3 s, curva `punti` (.34, 1.6, .64, 1).
         static let giudizio = 0.4
         static let ritardoGiudizio = 0.3
         static let scalaGiudizio: CGFloat = 0.8
         static let curvaPunti = Curva(x1: 0.34, y1: 1.6, x2: 0.64, y2: 1)
-        static var animazioneGiudizio: Animation { curvaPunti.animazione(giudizio).delay(ritardoGiudizio) }
+        static var animazioneGiudizio: Animation { curvaPunti.animazione(giudizio).ritardoPrisma(ritardoGiudizio) }
         /// La barra d'avanzamento: 0,6 s `uscita`.
         static let avanzamento = 0.6
         static var animazioneAvanzamento: Animation { Curva.uscita.animazione(avanzamento) }

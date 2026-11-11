@@ -73,7 +73,7 @@ extension Tema.Apple {
             static let fondoSopra = Colore.chip
             static let fondoScelta = Colore.selezioneVoce
             static let durataFondo = 0.25
-            static var animazioneFondo: Animation { .easeInOut(duration: durataFondo) }
+            static var animazioneFondo: Animation { .easeInOut(duration: durataFondo * Tema.Apple.Moto.ritmo) }
         }
 
         // MARK: Pannello del messaggio (§2.2)
@@ -219,7 +219,7 @@ extension Tema.Apple {
             /// cascata da 0.
             static let durataCambio = 0.13
             static let spostamentoCambio: CGFloat = 10
-            static var uscitaCambio: Animation { .linear(duration: durataCambio) }
+            static var uscitaCambio: Animation { .linear(duration: durataCambio * Tema.Apple.Moto.ritmo) }
             /// Cascata: 0,14 all'apertura della finestra, 0 dopo un cambio di occasione.
             static let baseApertura = Tema.Apple.Moto.Cascata.baseFinestra
             static let baseCambio = Tema.Apple.Moto.Cascata.baseDentroApp

@@ -200,7 +200,7 @@ struct AppMessaggi: View {
         }
         toccata = id
         withAnimation(M.uscitaCambio) { esce = true }
-        Movimenti.dopo(M.durataCambio) {
+        Movimenti.dopo(Tema.Apple.Moto.tempo(M.durataCambio)) {
             // Un'altra voce toccata nel frattempo: entra quella, al suo giro
             guard toccata == id else { return }
             cambiato = true

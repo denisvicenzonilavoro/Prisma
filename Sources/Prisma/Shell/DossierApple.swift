@@ -461,7 +461,7 @@ struct DossierApple<Contenuto: View>: View {
             return
         }
         withAnimation(Tema.Apple.Moto.CambioCliente.uscita) { esceCliente = true }
-        Movimenti.dopo(Tema.Apple.Moto.CambioCliente.durataUscita) {
+        Movimenti.dopo(Tema.Apple.Moto.tempo(Tema.Apple.Moto.CambioCliente.durataUscita)) {
             // Un clic su un altro cliente nel frattempo: entra quello, con il suo giro
             guard stato.clienteAttivoId == nuovo else { return }
             baseDossier = m.baseCambio
@@ -495,7 +495,7 @@ struct DossierApple<Contenuto: View>: View {
         // Il dossier sta già uscendo per un altro cliente: la scheda nuova entra con lui
         guard !esceCliente else { return }
         withAnimation(Tema.Apple.Moto.CambioScheda.uscita) { esceScheda = true }
-        Movimenti.dopo(Tema.Apple.Moto.CambioScheda.durataUscita) {
+        Movimenti.dopo(Tema.Apple.Moto.tempo(Tema.Apple.Moto.CambioScheda.durataUscita)) {
             guard stato.schedaCliente == nuova else { return }
             avvio = AvvioCascataDossier(primoIndice: 0, base: m.baseCambio)
             schedaMostrata = nuova
