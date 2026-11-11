@@ -466,7 +466,7 @@ private struct ColonnaKmSpese: View {
                 }
                 guard !cresciuta else { return }
                 let m = Tema.Apple.Studio.Spese.Moto.self
-                withAnimation(m.animazioneColonne.delay(m.ritardoColonna(indice))) { cresciuta = true }
+                withAnimation(m.animazioneColonne.ritardoPrisma(m.ritardoColonna(indice))) { cresciuta = true }
             }
     }
 }

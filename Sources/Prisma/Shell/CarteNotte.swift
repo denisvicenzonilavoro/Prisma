@@ -174,7 +174,7 @@ struct CarteNotte: View {
         }
         inVolo = true
         withAnimation(M.animazioneVolo) { dx = destra ? M.distanzaVolo : -M.distanzaVolo }
-        Movimenti.dopo(M.volo) {
+        Movimenti.dopo(Tema.Apple.Moto.tempo(M.volo)) {
             applica()
             dx = 0
             inVolo = false

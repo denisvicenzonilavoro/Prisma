@@ -231,7 +231,7 @@ extension Tema.Apple.Moto.SalaEsperienze {
         static let passoRisposte = 0.09
         static let spostamentoRisposta: CGFloat = 20
         static func risposta(indice: Int) -> Animation {
-            Tema.Apple.Moto.Curva.uscita.animazione(durataRisposta).delay(Double(indice) * passoRisposte)
+            Tema.Apple.Moto.Curva.uscita.animazione(durataRisposta).ritardoPrisma(Double(indice) * passoRisposte)
         }
         /// Dopo la scelta, lo scenario seguente arriva dopo 0,65 s (uscita a dissolvenza come la rimonta).
         static let pausaDopoScelta = 0.65
@@ -251,7 +251,7 @@ extension Tema.Apple.Moto.SalaEsperienze {
         static var spegnimento: Animation { Tema.Apple.Moto.Curva.ease.animazione(durataSpegnimento) }
         /// Mezzo giro (il contenuto cambia a metà).
         static func mezzoGiro(ritardo: Double) -> Animation {
-            Tema.Apple.Moto.Curva.giro.animazione(giro / 2).delay(ritardo)
+            Tema.Apple.Moto.Curva.giro.animazione(giro / 2).ritardoPrisma(ritardo)
         }
     }
 }

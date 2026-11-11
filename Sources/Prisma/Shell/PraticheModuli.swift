@@ -470,10 +470,10 @@ private struct CasellaModulo: View {
         acceso = false
         scritto = 0
         respira = false
-        withAnimation(T.Campo.colore.delay(ritardo)) { acceso = true }
-        withAnimation(.linear(duration: max(lettere, 0.01)).delay(ritardo)) { scritto = 1 }
+        withAnimation(T.Campo.colore.ritardoPrisma(ritardo)) { acceso = true }
+        withAnimation(.linear(duration: max(lettere, 0.01)).ritardoPrisma(ritardo)) { scritto = 1 }
         if aspetto == .firma {
-            withAnimation(T.RespiroFirma.animazione.delay(ritardo + T.Campo.durataColore)) { respira = true }
+            withAnimation(T.RespiroFirma.animazione.ritardoPrisma(ritardo + T.Campo.durataColore)) { respira = true }
         }
     }
 }
@@ -897,7 +897,7 @@ private struct ContatoreCampi: View {
             return
         }
         avanzamento = 0
-        withAnimation(.linear(duration: T.passo * Double(max(valore, 1))).delay(T.base + T.durataColore / 2)) { avanzamento = 1 }
+        withAnimation(.linear(duration: T.passo * Double(max(valore, 1))).ritardoPrisma(T.base + T.durataColore / 2)) { avanzamento = 1 }
     }
 }
 
@@ -932,6 +932,6 @@ private struct EntrataTile: ViewModifier {
             .opacity(mostra ? 1 : 0)
             .offset(y: mostra || calmo ? 0 : T.spostamento)
             .animation(fermo ? nil : (calmo ? Tema.Moto.dissolvenzaCalma
-                                             : T.animazione.delay(base + Double(indice) * T.passo)), value: visibile)
+                                             : T.animazione.ritardoPrisma(base + Double(indice) * T.passo)), value: visibile)
     }
 }

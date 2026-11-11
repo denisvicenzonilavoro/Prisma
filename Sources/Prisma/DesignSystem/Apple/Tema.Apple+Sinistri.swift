@@ -222,7 +222,7 @@ extension Tema.Apple.Pratiche.Moto {
     enum Spedizione {
         static let ritardo = 0.25
         static let durata = Tema.Apple.Moto.Anello.durata
-        static var animazione: Animation { Tema.Apple.Moto.Curva.uscita.animazione(durata).delay(ritardo) }
+        static var animazione: Animation { Tema.Apple.Moto.Curva.uscita.animazione(durata).ritardoPrisma(ritardo) }
         /// Nodi e colori: 0,4 s (ease).
         static let durataNodo = 0.40
         static var nodo: Animation { Tema.Apple.Moto.Curva.ease.animazione(durataNodo) }

@@ -85,7 +85,7 @@ extension Tema.Apple.Moto.Spunta {
     /// Durata complessiva del disegno: il segno finisce a 0,35 + 0,35 s.
     static var durataTotale: Double { max(durataCerchio, ritardoSegno + durataSegno) }
     /// Avanzamento lineare del disegno (le curve dei due tratti si applicano dentro la forma).
-    static var tracciato: Animation { .linear(duration: durataTotale) }
+    static var tracciato: Animation { .linear(duration: durataTotale * Tema.Apple.Moto.ritmo) }
     /// Velo verde sulla scheda (`transition: background .4s`).
     static var velo: Animation { Tema.Apple.Moto.Curva.ease.animazione(durataVelo) }
 }

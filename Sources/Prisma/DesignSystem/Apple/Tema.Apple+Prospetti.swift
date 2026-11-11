@@ -51,7 +51,7 @@ extension Tema.Apple {
             static let fondoSopra = Colore.chip
             static let fondoScelta = Colore.selezioneVoce
             static let durataFondo = 0.25
-            static var animazioneFondo: Animation { .easeInOut(duration: durataFondo) }
+            static var animazioneFondo: Animation { .easeInOut(duration: durataFondo * Tema.Apple.Moto.ritmo) }
             /// Le scelte del documento sotto la voce scelta (Prisma: il template non le ha).
             static let paddingScelte = EdgeInsets(top: 4, leading: 0, bottom: 10, trailing: 0)
             /// Le scelte hanno già 12 di margine (la colonna di sempre): dentro la card del fascicolo si tolgono.

@@ -239,12 +239,12 @@ private struct DisegnoAlbero: View {
                     .trim(from: 0, to: mostra ? 1 : 0)
                     .stroke(P.cliente, lineWidth: n.nodo.livello <= 1 ? P.spessoreTronco : P.spessorePotenziale)
                     .opacity(spento ? P.opacitaSpenta : 1)
-                    .animation(calmo ? nil : M.animazioneLegame.delay(M.ritardoLegame(n.indice)), value: mostra)
+                    .animation(calmo ? nil : M.animazioneLegame.ritardoPrisma(M.ritardoLegame(n.indice)), value: mostra)
             } else {
                 curva
                     .stroke(P.bordoPotenziale, style: StrokeStyle(lineWidth: P.spessorePotenziale, dash: P.tratteggio))
                     .opacity((mostra ? P.opacitaPotenziale : 0) * (spento ? P.opacitaSpenta : 1))
-                    .animation(calmo ? nil : M.animazioneTratteggio.delay(M.ritardoLegame(n.indice)), value: mostra)
+                    .animation(calmo ? nil : M.animazioneTratteggio.ritardoPrisma(M.ritardoLegame(n.indice)), value: mostra)
             }
         }
     }
@@ -308,7 +308,7 @@ private struct NodoPassaparolaVista: View {
         }
         .scaleEffect(mostra ? 1 : M.scalaNodo, anchor: .leading)
         .opacity((mostra ? 1 : 0) * (spento ? P.opacitaSpenta : 1))
-        .animation(calmo ? nil : M.animazioneNodo.delay(M.ritardoNodo(disposto.indice)), value: mostra)
+        .animation(calmo ? nil : M.animazioneNodo.ritardoPrisma(M.ritardoNodo(disposto.indice)), value: mostra)
         .position(x: disposto.centro.x - r + larghezzaStimata(n, r: r) / 2, y: disposto.centro.y)
         .onTapGesture { tocca(n) }
         .help(TestiPassaparola.suggerimento(n))
@@ -468,7 +468,7 @@ private struct ColonneAnniPassaparola: View {
                                                style: .continuous)
                             .fill(i == anni.count - 1 ? P.colonnaUltima : P.colonna)
                             .frame(height: max(P.spazioMinimo * 2, P.altezzaColonne * CGFloat(a.dalPassaparola) / CGFloat(massimo)) * (mostra ? 1 : 0.001))
-                            .animation(calmo ? nil : M.animazioneColonna.delay(M.ritardoColonna(i)), value: mostra)
+                            .animation(calmo ? nil : M.animazioneColonna.ritardoPrisma(M.ritardoColonna(i)), value: mostra)
                         Text(String(a.anno))
                             .carattereApple(P.etichettaAnno)
                             .foregroundColor(Tema.Apple.Colore.inchiostro3)

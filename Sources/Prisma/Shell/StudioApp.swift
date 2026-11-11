@@ -313,7 +313,7 @@ private struct CorpoStudio: View, Equatable {
         }
         let m = Tema.Apple.Studio.Moto.self
         withAnimation(m.uscitaRimonta) { esce = true }
-        Movimenti.dopo(m.durataRimonta) {
+        Movimenti.dopo(Tema.Apple.Moto.tempo(m.durataRimonta)) {
             // Un clic su un'altra scheda nel frattempo: entra quella, con il suo giro
             guard stato.schedaStudio == nuova else { return }
             cambiato = true

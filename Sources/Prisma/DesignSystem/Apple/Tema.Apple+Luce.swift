@@ -479,6 +479,6 @@ extension Tema.Apple.Moto {
         }
         static var etichette: Animation { Curva.uscita.animazione(etichetteDurata) }
         static var etichetteCambio: Animation { Curva.uscita.animazione(cambioDurataEtichette) }
-        static var attenuazione: Animation { .easeInOut(duration: durataEtichetteAttenuate) }
+        static var attenuazione: Animation { .easeInOut(duration: durataEtichetteAttenuate * Tema.Apple.Moto.ritmo) }
     }
 }

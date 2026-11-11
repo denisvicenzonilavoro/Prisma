@@ -174,7 +174,7 @@ extension Tema.Apple.Moto.Brillio {
     static var durataTotale: Double { tenuto + durata }
 
     /// L'animazione lineare della fase (0 → 1) che guida `intensita(fase:)`.
-    static var animazioneFase: Animation { .linear(duration: durataTotale) }
+    static var animazioneFase: Animation { .linear(duration: durataTotale * Tema.Apple.Moto.ritmo) }
 
     /// Intensità del brillio (0…1) alla fase data (0…1 su `durataTotale`), con la curva `ease`.
     static func intensita(fase: Double) -> Double {

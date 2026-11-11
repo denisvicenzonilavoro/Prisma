@@ -100,8 +100,8 @@ final class StatoDettaglio: ObservableObject {
         }
         withAnimation(a.animazione) { progresso = 1 }
         withAnimation(Tema.Apple.Moto.Velo.animazione) { veloAcceso = true }
-        withAnimation(a.animazioneContenuto.delay(a.ritardoContenuto)) { contenutoVisibile = true }
-        Movimenti.dopo(a.avvioContenuto) { [weak self] in
+        withAnimation(a.animazioneContenuto.ritardoPrisma(a.ritardoContenuto)) { contenutoVisibile = true }
+        Movimenti.dopo(Tema.Apple.Moto.tempo(a.avvioContenuto)) { [weak self] in
             guard let self, self.giro == g else { return }
             self.contenutoMontato = true
         }
@@ -134,7 +134,7 @@ final class StatoDettaglio: ObservableObject {
             }
         } else {
             let c = Tema.Apple.Moto.DettaglioChiude.self
-            durata = c.durata
+            durata = Tema.Apple.Moto.tempo(c.durata)
             withAnimation(c.animazione) { progresso = 0 }
             withAnimation(c.animazioneContenuto) { contenutoVisibile = false }
             withAnimation(Tema.Apple.Moto.Velo.animazione) { veloAcceso = false }
@@ -288,7 +288,9 @@ struct ModificatorePresentatoreDettaglio<Dettaglio: View>: ViewModifier {
     func body(content: Content) -> some View {
         let velo = finale || stato.veloAcceso
         return content
-            .blur(radius: velo ? Tema.Apple.Moto.Velo.sfocatura : 0)
+            // Il velo attenua invece di sfocare (fluidità, 11 novembre 2026): il filtro di sfocatura restava montato
+            // su tutta la finestra, anche a dettaglio chiuso, e pesava a ogni scorrimento
+            .opacity(velo ? Tema.Apple.Moto.Velo.opacita : 1)
             .overlayPreferenceValue(ChiaveOriginiDettaglio.self) { origini in
                 GeometryReader { g in
                     strato(origini: origini, geo: g)

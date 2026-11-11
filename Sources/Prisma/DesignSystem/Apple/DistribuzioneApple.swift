@@ -134,6 +134,6 @@ struct BarraDistribuzione: View {
     private func parti() {
         guard !fermo, !arrivato, posizione != nil else { return }
         let t = Tema.Apple.Famiglie.Tempi.self
-        withAnimation(t.animazioneSegnaposto.delay(t.ritardo(segnaposto: indice))) { arrivato = true }
+        withAnimation(t.animazioneSegnaposto.ritardoPrisma(t.ritardo(segnaposto: indice))) { arrivato = true }
     }
 }

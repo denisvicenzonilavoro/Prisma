@@ -814,7 +814,7 @@ private struct OndaMini: View {
             .opacity(opacita)
             .onAppear {
                 guard !ferma else { return }
-                withAnimation(.easeOut(duration: O.durata).repeatForever(autoreverses: false).delay(Double(indice) * O.sfasamento)) {
+                withAnimation(.easeOut(duration: O.durata).repeatForever(autoreverses: false).ritardoPrisma(Double(indice) * O.sfasamento)) {
                     giro = true
                 }
             }

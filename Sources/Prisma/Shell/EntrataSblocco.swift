@@ -50,6 +50,6 @@ private struct EntrataSblocco: ViewModifier {
         if calmo { return Tema.Moto.dissolvenzaCalma }
         // Al blocco tutti insieme, sotto la schermata che scende
         if fuori { return Tema.Moto.Blocco.scrivania }
-        return stile.animazione.delay(Tema.Apple.Moto.Cascata.ritardo(indice: indice, base: base))
+        return stile.animazione.ritardoPrisma(Tema.Apple.Moto.Cascata.ritardo(indice: indice, base: base))
     }
 }

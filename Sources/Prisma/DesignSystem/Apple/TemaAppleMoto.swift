@@ -7,6 +7,14 @@ import SwiftUI
 extension Tema.Apple {
     enum Moto {
 
+        /// Il ritmo di tutto il movimento del tema (scelta dell'utente dell'11 novembre 2026: «scattante e veloce»).
+        /// Durate delle curve, risposte delle molle e ritardi (`ritardoPrisma`) si moltiplicano per questo valore:
+        /// i numeri della specifica restano quelli, l'app li percorre più in fretta. 1 = i tempi del template.
+        static let ritmo: Double = 0.6
+
+        /// Un tempo del tema al ritmo dell'app (per le attese legate a un'animazione del tema).
+        static func tempo(_ secondi: Double) -> Double { secondi * ritmo }
+
         // MARK: Curve
 
         /// Bézier cubica come `cubic-bezier(x1, y1, x2, y2)` del CSS.
@@ -18,7 +26,7 @@ extension Tema.Apple {
 
             /// L'animazione SwiftUI con questa curva.
             func animazione(_ durata: Double) -> Animation {
-                .timingCurve(x1, y1, x2, y2, duration: durata)
+                .timingCurve(x1, y1, x2, y2, duration: durata * Moto.ritmo)
             }
 
             /// `--spring`: superamento del 6,6%.
@@ -60,7 +68,7 @@ extension Tema.Apple {
         struct Molla {
             let risposta: Double
             let smorzamento: Double
-            var animazione: Animation { .spring(response: risposta, dampingFraction: smorzamento) }
+            var animazione: Animation { .spring(response: risposta * Moto.ritmo, dampingFraction: smorzamento) }
         }
 
         /// Uscita di durata data.
@@ -186,7 +194,7 @@ extension Tema.Apple {
             static let durata = 0.50
             static let durataTesto = 0.30
             static var animazione: Animation { Curva.molla.animazione(durata) }
-            static var animazioneTesto: Animation { .easeInOut(duration: durataTesto) }
+            static var animazioneTesto: Animation { .easeInOut(duration: durataTesto * Tema.Apple.Moto.ritmo) }
             static let ripiego = Molla(risposta: 0.50, smorzamento: 0.65)
         }
 
@@ -195,7 +203,7 @@ extension Tema.Apple {
             static let durata = 0.35
             static let durataFondo = 0.30
             static var animazione: Animation { Curva.molla.animazione(durata) }
-            static var animazioneFondo: Animation { .easeInOut(duration: durataFondo) }
+            static var animazioneFondo: Animation { .easeInOut(duration: durataFondo * Tema.Apple.Moto.ritmo) }
             static let ripiego = Molla(risposta: 0.35, smorzamento: 0.65)
         }
 
@@ -206,7 +214,7 @@ extension Tema.Apple {
             static let luminositaSopra: Double = 0.97
             static let durataSopra = 0.20
             static var animazione: Animation { Curva.molla.animazione(durata) }
-            static var animazioneSopra: Animation { .easeInOut(duration: durataSopra) }
+            static var animazioneSopra: Animation { .easeInOut(duration: durataSopra * Tema.Apple.Moto.ritmo) }
             static let ripiego = Molla(risposta: 0.25, smorzamento: 0.65)
         }
 
@@ -253,7 +261,7 @@ extension Tema.Apple {
             static let ritardoContenuto = 0.17 + 0.16
             static let durataContenuto = 0.35
             static var animazione: Animation { Curva.dettaglioApre.animazione(durata) }
-            static var animazioneContenuto: Animation { .easeInOut(duration: durataContenuto) }
+            static var animazioneContenuto: Animation { .easeInOut(duration: durataContenuto * Tema.Apple.Moto.ritmo) }
             static let ripiego = Molla(risposta: 0.62, smorzamento: 0.80)
         }
 
@@ -262,7 +270,7 @@ extension Tema.Apple {
             static let durata = 0.46
             static let durataContenuto = 0.20
             static var animazione: Animation { Curva.dettaglioChiude.animazione(durata) }
-            static var animazioneContenuto: Animation { .easeInOut(duration: durataContenuto) }
+            static var animazioneContenuto: Animation { .easeInOut(duration: durataContenuto * Tema.Apple.Moto.ritmo) }
             static let ripiego = Molla(risposta: 0.46, smorzamento: 0.90)
         }
 
@@ -270,6 +278,8 @@ extension Tema.Apple {
         enum Velo {
             static let durata = 0.45
             static let sfocatura: CGFloat = 10
+            /// Quanto resta visibile la finestra sotto il dettaglio aperto (al posto della sfocatura).
+            static let opacita: Double = 0.45
             static var animazione: Animation { Curva.ease.animazione(durata) }
         }
 
@@ -291,7 +301,7 @@ extension Tema.Apple {
         /// Contenuto della finestra al montaggio: 0,2 s lineare (§0 punto 1).
         enum ContenutoFinestra {
             static let durata = 0.20
-            static var animazione: Animation { .linear(duration: durata) }
+            static var animazione: Animation { .linear(duration: durata * Tema.Apple.Moto.ritmo) }
         }
 
         /// Cambio d'app: esce in 0,15 ease-in a scala 0,985, entra in 0,20 lineare.
@@ -299,8 +309,8 @@ extension Tema.Apple {
             static let durataUscita = 0.15
             static let durataEntrata = 0.20
             static let scalaUscita: CGFloat = 0.985
-            static var uscita: Animation { .easeIn(duration: durataUscita) }
-            static var entrata: Animation { .linear(duration: durataEntrata) }
+            static var uscita: Animation { .easeIn(duration: durataUscita * Tema.Apple.Moto.ritmo) }
+            static var entrata: Animation { .linear(duration: durataEntrata * Tema.Apple.Moto.ritmo) }
         }
 
         /// Scrivania sotto una finestra aperta: opacità 0,25.
@@ -325,7 +335,7 @@ extension Tema.Apple {
                 let f = CGFloat(x - Double(i))
                 return passi[i] + (passi[i + 1] - passi[i]) * f
             }
-            static var animazione: Animation { .easeOut(duration: durata) }
+            static var animazione: Animation { .easeOut(duration: durata * Tema.Apple.Moto.ritmo) }
         }
 
         /// Dock: sale da +140, ritardo 0,20 dallo sblocco.
@@ -387,7 +397,7 @@ extension Tema.Apple {
             static let ritardoSegno = 0.35
             static let durataVelo = 0.40
             static var cerchio: Animation { Curva.uscita.animazione(durataCerchio) }
-            static var segno: Animation { Curva.uscita.animazione(durataSegno).delay(ritardoSegno) }
+            static var segno: Animation { Curva.uscita.animazione(durataSegno).ritardoPrisma(ritardoSegno) }
         }
 
         /// «Ti preparo»: una molla da 0,35 per voce, ritmo 0,22 + i·0,36; toast a 0,32 + n·0,36.
@@ -412,7 +422,7 @@ extension Tema.Apple {
             static let durataOpacita = 0.40
             static var larghezza: Animation { Curva.molla.animazione(durataLarghezza) }
             static var trasformazione: Animation { Curva.molla.animazione(durataTrasformazione) }
-            static var opacita: Animation { .easeInOut(duration: durataOpacita) }
+            static var opacita: Animation { .easeInOut(duration: durataOpacita * Tema.Apple.Moto.ritmo) }
         }
 
         /// Nastro orizzontale: frecce ±500.
@@ -426,21 +436,21 @@ extension Tema.Apple {
         enum CambioCliente {
             static let durataUscita = 0.14
             static let spostamento: CGFloat = 14
-            static var uscita: Animation { .easeIn(duration: durataUscita) }
+            static var uscita: Animation { .easeIn(duration: durataUscita * Tema.Apple.Moto.ritmo) }
         }
 
         /// Cambio scheda: esce in 0,13 lineare verso y +6, poi cascata con base 0.
         enum CambioScheda {
             static let durataUscita = 0.13
             static let spostamento: CGFloat = 6
-            static var uscita: Animation { .linear(duration: durataUscita) }
+            static var uscita: Animation { .linear(duration: durataUscita * Tema.Apple.Moto.ritmo) }
         }
 
         /// Cambio della griglia di Analisi 360: esce in 0,14 lineare a scala 0,99.
         enum CambioGriglia {
             static let durataUscita = 0.14
             static let scala: CGFloat = 0.99
-            static var uscita: Animation { .linear(duration: durataUscita) }
+            static var uscita: Animation { .linear(duration: durataUscita * Tema.Apple.Moto.ritmo) }
         }
 
         /// Blocchi dei mesi: da scala y 0,2, ritardo 0,20 + i·0,06.
@@ -462,7 +472,7 @@ extension Tema.Apple {
             static let spostamentoEntrata: CGFloat = 40
             static let scalaUscita: CGFloat = 0.70
             static let scalaEntrata: CGFloat = 0.68
-            static var uscita: Animation { .easeIn(duration: durataUscita) }
+            static var uscita: Animation { .easeIn(duration: durataUscita * Tema.Apple.Moto.ritmo) }
             static var entrata: Animation { Curva.uscita.animazione(durataEntrata) }
         }
 
@@ -473,9 +483,9 @@ extension Tema.Apple {
             static let durataChiusura = 0.25
             static let scalaIniziale: CGFloat = 0.74
             static let scalaFinale: CGFloat = 0.88
-            static var velo: Animation { .linear(duration: durataVelo) }
+            static var velo: Animation { .linear(duration: durataVelo * Tema.Apple.Moto.ritmo) }
             static var foglio: Animation { Curva.uscita.animazione(durataFoglio) }
-            static var chiude: Animation { .easeInOut(duration: durataChiusura) }
+            static var chiude: Animation { .easeInOut(duration: durataChiusura * Tema.Apple.Moto.ritmo) }
         }
 
         /// Giro di pagina: 0,22 ease-in verso x −d·120, poi 0,52 uscita da +d·160; scala 0,85.
@@ -485,7 +495,7 @@ extension Tema.Apple {
             static let spostamentoUscita: CGFloat = 120
             static let spostamentoEntrata: CGFloat = 160
             static let scala: CGFloat = 0.85
-            static var uscita: Animation { .easeIn(duration: durataUscita) }
+            static var uscita: Animation { .easeIn(duration: durataUscita * Tema.Apple.Moto.ritmo) }
             static var entrata: Animation { Curva.uscita.animazione(durataEntrata) }
         }
 
@@ -556,4 +566,9 @@ extension Tema.Apple {
             static let forzaTocco: Double = 10
         }
     }
+}
+
+extension Animation {
+    /// Il ritardo al ritmo del tema (`Tema.Apple.Moto.ritmo`): al posto di `delay(_:)` in tutta l'app.
+    func ritardoPrisma(_ secondi: Double) -> Animation { delay(secondi * Tema.Apple.Moto.ritmo) }
 }

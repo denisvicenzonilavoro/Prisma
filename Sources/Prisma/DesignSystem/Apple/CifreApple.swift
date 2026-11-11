@@ -126,7 +126,7 @@ struct NumeroCheConta: View {
         guard corsa == nil, !(fermo && scatto) else { return }
         let partenza = fermo ? valore : (da ?? valore)
         corsa = CorsaCifraApple(da: partenza, a: valore,
-                                durata: fermo ? 0 : (durata ?? Tema.Apple.Moto.Numero.durata(indice: indice)),
+                                durata: fermo ? 0 : Tema.Apple.Moto.tempo(durata ?? Tema.Apple.Moto.Numero.durata(indice: indice)),
                                 inizio: Date(), giro: 0)
     }
 
@@ -134,7 +134,7 @@ struct NumeroCheConta: View {
         let ora = Date()
         let mostrato = fermo ? nuovo : (corsa?.valore(al: ora) ?? nuovo)
         corsa = CorsaCifraApple(da: mostrato, a: nuovo,
-                                durata: fermo ? 0 : (durataCambio ?? Tema.Apple.Moto.NumeroCambio.durata),
+                                durata: fermo ? 0 : Tema.Apple.Moto.tempo(durataCambio ?? Tema.Apple.Moto.NumeroCambio.durata),
                                 inizio: ora, giro: (corsa?.giro ?? 0) + 1)
     }
 }

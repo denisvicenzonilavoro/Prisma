@@ -60,7 +60,7 @@ private struct SpuntaRoutine: View {
         .accessibilityHidden(true)
         .onAppear {
             guard anima, !fermo, !acceso else { return }
-            withAnimation(Tema.Apple.Moto.molla(Tema.Apple.routineDurataSpunta).delay(ritardo)) { acceso = true }
+            withAnimation(Tema.Apple.Moto.molla(Tema.Apple.routineDurataSpunta).ritardoPrisma(ritardo)) { acceso = true }
         }
     }
 }

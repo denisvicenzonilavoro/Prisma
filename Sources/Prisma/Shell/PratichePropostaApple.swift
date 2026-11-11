@@ -466,7 +466,7 @@ private struct RigaModuloProposta: View {
         .onAppear {
             guard !fermo else { return }
             let m = Tema.Apple.Pratiche.Moto.self
-            withAnimation(m.animazioneSpunta.delay(m.ritardoSpunta(indice))) { accesa = true }
+            withAnimation(m.animazioneSpunta.ritardoPrisma(m.ritardoSpunta(indice))) { accesa = true }
         }
     }
 }

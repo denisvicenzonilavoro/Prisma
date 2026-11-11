@@ -152,8 +152,9 @@ extension StatoShell {
     /// Curva e durata dell'uscita dall'icona: sul Mac 0,6 s con `(0.3,1.12,0.5,1)`; su iPhone e iPad quella di sempre.
     fileprivate var aperturaFinestra: (curva: Animation, durata: Double) {
         #if os(macOS)
+        // La curva porta da sé il ritmo del tema; la durata delle attese che la seguono va allo stesso ritmo
         let durata = Tema.Apple.Moto.FinestraApre.durata * rallentamento
-        return (Tema.Apple.Moto.VoloFinestra.apertura(durata: durata), durata)
+        return (Tema.Apple.Moto.VoloFinestra.apertura(durata: durata), Tema.Apple.Moto.tempo(durata))
         #else
         return (Tema.Moto.Finestre.apertura, Tema.Moto.Finestre.durataApertura)
         #endif
@@ -162,7 +163,7 @@ extension StatoShell {
     /// Curva e durata del rientro nell'icona (chiusura e riduzione): 0,48 s con `(0.5,0,0.3,1)`.
     fileprivate var rientroFinestra: (curva: Animation, durata: Double) {
         let durata = Tema.Apple.Moto.FinestraChiude.durata * rallentamento
-        return (Tema.Apple.Moto.VoloFinestra.chiusura(durata: durata), durata)
+        return (Tema.Apple.Moto.VoloFinestra.chiusura(durata: durata), Tema.Apple.Moto.tempo(durata))
     }
 
     /// Una finestra nuova: entra subito dentro la sua icona, invisibile, senza animazione (il corpo dell'app si

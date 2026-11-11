@@ -104,7 +104,7 @@ struct VistePortafoglioApple<Portafoglio: View>: View {
         }
         let m = Tema.Apple.Posizioni.Fuoco.Moto.self
         withAnimation(m.uscitaRimonta) { esce = true }
-        Movimenti.dopo(m.durataRimonta) {
+        Movimenti.dopo(Tema.Apple.Moto.tempo(m.durataRimonta)) {
             // Un altro clic nel frattempo: entra quella scelta per ultima
             guard prova.vista == nuova else { return }
             mostrata = nuova

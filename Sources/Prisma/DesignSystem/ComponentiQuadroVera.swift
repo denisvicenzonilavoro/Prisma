@@ -28,7 +28,7 @@ struct CifraContata: View {
             .modifier(ConteggioCifra(valore: fermo ? valore : (mostrato ?? 0), formato: formato))
             .onAppear {
                 guard !fermo, mostrato == nil else { return }
-                withAnimation(Tema.Moto.VeraScrivania.conteggio.delay(ritardo)) { mostrato = valore }
+                withAnimation(Tema.Moto.VeraScrivania.conteggio.ritardoPrisma(ritardo)) { mostrato = valore }
             }
             .onChange(of: valore) { nuovo in
                 guard !fermo else { return }
@@ -138,7 +138,7 @@ private struct CrescitaBarraVera<Contenuto: View>: View {
             .scaleEffect(x: fermo || cresciuta ? 1 : 0.001, y: 1, anchor: .leading)
             .onAppear {
                 guard !fermo else { return }
-                withAnimation(Tema.Moto.VeraScrivania.barra.delay(ritardo)) { cresciuta = true }
+                withAnimation(Tema.Moto.VeraScrivania.barra.ritardoPrisma(ritardo)) { cresciuta = true }
             }
     }
 }
@@ -298,7 +298,7 @@ struct CrescitaMiniVera<Contenuto: View>: View {
             .opacity(fermo || cresciuta ? 1 : 0)
             .onAppear {
                 guard !fermo else { return }
-                withAnimation(Tema.Moto.MiniVera.asta.delay(Tema.Moto.MiniVera.ritardoAsta + Tema.Moto.MiniVera.passoAsta * Double(indice))) {
+                withAnimation(Tema.Moto.MiniVera.asta.ritardoPrisma(Tema.Moto.MiniVera.ritardoAsta + Tema.Moto.MiniVera.passoAsta * Double(indice))) {
                     cresciuta = true
                 }
             }

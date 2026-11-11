@@ -202,7 +202,7 @@ struct RadarModelli: View {
                     .allowsHitTesting(false)
                 Canvas { ctx, _ in disegnaPunti(ctx, geo) }
                     .opacity(visibile || fermo ? 1 : 0)
-                    .animation(Tema.Apple.Moto.Curva.uscita.animazione(R.Moto.durataPunti).delay(R.Moto.ritardoPunti), value: visibile)
+                    .animation(Tema.Apple.Moto.Curva.uscita.animazione(R.Moto.durataPunti).ritardoPrisma(R.Moto.ritardoPunti), value: visibile)
                 anelliVivi(geo)
                 anelloTastiera(geo)
                 nomiModelli(geo)

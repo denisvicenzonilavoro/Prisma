@@ -268,7 +268,7 @@ struct Analisi360Apple: View {
         }
         let t = Tema.Apple.Famiglie.Tempi.self
         withAnimation(t.uscitaRimonta) { esceVista = true }
-        Movimenti.dopo(t.durataRimonta) {
+        Movimenti.dopo(Tema.Apple.Moto.tempo(t.durataRimonta)) {
             // Un altro clic nel frattempo: entra quella scelta per ultima
             guard stato.vistaAnalisi360 == nuova else { return }
             vistaMostrata = nuova
@@ -511,7 +511,7 @@ struct Analisi360Apple: View {
         }
         let g = Tema.Apple.Moto.CambioGriglia.self
         withAnimation(g.uscita) { esce = true }
-        Movimenti.dopo(g.durataUscita) {
+        Movimenti.dopo(Tema.Apple.Moto.tempo(g.durataUscita)) {
             // Un clic su un altro cliente nel frattempo: entra quello, con il suo giro
             guard stato.clienteAttivoId == nuovo else { return }
             cambiato = true

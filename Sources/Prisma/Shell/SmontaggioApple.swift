@@ -585,7 +585,7 @@ struct CerchioAMano: View {
             .allowsHitTesting(false)
             .onAppear {
                 guard !fermo else { return }
-                withAnimation(S.Moto.animazione.delay(S.Moto.partenza(indice))) { disegno = 1 }
+                withAnimation(S.Moto.animazione.ritardoPrisma(S.Moto.partenza(indice))) { disegno = 1 }
             }
     }
 }
@@ -623,7 +623,7 @@ private struct ComparsaNota: ViewModifier {
             .offset(y: visibile ? 0 : M.spostamentoNota)
             .onAppear {
                 guard !fermo else { return }
-                withAnimation(Tema.Apple.Moto.Curva.uscita.animazione(M.durataNota).delay(M.partenza(indice) + M.ritardoNota)) {
+                withAnimation(Tema.Apple.Moto.Curva.uscita.animazione(M.durataNota).ritardoPrisma(M.partenza(indice) + M.ritardoNota)) {
                     dentro = true
                 }
             }

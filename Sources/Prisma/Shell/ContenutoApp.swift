@@ -4,39 +4,31 @@ import UniformTypeIdentifiers
 /// Contenuto di una finestra: l'intestazione dell'app e la sua vista.
 struct ContenutoApp: View {
     let app: AppPrisma
+    @Environment(StatoShell.self) private var statoShell
+    @Environment(\.modoIstantanea) private var istantanea
+    @Environment(\.accessibilityReduceMotion) private var movimentoRidotto
+    /// Il contenuto dell'app si monta a finestra già aperta (fluidità, 11 novembre 2026): la finestra vola leggera
+    /// con la testata e lo sfondo, poi l'app entra con la sua cascata. Nelle istantanee e nelle prove subito.
+    @State private var montato = false
+
+    private var subito: Bool { istantanea || !statoShell.persistente || movimentoRidotto || Movimenti.calmo }
 
     var body: some View {
         VStack(spacing: 0) {
             IntestazioneApp(app: app) { azioni }
             Group {
-                switch app {
-                case .clienti: AppClienti()
-                case .posizioni: AppPosizioni()
-                case .impostazioni: AppImpostazioni()
-                case .agenda: AppAgenda()
-                case .attivita: AppAttivita()
-                case .simulazioni: AppSimulazioni()
-                case .confronti: AppConfronti()
-                case .analisi360: AppAnalisi360()
-                case .vera: AppVera()
-                case .incontri: AppIncontri()
-                case .prodotti: AppProdotti()
-                case .obiettivi: AppObiettivi()
-                case .documenti: AppDocumenti()
-                case .presentazioni: AppProspetti()
-                case .ricerca: AppRicerca()
-                case .note: AppNote()
-                // Le app di «Orizzonte»: Studio (Shell/Studio*.swift), Messaggi (giro 3, Shell/AppMessaggi.swift),
-                // Mercato (giro 7, Shell/AppMercato.swift)
-                case .studio: AppStudio()
-                case .messaggi: AppMessaggi()
-                case .mercato: AppMercato()
-                // Le app di «Luce» (giro 1: testate e stati «in arrivo»; la Sala con griglia e palco)
-                case .sala: AppSala()
-                case .territorio: AppTerritorio()
-                case .pratiche: AppPratiche()
-                case .biblioteca: AppBiblioteca()
-                default: AppSegnaposto(app: app)
+                if montato || subito {
+                    corpo
+                } else {
+                    Color.clear
+                        .onAppear {
+                            #if os(macOS)
+                            let attesa = Tema.Apple.Moto.tempo(Tema.Apple.Moto.FinestraApre.durata)
+                            #else
+                            let attesa = Tema.Moto.Finestre.durataApertura
+                            #endif
+                            Movimenti.dopo(attesa) { montato = true }
+                        }
                 }
             }
             // iPhone e iPad: la larghezza che resta all'app va nell'ambiente (`larghezzaApp`), così colonne e
@@ -51,6 +43,38 @@ struct ContenutoApp: View {
             // lo taglia (ogni app scorre dentro i suoi pannelli: vedi l'elenco laterale di Posizioni)
             .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .topLeading)
             .background(sfondo)
+        }
+    }
+    /// La vista dell'app.
+    @ViewBuilder private var corpo: some View {
+        switch app {
+        case .clienti: AppClienti()
+        case .posizioni: AppPosizioni()
+        case .impostazioni: AppImpostazioni()
+        case .agenda: AppAgenda()
+        case .attivita: AppAttivita()
+        case .simulazioni: AppSimulazioni()
+        case .confronti: AppConfronti()
+        case .analisi360: AppAnalisi360()
+        case .vera: AppVera()
+        case .incontri: AppIncontri()
+        case .prodotti: AppProdotti()
+        case .obiettivi: AppObiettivi()
+        case .documenti: AppDocumenti()
+        case .presentazioni: AppProspetti()
+        case .ricerca: AppRicerca()
+        case .note: AppNote()
+        // Le app di «Orizzonte»: Studio (Shell/Studio*.swift), Messaggi (giro 3, Shell/AppMessaggi.swift),
+        // Mercato (giro 7, Shell/AppMercato.swift)
+        case .studio: AppStudio()
+        case .messaggi: AppMessaggi()
+        case .mercato: AppMercato()
+        // Le app di «Luce» (giro 1: testate e stati «in arrivo»; la Sala con griglia e palco)
+        case .sala: AppSala()
+        case .territorio: AppTerritorio()
+        case .pratiche: AppPratiche()
+        case .biblioteca: AppBiblioteca()
+        default: AppSegnaposto(app: app)
         }
     }
 }

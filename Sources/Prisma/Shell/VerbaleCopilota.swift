@@ -221,7 +221,7 @@ struct VoceVerbaleCopilota: View {
     private var animazione: Animation? {
         if scatto { return nil }
         if calmo { return Tema.Moto.dissolvenzaCalma }
-        return Tema.Apple.Moto.Copilota.spunta.delay(Tema.Apple.Moto.Copilota.ritardoSpunta(ordine))
+        return Tema.Apple.Moto.Copilota.spunta.ritardoPrisma(Tema.Apple.Moto.Copilota.ritardoSpunta(ordine))
     }
 
     var body: some View {

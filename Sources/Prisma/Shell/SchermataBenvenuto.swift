@@ -124,7 +124,7 @@ private struct UscitaBlocco: ViewModifier {
         content
             .scaleEffect(scala)
             .offset(y: -salita)
-            .blur(radius: sfocatura)
+            // Niente sfocatura a tutto schermo all'uscita (fluidità): sale, si allarga e svanisce
             .opacity(opacita)
     }
 }

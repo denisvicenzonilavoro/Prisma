@@ -87,7 +87,7 @@ private struct ColonnaIncassoStudio: View {
         }
         guard !cresciuta else { return }
         let m = Tema.Apple.Studio.Moto.self
-        withAnimation(m.animazioneColonne.delay(m.ritardoColonna(indice))) { cresciuta = true }
+        withAnimation(m.animazioneColonne.ritardoPrisma(m.ritardoColonna(indice))) { cresciuta = true }
     }
 }
 
@@ -268,6 +268,6 @@ private struct PuntoClienteStudio: View {
         }
         guard !comparso else { return }
         let m = Tema.Apple.Studio.Moto.self
-        withAnimation(m.animazionePunti.delay(m.ritardoPunto(indice))) { comparso = true }
+        withAnimation(m.animazionePunti.ritardoPrisma(m.ritardoPunto(indice))) { comparso = true }
     }
 }

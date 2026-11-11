@@ -182,7 +182,7 @@ struct ListaTiPreparo: View {
         if istantanea { return nil }
         if calmo { return Tema.Moto.dissolvenzaCalma }
         let resto = max(0, m.ritardo(indice: i) - trascorso)
-        return m.ripiego.animazione.delay(resto)
+        return m.ripiego.animazione.ritardoPrisma(resto)
     }
 
     private func avvia() {

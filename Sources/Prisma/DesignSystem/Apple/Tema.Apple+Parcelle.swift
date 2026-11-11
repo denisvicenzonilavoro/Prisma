@@ -76,7 +76,7 @@ extension Tema.Apple {
             static let fondoSopra = Colore.chip
             static let fondoScelta = Colore.selezioneVoce
             static let durataFondo = 0.25
-            static var animazioneFondo: Animation { .easeInOut(duration: durataFondo) }
+            static var animazioneFondo: Animation { .easeInOut(duration: durataFondo * Tema.Apple.Moto.ritmo) }
 
             /// Il colore dello stato: bozza `inchiostro3`, da incassare arancio, pagata verde, annullata `inchiostro3`.
             static func colore(_ s: StatoParcella, scaduta: Bool) -> Color {
@@ -222,7 +222,7 @@ extension Tema.Apple {
             static let durataEntrata = 0.48
             static let spostamento: CGFloat = 20
             static let scala: CGFloat = 0.64 / 0.66
-            static var uscita: Animation { .linear(duration: durataUscita) }
+            static var uscita: Animation { .linear(duration: durataUscita * Tema.Apple.Moto.ritmo) }
             static var entrata: Animation { Tema.Apple.Moto.Curva.uscita.animazione(durataEntrata) }
             /// «✓ File XML pronto» entra con la molla in 0,45 s: scala 0,9 → 1.
             static let durataPronto = 0.45
@@ -337,7 +337,7 @@ extension AnyTransition {
             active: EffettoPaginaApple(scala: m.scala, x: 0, y: -m.spostamento, opacita: 0),
             identity: EffettoPaginaApple.riposo
         )
-        .animation(m.entrata.delay(m.durataUscita))
+        .animation(m.entrata.ritardoPrisma(m.durataUscita))
         let uscita = AnyTransition.modifier(
             active: EffettoPaginaApple(scala: m.scala, x: 0, y: m.spostamento, opacita: 0),
             identity: EffettoPaginaApple.riposo

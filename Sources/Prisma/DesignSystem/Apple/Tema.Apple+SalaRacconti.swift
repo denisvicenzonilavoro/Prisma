@@ -149,7 +149,7 @@ extension Tema.Apple.Moto {
     /// Timer); il risultato entra dopo, a cascata, con i numeri contati.
     enum Disegno {
         static let trasformazione = 1.30
-        static var animazione: Animation { .linear(duration: trasformazione) }
+        static var animazione: Animation { .linear(duration: trasformazione * Tema.Apple.Moto.ritmo) }
     }
 }
 

@@ -239,7 +239,7 @@ extension Tema.Apple.Moto {
         static let attesa = 0.25
         static let durata = 0.20
         static let durataUscita = 0.15
-        static var entrata: Animation { .easeIn(duration: durata).delay(attesa) }
-        static var uscita: Animation { .easeOut(duration: durataUscita) }
+        static var entrata: Animation { .easeIn(duration: durata * Tema.Apple.Moto.ritmo).ritardoPrisma(attesa) }
+        static var uscita: Animation { .easeOut(duration: durataUscita * Tema.Apple.Moto.ritmo) }
     }
 }

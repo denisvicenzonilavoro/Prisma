@@ -66,7 +66,7 @@ struct PianoPassiVeraVista: View {
     private func animazionePasso(_ i: Int) -> Animation? {
         guard !subito else { return nil }
         return Tema.Apple.Moto.animazione(Tema.Apple.Moto.molla(R.durataPasso), calmo: calmo)
-            .delay(Tema.Apple.Moto.ritardo(R.ritardoPrimo + Double(i) * R.ritardoPasso, calmo: calmo))
+            .ritardoPrisma(Tema.Apple.Moto.ritardo(R.ritardoPrimo + Double(i) * R.ritardoPasso, calmo: calmo))
     }
 
     /// L'animazione della colonna `j`: dopo l'ultimo passo, ogni colonna un poco dopo la precedente.
@@ -74,7 +74,7 @@ struct PianoPassiVeraVista: View {
         guard !subito else { return nil }
         let dopoPassi = stato.dati.impostazioni.vera.passi.mostraRagionamento ? R.ritardoPrimo + Double(piano.passi.count) * R.ritardoPasso : 0
         return Tema.Apple.Moto.animazione(Tema.Apple.Moto.uscita(R.durataColonna), calmo: calmo)
-            .delay(Tema.Apple.Moto.ritardo(dopoPassi + Double(j) * R.ritardoColonna, calmo: calmo))
+            .ritardoPrisma(Tema.Apple.Moto.ritardo(dopoPassi + Double(j) * R.ritardoColonna, calmo: calmo))
     }
 
     private var piede: some View {

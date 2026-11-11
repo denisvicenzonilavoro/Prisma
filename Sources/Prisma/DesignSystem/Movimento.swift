@@ -392,7 +392,7 @@ struct EntrataSfalsata: ViewModifier {
             .offset(y: nascosto && !calmo ? spostamento : 0)
             .scaleEffect(nascosto && !calmo ? scala : 1)
             .animation(nascosto ? Tema.Moto.Blocco.scrivania
-                                : Movimenti.curva(curva).delay(Double(indice) * sfalsamento), value: nascosto)
+                                : Movimenti.curva(curva).ritardoPrisma(Double(indice) * sfalsamento), value: nascosto)
     }
 }
 

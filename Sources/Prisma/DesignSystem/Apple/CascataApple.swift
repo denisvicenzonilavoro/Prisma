@@ -88,14 +88,14 @@ struct EntrataApple: ViewModifier {
 
     func body(content: Content) -> some View {
         let fuori = !(entrato || fermo)
-        let sfocatura: CGFloat = (fuori && sfocata) ? stile.sfocatura : 0
         // Nelle istantanee (che non cambiano mai durante la vita della vista) niente filtro di sfocatura a 0:
         // la cascata è già ferma e il ramo non cambia l'identità del contenuto
         return content
             .opacity(fuori ? 0 : 1)
             .scaleEffect(fuori ? stile.scala : 1)
             .offset(x: fuori ? stile.spostamentoX : 0, y: fuori ? stile.spostamentoY : 0)
-            .modifier(SfocaturaEntrata(raggio: sfocatura, attiva: sfocata && !istantanea))
+            // Niente sfocatura (scelta dell'11 novembre 2026, fluidità): il filtro restava montato a raggio 0 su ogni
+            // blocco e costava a ogni fotogramma, anche scorrendo. Restano opacità, spostamento e scala.
             .onAppear(perform: entra)
             .onChange(of: giro) { _ in riparti() }
     }
@@ -107,7 +107,7 @@ struct EntrataApple: ViewModifier {
             if !scatto { entrato = true }
             return
         }
-        withAnimation(stile.animazione.delay(ritardo)) { entrato = true }
+        withAnimation(stile.animazione.ritardoPrisma(ritardo)) { entrato = true }
     }
 
     private func riparti() {
@@ -117,7 +117,7 @@ struct EntrataApple: ViewModifier {
         withTransaction(t) { entrato = false }
         // Al giro dopo: il blocco torna al punto di partenza prima che l'animazione cominci.
         DispatchQueue.main.async {
-            withAnimation(stile.animazione.delay(ritardo)) { entrato = true }
+            withAnimation(stile.animazione.ritardoPrisma(ritardo)) { entrato = true }
         }
     }
 }

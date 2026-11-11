@@ -29,7 +29,7 @@ extension Tema.Apple.Moto {
     /// Il pallino sotto le app aperte: compare e scompare in 0,3 s.
     enum PuntinoDock {
         static let durata = 0.30
-        static var animazione: Animation { .easeInOut(duration: durata) }
+        static var animazione: Animation { .easeInOut(duration: durata * Tema.Apple.Moto.ritmo) }
     }
 }
 

@@ -214,7 +214,7 @@ private struct TrattoAnello: View {
             return
         }
         guard mostrata != frazione else { return }
-        withAnimation(Tema.Apple.Moto.Anello.animazione.delay(ritardo)) {
+        withAnimation(Tema.Apple.Moto.Anello.animazione.ritardoPrisma(ritardo)) {
             mostrata = frazione
         }
     }
