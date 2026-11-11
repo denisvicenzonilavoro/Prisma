@@ -389,6 +389,15 @@ jobs:
           path: Prisma.zip
           retention-days: 7
 
+      # La tabella della prova della fluidità anche in fondo al log (il riepilogo della build non si legge dalle API):
+      # così i tempi si confrontano prima e dopo anche senza aprire la pagina della build
+      - name: Tabella della fluidità
+        if: always()
+        run: |
+          echo "=== FLUIDITA INIZIO ==="
+          cat fluidita.md 2>/dev/null || echo "(nessuna tabella)"
+          echo "=== FLUIDITA FINE ==="
+
   # Prisma per iPhone e iPad: compilazione per il simulatore, prove e istantanee.
   # Niente .xcodeproj: xcodebuild apre Package.swift, il .app si assembla con Supporto/iOS/assembla.sh.
   # Bloccante dal giro 2: tutto il target compila su iOS, e da qui vale «iOS rosso = niente merge».
