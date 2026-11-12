@@ -206,6 +206,19 @@ extension StatoShell {
         return (RadarPortafoglio(modelli: modelli, voci: voci, senzaModello: senza, tolleranzaGenerale: tolleranza), true)
     }
 
+    /// Prepara in sottofondo le voci del radar che mancano, senza mostrare nulla: da chiamare fuori dal body quando si apre
+    /// il Portafoglio di Posizioni, così il primo passaggio a Radar trova le voci pronte invece di calcolarle tutte sul
+    /// thread principale (senza un radar di prima da mostrare intanto, `radarDaiClienti` le calcola subito). Solo
+    /// nell'app vera, con molti clienti da rifare e nessun calcolo già in corso; le istantanee e le prove non cambiano.
+    func preparaRadarInSottofondo() {
+        guard persistente || cacheClienti.sottofondoPerProva, cacheClienti.radarInCorso == nil,
+              derivatiValidi().radar == nil else { return }
+        let mancanti = dati.clienti.map { ($0, voceCliente($0.id)) }.filter { $0.1.radar == nil }
+        guard mancanti.count >= CacheClienti.sogliaSottofondo else { return }
+        let modelli = Dictionary(dati.portafogliModello.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        avviaRadarInSottofondo(mancanti, modelli: modelli, tolleranza: dati.impostazioni.tolleranzaRadar)
+    }
+
     /// Il posto di un cliente sul radar, come in `MotoreRadar.calcola` (senza stato: si può chiamare in sottofondo).
     nonisolated static func esitoRadar(_ c: Cliente, posizioni mie: [Posizione], modelli: [String: PortafoglioModello],
                                        prodotti: [String: Prodotto], tolleranza: Double?) -> CacheClienti.EsitoRadar {

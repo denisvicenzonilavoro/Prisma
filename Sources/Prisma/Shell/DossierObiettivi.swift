@@ -152,6 +152,12 @@ struct ObiettiviDossierApple: View {
     private func apri(_ o: Obiettivo) {
         stato.obiettivoSelezionato = o.id
         if let d = dettaglio {
+            // Gli scenari con le probabilità del dettaglio completo (1.000 traiettorie, MotoreMonteCarlo) si calcolano qui,
+            // prima che il dettaglio cominci a nascere dalla card: montati a metà dell'apertura farebbero perdere
+            // fotogrammi. Stessi obiettivo e posizioni del dettaglio (DettaglioDossierApple), così lo trova in cache.
+            if let attuale = stato.dati.obiettivi.first(where: { $0.id == o.id }), attuale.scadenza > Date() {
+                _ = CacheMotoriAnalisi.scenari(attuale, posizioni: stato.posizioniCliente(attuale.clienteId))
+            }
             d.apri(o.id, misura: Tema.Apple.Clienti.DettaglioObiettivo.misura)
         } else {
             modulo = o

@@ -60,6 +60,15 @@ struct SchedaTFR: View {
         return stato.ipotesiTFR(cliente)
     }
 
+    /// Le ipotesi ricavate dai soli dati del cliente (per le note dei ripieghi), una volta per dati dei calcoli e giorno:
+    /// la console le confronta a ogni passo del cursore. Solo dossier e posizioni, nessuna ipotesi salvata.
+    private var partenza: IpotesiTFR {
+        let id = cliente
+        return stato.ricavato("tfr-partenza|\(id)") {
+            IpotesiTFR.dalCliente(stato.cliente(id), posizioni: stato.posizioniCliente(id))
+        }
+    }
+
     private var legame: Binding<IpotesiTFR> {
         Binding(get: { ipotesi }, set: { nuove in
             if clienteBozza != cliente { clienteBozza = cliente }
@@ -107,7 +116,7 @@ struct SchedaTFR: View {
         let b = legame
         // Ripieghi: la nota compare solo se il valore è ancora quello di partenza ricavato senza il dato
         let rip = stato.ripieghiTFR(cliente)
-        let partenza = IpotesiTFR.dalCliente(stato.clienteAttivo, posizioni: stato.posizioniCliente(cliente))
+        let partenza = self.partenza
         let notaRetribuzione = rip.retribuzione && i.retribuzione == partenza.retribuzione
             ? "Stimata: manca il reddito da lavoro" : nil
         let notaAnni: String? = {
@@ -120,101 +129,122 @@ struct SchedaTFR: View {
             VStack(alignment: .leading, spacing: M.spazioConsole) {
                 gruppo("Lavoratore") {
                     Group {
-                        ComandoSimulatore(etichetta: "Retribuzione utile al TFR", valore: b.retribuzione, unita: "€",
-                                          intervallo: Console.retribuzione, passo: Console.passoRetribuzione,
-                                          fineCursore: Console.fineRetribuzione)
+                        ComandoSimulatoreFermo(etichetta: "Retribuzione utile al TFR", valore: b.retribuzione, unita: "€",
+                                               intervallo: Console.retribuzione, passo: Console.passoRetribuzione,
+                                               fineCursore: Console.fineRetribuzione)
+                            .equatable()
                         notaComando(notaRetribuzione)
-                        ComandoSimulatore(etichetta: "Crescita oltre l'inflazione", valore: b.crescitaReale, unita: "%",
-                                          intervallo: Console.crescita, passo: Console.passo, decimali: 1)
-                        ComandoSimulatore(etichetta: "Anni con questo datore fino alla pensione", valore: intero(b.anni, Console.anni),
-                                          unita: "anni", intervallo: Console.anni, passo: 1)
+                        ComandoSimulatoreFermo(etichetta: "Crescita oltre l'inflazione", valore: b.crescitaReale, unita: "%",
+                                               intervallo: Console.crescita, passo: Console.passo, decimali: 1)
+                            .equatable()
+                        ComandoSimulatoreFermo(etichetta: "Anni con questo datore fino alla pensione", valore: intero(b.anni, Console.anni),
+                                               unita: "anni", intervallo: Console.anni, passo: 1)
+                            .equatable()
                         notaComando(notaAnni)
-                        ComandoSimulatore(etichetta: "Inflazione ipotizzata", valore: b.inflazione, unita: "%",
-                                          intervallo: Console.inflazione, passo: Console.passo, decimali: 1,
-                                          fineCursore: Console.fineInflazione)
+                        ComandoSimulatoreFermo(etichetta: "Inflazione ipotizzata", valore: b.inflazione, unita: "%",
+                                               intervallo: Console.inflazione, passo: Console.passo, decimali: 1,
+                                               fineCursore: Console.fineInflazione)
+                            .equatable()
                     }
                     Group {
-                        ComandoSimulatore(etichetta: "Anni già fatti con questo datore",
-                                          valore: interoFacoltativo(b.anniServizio, Console.servizio),
-                                          unita: "anni", intervallo: Console.servizio, passo: 1)
-                        ComandoSimulatore(etichetta: "TFR già maturato in azienda",
-                                          valore: facoltativo(b.tfrMaturato, Console.maturato), unita: "€",
-                                          intervallo: Console.maturato, passo: M.passoMaturato, fineCursore: M.fineMaturato)
+                        ComandoSimulatoreFermo(etichetta: "Anni già fatti con questo datore",
+                                               valore: interoFacoltativo(b.anniServizio, Console.servizio),
+                                               unita: "anni", intervallo: Console.servizio, passo: 1)
+                            .equatable()
+                        ComandoSimulatoreFermo(etichetta: "TFR già maturato in azienda",
+                                               valore: facoltativo(b.tfrMaturato, Console.maturato), unita: "€",
+                                               intervallo: Console.maturato, passo: M.passoMaturato, fineCursore: M.fineMaturato)
+                            .equatable()
                         notaComando(e?.maturatoStimato == true
                                     ? "Stimato dagli anni: \(Formati.euro(e?.tfrMaturato ?? 0)). Conta solo per l'aliquota" : nil)
                         scelta("Dipendenti dell'azienda") {
-                            SegmentiAnalisi(opzioni: [(false, "Meno di \(RegoleTFR.dipendentiTesoreria)"),
-                                                      (true, "\(RegoleTFR.dipendentiTesoreria) o più")],
-                                            selezione: vero(b.aziendaGrande))
+                            SegmentiAnalisiFermi(opzioni: [(false, "Meno di \(RegoleTFR.dipendentiTesoreria)"),
+                                                           (true, "\(RegoleTFR.dipendentiTesoreria) o più")],
+                                                 selezione: vero(b.aziendaGrande))
+                                .equatable()
                         }
                         scelta("Iscritto all'INPS prima del 29/4/1993") {
-                            SegmentiAnalisi(opzioni: [(false, "No"), (true, "Sì")], selezione: vero(b.vecchioIscritto))
+                            SegmentiAnalisiFermi(opzioni: [(false, "No"), (true, "Sì")], selezione: vero(b.vecchioIscritto))
+                                .equatable()
                         }
                         if i.vecchioIscritto == true {
-                            ComandoSimulatore(etichetta: "TFR conferito al fondo",
-                                              valore: Binding(get: { b.wrappedValue.quotaConferitaEffettiva },
-                                                              set: { b.wrappedValue.quotaConferita = $0 }),
-                                              unita: "%", intervallo: Console.conferita, passo: M.passoConferita)
+                            ComandoSimulatoreFermo(etichetta: "TFR conferito al fondo",
+                                                   valore: Binding(get: { b.wrappedValue.quotaConferitaEffettiva },
+                                                                   set: { b.wrappedValue.quotaConferita = $0 }),
+                                                   unita: "%", intervallo: Console.conferita, passo: M.passoConferita)
+                                .equatable()
                         }
-                        ComandoSimulatore(etichetta: "Quota di TFR sulla retribuzione",
-                                          valore: Binding(get: { b.wrappedValue.quotaTFR ?? RegoleTFR.quotaAnnua },
-                                                          set: { v in
-                                                              b.wrappedValue.quotaTFR = abs(v - RegoleTFR.quotaAnnua) < M.passoQuota / 2 ? nil : v
-                                                          }),
-                                          unita: "%", intervallo: Console.quota, passo: M.passoQuota, decimali: 2)
+                        ComandoSimulatoreFermo(etichetta: "Quota di TFR sulla retribuzione",
+                                               valore: Binding(get: { b.wrappedValue.quotaTFR ?? RegoleTFR.quotaAnnua },
+                                                               set: { v in
+                                                                   b.wrappedValue.quotaTFR = abs(v - RegoleTFR.quotaAnnua) < M.passoQuota / 2 ? nil : v
+                                                               }),
+                                               unita: "%", intervallo: Console.quota, passo: M.passoQuota, decimali: 2)
+                            .equatable()
                     }
                 }
                 filo
                 gruppo("Fondo") {
                     Group {
                         scelta("Rendimento del fondo") {
-                            SegmentiAnalisi(opzioni: [(true, "Netto (COVIP)"), (false, "Lordo")], selezione: baseNetta(b))
+                            SegmentiAnalisiFermi(opzioni: [(true, "Netto (COVIP)"), (false, "Lordo")], selezione: baseNetta(b))
+                                .equatable()
                         }
-                        ComandoSimulatore(etichetta: i.rendimentoNetto ? "Rendimento netto del fondo" : "Rendimento lordo del fondo",
-                                          valore: b.rendimentoFondo, unita: "%",
-                                          intervallo: Console.rendimento, passo: Console.passo, decimali: 1)
+                        ComandoSimulatoreFermo(etichetta: i.rendimentoNetto ? "Rendimento netto del fondo" : "Rendimento lordo del fondo",
+                                               valore: b.rendimentoFondo, unita: "%",
+                                               intervallo: Console.rendimento, passo: Console.passo, decimali: 1)
+                            .equatable()
                         notaComando(i.rendimentoNetto
                                     ? "Già tolti costi e imposta, come nei dati COVIP e nelle schede"
                                     : "Prisma toglie costi (ISC) e imposta sui rendimenti")
                         if !i.rendimentoNetto {
-                            ComandoSimulatore(etichetta: "Costi del fondo (ISC)", valore: b.costoFondo, unita: "%",
-                                              intervallo: Console.costo, passo: Console.passoCosto, decimali: 2)
-                            ComandoSimulatore(etichetta: "Parte in titoli di Stato",
-                                              valore: facoltativo(b.titoliStatoFondo, Console.titoliStato), unita: "%",
-                                              intervallo: Console.titoliStato, passo: 1)
+                            ComandoSimulatoreFermo(etichetta: "Costi del fondo (ISC)", valore: b.costoFondo, unita: "%",
+                                                   intervallo: Console.costo, passo: Console.passoCosto, decimali: 2)
+                                .equatable()
+                            ComandoSimulatoreFermo(etichetta: "Parte in titoli di Stato",
+                                                   valore: facoltativo(b.titoliStatoFondo, Console.titoliStato), unita: "%",
+                                                   intervallo: Console.titoliStato, passo: 1)
+                                .equatable()
                         }
                     }
                     Group {
-                        ComandoSimulatore(etichetta: "Contributo del cliente", valore: b.contributoLavoratore, unita: "%",
-                                          intervallo: Console.contributo, passo: Console.passo, decimali: 1)
-                        ComandoSimulatore(etichetta: "Contributo del datore", valore: b.contributoDatore, unita: "%",
-                                          intervallo: Console.contributo, passo: Console.passo, decimali: 1)
+                        ComandoSimulatoreFermo(etichetta: "Contributo del cliente", valore: b.contributoLavoratore, unita: "%",
+                                               intervallo: Console.contributo, passo: Console.passo, decimali: 1)
+                            .equatable()
+                        ComandoSimulatoreFermo(etichetta: "Contributo del datore", valore: b.contributoDatore, unita: "%",
+                                               intervallo: Console.contributo, passo: Console.passo, decimali: 1)
+                            .equatable()
                         notaComando(i.contributoDatore > 0 && i.contributoLavoratore <= 0
                                     ? "Di solito il datore versa solo se versa anche il cliente" : nil, avviso: true)
-                        ComandoSimulatore(etichetta: "Anni già nella previdenza", valore: intero(b.anniPartecipazione, Console.partecipazione),
-                                          unita: "anni", intervallo: Console.partecipazione, passo: 1)
+                        ComandoSimulatoreFermo(etichetta: "Anni già nella previdenza", valore: intero(b.anniPartecipazione, Console.partecipazione),
+                                               unita: "anni", intervallo: Console.partecipazione, passo: 1)
+                            .equatable()
                     }
                 }
                 filo
                 gruppo("Fisco") {
                     scelta("Aliquota del TFR in azienda") {
-                        SegmentiAnalisi(opzioni: [(false, "Calcolata"), (true, "La indico io")], selezione: aliquotaAMano(b))
+                        SegmentiAnalisiFermi(opzioni: [(false, "Calcolata"), (true, "La indico io")], selezione: aliquotaAMano(b))
+                            .equatable()
                     }
                     if i.aliquotaTFR != nil {
-                        ComandoSimulatore(etichetta: "Aliquota della tassazione separata",
-                                          valore: Binding(get: { b.wrappedValue.aliquotaTFR ?? 0 },
-                                                          set: { b.wrappedValue.aliquotaTFR = min(max($0, Console.aliquota.lowerBound), Console.aliquota.upperBound) }),
-                                          unita: "%", intervallo: Console.aliquota, passo: Console.passo, decimali: 1)
+                        ComandoSimulatoreFermo(etichetta: "Aliquota della tassazione separata",
+                                               valore: Binding(get: { b.wrappedValue.aliquotaTFR ?? 0 },
+                                                               set: { b.wrappedValue.aliquotaTFR = min(max($0, Console.aliquota.lowerBound), Console.aliquota.upperBound) }),
+                                               unita: "%", intervallo: Console.aliquota, passo: Console.passo, decimali: 1)
+                            .equatable()
                     }
                     if i.contributoLavoratore > 0 {
                         scelta("Costo dei contributi valutato al") {
-                            SegmentiAnalisi(opzioni: [(false, "Inflazione"), (true, "Un tasso mio")], selezione: tassoAMano(b))
+                            SegmentiAnalisiFermi(opzioni: [(false, "Inflazione"), (true, "Un tasso mio")], selezione: tassoAMano(b))
+                                .equatable()
                         }
                         if i.tassoAlternativo != nil {
-                            ComandoSimulatore(etichetta: "Rendimento netto alternativo",
-                                              valore: Binding(get: { b.wrappedValue.tassoAlternativo ?? 0 },
-                                                              set: { b.wrappedValue.tassoAlternativo = $0 }),
-                                              unita: "%", intervallo: Console.tasso, passo: Console.passo, decimali: 1)
+                            ComandoSimulatoreFermo(etichetta: "Rendimento netto alternativo",
+                                                   valore: Binding(get: { b.wrappedValue.tassoAlternativo ?? 0 },
+                                                                   set: { b.wrappedValue.tassoAlternativo = $0 }),
+                                                   unita: "%", intervallo: Console.tasso, passo: Console.passo, decimali: 1)
+                                .equatable()
                         }
                     }
                 }
@@ -347,7 +377,8 @@ struct SchedaTFR: View {
                 if let tipo = senza {
                     nessunTFR(tipo)
                 } else if let e {
-                    let testi = TestiTFR(e, cliente: stato.clienteAttivo)
+                    // Il cliente dal dizionario dei dati ricavati (`clienteAttivo` rifiltra tutta la rubrica a ogni passo)
+                    let testi = TestiTFR(e, cliente: stato.cliente(cliente))
                     fondoGiaConferito
                     pillole(testi)
                     ForEach(Array(testi.avvisi.enumerated()), id: \.offset) { _, a in

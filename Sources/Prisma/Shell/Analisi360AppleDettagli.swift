@@ -109,7 +109,7 @@ struct DettaglioInvestimentiApple: View {
     /// Coerenza con il profilo, profilo di rischio, SRI medio e costo medio l'anno.
     private func cifre(_ k: ComposizioneInvestimenti360) -> some View {
         let d = Tema.Apple.Aree360.Dettaglio.self
-        let costo = stato.analisiDossier(cliente.id).costi.costoMedio
+        let costo = Self.costoMedio(stato.posizioniCliente(cliente.id))
         let profilo = k.propensione?.nome ?? "Da rilevare"
         let sri = k.sriMedio.map { "\(TestiAree360.decimale($0)) su 7" }
         let titoloSri = k.sriMassimo.map { "SRI medio · massimo \($0)" } ?? "SRI medio"
@@ -124,6 +124,17 @@ struct DettaglioInvestimentiApple: View {
                                   aiuto: "Costo annuo pesato sul valore delle posizioni con i costi indicati")
             Spacer(minLength: 0)
         }
+    }
+
+    /// Il costo annuo medio pesato sul valore: lo stesso `AnalisiCosti.costoMedio` di `MotoreCosti.calcola` (posizioni
+    /// finanziarie in essere con valore e con i costi indicati), senza le proiezioni e le alternative del catalogo che
+    /// l'analisi completa del dossier calcola per ogni posizione: qui serve solo la media, mentre il dettaglio si apre.
+    static func costoMedio(_ posizioni: [Posizione]) -> Double? {
+        let voci = posizioni.filter { p in
+            p.stato == .inEssere && p.area.proiettabile && p.valore > 0 && (p.costoComplessivo != nil || p.costoIngresso != nil)
+        }
+        let valore = voci.reduce(0) { $0 + $1.valore }
+        return valore > 0 ? voci.reduce(0) { $0 + ($1.costoComplessivo ?? 0) * $1.valore } / valore : nil
     }
 
     private func ipotesi(_ k: ComposizioneInvestimenti360) -> String {

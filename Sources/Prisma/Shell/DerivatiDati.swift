@@ -26,13 +26,16 @@ final class DerivatiDati {
     }
 
     /// Il riesame dipende anche dal confronto aperto in Prospetti e dall'orizzonte della sostituzione (fonte di Vera).
+    /// Del prospetto aperto conta solo la coppia di una sostituzione (`confrontoVera` legge solo quella): passare da
+    /// una voce all'altra di Prospetti non butta via i riesami di tutti i clienti.
     struct ChiaveRiesame: Equatable {
-        let prospetto: SceltaProspetto?
+        let attuale: String?
+        let alternativa: String?
         let orizzonte: Int?
         let ora: Int
     }
 
-    struct ChiavePortafoglio: Equatable {
+    struct ChiavePortafoglio: Hashable {
         let canale: Canale?
         let area: AreaPosizione?
         let ora: Int
@@ -56,6 +59,14 @@ final class DerivatiDati {
     /// I documenti di Prospetti che leggono le note del taccuino: il riesame (attraverso `fonteVera`). Gli altri leggono
     /// solo i campi dei calcoli (`datiDeiCalcoli`) o i dati del cliente, e il fascicolo è fatto di report che non le leggono.
     static func leggeLeNote(_ scelta: SceltaProspetto) -> Bool {
+        if case .riesame = scelta { return true }
+        return false
+    }
+
+    /// I documenti che leggono anche qualcosa fuori dalla chiave (il riesame: il valore del consulente scelto nella Sala,
+    /// con le schede di adeguatezza): si riprendono da `documenti` solo se sono gli ultimi impaginati, come quando la
+    /// cache ne teneva uno solo.
+    static func soloSeUltimo(_ scelta: SceltaProspetto) -> Bool {
         if case .riesame = scelta { return true }
         return false
     }
@@ -112,8 +123,13 @@ final class DerivatiDati {
     var portafoglioComune: (ora: Int, valore: PortafoglioComune)?
     /// I riesami dovuti di tutti i clienti visibili, con l'ora del calcolo: li chiedono il Portafoglio e la mossa del giorno.
     var dovuti: (ora: Int, valore: [RiesameDovuto])?
-    var portafoglio: (chiave: ChiavePortafoglio, valore: Portafoglio)?
-    var documento: (chiave: ChiaveDocumento, valore: DocumentoStampabile?)?
+    /// Il portafoglio per filtro di canale e area: tornando a un filtro già visto non si rifà il motore.
+    var portafogli: [ChiavePortafoglio: Portafoglio] = [:]
+    /// Gli ultimi documenti di Prospetti impaginati (il più recente in fondo), ognuno con il numero della sua
+    /// impaginazione: tornando a una voce appena vista (A → B → A) il documento e la pagina sul tavolo restano gli stessi.
+    var documenti: [(chiave: ChiaveDocumento, valore: DocumentoStampabile?, generazione: Int)] = []
+    /// Quanti documenti tiene al massimo `documenti` (le pagine sono viste da disegnare, non immagini).
+    static let documentiMassimi = 4
     /// Le proposte ferme, con l'ora del calcolo (StatoSeguito.swift).
     var seguito: (ora: Int, valore: [PropostaInSospeso])?
     /// Le occasioni per intervallo di date e filtro (AgendaOccasioni.swift).
@@ -168,6 +184,11 @@ final class DerivatiDati {
         generazioneDocumento = DerivatiDati.ultimaGenerazione
     }
 
+    /// Un documento ripreso da `documenti`: torna il numero della sua impaginazione (è lo stesso documento).
+    func riprendiGenerazioneDocumento(_ numero: Int) {
+        generazioneDocumento = numero
+    }
+
     /// Dati dei calcoli, giorno o modalità cliente cambiati: si dimentica tutto (non il numero del documento).
     func azzera(_ nuova: Chiave) {
         chiave = nuova
@@ -182,8 +203,8 @@ final class DerivatiDati {
         memorie = [:]
         portafoglioComune = nil
         dovuti = nil
-        portafoglio = nil
-        documento = nil
+        portafogli = [:]
+        documenti = []
         seguito = nil
         occasioni = [:]
         conformitaClienti = nil
@@ -396,7 +417,15 @@ extension StatoShell {
     /// quindi si calcola una volta sola per dati, ora, confronto aperto e orizzonte della sostituzione.
     func riesameCliente(_ id: String) -> Riesame? {
         let d = derivatiValidi()
-        let k = DerivatiDati.ChiaveRiesame(prospetto: prospetto, orizzonte: orizzonteSostituzione, ora: DerivatiDati.ora())
+        // Del prospetto aperto, solo la coppia di una sostituzione (quella che la fonte di Vera legge)
+        var attuale: String?
+        var alternativa: String?
+        if case .sostituzione(let a, let b, _)? = prospetto {
+            attuale = a
+            alternativa = b
+        }
+        let k = DerivatiDati.ChiaveRiesame(attuale: attuale, alternativa: alternativa, orizzonte: orizzonteSostituzione,
+                                           ora: DerivatiDati.ora())
         if d.chiaveRiesami != k {
             d.chiaveRiesami = k
             d.riesami = [:]
@@ -446,16 +475,29 @@ extension StatoShell {
         return v
     }
 
-    /// Il portafoglio di tutti i clienti con i filtri di canale e area (chi ricontattare non dipende dai filtri).
+    /// Il portafoglio di tutti i clienti con i filtri di canale e area (chi ricontattare non dipende dai filtri). Uno per
+    /// filtro: un clic avanti e indietro sui canali o sulle aree della colonna non rifà il motore.
     func riepilogoPortafoglio(canale: Canale?, area: AreaPosizione?) -> Portafoglio {
         let d = derivatiValidi()
         let k = DerivatiDati.ChiavePortafoglio(canale: canale, area: area, ora: DerivatiDati.ora())
-        if let c = d.portafoglio, c.chiave == k { return c.valore }
+        if let c = d.portafogli[k] { return c }
         let filtrate = posizioni.filter { (canale == nil || $0.canale == canale) && (area == nil || $0.area == area) }
         var p = MotorePortafoglio.calcola(filtrate, clienti: clienti, appuntamenti: appuntamenti, incontri: dati.incontri)
         p.daRicontattare = portafoglioComune().daRicontattare
-        d.portafoglio = (k, p)
+        // Pochi filtri per ora: oltre il limite (voci di ore passate comprese) si riparte da zero
+        if d.portafogli.count >= DerivatiDati.vociMassimeAgenda { d.portafogli = [:] }
+        d.portafogli[k] = p
         return p
+    }
+
+    /// Motivi e tempi delle decisioni sulle posizioni filtrate per canale e area (il Portafoglio di Posizioni), come
+    /// `MotoreSeguitoProposte.statistiche`, una volta per dati dei calcoli, giorno e modalità cliente (non guardano l'ora).
+    func statisticheEsitiPortafoglio(canale: Canale?, area: AreaPosizione?) -> StatisticheEsiti {
+        ricavato("statistiche-esiti|\(canale?.rawValue ?? "-")|\(area?.rawValue ?? "-")") {
+            MotoreSeguitoProposte.statistiche(posizioni.filter { p in
+                (canale == nil || p.canale == canale) && (area == nil || p.area == area)
+            })
+        }
     }
 
     /// Il documento di Prospetti per una scelta, impaginato una volta sola finché non cambia qualcosa che conta
@@ -467,10 +509,20 @@ extension StatoShell {
                                              prospetto: prospetto, cliente: clienteAttivoId,
                                              orizzonteConfronto: orizzonteConfronto, orizzonteSostituzione: orizzonteSostituzione,
                                              fascicolo: sceltaFascicolo, appuntamento: fascicoloAppuntamento, ora: DerivatiDati.ora())
-        if let c = d.documento, c.chiave == k { return c.valore }
+        if let i = d.documenti.lastIndex(where: { $0.chiave == k }) {
+            if i == d.documenti.count - 1 || !DerivatiDati.soloSeUltimo(scelta) {
+                // Il più recente va in fondo; il numero è quello della sua impaginazione
+                let c = d.documenti.remove(at: i)
+                d.documenti.append(c)
+                d.riprendiGenerazioneDocumento(c.generazione)
+                return c.valore
+            }
+            d.documenti.remove(at: i)
+        }
         let documento = documentoProspetto(scelta)
-        d.documento = (k, documento)
         d.nuovaGenerazioneDocumento()
+        if d.documenti.count >= DerivatiDati.documentiMassimi { d.documenti.removeFirst() }
+        d.documenti.append((chiave: k, valore: documento, generazione: d.generazioneDocumento))
         return documento
     }
 
@@ -585,6 +637,19 @@ extension DatiPrisma {
         // Le voci chiuse del sussurro sono una preferenza di vista: niente cache dei calcoli
         a.sussurriChiusi = []; b.sussurriChiusi = []
         b.impostazioni.stileVera = a.impostazioni.stileVera
+        // Le sessioni del copilota, il giornale, i conflitti e gli arrivi di Prisma ovunque e le inquadrature dall'iPhone si
+        // leggono vivi (come in `DatiVivi`): una frase dell'ascolto o una sincronizzazione non rifanno le cache
+        a.sessioniCopilota = []; b.sessioniCopilota = []
+        a.giornaleOvunque = []; b.giornaleOvunque = []
+        a.conflittiOvunque = []; b.conflittiOvunque = []
+        a.arriviOvunque = []; b.arriviOvunque = []
+        a.inquadratureDaConfermare = []; b.inquadratureDaConfermare = []
+        // Le storie già viste, lo stato di Prisma ovunque, le ricerche salvate e il Territorio (che ha le sue impostazioni
+        // nelle chiavi delle sue cache): come in `Impostazioni.stessiCalcoli`
+        b.impostazioni.storie = a.impostazioni.storie
+        b.impostazioni.ovunque = a.impostazioni.ovunque
+        b.impostazioni.ricercheSalvate = a.impostazioni.ricercheSalvate
+        b.impostazioni.territorio = a.impostazioni.territorio
         return a == b
     }
 }

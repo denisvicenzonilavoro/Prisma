@@ -177,12 +177,13 @@ enum ProvaCarico {
             controlla(stato.cliente(primo.id)?.nome == nome + " (prova)", "Cache dei clienti aggiornata dopo una modifica")
             stato.dati.clienti[i].nome = nome
         }
-        // Una nota del taccuino non ricalcola il portafoglio (le cache seguono solo i dati dei calcoli),
-        // ma il fascicolo, che legge le note, si impagina di nuovo
+        // Una nota del taccuino non ricalcola il portafoglio (le cache seguono solo i dati dei calcoli), ma il riesame,
+        // che legge le note, si impagina di nuovo; il fascicolo, fatto di report che non le leggono, resta lo stesso
+        // (DerivatiDati.leggeLeNote)
         if let i = stato.dati.note.indices.first {
             _ = stato.riepilogoPortafoglio(canale: nil, area: nil)
             _ = stato.portafoglioComune()
-            _ = stato.documentoProspettoInCache(.fascicolo)
+            _ = stato.documentoProspettoInCache(.riesame)
             let calcoli = stato.versioneCalcoli
             let generazione = stato.generazioneDocumento
             stato.dati.note[i].testo += "·"
@@ -192,8 +193,16 @@ enum ProvaCarico {
             }
             controlla(stato.versioneCalcoli == calcoli && dopoNota < limiteCache,
                       "Una nota non ricalcola il portafoglio (\(secondi(dopoNota)), limite \(secondi(limiteCache)))")
+            _ = stato.documentoProspettoInCache(.riesame)
+            controlla(stato.generazioneDocumento != generazione, "Una nota impagina di nuovo il riesame, che legge le note")
+            stato.dati.note[i].testo.removeLast()
+            let primaDelFascicolo = stato.generazioneDocumento
             _ = stato.documentoProspettoInCache(.fascicolo)
-            controlla(stato.generazioneDocumento != generazione, "Una nota impagina di nuovo il fascicolo, che legge le note")
+            let generazioneFascicolo = stato.generazioneDocumento
+            stato.dati.note[i].testo += "·"
+            _ = stato.documentoProspettoInCache(.fascicolo)
+            controlla(stato.generazioneDocumento == generazioneFascicolo && generazioneFascicolo != primaDelFascicolo,
+                      "Una nota non impagina di nuovo il fascicolo (i suoi report non leggono le note)")
             stato.dati.note[i].testo.removeLast()
         }
 

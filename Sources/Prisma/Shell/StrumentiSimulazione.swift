@@ -16,7 +16,12 @@ struct SimulatoreIpotesi: View {
     private typealias A = Tema.Apple.Strumenti360
 
     private var cliente: String { stato.clienteAttivoId }
-    private var salvate: [Simulazione] { stato.simulazioniCliente(cliente) }
+    /// Gli scenari salvati del cliente, una volta per dati dei calcoli: a ogni passo del cursore la testata li rilegge
+    /// (le simulazioni sono dati dei calcoli: salvarne o eliminarne una rifà la voce).
+    private var salvate: [Simulazione] {
+        let id = cliente
+        return stato.ricavato("simulatore-salvate|\(id)") { stato.simulazioniCliente(id) }
+    }
 
     /// Ipotesi sul tavolo: quella in lavorazione per il cliente o una nuova.
     private var bozza: Binding<Simulazione> {
@@ -169,26 +174,36 @@ struct SimulatoreIpotesi: View {
         // Comandi e risultati nello stesso contenitore dell'elenco laterale, divisi da un filo
         return ColonneAffiancate(larghezza: Misure.ColonneStrumento.comandi, flessibileMinima: Self.flessibileMinimaRisultati) {
             ScrollView {
+                // Comandi «fermi» (Equatable sul valore mostrato): trascinando un cursore si ridisegna solo il suo comando
                 VStack(alignment: .leading, spacing: M.spazioConsole) {
-                    ComandoSimulatore(etichetta: "Capitale iniziale", valore: b.capitale, unita: "€", intervallo: 0...10_000_000, passo: 1_000,
-                                      fineCursore: 500_000)
-                    ComandoSimulatore(etichetta: "Versamento mensile", valore: b.versamentoMensile, unita: "€", intervallo: 0...100_000, passo: 50,
-                                      fineCursore: 3_000)
-                    ComandoSimulatore(etichetta: "Orizzonte",
-                                      valore: Binding(get: { Double(b.wrappedValue.anni) }, set: { b.wrappedValue.anni = max(1, Int($0.rounded())) }),
-                                      unita: "anni", intervallo: 1...40, passo: 1)
-                    ComandoSimulatore(etichetta: "Rendimento annuo", valore: b.rendimento, unita: "%", intervallo: -10...20, passo: 0.1, decimali: 1)
+                    ComandoSimulatoreFermo(etichetta: "Capitale iniziale", valore: b.capitale, unita: "€", intervallo: 0...10_000_000, passo: 1_000,
+                                           fineCursore: 500_000)
+                        .equatable()
+                    ComandoSimulatoreFermo(etichetta: "Versamento mensile", valore: b.versamentoMensile, unita: "€", intervallo: 0...100_000, passo: 50,
+                                           fineCursore: 3_000)
+                        .equatable()
+                    ComandoSimulatoreFermo(etichetta: "Orizzonte",
+                                           valore: Binding(get: { Double(b.wrappedValue.anni) }, set: { b.wrappedValue.anni = max(1, Int($0.rounded())) }),
+                                           unita: "anni", intervallo: 1...40, passo: 1)
+                        .equatable()
+                    ComandoSimulatoreFermo(etichetta: "Rendimento annuo", valore: b.rendimento, unita: "%", intervallo: -10...20, passo: 0.1, decimali: 1)
+                        .equatable()
                     Rectangle().fill(A.filo).frame(height: Tema.Misura.filo)
-                    ComandoSimulatore(etichetta: "Costo d'ingresso", valore: b.costoIngresso, unita: "%", intervallo: 0...10, passo: 0.5, decimali: 1)
-                    ComandoSimulatore(etichetta: "Costo annuo", valore: b.costoAnnuo, unita: "%", intervallo: 0...5, passo: 0.05, decimali: 2)
-                    ComandoSimulatore(etichetta: "Imposte sul guadagno", valore: b.aliquota, unita: "%", intervallo: 0...43, passo: 0.5, decimali: 1)
-                    ComandoSimulatore(etichetta: "Inflazione", valore: b.inflazione, unita: "%", intervallo: 0...10, passo: 0.1, decimali: 1)
+                    ComandoSimulatoreFermo(etichetta: "Costo d'ingresso", valore: b.costoIngresso, unita: "%", intervallo: 0...10, passo: 0.5, decimali: 1)
+                        .equatable()
+                    ComandoSimulatoreFermo(etichetta: "Costo annuo", valore: b.costoAnnuo, unita: "%", intervallo: 0...5, passo: 0.05, decimali: 2)
+                        .equatable()
+                    ComandoSimulatoreFermo(etichetta: "Imposte sul guadagno", valore: b.aliquota, unita: "%", intervallo: 0...43, passo: 0.5, decimali: 1)
+                        .equatable()
+                    ComandoSimulatoreFermo(etichetta: "Inflazione", valore: b.inflazione, unita: "%", intervallo: 0...10, passo: 0.1, decimali: 1)
+                        .equatable()
                     VStack(alignment: .leading, spacing: M.spazioCanale) {
                         Text("Canale dell'ipotesi")
                             .carattereApple(A.etichettaScelta)
                             .foregroundColor(A.coloreEtichettaScelta)
-                        SegmentiAnalisi(opzioni: [(Canale?.none, "Nessuno"), (.alleanza, "Alleanza"), (.indipendente, "Indip.")],
-                                        selezione: b.canale)
+                        SegmentiAnalisiFermi(opzioni: [(Canale?.none, "Nessuno"), (.alleanza, "Alleanza"), (.indipendente, "Indip.")],
+                                             selezione: b.canale)
+                            .equatable()
                     }
                 }
                 .padding(M.margineConsole)
@@ -503,5 +518,70 @@ struct ScenariSalvati: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Comandi che si ridisegnano solo se cambiano
+
+/// `ComandoSimulatore` che si ridisegna solo quando cambia ciò che mostra (etichetta, valore, unità, limiti): a ogni
+/// passo di un cursore la console del simulatore e del TFR si rifà, ma gli altri comandi restano fermi (niente campo
+/// del valore né cursore da riaggiornare). Il valore si fotografa quando il comando nasce: il legame vecchio legge già
+/// il valore nuovo e il confronto non vedrebbe il cambio. Tenere il legame vecchio va bene: scrive sempre nello stato vivo.
+struct ComandoSimulatoreFermo: View, Equatable {
+    let etichetta: String
+    let valore: Binding<Double>
+    let unita: String
+    let intervallo: ClosedRange<Double>
+    let passo: Double
+    let decimali: Int
+    let fineCursore: Double?
+    /// Il valore quando il comando è nato (per il confronto, al posto del legame).
+    private let mostrato: Double
+
+    init(etichetta: String, valore: Binding<Double>, unita: String, intervallo: ClosedRange<Double>, passo: Double,
+         decimali: Int = 0, fineCursore: Double? = nil) {
+        self.etichetta = etichetta
+        self.valore = valore
+        self.unita = unita
+        self.intervallo = intervallo
+        self.passo = passo
+        self.decimali = decimali
+        self.fineCursore = fineCursore
+        mostrato = valore.wrappedValue
+    }
+
+    nonisolated static func == (a: ComandoSimulatoreFermo, b: ComandoSimulatoreFermo) -> Bool {
+        a.mostrato == b.mostrato && a.etichetta == b.etichetta && a.unita == b.unita && a.intervallo == b.intervallo
+            && a.passo == b.passo && a.decimali == b.decimali && a.fineCursore == b.fineCursore
+    }
+
+    var body: some View {
+        ComandoSimulatore(etichetta: etichetta, valore: valore, unita: unita, intervallo: intervallo, passo: passo,
+                          decimali: decimali, fineCursore: fineCursore)
+    }
+}
+
+/// `SegmentiAnalisi` che si ridisegna solo quando cambiano la scelta o le voci (come `ComandoSimulatoreFermo`): i
+/// segmentati della console non rifanno le loro tre misure a ogni passo di un cursore.
+struct SegmentiAnalisiFermi<Valore: Hashable>: View, Equatable {
+    let opzioni: [(Valore, String)]
+    let selezione: Binding<Valore>
+    /// La scelta quando il controllo è nato (per il confronto, al posto del legame).
+    private let scelta: Valore
+
+    init(opzioni: [(Valore, String)], selezione: Binding<Valore>) {
+        self.opzioni = opzioni
+        self.selezione = selezione
+        scelta = selezione.wrappedValue
+    }
+
+    nonisolated static func == (a: SegmentiAnalisiFermi, b: SegmentiAnalisiFermi) -> Bool {
+        guard a.scelta == b.scelta, a.opzioni.count == b.opzioni.count else { return false }
+        for (x, y) in zip(a.opzioni, b.opzioni) where x.0 != y.0 || x.1 != y.1 { return false }
+        return true
+    }
+
+    var body: some View {
+        SegmentiAnalisi(opzioni: opzioni, selezione: selezione)
     }
 }

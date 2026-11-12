@@ -62,11 +62,15 @@ import Observation
     var raccomandazioni: [Raccomandazione] { didSet(prima) { segnalaClienti(prima, raccomandazioni, \.clienteId) } }
     var messaggi: [MessaggioCliente] { didSet(prima) { segnalaClienti(prima, messaggi, \.clienteId) } }
     var eventiVita: [EventoLineaVita] { didSet(prima) { segnalaClienti(prima, eventiVita, \.clienteId) } }
-    var sessioniCopilota: [SessioneCopilota] { didSet(prima) { segnalaClienti(prima, sessioniCopilota, \.clienteId) } }
-    var giornaleOvunque: [OperazioneOvunque] { didSet { segnala(.calcoli) } }
-    var conflittiOvunque: [ConflittoOvunque] { didSet { segnala(.calcoli) } }
-    var arriviOvunque: [ArrivoOvunque] { didSet { segnala(.calcoli) } }
-    var inquadratureDaConfermare: [InquadraturaPonte] { didSet { segnala(.calcoli) } }
+    /// Le sessioni del copilota non entrano in nessun calcolo in cache (le leggono vive l'ascolto, il resoconto e Prisma
+    /// ovunque): una frase finita durante l'ascolto non rifà le cache dei clienti.
+    var sessioniCopilota: [SessioneCopilota] { didSet { segnala(.neutro) } }
+    /// Il giornale, i conflitti e gli arrivi di Prisma ovunque e le inquadrature dall'iPhone: li leggono vivi l'unione dei
+    /// giornali e le impostazioni, nessun calcolo in cache. Una sincronizzazione non rifà le cache di tutti i clienti.
+    var giornaleOvunque: [OperazioneOvunque] { didSet { segnala(.neutro) } }
+    var conflittiOvunque: [ConflittoOvunque] { didSet { segnala(.neutro) } }
+    var arriviOvunque: [ArrivoOvunque] { didSet { segnala(.neutro) } }
+    var inquadratureDaConfermare: [InquadraturaPonte] { didSet { segnala(.neutro) } }
     var mercato: ArchivioMercato { didSet { segnala(.calcoli) } }
     var famiglie: FamiglieCaricate? { didSet { segnala(.calcoli) } }
     var ocf: ArchivioOCF { didSet { segnala(.neutro) } }
@@ -408,6 +412,11 @@ extension Impostazioni {
         b.territorio = territorio
         // Il lavoro della notte («Luce» giro 14) non entra nei calcoli in cache
         b.notte = notte
+        // Le storie già viste, lo stato di Prisma ovunque e le ricerche salvate di ⌘K si leggono vivi: aprire la storia
+        // della settimana, una sincronizzazione o una ricerca salvata non rifanno le cache di tutti i clienti
+        b.storie = storie
+        b.ovunque = ovunque
+        b.ricercheSalvate = ricercheSalvate
         return self == b
     }
 }

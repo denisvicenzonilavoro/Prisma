@@ -125,34 +125,24 @@ struct AppAnalisi360: View {
         ColonneAffiancate(larghezza: Misure.ColonneStrumento.elenco) {
             pannelloIpotesi(area)
         } flessibile: {
-            VStack(spacing: 0) {
-                SchedeRisultati(opzioni: schede(area), selezione: $scheda) {
-                    if area == .investimenti || area == .risparmio {
-                        Button { simula(area) } label: { Label("Apri nel simulatore", systemImage: "slider.horizontal.3") }
-                            .buttonStyle(StileVetro(margine: Tema.Misura.Completezza.marginePulsante))
-                    }
+            // La scheda scelta la legge solo la colonna dei risultati (qui passa soltanto il legame): cambiando scheda
+            // si ridisegna lei, non l'elenco laterale né i campi delle ipotesi
+            RisultatiArea360(opzioni: schede(area), scheda: $scheda,
+                             piede: analisi.wrappedValue.confermate.contains(area)
+                                ? "Dati confermati con il cliente" : "Ipotesi da verificare con il cliente") {
+                if area == .investimenti || area == .risparmio {
+                    Button { simula(area) } label: { Label("Apri nel simulatore", systemImage: "slider.horizontal.3") }
+                        .buttonStyle(StileVetro(margine: Tema.Misura.Completezza.marginePulsante))
                 }
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 14) {
-                        switch scheda {
-                        case .metodo:
-                            NotaMetodo(testo: MotoreAnalisi.metodo(area), titolo: "Il metodo · \(area.nome)")
-                        case .dettaglio:
-                            dettaglio(area)
-                        case .sintesi:
-                            sintesi(area)
-                        }
-                    }
-                    .padding(EdgeInsets(top: 16, leading: 18, bottom: 18, trailing: 18))
+            } contenuto: { scelta in
+                switch scelta {
+                case .metodo:
+                    NotaMetodo(testo: MotoreAnalisi.metodo(area), titolo: "Il metodo · \(area.nome)")
+                case .dettaglio:
+                    dettaglio(area)
+                case .sintesi:
+                    sintesi(area)
                 }
-                HStack {
-                    Text(analisi.wrappedValue.confermate.contains(area)
-                         ? "Dati confermati con il cliente" : "Ipotesi da verificare con il cliente")
-                    Spacer()
-                }
-                .font(Tipo.chip)
-                .foregroundColor(Colori.ColonneStrumento.piedeTesto)
-                .piedeColonna()
             }
         }
         // I quattro pannelli approvati passano al tema Apple come in Posizioni: card piatte, caratteri del tema
@@ -382,6 +372,49 @@ struct AppAnalisi360: View {
                     .buttonStyle(StileSemplice())
                 }
             }
+        }
+    }
+}
+
+/// La colonna dei risultati di un'area: le schede (Sintesi, Coperture o Scenari o Piani, Metodo), il contenuto della
+/// scheda scelta e il piede. Vista a sé, l'unica che legge la scheda: un clic su una scheda rifà questa colonna (e i
+/// calcoli della scheda), non tutta l'app con l'elenco laterale e i campi delle ipotesi. La scheda resta in
+/// AppAnalisi360, così tornando da uno strumento si ritrova quella di prima.
+private struct RisultatiArea360<Azioni: View, Contenuto: View>: View {
+    let opzioni: [(AppAnalisi360.Scheda, String)]
+    @Binding var scheda: AppAnalisi360.Scheda
+    let piede: String
+    let azioni: () -> Azioni
+    let contenuto: (AppAnalisi360.Scheda) -> Contenuto
+
+    init(opzioni: [(AppAnalisi360.Scheda, String)], scheda: Binding<AppAnalisi360.Scheda>, piede: String,
+         @ViewBuilder azioni: @escaping () -> Azioni,
+         @ViewBuilder contenuto: @escaping (AppAnalisi360.Scheda) -> Contenuto) {
+        self.opzioni = opzioni
+        _scheda = scheda
+        self.piede = piede
+        self.azioni = azioni
+        self.contenuto = contenuto
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            SchedeRisultati(opzioni: opzioni, selezione: $scheda) {
+                azioni()
+            }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    contenuto(scheda)
+                }
+                .padding(EdgeInsets(top: 16, leading: 18, bottom: 18, trailing: 18))
+            }
+            HStack {
+                Text(piede)
+                Spacer()
+            }
+            .font(Tipo.chip)
+            .foregroundColor(Colori.ColonneStrumento.piedeTesto)
+            .piedeColonna()
         }
     }
 }
