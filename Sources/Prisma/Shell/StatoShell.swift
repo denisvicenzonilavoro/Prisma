@@ -232,6 +232,8 @@ enum VoceConfronto: Hashable {
     var modoCliente: String? { didSet { aggiornaMenu() } }
     /// Il pulsante dell'intestazione di Posizioni chiede di aprire il modulo (nuova posizione o proposta).
     var richiestaNuovaPosizione: StatoPosizione?
+    /// «Dal catalogo» nell'intestazione di Posizioni: il prodotto sul cliente in due passi (in essere o proposta).
+    var richiestaDalCatalogo: StatoPosizione?
     /// Il pulsante "Nuovo cliente" dell'intestazione chiede alla rubrica di aprire il modulo.
     var richiestaNuovoCliente = false
     /// «Scrivi a mano» dalla scena del nuovo cliente («Luce» giro 13): la bozza con i dati letti, che Clienti apre nel

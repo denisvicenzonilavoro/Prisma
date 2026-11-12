@@ -11,6 +11,10 @@ struct AppPosizioni: View {
     @State var filtroCanale: Canale?
     @State var area: AreaPosizione?
     @State var modulo: Posizione?
+    /// «Dal catalogo»: il prodotto sul cliente in due passi (ModuloProdottoSulCliente).
+    @State var dalCatalogo: RichiestaProdottoCliente?
+    /// La posizione da aprire nel modulo intero appena si chiude «Dal catalogo» («Tutti i campi…»).
+    @State var dopoCatalogo: Posizione?
     /// L'appuntamento da fissare per un cliente da ricontattare (dal Portafoglio).
     @State var moduloAppuntamento: Appuntamento?
     /// Il campo su cui si apre il modulo della posizione (completezza dei dati); si toglie alla chiusura.
@@ -86,6 +90,15 @@ struct AppPosizioni: View {
             filtroCanale = nil
             stato.areaPosizioniDaAprire = nil
         }
+        // «Tutti i campi…»: a modulo chiuso la stessa posizione si apre nel modulo intero
+        .sheet(item: $dalCatalogo, onDismiss: {
+            if let p = dopoCatalogo { dopoCatalogo = nil; modulo = p }
+        }) { r in
+            ModuloProdottoSulCliente(prodotto: r.prodottoId.flatMap { stato.prodotto($0) }, statoIniziale: r.stato,
+                                     clienteId: stato.clienteAttivoId, clienteScelto: r.clienteScelto,
+                                     tuttiICampi: { p in dopoCatalogo = p })
+                .environment(stato)
+        }
         .sheet(item: $modulo, onDismiss: { fuocoPosizione = nil }) { p in
             ModuloPosizione(bozza: p, nuova: !stato.posizioni.contains { $0.id == p.id }) { stato.salvaPosizione($0) }
                 .environment(\.fuocoModulo, fuocoPosizione)
@@ -112,6 +125,12 @@ struct AppPosizioni: View {
             controllaCompletamento(stato.richiestaCompletamento)
         }
         .onChange(of: stato.richiestaNuovaPosizione) { controllaRichiesta($0) }
+        .onChange(of: stato.richiestaDalCatalogo, initial: true) { _, r in
+            guard let r else { return }
+            stato.richiestaDalCatalogo = nil
+            stato.portafoglio = false
+            dalCatalogo = RichiestaProdottoCliente(prodottoId: nil, stato: r)
+        }
         .onChange(of: stato.richiestaCompletamento) { controllaCompletamento($0) }
         .onChange(of: stato.clienteAttivoId) { _ in stato.posizioneInDettaglio = nil }
         // Entrando nel portafoglio si chiude il dettaglio; uscendo no (apriPosizione lo sta aprendo)

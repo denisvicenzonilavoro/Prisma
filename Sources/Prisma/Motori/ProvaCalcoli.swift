@@ -1273,6 +1273,10 @@ enum ProvaCalcoli {
         ProvaCalcoliBiblioteca.esegui(verificaEsterna)
         // e lo smontaggio (voci di costo dalle righe, cifre con la fonte, confronto con MotoreSostituzione)
         ProvaCalcoliSmontaggio.esegui(verificaEsterna)
+        // Il prodotto sul cliente (12 novembre 2026): campi per tipo, la scheda più importi, date e durata
+        ProvaCalcoliProdottoCliente.esegui(verificaEsterna)
+        // La scheda dai documenti (12 novembre 2026): KID e DIP aggiuntivo di prova, scheda, scenari del KID nelle proiezioni
+        ProvaCalcoliLettoreProdotto.esegui(verificaEsterna)
         // «Luce», giro 3: le pratiche dopo la firma (passi riconosciuti dai dati, segno a mano, soglia, mese scorso, ordine,
         // dati di prova, sollecito, tempo lineare)
         ProvaCalcoliPratiche.esegui(verificaEsterna)

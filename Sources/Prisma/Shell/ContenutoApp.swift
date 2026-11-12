@@ -305,6 +305,12 @@ struct AzioniPosizioni: View {
             .buttonStyle(StileVetro())
             .disabled(stato.solaLettura)
             .help("Incolla da Excel: copia in Excel le righe delle polizze con l'intestazione (⌘C), poi premi qui")
+            Button { stato.richiestaDalCatalogo = .proposta } label: {
+                Label("Dal catalogo", systemImage: "square.grid.2x2")
+            }
+            .buttonStyle(StileVetro())
+            .disabled(stato.solaLettura)
+            .help("Un prodotto del catalogo (Alleanza o indipendente) sul cliente: scrivi solo importi e durata, il resto viene dalla scheda")
             Button { stato.richiestaNuovaPosizione = .proposta } label: {
                 Label("Proposta", systemImage: "plus")
             }

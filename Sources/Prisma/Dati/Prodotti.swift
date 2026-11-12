@@ -96,6 +96,17 @@ struct Prodotto: Identifiable, Codable, Hashable {
                             aliquotaFiscale: aliquotaFiscale ?? IpotesiCalcolo.aliquotaPredefinita)
     }
 
+    /// Scarti degli scenari sfavorevole e favorevole del KID dal moderato, al periodo raccomandato (punti):
+    /// [sfavorevole, favorevole]. nil se il KID della scheda non ha i tre scenari o se sono fuori ordine.
+    var scartiScenariKID: [Double]? {
+        guard let s = condizioni?.scenariKID,
+              let mod = s.first(where: { $0.nome.lowercased() == "moderato" })?.periodo,
+              let sfav = s.first(where: { $0.nome.lowercased() == "sfavorevole" })?.periodo,
+              let fav = s.first(where: { $0.nome.lowercased() == "favorevole" })?.periodo,
+              sfav <= mod, fav >= mod else { return nil }
+        return [sfav - mod, fav - mod]
+    }
+
     /// La proposta per un cliente, con le condizioni della scheda.
     func proposta(per cliente: String) -> Posizione {
         var p = Posizione(clienteId: cliente, canale: canale, stato: .proposta, area: area, nome: nome)
@@ -111,6 +122,7 @@ struct Prodotto: Identifiable, Codable, Hashable {
         p.incidenzaCostiKID = incidenzaCostiKID
         p.periodoRaccomandato = periodoConsigliato
         p.prodottoId = id
+        p.scartiScenariKID = scartiScenariKID
         p.note = fonte.isEmpty ? "" : "Dati dalla scheda prodotto: \(fonte)"
         // Garanzie della gestione separata e due parti della multiramo, dai campi o dalle condizioni
         MotoreMultiramo.applica(self, a: &p)

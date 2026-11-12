@@ -89,6 +89,7 @@ struct ParametriProiezione: Equatable {
         case .esente:
             aliquotaFiscale = 0
         }
+        scartiKID = p.scartiScenariKID
         capitaleGarantito = p.gestioneSeparata
         if p.gestioneSeparata {
             // Gestione separata: minimo garantito e consolidamento dei rendimenti (senza dati: come prima,
@@ -103,6 +104,8 @@ struct ParametriProiezione: Equatable {
             costoAnnuo = p.costoParteFondi + p.bolloFondi          // bollo solo sui fondi
             aliquotaFiscale = p.aliquotaFondi
             capitaleGarantito = false; minimoGarantito = nil; consolidamento = true; mesiGaranzia = nil
+            // Le due parti si spostano ognuna con la sua ampiezza (`conScarto`): gli scarti del KID valgono per il contratto
+            scartiKID = nil
             let consolidato = p.consolidamento ?? true
             gestione = ParteGestioneProiezione(
                 quota: p.parteGestione, lordo: p.lordoGestione(), trattenuto: p.trattenuto,
@@ -151,6 +154,9 @@ struct ParametriProiezione: Equatable {
     /// Multiramo a due parti: la parte in gestione separata (i campi qui sopra descrivono i fondi).
     /// nil = un comparto solo, come prima.
     var gestione: ParteGestioneProiezione? = nil
+    /// Scarti degli scenari del KID dal moderato (punti, [sfavorevole, favorevole]): con questi `scenari` segue il KID
+    /// del prodotto invece dei ±`IpotesiCalcolo.ampiezzaScenari` punti. nil = come prima.
+    var scartiKID: [Double]? = nil
 
     /// La stessa proiezione con una durata in mesi.
     func perMesi(_ mesi: Int) -> ParametriProiezione {
@@ -350,6 +356,8 @@ enum MotoreProiezione {
 
     /// Tre scenari: prudente (−2 punti), atteso, favorevole (+2 punti). Per una multiramo a due parti la
     /// gestione separata si sposta di 1 punto e il rendimento della tupla è quello equivalente del contratto.
+    /// Con gli scenari del KID (`scartiKID`) prudente e favorevole sono lo sfavorevole e il favorevole del KID: lo stesso
+    /// scarto dal moderato, al periodo raccomandato, attorno al rendimento atteso (che viene dal moderato).
     static func scenari(_ p: ParametriProiezione) -> [(nome: String, rendimento: Double, esito: EsitoProiezione)] {
         let a = IpotesiCalcolo.ampiezzaScenari
         if p.gestione != nil {
@@ -358,7 +366,9 @@ enum MotoreProiezione {
                 return (nome, q.rendimentoEquivalente, calcola(q))
             }
         }
-        return [("Prudente", p.rendimento - a), ("Atteso", p.rendimento), ("Favorevole", p.rendimento + a)].map { nome, r in
+        let giu = p.scartiKID.flatMap { $0.count == 2 ? $0[0] : nil } ?? -a
+        let su = p.scartiKID.flatMap { $0.count == 2 ? $0[1] : nil } ?? a
+        return [("Prudente", p.rendimento + giu), ("Atteso", p.rendimento), ("Favorevole", p.rendimento + su)].map { nome, r in
             var q = p
             q.rendimento = r
             return (nome, r, calcola(q))
