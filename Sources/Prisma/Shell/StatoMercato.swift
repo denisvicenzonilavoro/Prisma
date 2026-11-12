@@ -124,8 +124,16 @@ extension StatoShell {
     func ricalcolaAvvisiMercato(oggi: Date = Date()) {
         #if os(macOS)
         guard !solaLettura else { return }
-        let eventi = MotoreMercato.toccati(archivio: dati.mercato, impostazioni: dati.impostazioni.mercato, posizioni: dati.posizioni,
+        // Fuori dalla modalità cliente sono gli eventi di «Chi è toccato» (stessi clienti attivi, tutte le posizioni): la
+        // voce in cache che Mercato ha appena disegnato, così aprire Mercato non rifà MotoreMercato.toccati su tutte le
+        // posizioni. La cache si svuota a ogni cambio dei dati dei calcoli (mercato, soglie, posizioni, clienti, obiettivi).
+        let eventi: [EventoMercato]
+        if modoCliente == nil {
+            eventi = ricavato("mercato-eventi|\(DerivatiDati.ora(oggi))") { eventiMercato(oggi: oggi) }
+        } else {
+            eventi = MotoreMercato.toccati(archivio: dati.mercato, impostazioni: dati.impostazioni.mercato, posizioni: dati.posizioni,
                                            clienti: clientiAttivi, obiettivi: dati.obiettivi, oggi: oggi)
+        }
         let nuovi = MotoreMercato.avvisi(eventi: eventi, esistenti: dati.mercato.avvisi, oggi: oggi)
         if nuovi != dati.mercato.avvisi { dati.mercato.avvisi = nuovi }
         #endif

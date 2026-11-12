@@ -172,11 +172,13 @@ enum MotorePassaparola {
 
     /// L'albero di chi ha presentato chi. Primo livello: i clienti senza presentatore (o con un presentatore non più in
     /// archivio); poi i presentati (clienti e potenziali) fino alla terza generazione, oltre «+ N»; al più otto per
-    /// persona, oltre «+ N». Un ciclo si interrompe e si segnala.
-    static func albero(clienti: [Cliente], potenziali: [PotenzialeCliente], posizioni: [Posizione]) -> AlberoPassaparola {
+    /// persona, oltre «+ N». Un ciclo si interrompe e si segnala. `netti`: i patrimoni già calcolati (`patrimoni`), per
+    /// non rifarli quando la vista chiede anche ambasciatori e quota.
+    static func albero(clienti: [Cliente], potenziali: [PotenzialeCliente], posizioni: [Posizione],
+                       netti: [String: Double]? = nil) -> AlberoPassaparola {
         var perId: [String: Cliente] = [:]
         for c in clienti where perId[c.id] == nil { perId[c.id] = c }
-        let netti = patrimoni(posizioni)
+        let netti = netti ?? patrimoni(posizioni)
         // I presentati di ognuno: clienti e potenziali (non quelli già diventati clienti presenti, non i non interessati)
         var figliClienti: [String: [Cliente]] = [:]
         for c in clienti {
@@ -301,9 +303,20 @@ enum MotorePassaparola {
                         fase: nil, presentatoIl: nil, figli: [], livello: livello)
     }
 
-    /// Il patrimonio netto di ogni cliente (posizioni in essere).
+    /// Il patrimonio netto di ogni cliente (posizioni in essere), lo stesso di `RiepilogoPosizioni.patrimonioNetto`, con
+    /// una voce (anche 0) per ogni cliente che ha posizioni. Un solo passaggio con le sole due somme: il riepilogo intero
+    /// (aree, canali, scadenze con il calendario) qui non serve, e la vista Passaparola lo chiede a ogni body. Le somme
+    /// seguono l'ordine delle posizioni, come i `reduce` del riepilogo: stesse cifre.
     static func patrimoni(_ posizioni: [Posizione]) -> [String: Double] {
-        Dictionary(grouping: posizioni, by: \.clienteId).mapValues { RiepilogoPosizioni($0).patrimonioNetto }
+        var somme: [String: (attivita: Double, debiti: Double)] = [:]
+        for p in posizioni {
+            var s = somme[p.clienteId] ?? (attivita: 0, debiti: 0)
+            if p.stato == .inEssere {
+                if p.area.passivo { s.debiti += p.valore } else { s.attivita += p.valore }
+            }
+            somme[p.clienteId] = s
+        }
+        return somme.mapValues { $0.attivita - $0.debiti }
     }
 
     // MARK: - Ambasciatori, quota, anni
@@ -311,15 +324,28 @@ enum MotorePassaparola {
     /// Chi ha presentato almeno `minimo` persone, con il patrimonio portato (clienti) e quello in arrivo (stime dei
     /// potenziali), separati. Dal più generoso.
     static func ambasciatori(clienti: [Cliente], potenziali: [PotenzialeCliente], posizioni: [Posizione],
-                             minimo: Int = RegolePassaparola.minimoAmbasciatore) -> [Ambasciatore] {
+                             minimo: Int = RegolePassaparola.minimoAmbasciatore,
+                             netti: [String: Double]? = nil) -> [Ambasciatore] {
         let ids = Set(clienti.map(\.id))
-        let netti = patrimoni(posizioni)
+        let netti = netti ?? patrimoni(posizioni)
+        // I presentati di ognuno raccolti in un passaggio, nell'ordine dell'archivio (come il filtro per cliente): niente
+        // scorrimento di tutti i clienti e potenziali per ogni cliente
+        var clientiPer: [String: [Cliente]] = [:]
+        for x in clienti {
+            guard let da = x.presentatoDa, da != x.id else { continue }
+            clientiPer[da, default: []].append(x)
+        }
+        var potenzialiPer: [String: [PotenzialeCliente]] = [:]
+        for p in potenziali where p.fase != .nonInteressato {
+            // Già diventato un cliente dell'archivio: non è più «in arrivo»
+            if let cid = p.clienteId, ids.contains(cid) { continue }
+            guard let da = p.presentatoDa else { continue }
+            potenzialiPer[da, default: []].append(p)
+        }
         var r: [Ambasciatore] = []
         for c in clienti {
-            let presentati = clienti.filter { $0.presentatoDa == c.id && $0.id != c.id }
-            let inArrivo = potenziali.filter { p in
-                p.presentatoDa == c.id && p.fase != .nonInteressato && !(p.clienteId.map { ids.contains($0) } ?? false)
-            }
+            let presentati = clientiPer[c.id] ?? []
+            let inArrivo = potenzialiPer[c.id] ?? []
             let n = presentati.count + inArrivo.count
             guard n >= max(1, minimo) else { continue }
             r.append(Ambasciatore(id: c.id, nome: c.nome, presentati: n,
@@ -339,12 +365,12 @@ enum MotorePassaparola {
     /// La quota del patrimonio dei clienti iniziati negli ultimi `anni` anni che viene dal passaparola. nil senza clienti
     /// iniziati in quel tempo o senza patrimonio.
     static func quotaPassaparola(clienti: [Cliente], posizioni: [Posizione], oggi: Date, anni: Int = RegolePassaparola.anniQuota,
-                                 cal: Calendar = .current) -> QuotaPassaparola? {
+                                 cal: Calendar = .current, netti: [String: Double]? = nil) -> QuotaPassaparola? {
         let limite = cal.date(byAdding: .year, value: -anni, to: oggi) ?? oggi
         let nuovi = clienti.filter { inizio($0) >= limite && inizio($0) <= oggi }
         guard !nuovi.isEmpty else { return nil }
         let ids = Set(clienti.map(\.id))
-        let netti = patrimoni(posizioni)
+        let netti = netti ?? patrimoni(posizioni)
         let totale = nuovi.reduce(0) { $0 + max(0, netti[$1.id] ?? 0) }
         guard totale > 0 else { return nil }
         let daPassaparola = nuovi.filter { c in c.presentatoDa.map { ids.contains($0) && $0 != c.id } ?? false }

@@ -24,8 +24,12 @@ private struct CorpoMercatoTelefono: View {
 
     var body: some View {
         let _ = ContaCorpi.segna()
-        let tessere = stato.tessereMercato()
-        let eventi = stato.eventiMercato()
+        let oggi = Date()
+        // Tessere e «Chi è toccato» una volta per dati dei calcoli, giorno e ora, non a ogni passaggio del body
+        // (MotoreMercato.toccati scorre tutte le posizioni): le stesse voci di AppMercato, quindi la stessa cache
+        let ora = DerivatiDati.ora(oggi)
+        let tessere: [TesseraMercato] = stato.ricavato("mercato-tessere|\(ora)") { stato.tessereMercato(oggi: oggi) }
+        let eventi: [EventoMercato] = stato.ricavato("mercato-eventi|\(ora)") { stato.eventiMercato(oggi: oggi) }
         let avvisi = stato.avvisiMercato
         let attivo = stato.dati.impostazioni.mercato.attivo
         return FondoTelefono {

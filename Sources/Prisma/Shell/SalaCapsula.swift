@@ -678,6 +678,7 @@ struct TileCapsulaPronta: View {
 
     @Environment(\.modoIstantanea) private var istantanea
     @Environment(\.prismaCalmo) private var calmo
+    @ObservedObject private var visibilita = VisibilitaPrisma.condivisa
     @State private var pulsa = false
 
     private typealias K = Tema.Apple.SalaRacconti.Capsula
@@ -685,6 +686,9 @@ struct TileCapsulaPronta: View {
     var body: some View {
         let _ = ContaCorpi.segna()
         let forma = RoundedRectangle(cornerRadius: K.raggioPronta, style: .continuous)
+        let inVista = visibilita.visibile
+        // Con Prisma non in vista (nascosta, coperta, Mac a riposo) l'alone si ferma: il tratto non si ridisegna
+        let alone = pulsa && inVista
         HStack(spacing: K.spazioPronta) {
             AvatarCliente(iniziali: cliente.iniziali, tinta: cliente.tinta.colori, lato: K.avatarPronta)
             VStack(alignment: .leading, spacing: K.spazioTesti) {
@@ -706,13 +710,14 @@ struct TileCapsulaPronta: View {
         .background(forma.fill(K.coloreSigilloPronta.opacity(K.opacitaFondoPronta)))
         .overlay(forma.strokeBorder(K.coloreSigilloPronta.opacity(K.opacitaBordoPronta), lineWidth: K.spessoreBordoPronta))
         .background(
-            forma.stroke(K.coloreSigilloPronta.opacity(K.opacitaAlonePronta), lineWidth: pulsa ? K.alonePronta * 2 : 0)
+            forma.stroke(K.coloreSigilloPronta.opacity(K.opacitaAlonePronta), lineWidth: alone ? K.alonePronta * 2 : 0)
+                // Senza animazione (Prisma non in vista) il valore nuovo toglie la pulsazione ripetuta in corso
+                .animation(inVista ? Animation.easeInOut(duration: Tema.Apple.Moto.Capsula.pulsazione / 2).repeatForever(autoreverses: true) : nil,
+                           value: alone)
         )
         .onAppear {
             guard !istantanea, !calmo else { return }
-            withAnimation(.easeInOut(duration: Tema.Apple.Moto.Capsula.pulsazione / 2).repeatForever(autoreverses: true)) {
-                pulsa = true
-            }
+            pulsa = true
         }
     }
 }
