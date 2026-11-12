@@ -60,13 +60,16 @@ extension CompositoreProspetti {
         if scadenze.isEmpty {
             b.append(.testo("Nessuna posizione in essere scade nei prossimi \(Portafoglio.mesiScadenze) mesi."))
         } else {
+            // I nomi in un dizionario, fatto una volta: con molti clienti cercarli riga per riga scorreva tutto l'elenco.
+            // Con due clienti con lo stesso id vale il primo, come con `first(where:)`
+            let nomi = Dictionary(dati.clienti.map { ($0.id, $0.nome) }, uniquingKeysWith: { primo, _ in primo })
             b.append(.tabella(TabellaProspetto(
                 colonne: [ColonnaProspetto(titolo: "Scadenza", peso: 1), ColonnaProspetto(titolo: "Posizione", peso: 2.2),
                           ColonnaProspetto(titolo: "Cliente", peso: 1.6), ColonnaProspetto(titolo: "Canale", peso: 1.1),
                           ColonnaProspetto(titolo: "Valore", peso: 1.1, destra: true)],
                 righe: scadenze.map { _, pos in
                     [.t(pos.scadenza.map { Formati.dataBreve.string(from: $0) } ?? "—"), .f(pos.nome),
-                     .t(dati.clienti.first { $0.id == pos.clienteId }?.nome ?? ""), .c(pos.canale),
+                     .t(nomi[pos.clienteId] ?? ""), .c(pos.canale),
                      pos.area == .protezione ? .n("copertura") : .t(euro(pos.valore))]
                 },
                 totale: [.f("Da reinvestire"), .t(""), .t(""), .t(""), .f(euro(p.scadenze.reduce(0) { $0 + $1.capitale }))])))

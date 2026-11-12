@@ -62,11 +62,25 @@ extension DocumentoStampabile {
     }
 }
 
+/// Un report del fascicolo già impaginato (nil se il cliente non ce l'ha), tenuto da parte con `StatoShell.ricavato`.
+private struct ParteFascicolo {
+    let documento: DocumentoStampabile?
+}
+
 extension StatoShell {
     /// Il fascicolo del cliente attivo con i report spuntati (con il commento di ciascuno, se c'è).
     func documentoFascicolo() -> DocumentoStampabile? {
+        let idCliente = clienteAttivoId
+        let ora = DerivatiDati.ora()
         let parti = TipoProspetto.inFascicolo.filter { sceltaFascicolo.contains($0) }.compactMap { t -> (String, DocumentoStampabile)? in
-            guard let scelta = t.report, let d = documentoProspetto(scelta) else { return nil }
+            guard let scelta = t.report else { return nil }
+            // Ogni report si impagina una volta per dati dei calcoli (commenti compresi), cliente e ora, come il documento
+            // di Prospetti: spuntare una casella rifà solo il report aggiunto, la copertina e l'indice. I report del
+            // fascicolo non leggono le note né lo stato delle viste
+            let parte: ParteFascicolo = ricavato("fascicolo|\(t.rawValue)|\(idCliente)|\(ora)") {
+                ParteFascicolo(documento: documentoProspetto(scelta))
+            }
+            guard let d = parte.documento else { return nil }
             return (d.titolo, d)
         }
         guard !parti.isEmpty, let c = clienteAttivo else { return nil }

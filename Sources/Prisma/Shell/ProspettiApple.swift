@@ -138,16 +138,18 @@ extension AppProspetti {
         let l = Tema.Apple.Prospetti.Laterale.self
         let forma = RoundedRectangle(cornerRadius: l.raggio, style: .continuous)
         let perIncontro = tipiPerIncontro
+        // La voce scelta, letta una volta per tutte le voci (non una per voce)
+        let scelto = scelta.tipo
         return VStack(alignment: .leading, spacing: 0) {
             RigaClienteProspettiApple()
                 .padding(.bottom, l.sottoCliente)
             ScrollViewReader { lettore in
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 0) {
-                        gruppoApple("Per l'incontro", tipi: perIncontro, primo: 0)
-                        gruppoApple("Prospetti di dettaglio", tipi: Self.tipiDiDettaglio, primo: perIncontro.count + 1)
+                        gruppoApple("Per l'incontro", tipi: perIncontro, primo: 0, scelto: scelto)
+                        gruppoApple("Prospetti di dettaglio", tipi: Self.tipiDiDettaglio, primo: perIncontro.count + 1, scelto: scelto)
                         if !stato.inModoCliente {
-                            gruppoApple("Per te", tipi: [.portafoglio], primo: perIncontro.count + Self.tipiDiDettaglio.count + 2)
+                            gruppoApple("Per te", tipi: [.portafoglio], primo: perIncontro.count + Self.tipiDiDettaglio.count + 2, scelto: scelto)
                         }
                         cardFascicoloApple
                             .padding(.top, l.sopraFascicolo)
@@ -159,7 +161,7 @@ extension AppProspetti {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 // All'apertura la voce scelta si vede anche se è in fondo all'elenco
-                .onAppear { if !modoIstantanea { lettore.scrollTo(scelta.tipo.id) } }
+                .onAppear { if !modoIstantanea { lettore.scrollTo(scelto.id) } }
             }
         }
         .padding(l.padding)
@@ -170,7 +172,7 @@ extension AppProspetti {
         .strumentiApple()
     }
 
-    private func gruppoApple(_ titolo: String, tipi: [TipoProspetto], primo: Int) -> some View {
+    private func gruppoApple(_ titolo: String, tipi: [TipoProspetto], primo: Int, scelto: TipoProspetto) -> some View {
         let l = Tema.Apple.Prospetti.Laterale.self
         return VStack(alignment: .leading, spacing: l.fraVoci) {
             Text(titolo)
@@ -181,14 +183,14 @@ extension AppProspetti {
                 .padding(.bottom, max(0, l.sottoEtichetta - l.fraVoci))
                 .entrataCascata(primo)
             ForEach(Array(tipi.enumerated()), id: \.element) { i, t in
-                voceApple(t)
+                voceApple(t, scelto: scelto)
                     .entrataCascata(primo + i + 1, sfocatura: false)
             }
         }
     }
 
-    private func voceApple(_ t: TipoProspetto) -> some View {
-        let scelta = self.scelta.tipo == t
+    private func voceApple(_ t: TipoProspetto, scelto: TipoProspetto) -> some View {
+        let scelta = scelto == t
         return VStack(alignment: .leading, spacing: 0) {
             VoceProspettoApple(titolo: nomeBreve(t), sottotitolo: sottotitoloVoce(t), nuovo: voceNuova(t), scelta: scelta) {
                 scegliApple(t)
@@ -503,8 +505,13 @@ extension AppProspetti {
                 )
             }
             #endif
-            FoglioAnteprimaApple(documento: d, indice: indice, scala: scala, generazione: generazione)
+            // La scala sta fuori dalla pagina `Equatable`: ingrandendo o affiancando la finestra cambia solo la
+            // trasformazione, non si rifà il body della pagina a ogni fotogramma
+            FoglioAnteprimaApple(documento: d, indice: indice, generazione: generazione)
                 .equatable()
+                .scaleEffect(scala, anchor: .top)
+                .frame(width: d.formato.width * scala, height: d.formato.height * scala, alignment: .top)
+                .superficieApple(a.carta)
                 .padding(.top, a.margineAlto)
                 .modifier(SfogliaAnteprimaApple { passo in vaiAPagina(indice + passo, di: d) })
                 .id(id)
@@ -631,30 +638,25 @@ private struct VoceProspettoApple: View {
     }
 }
 
-/// La pagina dell'anteprima, sempre su carta bianca con l'ombra della carta (§1.2): solo quella mostrata, non tutto
-/// il documento. Le pagine sono `AnyView`, che SwiftUI non sa confrontare: si rifà solo con un'impaginazione nuova,
-/// un'altra pagina o un'altra scala, non a ogni cambiamento dello stato.
+/// La pagina dell'anteprima a grandezza vera: solo quella mostrata, non tutto il documento. La scala e la carta
+/// bianca con la sua ombra (§1.2) le mette `paginaAnteprimaApple`, fuori da qui. Le pagine sono `AnyView`, che
+/// SwiftUI non sa confrontare: si rifà solo con un'impaginazione nuova o un'altra pagina, non a ogni cambiamento
+/// dello stato né a ogni fotogramma di un ridimensionamento della finestra.
 private struct FoglioAnteprimaApple: View, Equatable {
     let documento: DocumentoStampabile
     let indice: Int
-    let scala: CGFloat
     /// Il numero dell'impaginazione (StatoShell.generazioneDocumento): lo stesso numero è lo stesso documento.
     let generazione: Int
 
     nonisolated static func == (a: FoglioAnteprimaApple, b: FoglioAnteprimaApple) -> Bool {
-        a.generazione == b.generazione && a.indice == b.indice && a.scala == b.scala
+        a.generazione == b.generazione && a.indice == b.indice
     }
 
     var body: some View {
-        let w = documento.formato.width
-        let h = documento.formato.height
         documento.pagine[min(max(indice, 0), documento.pagine.count - 1)]
             // La carta resta come sulla carta: «Dimensione del testo» non la ingrandisce
             .prismaScalaTesto(1)
-            .frame(width: w, height: h)
-            .scaleEffect(scala, anchor: .top)
-            .frame(width: w * scala, height: h * scala, alignment: .top)
-            .superficieApple(Tema.Apple.Prospetti.Anteprima.carta)
+            .frame(width: documento.formato.width, height: documento.formato.height)
     }
 }
 

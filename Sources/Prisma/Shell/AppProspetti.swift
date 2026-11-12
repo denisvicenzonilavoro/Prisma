@@ -25,7 +25,33 @@ struct AppProspetti: View {
     @Environment(\.prismaCalmo) var calmo
 
     var cliente: String { stato.clienteAttivoId }
-    var scelta: SceltaProspetto { stato.sceltaProspetto }
+
+    /// La scelta del documento: il body la legge una trentina di volte (voci, scelte, azioni, pagina mostrata). Per una
+    /// posizione, una sostituzione o un confronto `sceltaProspetto` scorre le posizioni (e rifà l'elenco del confronto o
+    /// la coppia della sostituzione): lì si ricava una volta per dati dei calcoli, cliente e scelta. Dipende solo da
+    /// campi dei calcoli (posizioni, valutazioni, obiettivi, simulazioni, clienti), dal cliente e dalla scelta.
+    var scelta: SceltaProspetto {
+        let chiave: String
+        switch stato.prospetto {
+        case .posizione(let id)?:
+            chiave = "posizione|\(id)"
+        case .sostituzione(let a, let b, let report)?:
+            chiave = "sostituzione|\(a)|\(b)|\(report)"
+        case .confronto(let a, let b)?:
+            chiave = "confronto|\(Self.chiaveVoce(a))|\(Self.chiaveVoce(b))"
+        default:
+            return stato.sceltaProspetto
+        }
+        return stato.ricavato("sceltaProspetto|\(cliente)|" + chiave) { stato.sceltaProspetto }
+    }
+
+    /// Una voce del confronto nella chiave della scelta (breve, senza descrizioni ricavate per riflessione).
+    private static func chiaveVoce(_ v: VoceConfronto) -> String {
+        switch v {
+        case .posizione(let id): return "p" + id
+        case .simulazione(let id): return "s" + id
+        }
+    }
 
     var body: some View {
         let _ = ContaCorpi.segna()
