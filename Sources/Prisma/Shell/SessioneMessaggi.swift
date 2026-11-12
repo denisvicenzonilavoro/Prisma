@@ -1,10 +1,14 @@
 import SwiftUI
+import Observation
 
 // La sessione dell'app Messaggi (Mac, iPad e iPhone): l'occasione scelta, il tono e il canale (uguali per tutte le
 // occasioni, come nel template), i testi già scritti per (occasione, tono, canale) e le correzioni del consulente.
-// Vive quanto la finestra di Messaggi (`@StateObject` della vista): chiusa la finestra, testi e correzioni non salvati
+// Vive quanto la finestra di Messaggi (`@State` della vista): chiusa la finestra, testi e correzioni non salvati
 // si liberano (8 GB di RAM). Un solo compito di scrittura alla volta: cambiare occasione, tono o canale lo interrompe.
 // Le versioni già scritte restano e non si riscrivono, se non con «↻ Riscrivi».
+// `@Observable`: ogni vista segue solo ciò che legge. Il testo in arrivo (`parziale`) e le correzioni li leggono solo il
+// testo del pannello e gli avvisi dello stile (PannelloMessaggio.swift), così un pezzo del flusso di Vera o un tasto
+// nel messaggio non rifanno testata, controlli, cifre e pulsanti, né l'elenco delle occasioni.
 // Prisma non spedisce mai: la sessione prepara il testo, l'apertura in Mail o in Messaggi la chiede il consulente.
 
 /// La chiave di un testo scritto: l'occasione, il tono e il canale (il canale cambia lunghezza e oggetto).
@@ -15,29 +19,30 @@ struct ChiaveTestoMessaggio: Hashable {
 }
 
 @MainActor
-final class SessioneMessaggi: ObservableObject {
+@Observable final class SessioneMessaggi {
     /// L'occasione nel pannello (nil: la prima dell'elenco).
-    @Published var scelta: String?
-    @Published var tono: TonoMessaggio = .cordiale
-    @Published var canale: CanaleMessaggio = .mail
+    var scelta: String?
+    var tono: TonoMessaggio = .cordiale
+    var canale: CanaleMessaggio = .mail
     /// I testi pronti (di Vera o di Prisma), per chiave.
-    @Published private(set) var testi: [ChiaveTestoMessaggio: TestoScrittoMessaggio] = [:]
+    private(set) var testi: [ChiaveTestoMessaggio: TestoScrittoMessaggio] = [:]
     /// Le correzioni del consulente al testo pronto.
-    @Published private(set) var correzioni: [ChiaveTestoMessaggio: String] = [:]
+    private(set) var correzioni: [ChiaveTestoMessaggio: String] = [:]
     /// Il testo che Vera sta scrivendo adesso, e quello arrivato fin qui.
-    @Published private(set) var inScrittura: ChiaveTestoMessaggio?
-    @Published private(set) var parziale = ""
+    private(set) var inScrittura: ChiaveTestoMessaggio?
+    private(set) var parziale = ""
     /// I testi già comparsi per intero: da qui si possono correggere.
-    @Published private(set) var comparsi: Set<ChiaveTestoMessaggio> = []
+    private(set) var comparsi: Set<ChiaveTestoMessaggio> = []
     /// Quante volte un testo è stato riscritto: fa ripartire la comparsa parola per parola.
-    @Published private(set) var giri: [ChiaveTestoMessaggio: Int] = [:]
+    private(set) var giri: [ChiaveTestoMessaggio: Int] = [:]
     /// Un messaggio del dossier riaperto (dalla scheda Note) la cui occasione il motore non propone più.
-    @Published private(set) var dalDossier: OccasioneMessaggio?
+    private(set) var dalDossier: OccasioneMessaggio?
     /// L'id nel dossier del messaggio salvato o aperto per ogni testo: salvare di nuovo aggiorna lo stesso.
-    private var salvati: [ChiaveTestoMessaggio: String] = [:]
-    private var compito: Task<Void, Never>?
+    /// Non si vede: nessuna vista lo osserva.
+    @ObservationIgnored private var salvati: [ChiaveTestoMessaggio: String] = [:]
+    @ObservationIgnored private var compito: Task<Void, Never>?
     /// Qwen si verifica una volta per sessione (e di nuovo a ogni «Riscrivi»), poi vale la disponibilità nota.
-    private var verificato = false
+    @ObservationIgnored private var verificato = false
 
     func chiave(_ o: OccasioneMessaggio) -> ChiaveTestoMessaggio {
         ChiaveTestoMessaggio(occasione: o.id, tono: tono, canale: canale)
@@ -107,6 +112,12 @@ final class SessioneMessaggi: ObservableObject {
     /// Il testo da mostrare (con le correzioni), nil se non è ancora pronto.
     func testo(_ k: ChiaveTestoMessaggio) -> String? {
         correzioni[k] ?? testi[k]?.testo
+    }
+
+    /// Il testo pronto com'è arrivato, senza le correzioni (nil se non è ancora pronto): chi ha scritto, l'oggetto e
+    /// l'avviso non cambiano correggendo, e chi legge solo questo non si rifà a ogni tasto nel messaggio.
+    func arrivato(_ k: ChiaveTestoMessaggio) -> TestoScrittoMessaggio? {
+        testi[k]
     }
 
     /// Il testo pronto con le correzioni, come si salva e si apre.

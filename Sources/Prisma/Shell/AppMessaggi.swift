@@ -90,13 +90,10 @@ final class RichiestaIstantaneaMessaggi {
 @MainActor
 struct AppMessaggi: View {
     @Environment(StatoShell.self) var stato
-    /// La sessione tenuta senza osservarla tutta: la osserva il pannello del messaggio (PannelloMessaggio), così un pezzo
-    /// del testo che arriva da Vera o un tasto nel messaggio rifanno il pannello, non l'elenco delle occasioni. L'app legge
-    /// solo l'occasione scelta e il messaggio riaperto dal dossier, che cambiano solo da qui (`giroScelta`).
+    /// La sessione (`@Observable`): l'app legge solo l'occasione scelta e il messaggio riaperto dal dossier, quindi un
+    /// pezzo del testo che arriva da Vera o un tasto nel messaggio rifanno il pannello (anzi, solo il suo testo), non
+    /// l'elenco delle occasioni.
     @State private var sessione = SessioneMessaggi()
-    /// Cresce a ogni cambio dell'occasione scelta (o del messaggio riaperto dal dossier) fatto da questa vista: il body
-    /// rilegge la sessione.
-    @State private var giroScelta = 0
 
     @Environment(\.prismaCalmo) private var calmo
     @Environment(\.prismaScatto) private var scatto
@@ -132,8 +129,6 @@ struct AppMessaggi: View {
 
     /// L'elenco delle occasioni e il pannello del messaggio scelto.
     private var elencoEPannello: some View {
-        // Iscrive il body ai cambi di scelta (la sessione non è osservata qui)
-        _ = giroScelta
         let richiesta = scatto ? RichiestaIstantaneaMessaggi.per(stato) : nil
         let elenco = sessione.elenco(stato.occasioniMessaggiConRichieste())
         let scelta = richiesta?.occasione(in: elenco) ?? sessione.occasione(in: elenco)
@@ -164,7 +159,7 @@ struct AppMessaggi: View {
                 .opacity(esce ? 0 : 1)
                 .offset(x: esce ? M.spostamentoCambio : 0)
         } else if let o, let c = stato.cliente(o.clienteId) {
-            // Tono e canale vanno e vengono dalla sessione: il pannello, che la osserva, si ridisegna da sé
+            // Tono e canale vanno e vengono dalla sessione: il pannello, che li legge, si ridisegna da sé
             let tono: Binding<TonoMessaggio> = richiesta.map { r in Binding.constant(r.tono) }
                 ?? Binding(get: { sessione.tono }, set: { sessione.tono = $0 })
             let canale: Binding<CanaleMessaggio> = richiesta.map { r in Binding.constant(r.canale) }
@@ -191,7 +186,6 @@ struct AppMessaggi: View {
     private func prendiRichiesta() {
         guard !scatto, let r = stato.prendiRichiestaMessaggi() else { return }
         sessione.applica(r, elenco: stato.occasioniMessaggiConRichieste(), stato: stato)
-        giroScelta &+= 1
         toccata = nil
         esce = false
     }
@@ -201,14 +195,12 @@ struct AppMessaggi: View {
         guard id != (toccata ?? attuale) else { return }
         if scatto {
             sessione.scelta = id
-            giroScelta &+= 1
             return
         }
         if calmo {
             withAnimation(Tema.Moto.dissolvenzaCalma) {
                 cambiato = true
                 sessione.scelta = id
-                giroScelta &+= 1
             }
             return
         }
@@ -219,7 +211,6 @@ struct AppMessaggi: View {
             guard toccata == id else { return }
             cambiato = true
             sessione.scelta = id
-            giroScelta &+= 1
             toccata = nil
             esce = false
         }

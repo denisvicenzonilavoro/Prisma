@@ -85,9 +85,13 @@ struct PaginaImpostazioniModelli: View {
             GruppoImpostazioni(titolo: m.nome.isEmpty ? "Nuovo modello" : m.nome) {
                 RigaImpostazione(titolo: "Nome e colore", sottotitolo: m.note.isEmpty ? nil : m.note) {
                     HStack(spacing: F.spazioCampi) {
-                        TextField("Nome", text: legame(m.id, \.nome))
-                            .campoTesto()
-                            .frame(width: Tema.Apple.Posizioni.Radar.Impostazioni.campoNome)
+                        // Il nome passa all'archivio poco dopo l'ultimo tasto (TestoRinviato): i modelli entrano nei
+                        // calcoli, e scriverli a ogni lettera rifarebbe tutte le cache
+                        TestoRinviato(testo: legameNome(m.id), salvaOra: { stato.salvaOra() }) { bozza in
+                            TextField("Nome", text: bozza)
+                                .campoTesto()
+                                .frame(width: Tema.Apple.Posizioni.Radar.Impostazioni.campoNome)
+                        }
                         Picker("", selection: legame(m.id, \.colore)) {
                             ForEach(ColoreModello.allCases) { c in Text(c.nome).tag(c) }
                         }
@@ -129,6 +133,13 @@ struct PaginaImpostazioniModelli: View {
     private func legame<T>(_ id: String, _ campo: WritableKeyPath<PortafoglioModello, T>) -> Binding<T> {
         Binding(get: { stato.dati.portafogliModello.first { $0.id == id }![keyPath: campo] },
                 set: { v in modifica(id) { $0[keyPath: campo] = v } })
+    }
+
+    /// Il nome di un modello per il campo rinviato: la scrittura in attesa può arrivare dopo «Togli», quando il
+    /// modello non c'è più (allora si legge vuoto e `modifica` non scrive nulla).
+    private func legameNome(_ id: String) -> Binding<String> {
+        Binding(get: { stato.dati.portafogliModello.first { $0.id == id }?.nome ?? "" },
+                set: { v in modifica(id) { $0.nome = v } })
     }
 
     private func modifica(_ id: String, _ cambia: (inout PortafoglioModello) -> Void) {
