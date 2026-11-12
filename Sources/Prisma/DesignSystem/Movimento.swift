@@ -98,6 +98,13 @@ extension Tema.Moto {
     /// Con «Riduci movimento».
     static let dissolvenzaCalma = Animation.easeInOut(duration: 0.15)
 
+    /// Il ritmo dei movimenti della shell già brevi come in macOS (finestre, pannelli, dock, blocco): dal 12 novembre
+    /// 2026 un po' più svelti, «scattanti». I tempi nati dai template (sala, sblocco, widget) vanno invece al ritmo
+    /// del tema Apple, `Tema.Apple.Moto.ritmo`. Il genio resta quello del video del Mac.
+    static let ritmoShell: Double = 0.8
+    /// Un tempo della shell al suo ritmo.
+    static func svelto(_ secondi: Double) -> Double { secondi * ritmoShell }
+
     // Tutte le curve senza rimbalzo (molle a smorzamento critico) e brevi come in macOS:
     // l'unico movimento elastico resta lo sblocco col dito (Sblocco.ritorno, Sblocco.pressione).
 
@@ -150,8 +157,8 @@ extension Tema.Moto {
         static let scalaRipiegoGenio: CGFloat = 0.12
         // Apertura come macOS dal dock: la finestra viva cresce dall'icona (scala affine, il vetro resta vero),
         // molla senza rimbalzo
-        static let apertura = Tema.Moto.conMolla(risposta: 0.3, smorzamento: 1)
-        static let durataApertura: Double = 0.3
+        static let apertura = Tema.Moto.conMolla(risposta: Tema.Moto.svelto(0.3), smorzamento: 1)
+        static let durataApertura: Double = Tema.Moto.svelto(0.3)
         /// Da dove parte la finestra che si apre da un punto (icona del dock, della scrivania, widget).
         static let scalaApertura: CGFloat = 0.2
         /// Senza punto d'origine (menu, spazi, comandi) l'apertura resta quella lieve al suo posto.
@@ -160,47 +167,52 @@ extension Tema.Moto {
         static let aperturaOpacita = Animation.easeOut(duration: 0.06)
         // Chiusura: l'istantanea svanisce con un lieve rimpicciolimento, in accelerazione (easeIn)
         static let controlliChiusura: (Double, Double, Double, Double) = (0.42, 0, 1, 1)
-        static let durataChiusura: Double = 0.2
+        static let durataChiusura: Double = Tema.Moto.svelto(0.2)
         static let scalaChiusura: CGFloat = 0.96
         /// Solo con «Riduci movimento» e nelle prove: la finestra viva svanisce.
-        static let chiusura = Animation.easeIn(duration: 0.2)
-        // Ingrandisci / ripristina dimensione / affianca / spazi (FLIP): fluido, senza rimbalzo
-        static let ingrandimento = Animation.timingCurve(0.3, 0, 0.2, 1, duration: 0.25)
-        static let durataIngrandimento: Double = 0.25
+        static let chiusura = Animation.easeIn(duration: durataChiusura)
+        // Ingrandisci / ripristina dimensione / affianca / spazi (FLIP): fluido, senza rimbalzo.
+        // La curva sta anche come punti: un secondo zoom a metà del primo riparte da dove si vede la finestra
+        static let curvaIngrandimento = Tema.Apple.Moto.Curva(x1: 0.3, y1: 0, x2: 0.2, y2: 1)
+        static let durataIngrandimento: Double = 0.22
+        static let ingrandimento = Animation.timingCurve(curvaIngrandimento.x1, curvaIngrandimento.y1,
+                                                         curvaIngrandimento.x2, curvaIngrandimento.y2,
+                                                         duration: durataIngrandimento)
         /// A curva finita: il passaggio FLIP si toglie senza scatti.
-        static let fineIngrandimento: Double = 0.32
+        static let fineIngrandimento: Double = 0.3
         // Mostra la scrivania: una finestra ogni 50 ms (tema showDesk :1738-1742)
         static let sfalsamento: Double = 0.05
         // Primo piano e cambio app: istantanei come su macOS (nessun token di curva)
     }
 
     enum Pannelli {
-        static let veloEntrata = Animation.easeOut(duration: 0.18)
-        static let veloUscita = Animation.easeIn(duration: 0.12)
+        static let veloEntrata = Animation.easeOut(duration: Tema.Moto.svelto(0.18))
+        static let veloUscita = Animation.easeIn(duration: Tema.Moto.svelto(0.12))
         // Centro notifiche: entra da destra
-        static let notifiche = Tema.Moto.conMolla(risposta: 0.3, smorzamento: 1)
+        static let notifiche = Tema.Moto.conMolla(risposta: Tema.Moto.svelto(0.3), smorzamento: 1)
         static let notificheSpostamento: CGFloat = 24
         /// La scheda delle notifiche non si scala: entra solo da destra.
         static let notificheScala: CGFloat = 1
-        static let notificheUscita = Animation.easeIn(duration: 0.14)
+        static let notificheUscita = Animation.easeIn(duration: Tema.Moto.svelto(0.14))
         // Spazi di lavoro: dall'alto, come Mission Control
-        static let spazi = Tema.Moto.conMolla(risposta: 0.28, smorzamento: 1)
+        static let spazi = Tema.Moto.conMolla(risposta: Tema.Moto.svelto(0.28), smorzamento: 1)
         static let spaziScala: CGFloat = 0.96
-        static let spaziUscita = Animation.easeIn(duration: 0.12)
+        static let spaziUscita = Animation.easeIn(duration: Tema.Moto.svelto(0.12))
         // «Le tue app aperte»: dal centro, come ⌘Tab
-        static let appAperte = Tema.Moto.conMolla(risposta: 0.24, smorzamento: 1)
+        static let appAperte = Tema.Moto.conMolla(risposta: Tema.Moto.svelto(0.24), smorzamento: 1)
         static let appAperteScala: CGFloat = 0.94
-        static let appAperteUscita = Animation.easeIn(duration: 0.1)
+        static let appAperteUscita = Animation.easeIn(duration: Tema.Moto.svelto(0.1))
         // Avviso (toast, tema :898)
-        static let avviso = Tema.Moto.conMolla(risposta: 0.3, smorzamento: 1)
-        static let avvisoUscita = Animation.easeIn(duration: 0.18)
+        static let avviso = Tema.Moto.conMolla(risposta: Tema.Moto.svelto(0.3), smorzamento: 1)
+        static let avvisoUscita = Animation.easeIn(duration: Tema.Moto.svelto(0.18))
         static let avvisoSpostamento: CGFloat = 8
         static let avvisoScala: CGFloat = 0.97
-        // Presentazione: la sala del tema Apple (Tema.Apple.Moto.Sala): il velo entra in 0,40 lineare ed esce in 0,25
-        static let presentazione = Animation.linear(duration: Tema.Apple.Moto.Sala.durataVelo)
-        static let durataPresentazione: Double = Tema.Apple.Moto.Sala.durataVelo
-        static let chiusuraPresentazione = Animation.easeInOut(duration: Tema.Apple.Moto.Sala.durataChiusura)
-        static let durataChiusuraPresentazione: Double = Tema.Apple.Moto.Sala.durataChiusura
+        // Presentazione: la sala del tema Apple (Tema.Apple.Moto.Sala): il velo entra in 0,40 lineare ed esce in 0,25,
+        // al ritmo del tema (0,24 e 0,15)
+        static let presentazione = Tema.Apple.Moto.Sala.velo
+        static let durataPresentazione: Double = Tema.Apple.Moto.tempo(Tema.Apple.Moto.Sala.durataVelo)
+        static let chiusuraPresentazione = Tema.Apple.Moto.Sala.chiude
+        static let durataChiusuraPresentazione: Double = Tema.Apple.Moto.tempo(Tema.Apple.Moto.Sala.durataChiusura)
         /// Il giro di pagina ha le sue animazioni nella transizione (`.giroPaginaSala`): questa le fa partire.
         static let paginaPresentazione = Tema.Apple.Moto.GiroPagina.entrata
         // I fogli (.sheet), i popover, i menu e le tendine (NSMenu) restano quelli del Mac: nessun token
@@ -208,9 +220,9 @@ extension Tema.Moto {
 
     enum Dock {
         static let mostra = Tema.Moto.uscita(durataMostra)
-        static let durataMostra: Double = 0.2
+        static let durataMostra: Double = Tema.Moto.svelto(0.2)
         static let nascondi = Animation.easeIn(duration: durataNascondi)
-        static let durataNascondi: Double = 0.16
+        static let durataNascondi: Double = Tema.Moto.svelto(0.16)
         static let ritardoNascondi: Double = 0.35
         /// Il fumetto con il nome sopra l'icona: compare e scompare subito, con una dissolvenza brevissima.
         static let suggerimento = Animation.easeOut(duration: 0.08)
@@ -237,40 +249,40 @@ extension Tema.Moto {
         /// Velocità massima della molla, in percorsi al secondo: niente molle impazzite.
         static let velocitaMassima: CGFloat = 8
         // Uscita della schermata: ora, logo e cursore salgono e svaniscono
-        static let uscitaBenvenuto = Tema.Moto.conMolla(risposta: 0.32, smorzamento: 1)
+        static let uscitaBenvenuto = Tema.Moto.conMolla(risposta: Tema.Apple.Moto.tempo(0.32), smorzamento: 1)
         static let uscitaSpostamento: CGFloat = -24
         // Entrata della scrivania: leggero zoom e dissolvenza
         static let entrataScrivania = entrata()
         /// L'entrata della scrivania con una parte della velocità del gesto di sblocco (percorsi al secondo).
         static func entrata(velocita: Double = 0) -> Animation {
             let v = min(max(velocita, 0), Double(velocitaMassima)) * quotaVelocitaEntrata
-            return Tema.Moto.conMolla(risposta: 0.45, smorzamento: 1, velocita: v)
+            return Tema.Moto.conMolla(risposta: Tema.Apple.Moto.tempo(0.45), smorzamento: 1, velocita: v)
         }
         /// Quanta della velocità del gesto passa alla scrivania (la manopola corre, la scrivania segue più calma).
         static let quotaVelocitaEntrata: Double = 0.3
-        static let durataEntrata: Double = 0.5
+        static let durataEntrata: Double = Tema.Apple.Moto.tempo(0.5)
         static let scalaScrivania: CGFloat = 1.03
-        static let widget = Tema.Moto.uscita(0.36)        // tema :2097-2101
-        static let sfalsamentoWidget: Double = 0.04
+        static let widget = Tema.Moto.uscita(Tema.Apple.Moto.tempo(0.36))        // tema :2097-2101
+        static let sfalsamentoWidget: Double = Tema.Apple.Moto.tempo(0.04)
         static let widgetSpostamento: CGFloat = 10
         static let widgetScala: CGFloat = 0.985
     }
 
     enum Blocco {
-        static let scrivania = Animation.easeInOut(duration: 0.26)
+        static let scrivania = Animation.easeInOut(duration: Tema.Moto.svelto(0.26))
         static let scalaScrivania: CGFloat = 0.98
-        static let benvenuto = Tema.Moto.uscita(0.32)
+        static let benvenuto = Tema.Moto.uscita(Tema.Moto.svelto(0.32))
         static let scalaBenvenuto: CGFloat = 1.03
-        static let durata: Double = 0.34
+        static let durata: Double = Tema.Moto.svelto(0.34)
         /// Stand-by (stop del Mac o schermo spento): nessuna animazione; l'acqua riparte dopo il risveglio.
         static let ripresaAcquaDopoRisveglio: Double = 1.2
     }
 
     enum Avvio {
         /// Widget all'apertura di Prisma (tema :2345): 560 ms, ritardo 60 + 45 ms per widget.
-        static let widget = Tema.Moto.uscita(0.56)
+        static let widget = Tema.Moto.uscita(Tema.Apple.Moto.tempo(0.56))
         static let ritardo: Double = 0.06
-        static let sfalsamento: Double = 0.045
+        static let sfalsamento: Double = Tema.Apple.Moto.tempo(0.045)
         static let spostamento: CGFloat = 14
         static let scala: CGFloat = 0.985
     }

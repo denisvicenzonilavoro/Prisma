@@ -1,6 +1,7 @@
 #if os(macOS)
 import AppKit
 #endif
+import QuartzCore
 import SwiftUI
 
 // Proprietario: G1 (movimento delle finestre). Spostato qui da StatoShell.swift dalle fondamenta (G0).
@@ -449,7 +450,7 @@ extension StatoShell {
             }
         }
         primoPiano(app)
-        aggiornaCoperte(dopo: Tema.Moto.Finestre.durataIngrandimento)
+        aggiornaCoperte(dopo: Tema.Moto.Finestre.fineIngrandimento)
     }
 
     /// Mostra la schermata di benvenuto sopra tutto (chiude i pannelli aperti).
@@ -592,7 +593,7 @@ extension StatoShell {
         }
         let calmo = Movimenti.calmo
         var prima: [AppPrisma: CGRect] = [:]
-        for f in finestreVisibili { prima[f.app] = cornice(di: f) }
+        for f in finestreVisibili { prima[f.app] = corniceVista(di: f) }
         var passaggi: [AppPrisma: CGRect] = [:]
         diColpo {
             cambia()
@@ -616,8 +617,10 @@ extension StatoShell {
         guard !fatti.isEmpty else { return }
         Movimenti.alGiroDopo(Tema.Moto.Finestre.ingrandimento, durata: Tema.Moto.Finestre.durataIngrandimento) { [weak self] in
             guard let self else { return }
+            let ora = CACurrentMediaTime()
             for (app, da) in fatti where self.sistema.flip[app]?.da == da {
                 self.sistema.flip[app]?.progresso = 1
+                self.sistema.inizioFlip[app] = ora
             }
             // Il tempo della pulizia parte con la curva (al giro dopo, dopo l'impaginazione nuova), non dalla chiamata:
             // così l'ultimo tratto del movimento non salta
@@ -625,9 +628,23 @@ extension StatoShell {
                 guard let self else { return }
                 for (app, da) in fatti where self.sistema.flip[app] == PassaggioCornice(da: da, progresso: 1) {
                     self.sistema.flip[app] = nil
+                    self.sistema.inizioFlip[app] = nil
                 }
             }
         }
+    }
+
+    /// La cornice che si vede adesso: a metà di un passaggio FLIP è quella tra la partenza e l'arrivo, al punto della
+    /// curva in cui si trova (prima che la curva parta, la partenza).
+    fileprivate func corniceVista(di f: Finestra) -> CGRect {
+        let arrivo = cornice(di: f)
+        guard let p = sistema.flip[f.app] else { return arrivo }
+        guard p.progresso > 0, let t0 = sistema.inizioFlip[f.app] else { return p.da }
+        let m = Tema.Moto.Finestre.self
+        let v = CGFloat(m.curvaIngrandimento.valore(alTempo: (CACurrentMediaTime() - t0) / m.durataIngrandimento))
+        func mescola(_ a: CGFloat, _ b: CGFloat) -> CGFloat { a + (b - a) * v }
+        return CGRect(x: mescola(p.da.minX, arrivo.minX), y: mescola(p.da.minY, arrivo.minY),
+                      width: mescola(p.da.width, arrivo.width), height: mescola(p.da.height, arrivo.height))
     }
 
     /// Le finestre sotto una finestra ingrandita (e la scrivania) a transizione finita non si disegnano: restano
@@ -750,7 +767,7 @@ extension StatoShell {
             guard let self else { return }
             let arrivi = restano.subtracting(self.finestreVisibili.map(\.app))
             self.cambiaCornici(arrivi: arrivi) { self.finestre = nuove }
-            self.aggiornaCoperte(dopo: Tema.Moto.Finestre.durataIngrandimento)
+            self.aggiornaCoperte(dopo: Tema.Moto.Finestre.fineIngrandimento)
         }
     }
 
@@ -793,7 +810,7 @@ extension StatoShell {
             finestre[j].cornice = cornice(da: .destra(altra.app), in: area)
         }
         primoPiano(app)
-        aggiornaCoperte(dopo: Tema.Moto.Finestre.durataIngrandimento)
+        aggiornaCoperte(dopo: Tema.Moto.Finestre.fineIngrandimento)
     }
 
     /// Sposta la finestra (al rilascio del trascinamento, senza animazione).
