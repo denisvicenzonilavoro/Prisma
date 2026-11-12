@@ -52,8 +52,8 @@ struct CorpoPortafoglio: View, Equatable {
         // Le proposte ferme (cache oraria) e i giorni del seguito scelti in Impostazioni
         let ferme = stato.proposteInSospeso
         let giorniSeguito = stato.dati.impostazioniDeiCalcoli.giorniSeguitoProposte
-        // Motivi e tempi delle decisioni, con gli stessi filtri di canale e area del riepilogo
-        let statistiche = statisticheEsiti()
+        // Motivi e tempi delle decisioni, con gli stessi filtri di canale e area del riepilogo (in cache come il riepilogo)
+        let statistiche = stato.statisticheEsitiPortafoglio(canale: chiave.canale, area: chiave.area)
         // Pigra (giro 0, tappa 4): con 200 clienti i pannelli sotto la piega (tabella dei clienti, seguito, riesami,
         // scadenze…) si costruiscono quando si scorre, non all'apertura di Posizioni. Stesso aspetto della VStack
         return LazyVStack(alignment: .leading, spacing: 18) {
@@ -420,18 +420,6 @@ struct CorpoPortafoglio: View, Equatable {
                 Text("…e altri \(elenco.count - Self.massimoRiesami) clienti.").font(Tipo.kpiNota).foregroundColor(Colori.Analisi.kpiNota).padding(.top, 5)
             }
         }
-    }
-
-    /// Le statistiche degli esiti sulle posizioni filtrate per canale e area (fuori dal corpo: controllo dei tipi leggero).
-    private func statisticheEsiti() -> StatisticheEsiti {
-        let canale: Canale? = chiave.canale
-        let area: AreaPosizione? = chiave.area
-        let filtrate: [Posizione] = stato.posizioni.filter { p in
-            let canaleOk = canale.map { $0 == p.canale } ?? true
-            let areaOk = area.map { $0 == p.area } ?? true
-            return canaleOk && areaOk
-        }
-        return MotoreSeguitoProposte.statistiche(filtrate)
     }
 
     private func esiti(_ p: Portafoglio, statistiche: StatisticheEsiti) -> some View {

@@ -56,6 +56,7 @@ struct PannelloTraguardo: View {
 
     var body: some View {
         let _ = ContaCorpi.segna()
+        // Dai traguardi in cache (StatoTraguardi.swift): il motore non gira su tutto l'archivio a ogni passaggio
         let traguardo = stato.traguardo(occasione.origine.riferimento)
         if compatto {
             colonnaCompatta(traguardo)
@@ -337,10 +338,12 @@ struct PannelloTraguardo: View {
 
     private func rigaTelefonata(_ t: Traguardo) -> some View {
         let messa = stato.telefonataTraguardo(t)
+        // Una volta sola per passaggio: serve alla nota e a «Aggiungi»
+        let spazio = prossimoSpazio
         let nota: String
         if let a = messa {
             nota = TestiTraguardi.quandoTelefonata(a.inizio, oggi: Date()) + ", in agenda"
-        } else if let s = prossimoSpazio {
+        } else if let s = spazio {
             nota = TestiTraguardi.quandoTelefonata(s, oggi: Date()) + ", in agenda"
         } else {
             nota = "nessuno spazio libero nei prossimi giorni"
@@ -361,16 +364,21 @@ struct PannelloTraguardo: View {
                     }
                 }
                 .buttonStyle(.apple)
-                .disabled(stato.solaLettura || prossimoSpazio == nil)
+                .disabled(stato.solaLettura || spazio == nil)
             }
         }
     }
 
+    /// Il primo spazio libero da domani per la telefonata (lo stesso di `aggiungiTelefonataTraguardo`), una volta per dati
+    /// dei calcoli e giorno: dipende solo dagli appuntamenti e dagli orari di lavoro (dati dei calcoli) e da domani, mentre
+    /// il motore scorre tutti gli appuntamenti dell'archivio giorno per giorno.
     private var prossimoSpazio: Date? {
-        let cal = Calendar.current
-        let domani = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: Date())) ?? Date()
-        return MotorePianificazione.primoSpazio(durata: StatoShell.durataTelefonataTraguardo, da: domani,
-                                               appuntamenti: stato.dati.appuntamenti, orari: stato.dati.impostazioni.orari)?.inizio
+        stato.ricavato("traguardi-spazio-telefonata") { () -> Date? in
+            let cal = Calendar.current
+            let domani = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: Date())) ?? Date()
+            return MotorePianificazione.primoSpazio(durata: StatoShell.durataTelefonataTraguardo, da: domani,
+                                                   appuntamenti: stato.dati.appuntamenti, orari: stato.dati.impostazioni.orari)?.inizio
+        }
     }
 
     @ViewBuilder private func rigaRegalo(_ t: Traguardo) -> some View {

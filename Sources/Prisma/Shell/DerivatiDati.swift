@@ -483,7 +483,9 @@ extension StatoShell {
         let k = DerivatiDati.ChiavePortafoglio(canale: canale, area: area, ora: DerivatiDati.ora())
         if let c = d.portafogli[k] { return c }
         let filtrate = posizioni.filter { (canale == nil || $0.canale == canale) && (area == nil || $0.area == area) }
-        var p = MotorePortafoglio.calcola(filtrate, clienti: clienti, appuntamenti: appuntamenti, incontri: dati.incontri)
+        // Chi ricontattare (l'unico che legge appuntamenti e incontri) viene da `portafoglioComune()`, uguale per tutti
+        // i filtri: il motore non lo rifà per ogni filtro
+        var p = MotorePortafoglio.calcola(filtrate, clienti: clienti, conRicontatti: false)
         p.daRicontattare = portafoglioComune().daRicontattare
         // Pochi filtri per ora: oltre il limite (voci di ore passate comprese) si riparte da zero
         if d.portafogli.count >= DerivatiDati.vociMassimeAgenda { d.portafogli = [:] }

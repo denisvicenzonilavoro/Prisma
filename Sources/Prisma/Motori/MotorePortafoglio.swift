@@ -79,8 +79,10 @@ struct Portafoglio {
 }
 
 enum MotorePortafoglio {
+    /// `conRicontatti: false` lascia vuoto chi ricontattare: lo usa chi lo prende già da un'altra parte (il Portafoglio
+    /// di Posizioni lo calcola una volta sola per tutti i filtri, DerivatiDati.portafoglioComune).
     static func calcola(_ posizioni: [Posizione], clienti: [Cliente], appuntamenti: [Appuntamento] = [],
-                        incontri: [Incontro] = [], oggi: Date = Date()) -> Portafoglio {
+                        incontri: [Incontro] = [], oggi: Date = Date(), conRicontatti: Bool = true) -> Portafoglio {
         let r = RiepilogoPosizioni(posizioni)
         let totale = r.attivita
 
@@ -145,8 +147,11 @@ enum MotorePortafoglio {
         // Una proposta attivata diventa «in essere» ma resta accettata
         for p in posizioni where p.stato == .proposta || p.esito == .accettata { esiti[p.esito ?? .bozza, default: 0] += 1 }
 
+        let ricontatti = conRicontatti
+            ? daRicontattare(posizioni, clienti: clienti, appuntamenti: appuntamenti, incontri: incontri, oggi: oggi)
+            : []
         return Portafoglio(riepilogo: r, clienti: voci, scadenze: mesi, emittenti: emittenti, attivitaFinanziarie: finanziarie, esiti: esiti,
-                           daRicontattare: daRicontattare(posizioni, clienti: clienti, appuntamenti: appuntamenti, incontri: incontri, oggi: oggi))
+                           daRicontattare: ricontatti)
     }
 
     /// Fine della finestra delle scadenze: dodici mesi da oggi.
