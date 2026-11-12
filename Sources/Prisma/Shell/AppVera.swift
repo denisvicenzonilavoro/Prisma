@@ -697,8 +697,11 @@ private struct BollaAppVera: View, Equatable {
     @Environment(StatoShell.self) private var stato
 
     nonisolated static func == (a: BollaAppVera, b: BollaAppVera) -> Bool {
-        a.messaggio == b.messaggio && a.nomeUtente == b.nomeUtente && a.portafoglio == b.portafoglio
-            && a.quadro == b.quadro && a.domandaBiblioteca == b.domandaBiblioteca && a.nuova == b.nuova
+        // A passi: una catena lunga di confronti tra opzionali rallenta il controllo dei tipi
+        guard a.messaggio == b.messaggio, a.nomeUtente == b.nomeUtente else { return false }
+        guard a.portafoglio == b.portafoglio, a.nuova == b.nuova else { return false }
+        guard a.quadro == b.quadro else { return false }
+        return a.domandaBiblioteca == b.domandaBiblioteca
     }
 
     var body: some View {

@@ -496,10 +496,16 @@ extension StatoShell {
     /// Motivi e tempi delle decisioni sulle posizioni filtrate per canale e area (il Portafoglio di Posizioni), come
     /// `MotoreSeguitoProposte.statistiche`, una volta per dati dei calcoli, giorno e modalità cliente (non guardano l'ora).
     func statisticheEsitiPortafoglio(canale: Canale?, area: AreaPosizione?) -> StatisticheEsiti {
-        ricavato("statistiche-esiti|\(canale?.rawValue ?? "-")|\(area?.rawValue ?? "-")") {
-            MotoreSeguitoProposte.statistiche(posizioni.filter { p in
-                (canale == nil || p.canale == canale) && (area == nil || p.area == area)
-            })
+        // Tipi espliciti e condizioni spezzate: il controllo dei tipi resta rapido
+        let nomeCanale: String = canale?.rawValue ?? "-"
+        let nomeArea: String = area?.rawValue ?? "-"
+        return ricavato("statistiche-esiti|\(nomeCanale)|\(nomeArea)") { () -> StatisticheEsiti in
+            let filtrate: [Posizione] = posizioni.filter { (p: Posizione) -> Bool in
+                if let c = canale, p.canale != c { return false }
+                if let a = area, p.area != a { return false }
+                return true
+            }
+            return MotoreSeguitoProposte.statistiche(filtrate)
         }
     }
 

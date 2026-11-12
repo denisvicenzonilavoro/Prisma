@@ -746,8 +746,10 @@ struct RigaTrascrizioneCopilota: View, Equatable {
     /// si confronta, ma cambia solo con il pezzo, che è nell'`id` della riga. Così a ogni parola della riga in corso le
     /// righe finite non si rifanno né si rimisurano parola per parola.
     nonisolated static func == (a: RigaTrascrizioneCopilota, b: RigaTrascrizioneCopilota) -> Bool {
-        a.chi == b.chi && a.coloreChi == b.coloreChi && a.testo == b.testo && a.evidenze == b.evidenze
-            && a.inCorso == b.inCorso && a.indicata == b.indicata
+        // A passi: una catena lunga di confronti fra tipi diversi rallenta il controllo dei tipi
+        guard a.chi == b.chi, a.testo == b.testo, a.inCorso == b.inCorso, a.indicata == b.indicata else { return false }
+        guard a.coloreChi == b.coloreChi else { return false }
+        return a.evidenze == b.evidenze
     }
 
     var body: some View {

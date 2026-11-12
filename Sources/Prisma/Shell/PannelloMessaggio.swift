@@ -483,7 +483,7 @@ private struct TestoMessaggioSessione: View {
                        alignment: nuvoletta ? .topTrailing : .topLeading)
         } else {
             // Con le correzioni: la seconda lettura può correggere il testo prima che la comparsa finisca
-            let testo = pronto == nil ? sessione.parziale : (scrittoIstantanea?.testo ?? sessione.testo(k) ?? "")
+            let testo: String = pronto == nil ? sessione.parziale : (scrittoIstantanea?.testo ?? sessione.testo(k) ?? "")
             TestoProgressivo(testo: testo, passo: Tema.Apple.Messaggi.Moto.parola,
                              anima: !scatto, finito: { sessione.comparso(k) })
                 .carattereApple(T.carattere)

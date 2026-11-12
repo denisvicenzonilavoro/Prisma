@@ -551,8 +551,11 @@ struct ComandoSimulatoreFermo: View, Equatable {
     }
 
     nonisolated static func == (a: ComandoSimulatoreFermo, b: ComandoSimulatoreFermo) -> Bool {
-        a.mostrato == b.mostrato && a.etichetta == b.etichetta && a.unita == b.unita && a.intervallo == b.intervallo
-            && a.passo == b.passo && a.decimali == b.decimali && a.fineCursore == b.fineCursore
+        // A passi: una catena lunga di confronti fra tipi numerici diversi rallenta il controllo dei tipi
+        guard a.mostrato == b.mostrato, a.passo == b.passo, a.decimali == b.decimali else { return false }
+        guard a.etichetta == b.etichetta, a.unita == b.unita else { return false }
+        guard a.intervallo == b.intervallo else { return false }
+        return a.fineCursore == b.fineCursore
     }
 
     var body: some View {
