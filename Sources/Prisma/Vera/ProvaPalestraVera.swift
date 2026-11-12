@@ -260,7 +260,9 @@ enum ProvaPalestraVera {
         controlla(ricevuto["format"] != nil && temperatura == 0.5 && utente.contains("SCHEDA DEL CLIENTE CHE RECITI") && utente.contains("Difficile")
                   && utente.contains("ATTENZIONE: la risposta di prima è stata scartata"),
                   "Palestra, Qwen finto: la richiesta porta scheda, difficoltà, schema e il perché dello scarto")
-        let finta = turno(giudizio: "ottima", replica: "Mi hanno detto che rende il 12%.", convinta: 70, prossima: "E i costi?", suggerite: [])
+        // Una cifra che non può mai essere nella scheda: niente giorni del mese (la scheda ha la data dell'ultimo incontro,
+        // che cambia ogni giorno: il 12 del mese «12%» passava), mesi, anni o cifre di Giulia
+        let finta = turno(giudizio: "ottima", replica: "Mi hanno detto che rende il 47%.", convinta: 70, prossima: "E i costi?", suggerite: [])
         ServerFintoScenari.prepara([finta, finta])
         let turni = [TurnoPalestra(id: 0, obiezione: "Restano bloccati?", suggerite: [], risposta: "Guardiamo la linea della vita.")]
         let errore = aspetta { () -> String? in
