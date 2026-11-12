@@ -47,6 +47,11 @@ enum ProvaCalcoliLettoreProdotto {
         verifica.vero("Scheda dai documenti: Ramo I a premi ricorrenti con gestione separata",
                       l.riconoscimento?.area == .risparmio && l.riconoscimento?.gestioneSeparata == true)
         verifica.vero("Scheda dai documenti: nulla manca del KID", l.mancantiKID.isEmpty)
+        verifica.vero("Scheda dai documenti: la compagnia non prende la riga del trattenuto",
+                      l.dato(.emittente)?.daScegliere == false)
+        verifica.vero("Scheda dai documenti: tipologia riconosciuta, SRI e periodo con le unità",
+                      l.dato(.tipologia)?.testo == "Polizza rivalutabile a premi ricorrenti (Ramo I)"
+                        && l.dato(.sri)?.testo == "2 su 7" && l.dato(.periodoRaccomandato)?.testo == "10 anni")
 
         // La scheda con tutte le voci
         let oggi = AiutiProva.data(2026, 11, 12)

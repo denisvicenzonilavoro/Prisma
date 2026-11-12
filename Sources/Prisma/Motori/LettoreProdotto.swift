@@ -181,6 +181,14 @@ enum LettoreProdotto {
             l.dati[voce] = primo
         }
         l.riconoscimento = riconosci(testoIntero)
+        // La tipologia riconosciuta da Prisma è più chiara della riga «Tipo:» del KID (che va spesso a capo): la riga
+        // resta come fonte
+        if let r = l.riconoscimento {
+            let fonte = l.dati[.tipologia]
+            l.dati[.tipologia] = DatoLetto(voce: .tipologia, testo: r.tipologia, documento: fonte?.documento ?? (l.documenti.first?.nome ?? ""),
+                                          tipo: fonte?.tipo ?? (l.documenti.first?.tipo ?? .altro), pagina: fonte?.pagina ?? 1,
+                                          estratto: fonte.map { "Riconosciuta da Prisma; nel documento: «\($0.testo)»" } ?? "Riconosciuta da Prisma dalle parole dei documenti")
+        }
         return l
     }
 
@@ -247,7 +255,16 @@ enum LettoreProdotto {
             default: numeri = []
             }
             if (v == .sri || v == .periodoRaccomandato || v == .rendimentoPrimaCosti) && numeri.isEmpty { continue }
-            aggiungi(v, c.valore, numeri, pagina: c.pagina, estratto: c.estratto)
+            // Un nome o una compagnia con cifre è una riga presa per sbaglio («trattenuto dalla compagnia: 1,30 punti…»)
+            if (v == .nome || v == .emittente) && c.valore.range(of: #"\d+[,.]?\d*\s*(%|punti)"#, options: .regularExpression) != nil { continue }
+            let testo: String
+            switch v {
+            case .sri: testo = "\(Int(numeri[0])) su 7"
+            case .periodoRaccomandato: testo = "\(Int(numeri[0])) anni"
+            case .rendimentoPrimaCosti: testo = Formati.percentuale(numeri[0])
+            default: testo = c.valore
+            }
+            aggiungi(v, testo, numeri, pagina: c.pagina, estratto: c.estratto)
         }
         for (i, pagina) in pagine.enumerated() {
             let n = i + 1
