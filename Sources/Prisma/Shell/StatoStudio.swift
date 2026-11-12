@@ -6,8 +6,11 @@ import Foundation
 extension StatoShell {
     /// I ricavi della consulenza indipendente per Studio, dalle parcelle dell'archivio (giro 2): le pagate alla data
     /// d'incasso e le emesse alla scadenza, con l'imponibile delle righe (`MotoreParcelle.ricaviConsulenza`). Bozze e
-    /// annullate non contano. In modalità cliente solo le sue (`parcelle`).
-    var ricaviConsulenzaStudio: [RicavoConsulenza] { MotoreParcelle.ricaviConsulenza(parcelle) }
+    /// annullate non contano. In modalità cliente solo le sue (`parcelle`). Le parcelle entrano nei calcoli: si tengono da
+    /// parte con `ricavato` finché non cambiano (il riquadro della scrivania li chiede a ogni disegno).
+    var ricaviConsulenzaStudio: [RicavoConsulenza] {
+        ricavato("studio.ricavi") { () -> [RicavoConsulenza] in MotoreParcelle.ricaviConsulenza(parcelle) }
+    }
 
     /// Il cruscotto di Studio dei clienti visibili (in modalità cliente solo il suo). Per oggi viene dalla cache
     /// (DerivatiDati); per un altro giorno si calcola.

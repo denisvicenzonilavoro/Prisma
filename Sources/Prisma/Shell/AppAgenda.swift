@@ -289,11 +289,13 @@ struct AppAgenda: View {
         let settimane = CalendarioAgenda.settimane(meseDi: giorno)
         // Appuntamenti, attività, scadenze e occasioni dei giorni visibili, raggruppati una volta sola
         let indice = indiceGiorni(settimane.flatMap { $0 })
+        let chiave = MeseAgenda.Chiave(vista: stato.chiaveVista, filtro: stato.filtroClienteAgenda)
         return GeometryReader { geo in
             let larghezza = Misure.AgendaImpaginazione.dettaglio(geo.size.width)
             HStack(spacing: 0) {
-                MeseAgenda(settimane: settimane, giorno: giorno, indice: indice, strato: strato,
+                MeseAgenda(settimane: settimane, giorno: giorno, indice: indice, strato: strato, chiave: chiave,
                            canale: { stato.canaleAppuntamento($0) }, seleziona: { seleziona($0) })
+                    .equatable()
                     .padding(Misure.AgendaImpaginazione.calendario)
                     .frame(width: max(0, geo.size.width - larghezza))
                 ParteAgenda { colonnaMese(indice) }

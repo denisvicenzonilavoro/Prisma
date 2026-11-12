@@ -63,15 +63,31 @@ extension StatoShell {
 
 /// Il mese come un calendario vero: le settimane si dividono l'altezza disponibile, le celle crescono con la
 /// finestra e mostrano tante pillole quante ne stanno (al massimo tre, poi «+N»).
-struct MeseAgenda: View {
+/// `Equatable` (con `.equatable()` in AppAgenda): le passate dell'Agenda che non toccano la griglia (un foglio, la
+/// striscia dei riesami, la barra) non rifanno le 42 celle.
+struct MeseAgenda: View, Equatable {
+    /// Ciò da cui dipendono l'indice in cache e le celle oltre a settimane, giorno e strato: dati dei calcoli, giorno
+    /// di oggi, ora e modalità cliente (`ChiaveVista`) e il filtro cliente dell'Agenda.
+    struct Chiave: Equatable {
+        let vista: ChiaveVista
+        let filtro: String?
+    }
+
     let settimane: [[Date]]
     /// Il giorno scelto (decide anche il mese mostrato).
     let giorno: Date
     let indice: GiorniAgenda
     /// Lo strato delle occasioni (Impostazioni › Occasioni).
     let strato: Bool
+    let chiave: Chiave
     let canale: (Appuntamento) -> Canale?
     let seleziona: (Date) -> Void
+
+    /// L'indice resta fuori dal confronto (è quello in cache per giorni, filtro e chiave), e le azioni pure: fanno
+    /// sempre la stessa cosa con l'appuntamento o il giorno che ricevono.
+    nonisolated static func == (a: MeseAgenda, b: MeseAgenda) -> Bool {
+        a.settimane == b.settimane && a.giorno == b.giorno && a.strato == b.strato && a.chiave == b.chiave
+    }
 
     var body: some View {
         let m = Misure.AgendaMese.self
