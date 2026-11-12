@@ -846,28 +846,39 @@ enum VoceConfronto: Hashable {
         }
     }
 
-    var clienteAttivo: Cliente? { clienti.first { $0.id == clienteAttivoId } }
+    /// Lo stesso cliente di `clienti.first { $0.id == clienteAttivoId }`, cercato direttamente nell'archivio: `clienti`
+    /// filtra e copia tutti i clienti a ogni chiamata, e questa si legge in molti body. Con la modalità cliente
+    /// `clienteAttivoId` è il cliente mostrato (che `clienti` tiene anche se unito a un altro); senza, contano solo le
+    /// schede non unite, come in `clientiAttivi`.
+    var clienteAttivo: Cliente? {
+        let id = clienteAttivoId
+        let conUnite = modoCliente != nil
+        return dati.clienti.first { $0.id == id && (conUnite || $0.unitaIn == nil) }
+    }
 
     /// Di chi parla la finestra di un'app: il suo cliente, tutti i clienti (filtri vuoti, portafoglio)
     /// o nil se l'app non riguarda i clienti. Le app del dossier mostrano il cliente attivo;
     /// Agenda, Attività e Note il cliente del loro filtro.
     func contesto(di app: AppPrisma) -> String? {
-        let attivo = clienteAttivo?.nome ?? "Nessun cliente"
         let tutti = "Tutti i clienti"
         let delPortafoglio = "Portafoglio · tutti i clienti"
+        // Il nome del cliente attivo si cerca solo per le app che lo mostrano, nella mappa per id di DerivatiDati: la
+        // scritta di ogni finestra aperta non rifà il giro dei clienti a ogni modifica (un cliente cambiato cambia
+        // `versioneCalcoli`, quindi la mappa si rifà e la scritta si aggiorna)
+        func attivo() -> String { cliente(clienteAttivoId)?.nome ?? "Nessun cliente" }
         func filtro(_ id: String?) -> String {
             guard let id else { return tutti }
             return cliente(id)?.nome ?? tutti
         }
         switch app {
         case .clienti, .analisi360, .obiettivi, .simulazioni, .confronti, .documenti, .incontri:
-            return attivo
+            return attivo()
         case .posizioni:
-            return portafoglio ? delPortafoglio : attivo
+            return portafoglio ? delPortafoglio : attivo()
         case .vera:
-            return veraPortafoglio ? delPortafoglio : attivo
+            return veraPortafoglio ? delPortafoglio : attivo()
         case .presentazioni:
-            return sceltaProspetto.tipo == .portafoglio ? delPortafoglio : attivo
+            return sceltaProspetto.tipo == .portafoglio ? delPortafoglio : attivo()
         case .agenda:
             return filtro(filtroClienteAgenda)
         case .attivita:
@@ -882,7 +893,7 @@ enum VoceConfronto: Hashable {
             return "Il tuo lavoro"
         // «Luce»: la Sala parla del cliente attivo; Territorio e Pratiche di tutti i clienti
         case .sala:
-            return attivo
+            return attivo()
         case .territorio, .pratiche:
             return tutti
         case .messaggi, .mercato, .impostazioni, .biblioteca:
@@ -2885,12 +2896,14 @@ enum VoceConfronto: Hashable {
     /// in un solo passaggio: la settimana o il mese dell'agenda non rileggono l'archivio per ogni casella.
     /// Il body dell'Agenda lo chiede a ogni disegno: tenuto da parte in DerivatiDati per intervallo, filtro cliente e
     /// strato delle occasioni, finché non cambiano i dati dei calcoli, il giorno o la modalità cliente.
+    /// Lo strato si legge con `impostazioniDeiCalcoli`, che non iscrive il body a tutte le impostazioni (aspetto, sfondo…):
+    /// le occasioni entrano nei calcoli, quindi cambiarlo cambia `versioneCalcoli`, che `derivatiValidi` legge sempre.
     func giorniAgenda(_ giorni: [Date]) -> GiorniAgenda {
         let cal = Calendar.current
         guard let primo = giorni.min(), let ultimo = giorni.max() else { return GiorniAgenda() }
         let d = derivatiValidi()
         let k = DerivatiDati.ChiaveGiorniAgenda(inizio: cal.startOfDay(for: primo), fine: cal.startOfDay(for: ultimo),
-                                                filtro: filtroClienteAgenda, occasioni: dati.impostazioni.occasioni.inAgenda)
+                                                filtro: filtroClienteAgenda, occasioni: dati.impostazioniDeiCalcoli.occasioni.inAgenda)
         if let indice = d.indiciAgenda[k] { return indice }
         let indice = calcolaGiorniAgenda(primo: primo, ultimo: ultimo)
         if d.indiciAgenda.count >= DerivatiDati.vociMassimeAgenda { d.indiciAgenda.removeAll() }
@@ -2914,7 +2927,7 @@ enum VoceConfronto: Hashable {
             indice.scadenzePerGiorno[cal.startOfDay(for: s), default: []].append(p)
         }
         // Le occasioni, se lo strato è acceso: un passaggio solo, dalla memoria (AgendaOccasioni.swift)
-        if dati.impostazioni.occasioni.inAgenda {
+        if dati.impostazioniDeiCalcoli.occasioni.inAgenda {
             for o in occasioni(da: inizio, a: fine) where filtro == nil || o.clienteId == filtro {
                 indice.occasioniPerGiorno[cal.startOfDay(for: o.data), default: []].append(o)
             }
