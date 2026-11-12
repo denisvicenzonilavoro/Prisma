@@ -53,8 +53,12 @@ struct PaginaImpostazioniSala: View {
                             TextField("%", value: legame(e, \.probabilitaPercento), format: Self.numero)
                                 .frame(width: S.campoProbabilita)
                             Text("% l’anno")
-                            TextField("fonte", text: legameTesto(e))
-                                .frame(width: S.campoFonte)
+                            // La fonte passa all'archivio poco dopo l'ultimo tasto (TestoRinviato): una lettera non
+                            // cambia le impostazioni a ogni tasto (rifarebbe tutte le cache dei calcoli)
+                            TestoRinviato(testo: legameTesto(e), salvaOra: { stato.salvaOra() }) { bozza in
+                                TextField("fonte", text: bozza)
+                                    .frame(width: S.campoFonte)
+                            }
                         }
                         .textFieldStyle(.roundedBorder)
                         .carattereApple(S.carattereCampi)
@@ -114,15 +118,19 @@ struct PaginaImpostazioniSala: View {
     private func riga(_ titolo: String, _ campo: WritableKeyPath<ImpostazioniSala, String?>, segnaposto: String,
                       ultima: Bool = false) -> some View {
         RigaImpostazione(titolo: titolo, ultima: ultima) {
-            TextField(segnaposto, text: Binding(
+            // Il testo passa all'archivio poco dopo l'ultimo tasto (TestoRinviato), come il nome dell'utente: ogni lettera
+            // ridisegna solo il campo, non cambia le impostazioni (e le cache dei calcoli) a ogni tasto
+            TestoRinviato(testo: Binding(
                 get: { stato.dati.impostazioni.sala[keyPath: campo] ?? "" },
                 set: { v in
                     let t = v.trimmingCharacters(in: .whitespacesAndNewlines)
                     modifica { $0[keyPath: campo] = t.isEmpty ? nil : v }
-                }))
-                .textFieldStyle(.roundedBorder)
-                .frame(width: S.campoTesto)
-                .disabled(stato.solaLettura)
+                }), salvaOra: { stato.salvaOra() }) { bozza in
+                TextField(segnaposto, text: bozza)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: S.campoTesto)
+                    .disabled(stato.solaLettura)
+            }
         }
     }
 

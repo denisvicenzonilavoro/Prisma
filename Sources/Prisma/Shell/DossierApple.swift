@@ -131,25 +131,37 @@ struct RubricaApple: View {
     @Binding var ricerca: String
     @Binding var soloPreferiti: Bool
 
-    /// Filtra a ogni tasto su nome e motto (senza animazione), in ordine alfabetico.
-    private var elenco: [Cliente] {
+    /// Tutti i clienti in ordine alfabetico, ordinati una volta finché non cambiano i dati dei calcoli (`ricavato`): un clic
+    /// su un cliente o un tasto nella ricerca non rifanno l'ordine (l'ordinamento è stabile, quindi filtrare dopo dà lo
+    /// stesso elenco di prima).
+    private var ordinati: [Cliente] {
+        stato.ricavato("rubrica-ordinata") { () -> [Cliente] in
+            stato.clienti.sorted { $0.nome.localizedCaseInsensitiveCompare($1.nome) == .orderedAscending }
+        }
+    }
+
+    /// Filtra a ogni tasto su nome e motto (senza animazione), in ordine alfabetico. Senza filtri è l'elenco in cache
+    /// così com'è: le voci si confrontano in un colpo solo.
+    private func elenco(_ ordinati: [Cliente]) -> [Cliente] {
         let testo = ricerca.trimmingCharacters(in: .whitespaces).lowercased()
-        return stato.clienti
-            .filter { !soloPreferiti || $0.preferito }
-            .filter { testo.isEmpty || $0.nome.lowercased().contains(testo) || $0.tema.lowercased().contains(testo) }
-            .sorted { $0.nome.localizedCaseInsensitiveCompare($1.nome) == .orderedAscending }
+        guard soloPreferiti || !testo.isEmpty else { return ordinati }
+        return ordinati.filter { c in
+            (!soloPreferiti || c.preferito)
+                && (testo.isEmpty || c.nome.lowercased().contains(testo) || c.tema.lowercased().contains(testo))
+        }
     }
 
     var body: some View {
         let _ = ContaCorpi.segna()
         let r = Tema.Apple.Clienti.Rubrica.self
-        // Filtrato e ordinato una volta per disegno, non a ogni uso
-        let elenco = self.elenco
+        // Ordinati una volta per dati, filtrati una volta per disegno, non a ogni uso
+        let tutti = ordinati
+        let elenco = self.elenco(tutti)
         return VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: r.spazioTitolo) {
                 Text("Rubrica")
                 Spacer(minLength: r.spazioTitolo)
-                Text("\(stato.clienti.count)")
+                Text("\(tutti.count)")
                     .monospacedDigit()
             }
             .carattereApple(r.titolo)
@@ -169,16 +181,15 @@ struct RubricaApple: View {
                     .equatable()
             }
 
-            piede
+            piede(n: tutti.count)
                 .padding(.top, r.sopraPiede)
         }
         .padding(r.padding)
     }
 
     /// «5 contatti» e, finché i 30 clienti fittizi non ci sono, «+ 30 clienti di prova» (il comando di Impostazioni).
-    private var piede: some View {
+    private func piede(n: Int) -> some View {
         let r = Tema.Apple.Clienti.Rubrica.self
-        let n = stato.clienti.count
         let contatti = "\(n) \(n == 1 ? "contatto" : "contatti")"
         return VStack(spacing: r.fraRighePiede) {
             if mostraClientiDiProva {

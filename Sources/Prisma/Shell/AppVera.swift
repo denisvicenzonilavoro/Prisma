@@ -12,6 +12,38 @@ import SwiftUI
 /// parola per parola e alla fine entra la scheda dei calcoli.
 struct AppVera: View {
     @Environment(StatoShell.self) var stato
+
+    var body: some View {
+        let _ = ContaCorpi.segna()
+        GeometryReader { geo in
+            // Vera a metà schermo: la colonna si stringe e la chat resta sempre dentro la finestra. Al contenuto arriva
+            // solo se la finestra è sotto la soglia: mentre la finestra si allunga con l'angolo (una misura nuova a ogni
+            // movimento) colonna e chat non si ridisegnano, cambia solo la cornice
+            CorpoAppVera(stretta: geo.size.width < Tema.Misura.VeraChat.sogliaContestoStretto)
+                .frame(width: geo.size.width, height: geo.size.height)
+        }
+        .altreAppApple()
+        // «Lascia cadere qui» e la pagina della memoria di Vera (fase 2, RilascioVera.swift)
+        .rilascioDocumentiVera()
+        .paginaMemoriaVera(stato.memoriaVera)
+        // Fase 4: la pagina delle routine e la pagina del tagliando dei dati sopra la finestra di Vera
+        // (VisteRoutineVera.swift, VisteTagliandoVera.swift)
+        .paginaRoutineVera()
+        .paginaTagliandoVera()
+        // Fase 5: «Vera su misura» e «I motori di Vera» (VisteSuMisuraVera.swift, VisteMotoriVera.swift)
+        .paginaSuMisuraVera()
+        .paginaMotoriVera()
+        // «Le 25 novità di Vera» (NovitaVera.swift)
+        .paginaNovitaVera()
+    }
+}
+
+/// Il contenuto dell'app Vera dentro la finestra: la colonna di Vera e la chat, con il campo, la dettatura e le bolle
+/// nuove. Riceve solo se la finestra è stretta, così un cambio di misura che non passa la soglia non lo ridisegna.
+private struct CorpoAppVera: View {
+    /// La finestra è sotto `Tema.Misura.VeraChat.sogliaContestoStretto` (Vera a metà schermo): la colonna si stringe.
+    let stretta: Bool
+    @Environment(StatoShell.self) var stato
     /// Il campo della domanda in primo piano: serve alla dettatura di macOS, che scrive dove c'è il cursore.
     @FocusState private var campoAttivo: Bool
     /// Da quale messaggio in poi le bolle sono nuove (arrivate con l'app aperta): entrano e si scrivono.
@@ -32,33 +64,17 @@ struct AppVera: View {
     var body: some View {
         let _ = ContaCorpi.segna()
         let col = Tema.Apple.Vera.Colonna.self
-        GeometryReader { geo in
-            // Vera a metà schermo: la colonna si stringe e la chat resta sempre dentro la finestra
-            let larghezza = geo.size.width < Tema.Misura.VeraChat.sogliaContestoStretto ? Tema.Misura.VeraChat.contestoStretto : col.larghezza
-            HStack(spacing: col.spazioChat) {
-                colonna(larghezza: larghezza)
-                    .frame(width: larghezza)
-                    .frame(maxHeight: .infinity, alignment: .top)
-                    .pannelloAltreAppApple()
-                chat
-                    .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
-                    .layoutPriority(1)
-            }
-            .frame(width: geo.size.width, height: geo.size.height)
+        let larghezza = stretta ? Tema.Misura.VeraChat.contestoStretto : col.larghezza
+        HStack(spacing: col.spazioChat) {
+            // La colonna è una vista a sé: il campo in primo piano o una risposta che arriva non la ridisegnano
+            ColonnaAppVera(larghezza: larghezza)
+                .frame(width: larghezza)
+                .frame(maxHeight: .infinity, alignment: .top)
+                .pannelloAltreAppApple()
+            chat
+                .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
+                .layoutPriority(1)
         }
-        .altreAppApple()
-        // «Lascia cadere qui» e la pagina della memoria di Vera (fase 2, RilascioVera.swift)
-        .rilascioDocumentiVera()
-        .paginaMemoriaVera(stato.memoriaVera)
-        // Fase 4: la pagina delle routine e la pagina del tagliando dei dati sopra la finestra di Vera
-        // (VisteRoutineVera.swift, VisteTagliandoVera.swift)
-        .paginaRoutineVera()
-        .paginaTagliandoVera()
-        // Fase 5: «Vera su misura» e «I motori di Vera» (VisteSuMisuraVera.swift, VisteMotoriVera.swift)
-        .paginaSuMisuraVera()
-        .paginaMotoriVera()
-        // «Le 25 novità di Vera» (NovitaVera.swift)
-        .paginaNovitaVera()
         // Parte sia alla nascita della vista (Vera era chiusa o ridotta) sia a ogni nuova richiesta
         .task(id: stato.richiestaDettatura) { await accendiDettatura() }
         // Il FocusState resta in pari con makeFirstResponder(nil), altrimenti il prossimo «true» non cambia niente
@@ -104,16 +120,28 @@ struct AppVera: View {
         DiagnosticaVoce.annota("iPhone e iPad: cursore nel campo, la dettatura è il microfono della tastiera")
         #endif
     }
+}
 
-    // MARK: - Colonna di sinistra
+// MARK: - Colonna di sinistra
 
-    private func colonna(larghezza: CGFloat) -> some View {
+/// La colonna di Vera: la sfera, il saluto, lo stato di Qwen, «Oggi», di chi si parla, il tagliando, i documenti
+/// archiviati, cosa non dimenticare e il quadro del cliente. Una vista a sé con la sola larghezza: si ridisegna con i
+/// suoi dati, non con la chat.
+private struct ColonnaAppVera: View {
+    let larghezza: CGFloat
+    @Environment(StatoShell.self) var stato
+
+    private var cliente: Cliente? { stato.clienteAttivo }
+
+    var body: some View {
+        let _ = ContaCorpi.segna()
         let col = Tema.Apple.Vera.Colonna.self
         let interna = larghezza - col.padding.leading - col.padding.trailing
         // Senza barra di scorrimento; in fondo le card sfumano invece di finire tagliate
-        return ScrollView(.vertical, showsIndicators: false) {
+        ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: 0) {
-                SferaVera(misura: Tema.Apple.Vera.Sfera.vera, viva: true, pensa: stato.veraInCorso)
+                // La sfera segue da sola le risposte in corso: una domanda non ridisegna tutta la colonna
+                SferaColonnaVera()
                 Text("Ciao, sono Vera.")
                     .carattereApple(col.saluto)
                     .foregroundColor(col.coloreSaluto)
@@ -195,9 +223,8 @@ struct AppVera: View {
     /// Gli impegni di oggi, come nel template: «09:30 · Giulia Rossi». Un clic apre l'impegno in Agenda.
     private var schedaOggi: some View {
         let col = Tema.Apple.Vera.Colonna.self
-        let oggi = stato.appuntamenti
-            .filter { $0.stato == .pianificato && Calendar.current.isDateInToday($0.inizio) }
-            .sorted { $0.inizio < $1.inizio }
+        // Gli impegni pianificati di oggi sono già in cache (`appuntamentiDiOggi`): qui solo l'ordine dell'ora
+        let oggi = stato.appuntamentiDiOggi.sorted { $0.inizio < $1.inizio }
         let mostrati = Array(oggi.prefix(col.massimoOggi))
         return VStack(alignment: .leading, spacing: 0) {
             Text("Oggi")
@@ -270,11 +297,12 @@ struct AppVera: View {
         .superficieApple(col.superficieScheda, raggio: col.raggioScheda)
     }
 
-    /// L'attività più urgente: la card d'avviso «Da non dimenticare».
+    /// L'attività più urgente: la card d'avviso «Da non dimenticare». Basta la prima (a parità, quella che viene prima
+    /// nell'elenco, come con l'ordinamento completo): niente ordinamento di tutte le attività aperte.
     private var urgente: Attivita? {
-        stato.attivitaAperte.sorted {
+        stato.attivitaAperte.min {
             $0.priorita.ordine != $1.priorita.ordine ? $0.priorita.ordine < $1.priorita.ordine : $0.scadenza < $1.scadenza
-        }.first
+        }
     }
 
     private func schedaAvviso(_ t: Attivita) -> some View {
@@ -348,9 +376,21 @@ struct AppVera: View {
         .multilineTextAlignment(.leading)
         .padding(.top, col.fraSchede)
     }
+}
 
-    // MARK: - Chat
+/// La sfera grande della colonna: pulsa mentre Vera risponde. Sola a seguire `veraInCorso`, così l'inizio e la fine di
+/// una risposta non ridisegnano le card della colonna.
+private struct SferaColonnaVera: View {
+    @Environment(StatoShell.self) var stato
 
+    var body: some View {
+        SferaVera(misura: Tema.Apple.Vera.Sfera.vera, viva: true, pensa: stato.veraInCorso)
+    }
+}
+
+// MARK: - Chat
+
+extension CorpoAppVera {
     private var chat: some View {
         let ch = Tema.Apple.Vera.Chat.self
         return VStack(spacing: 0) {
@@ -381,25 +421,20 @@ struct AppVera: View {
         let portafoglio = stato.veraPortafoglio
         // La scheda dei calcoli va nell'ultima risposta di Vera: le cifre le calcola Prisma, mai Qwen
         let ultima = elenco.last.flatMap { $0.autore == .vera ? $0 : nil }
-        let quadro = stato.veraInCorso ? nil : ultima.flatMap { stato.quadroVera(per: $0, in: elenco, portafoglio: portafoglio) }
-        let domandaBiblioteca = stato.domandaPerBiblioteca(in: elenco)
+        let quadro = stato.veraInCorso ? nil : ultima.flatMap { quadroInCache(per: $0, in: elenco, portafoglio: portafoglio) }
+        let domandaBiblioteca = domandaBibliotecaInCache(in: elenco)
         let primoNuovo = nuoviDa.flatMap { $0.chiave == chiave ? $0.indice : nil } ?? Int.max
         return ScrollViewReader { lettore in
             ScrollView {
                 VStack(alignment: .leading, spacing: ch.spazioMessaggi) {
                     if elenco.isEmpty && !stato.veraInCorso { benvenuto }
                     ForEach(Array(elenco.enumerated()), id: \.element.id) { i, msg in
-                        NuvolaVera(messaggio: msg, nomeUtente: stato.nomeUtente, azioniCliente: !portafoglio,
-                                  creaAttivita: { stato.attivitaDaVera(msg) }, aggiungiNota: { stato.notaDaVera(msg) },
-                                  attivitaProposta: { stato.attivitaDaProposta($0, messaggio: msg.id) },
-                                  posizioneProposta: { stato.posizioneDaProposta($0, messaggio: msg.id) },
-                                  apriAzione: { stato.apriAzioneVera($0) },
-                                  annullaAzione: { stato.annullaAzioneVera($0, messaggio: msg.id) },
-                                  quadro: msg.id == ultima?.id ? quadro : nil,
-                                  domandaBiblioteca: msg.id == ultima?.id ? domandaBiblioteca : nil,
-                                  cercaBiblioteca: { stato.cercaNellaBiblioteca($0) },
-                                  nuova: i >= primoNuovo,
-                                  avanza: { lettore.scrollTo(Self.fondo, anchor: .bottom) })
+                        BollaAppVera(messaggio: msg, nomeUtente: stato.nomeUtente, portafoglio: portafoglio,
+                                     quadro: msg.id == ultima?.id ? quadro : nil,
+                                     domandaBiblioteca: msg.id == ultima?.id ? domandaBiblioteca : nil,
+                                     nuova: i >= primoNuovo,
+                                     avanza: { lettore.scrollTo(Self.fondo, anchor: .bottom) })
+                            .equatable()
                             .id(msg.id)
                     }
                     if stato.veraInCorso {
@@ -427,6 +462,36 @@ struct AppVera: View {
         }
     }
 
+    // La chat si ridisegna spesso (fine di una risposta, campo in primo piano, cambio di cliente): quadro e domanda per
+    // la Biblioteca si ricavano una volta per risposta (`ricavato`, validi finché non cambiano i dati dei calcoli).
+    // Nella chiave ciò che non è un dato dei calcoli; il risultato sta in un array, così un nil in cache non si
+    // confonde con una voce che non c'è.
+
+    /// La scheda dei calcoli dell'ultima risposta (`quadroVera`). Nella chiave: di chi si parla e l'ora (le scadenze
+    /// guardano adesso); la domanda è quella prima della risposta, che non cambia.
+    private func quadroInCache(per ultima: MessaggioVera, in elenco: [MessaggioVera], portafoglio: Bool) -> QuadroVera? {
+        let q: [QuadroVera] = stato.ricavato("vera-quadro-\(chiave)-\(ultima.id)-\(DerivatiDati.ora())") {
+            stato.quadroVera(per: ultima, in: elenco, portafoglio: portafoglio).map { [$0] } ?? []
+        }
+        return q.first
+    }
+
+    /// «Cerca nella Biblioteca» sotto l'ultima risposta (`domandaPerBiblioteca`): riconoscere la domanda passa le
+    /// espressioni regolari su ogni nome di cliente. Le condizioni che costano poco restano fuori dalla cache; nella
+    /// chiave i due messaggi e se la Biblioteca ha testi in cui cercare (`testi`, che non carica l'indice dal disco:
+    /// quando arriva, la vista si ridisegna e la chiave cambia). I nomi dei clienti cambiano `versioneCalcoli`.
+    private func domandaBibliotecaInCache(in elenco: [MessaggioVera]) -> String? {
+        guard !stato.veraInCorso, elenco.count >= 2, let ultima = elenco.last, ultima.autore == .vera else { return nil }
+        let domanda = elenco[elenco.count - 2]
+        guard domanda.autore == .utente else { return nil }
+        let leggibili = stato.biblioteca.testi.contains { !$0.illeggibile && ($0.testo != nil || !$0.articoli.isEmpty) }
+        let chiaveCache = "vera-biblioteca-\(ultima.id)-\(domanda.id)-\(domanda.testo.hashValue)-\(leggibili)"
+        let trovata: [String] = stato.ricavato(chiaveCache) {
+            stato.domandaPerBiblioteca(in: elenco).map { [$0] } ?? []
+        }
+        return trovata.first
+    }
+
     /// La conversazione vuota: Vera saluta per prima, come nel template, con i numeri veri della giornata.
     private var benvenuto: some View {
         let b = Tema.Apple.Vera.Bolla.self
@@ -450,7 +515,7 @@ struct AppVera: View {
         let s = Tema.Apple.Scrivania.Saluto.self
         let ora = Calendar.current.component(.hour, from: Date())
         let parola = ora < s.oraPomeriggio ? "Buongiorno" : ora < s.oraSera ? "Buon pomeriggio" : "Buonasera"
-        let oggi = stato.appuntamenti.filter { $0.stato == .pianificato && Calendar.current.isDateInToday($0.inizio) }
+        let oggi = stato.appuntamentiDiOggi
         let conClienti = oggi.filter { stato.cliente($0.clienteId) != nil }.count
         let giornata: String
         switch conClienti {
@@ -614,6 +679,42 @@ struct AppVera: View {
 private struct SegnoNuoviVera: Equatable {
     let chiave: String
     let indice: Int
+}
+
+/// Una bolla della chat dell'app Vera (`NuvolaVera`) che si ridisegna solo se cambia ciò che mostra: le azioni sono
+/// chiusure, che SwiftUI non sa confrontare, e senza il confronto ogni disegno della chat (fine di una risposta, campo
+/// in primo piano, cambio di cliente) rifarebbe tutte le bolle. Le azioni dipendono solo dal messaggio e da StatoShell;
+/// `avanza` scorre sempre la stessa chat: restano fuori dal confronto.
+private struct BollaAppVera: View, Equatable {
+    let messaggio: MessaggioVera
+    let nomeUtente: String
+    /// La conversazione di tutto il portafoglio: niente «Crea attività» e «Nota del cliente».
+    let portafoglio: Bool
+    let quadro: QuadroVera?
+    let domandaBiblioteca: String?
+    let nuova: Bool
+    let avanza: () -> Void
+    @Environment(StatoShell.self) private var stato
+
+    nonisolated static func == (a: BollaAppVera, b: BollaAppVera) -> Bool {
+        a.messaggio == b.messaggio && a.nomeUtente == b.nomeUtente && a.portafoglio == b.portafoglio
+            && a.quadro == b.quadro && a.domandaBiblioteca == b.domandaBiblioteca && a.nuova == b.nuova
+    }
+
+    var body: some View {
+        let msg = messaggio
+        NuvolaVera(messaggio: msg, nomeUtente: nomeUtente, azioniCliente: !portafoglio,
+                   creaAttivita: { stato.attivitaDaVera(msg) }, aggiungiNota: { stato.notaDaVera(msg) },
+                   attivitaProposta: { stato.attivitaDaProposta($0, messaggio: msg.id) },
+                   posizioneProposta: { stato.posizioneDaProposta($0, messaggio: msg.id) },
+                   apriAzione: { stato.apriAzioneVera($0) },
+                   annullaAzione: { stato.annullaAzioneVera($0, messaggio: msg.id) },
+                   quadro: quadro,
+                   domandaBiblioteca: domandaBiblioteca,
+                   cercaBiblioteca: { stato.cercaNellaBiblioteca($0) },
+                   nuova: nuova,
+                   avanza: avanza)
+    }
 }
 
 // MARK: - Testata
@@ -785,6 +886,21 @@ struct NuvolaVera: View {
         self.avanza = avanza
     }
 
+    /// Il testo con i rimandi alle fonti, per messaggio: `conRimandi` cerca ogni cifra con le espressioni regolari e le
+    /// bolle nascono di nuovo a ogni apertura di Vera e cambio di cliente. Vale finché testo e fonti restano quelli;
+    /// solo dal thread principale (i body), e oltre `massimoRimandi` voci si svuota.
+    private nonisolated(unsafe) static var rimandi: [String: (testo: String, fonti: [FonteCifra], esito: String)] = [:]
+    private static let massimoRimandi = 240
+
+    private static func testoConRimandi(_ m: MessaggioVera) -> String {
+        guard let fonti = m.fonti else { return m.testo }
+        if let c = rimandi[m.id], c.testo == m.testo, c.fonti == fonti { return c.esito }
+        let esito = FontiVera.conRimandi(m.testo, fonti: fonti)
+        if rimandi.count >= massimoRimandi { rimandi.removeAll(keepingCapacity: true) }
+        rimandi[m.id] = (testo: m.testo, fonti: fonti, esito: esito)
+        return esito
+    }
+
     /// L'elenco del mercato da mostrare: in modalità cliente solo la riga del cliente presente (gli altri clienti
     /// spariscono, anche dalle conversazioni già salvate) e niente «e altri N clienti».
     static func mercatoVisibile(_ esito: EsitoMercatoVera?, modoCliente: String?) -> EsitoMercatoVera? {
@@ -837,7 +953,7 @@ struct NuvolaVera: View {
                     .padding(.bottom, b.sottoIntestazione)
             }
             // «Mai a caso»: il rimando alla fonte dopo ogni cifra («20.800 €¹»)
-            TestoProgressivo(testo: messaggio.fonti.map { FontiVera.conRimandi(messaggio.testo, fonti: $0) } ?? messaggio.testo, anima: nuova, staffetta: nuova ? .riceve : .nessuna,
+            TestoProgressivo(testo: Self.testoConRimandi(messaggio), anima: nuova, staffetta: nuova ? .riceve : .nessuna,
                              avanza: avanza, finito: { testoScritto = true })
                 .carattereApple(b.messaggio)
                 .foregroundColor(b.testo)

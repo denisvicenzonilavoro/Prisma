@@ -22,13 +22,15 @@ struct SussurroDossierVista: View {
     // La scheda «Conferma» aperta sotto una voce si ricava dalla conversazione del cliente
     // (`StatoShell.schedaSussurroAperta`), mai da uno @State: cambiando scheda del dossier, cliente o chiudendo il
     // dossier la vista rinasce e la scheda in attesa deve restare sotto la voce, con il pulsante disattivato.
+    /// La card è uscita del tutto dalla vista scorrendo la Panoramica: la sfera smette di respirare.
+    @State private var fuoriVista = false
 
     var body: some View {
         let _ = ContaCorpi.segna()
-        let voci = stato.vociSussurro(clienteId: cliente.id)
+        let voci = vociInCache()
         if !voci.isEmpty {
             VStack(alignment: .leading, spacing: 0) {
-                TestataSussurro(quante: voci.count, pensa: stato.veraInCorso)
+                TestataSussurro(quante: voci.count, viva: !fuoriVista, pensa: stato.veraInCorso)
                 VStack(alignment: .leading, spacing: A.sussurroSpazioVoci) {
                     ForEach(Array(voci.enumerated()), id: \.element.id) { i, v in
                         riga(v)
@@ -46,6 +48,24 @@ struct SussurroDossierVista: View {
             }
             .accessibilityElement(children: .contain)
             .accessibilityLabel(Text("Vera ti sussurra"))
+            .fuoriDalloScorrimento { fuoriVista = $0 }
+        }
+    }
+
+    /// Le voci del cliente, calcolate una volta finché non cambiano i dati dei calcoli, il giorno, l'ora, le voci chiuse del
+    /// cliente o i ricordi di Vera su di lui (`ricavato`): la card si ridisegna anche quando Vera lavora, con un messaggio
+    /// nella chat o un'impostazione qualsiasi (aspetto compreso), e lì non serve rifare la conformità e le regole. Voci
+    /// chiuse e ricordi vanno nella chiave perché non sono dati dei calcoli; si leggono qui, fuori dal calcolo, così la
+    /// card segue ancora le voci chiuse e le impostazioni di Vera come prima.
+    private func vociInCache() -> [VoceSussurro] {
+        guard stato.sussurroSiVede else { return [] }
+        let id = cliente.id
+        let oggi = Date()
+        let chiuse = SussurroVera.chiuse(stato.dati.sussurriChiusi, clienteId: id, oggi: oggi).sorted().joined(separator: ",")
+        let ricordi = stato.ricordiSussurro(id)
+        let chiave = "sussurro|\(id)|\(DerivatiDati.ora(oggi))|\(chiuse)|\(ricordi.count)|\(ricordi.hashValue)"
+        return stato.ricavato(chiave) { () -> [VoceSussurro] in
+            stato.vociSussurro(clienteId: id, oggi: oggi)
         }
     }
 
@@ -250,11 +270,13 @@ extension StatoShell {
 /// «Vera ti sussurra · tre cose da sapere adesso», con la sfera viva (pulsa mentre Vera lavora).
 private struct TestataSussurro: View {
     let quante: Int
+    /// false con la card scrollata via (`fuoriDalloScorrimento`): la sfera non respira.
+    var viva = true
     let pensa: Bool
 
     var body: some View {
         HStack(spacing: A.sussurroSpazioTestata) {
-            SferaVera(misura: A.sussurroSfera, viva: true, pensa: pensa)
+            SferaVera(misura: A.sussurroSfera, viva: viva, pensa: pensa)
             VStack(alignment: .leading, spacing: A.sussurroSpazioTitoli) {
                 Text("Vera ti sussurra")
                     .carattereApple(A.sussurroTitolo)

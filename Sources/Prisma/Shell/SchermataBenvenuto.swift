@@ -226,11 +226,13 @@ private struct CursoreEntraBlocco: View {
 /// Timer. Ferma e fuori vista con «Riduci movimento» e nelle istantanee.
 private struct LuceDelPulsante: View {
     @Environment(\.prismaStatoFinale) private var fermo
+    /// Con Prisma che non si vede (nascosta, coperta, Mac a riposo) la luce resta dov'è, come l'acqua dietro.
+    @ObservedObject private var visibilita = VisibilitaPrisma.condivisa
 
     var body: some View {
         let L = Tema.Apple.Lucchetto.self
         let M = Tema.Apple.Moto.LuceBlocco.self
-        return TimelineView(.animation(minimumInterval: M.intervallo, paused: fermo)) { contesto in
+        return TimelineView(.animation(minimumInterval: M.intervallo, paused: fermo || !visibilita.visibile)) { contesto in
             GeometryReader { g in
                 let w = g.size.width
                 let p = fermo ? -1 : LuceDelPulsante.posizione(contesto.date)

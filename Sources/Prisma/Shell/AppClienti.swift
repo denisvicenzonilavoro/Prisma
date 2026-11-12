@@ -446,46 +446,8 @@ struct AppClienti: View {
                 Label("Nuova nota per \(c.nome)", systemImage: "plus")
             }
             .buttonStyle(StileCuoioChiaro())
-            // I messaggi preparati in Messaggi (giro 3 di Orizzonte): restano nel dossier con la data e lo stato
-            OcchielloSezione(titolo: "Messaggi", nota: "Preparati in Messaggi, spediti da te")
-                .padding(.top, 8)
-            let messaggi = stato.messaggiCliente(c.id)
-            if messaggi.isEmpty {
-                Text("Nessun messaggio per \(c.nome). Quelli che prepari in Messaggi restano qui, con la data.")
-                    .font(Tipo.rubricaTema)
-                    .foregroundColor(Colori.Rubrica.secondario)
-            } else {
-                ForEach(messaggi) { m in
-                    // Un clic lo riapre in Messaggi, sul cliente e sul suo motivo (CollegamentiMessaggi.swift)
-                    Button { stato.preparaMessaggio(clienteId: c.id, occasioneId: m.occasioneId, messaggioId: m.id) } label: {
-                        HStack(spacing: 8) {
-                            VStack(alignment: .leading, spacing: 0) {
-                                Text(m.oggetto ?? m.origine.tipo.nome)
-                                    .font(Tipo.campoValore).foregroundColor(Colori.Rubrica.testo).lineLimit(1)
-                                Text("\(m.canale.nome) · \(m.tono.nome) · \(m.stato.nome) · \(m.autore.nome)")
-                                    .font(Tipo.rubricaTema).foregroundColor(Colori.Rubrica.secondario).lineLimit(1)
-                            }
-                            Spacer()
-                            Text(Formati.giornoMeseBreve.string(from: m.dataMostrata))
-                                .font(Tipo.rubricaTema).foregroundColor(Colori.Rubrica.secondario)
-                            Image(systemName: "chevron.right").font(Tipo.rubricaFreccia).foregroundColor(Colori.Rubrica.rigaFreccia)
-                        }
-                        .padding(.vertical, 6)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(StileSemplice())
-                    .help(m.testo)
-                    .bordoBasso(Colori.Rubrica.rigaBordo)
-                }
-            }
-            // «Scrivi a …» solo quando Messaggi ha un motivo per scrivergli oggi o in settimana: apre la sua prima occasione
-            if let prima = stato.occasioniMessaggi().tutte.first(where: { o in o.clienteId == c.id }) {
-                Button { stato.preparaMessaggio(clienteId: c.id, occasioneId: prima.id) } label: {
-                    Label("Scrivi a \(c.nome)", systemImage: "envelope")
-                }
-                .buttonStyle(StileCuoioChiaro())
-                .help("Apre Messaggi su «\(prima.titolo)»: Prisma prepara il testo, lo spedisci tu")
-            }
+            // I messaggi preparati in Messaggi (giro 3 di Orizzonte) e «Scrivi a …» (MessaggiNoteDossier)
+            MessaggiNoteDossier(cliente: c)
         }
     }
 
@@ -505,6 +467,104 @@ struct AppClienti: View {
         guard var c = stato.cliente(m.clienteId) else { return }
         c.famiglia.removeAll { $0.id == m.familiare.id }
         stato.salvaCliente(c)
+    }
+}
+
+/// La sezione «Messaggi» in fondo alla scheda Note del dossier: i messaggi preparati in Messaggi (giro 3 di Orizzonte),
+/// che restano nel dossier con la data e lo stato, e «Scrivi a …», che c'è solo quando Messaggi ha un motivo per scrivere
+/// al cliente oggi o in settimana e apre la sua prima occasione. Il suo corpo sono più viste: nella colonna della scheda
+/// ognuna ha lo spazio di prima.
+/// Le occasioni sono di tutto il portafoglio (il limite di ogni gruppo vale per tutti i clienti) e la nota «Da
+/// ricordare», che si salva poco dopo l'ultimo tasto, cambia i dati dei calcoli: rifarle sul thread principale a ogni
+/// pausa nello scrivere faceva arrivare in ritardo i tasti seguenti. Così, dopo la prima volta, finché le occasioni
+/// nuove non sono pronte resta il pulsante di prima e il calcolo va fuori dal thread principale, sulla copia dei dati; il
+/// risultato vale solo se i dati, il giorno e la modalità cliente sono ancora quelli. Con le occasioni già in cache,
+/// alla prima comparsa e nelle istantanee il pulsante è subito quello giusto, come prima.
+private struct MessaggiNoteDossier: View {
+    @Environment(StatoShell.self) var stato
+    @Environment(\.prismaScatto) private var scatto
+    let cliente: Cliente
+    /// La prima occasione del cliente trovata per la chiave dei dati ricavati (versione dei calcoli, giorno, modalità).
+    @State private var trovata: (chiave: DerivatiDati.Chiave, occasione: OccasioneMessaggio?)?
+
+    var body: some View {
+        let d = stato.derivatiValidi()
+        let prima = primaOccasione(d)
+        OcchielloSezione(titolo: "Messaggi", nota: "Preparati in Messaggi, spediti da te")
+            .padding(.top, 8)
+            // Sull'intestazione, che c'è sempre (il pulsante può mancare)
+            .task(id: d.chiave) { await aggiorna() }
+        let messaggi = stato.messaggiCliente(cliente.id)
+        if messaggi.isEmpty {
+            Text("Nessun messaggio per \(cliente.nome). Quelli che prepari in Messaggi restano qui, con la data.")
+                .font(Tipo.rubricaTema)
+                .foregroundColor(Colori.Rubrica.secondario)
+        } else {
+            ForEach(messaggi) { m in
+                // Un clic lo riapre in Messaggi, sul cliente e sul suo motivo (CollegamentiMessaggi.swift)
+                Button { stato.preparaMessaggio(clienteId: cliente.id, occasioneId: m.occasioneId, messaggioId: m.id) } label: {
+                    HStack(spacing: 8) {
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text(m.oggetto ?? m.origine.tipo.nome)
+                                .font(Tipo.campoValore).foregroundColor(Colori.Rubrica.testo).lineLimit(1)
+                            Text("\(m.canale.nome) · \(m.tono.nome) · \(m.stato.nome) · \(m.autore.nome)")
+                                .font(Tipo.rubricaTema).foregroundColor(Colori.Rubrica.secondario).lineLimit(1)
+                        }
+                        Spacer()
+                        Text(Formati.giornoMeseBreve.string(from: m.dataMostrata))
+                            .font(Tipo.rubricaTema).foregroundColor(Colori.Rubrica.secondario)
+                        Image(systemName: "chevron.right").font(Tipo.rubricaFreccia).foregroundColor(Colori.Rubrica.rigaFreccia)
+                    }
+                    .padding(.vertical, 6)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(StileSemplice())
+                .help(m.testo)
+                .bordoBasso(Colori.Rubrica.rigaBordo)
+            }
+        }
+        // «Scrivi a …» solo quando Messaggi ha un motivo per scrivergli oggi o in settimana: apre la sua prima occasione
+        if let prima {
+            Button { stato.preparaMessaggio(clienteId: cliente.id, occasioneId: prima.id) } label: {
+                Label("Scrivi a \(cliente.nome)", systemImage: "envelope")
+            }
+            .buttonStyle(StileCuoioChiaro())
+            .help("Apre Messaggi su «\(prima.titolo)»: Prisma prepara il testo, lo spedisci tu")
+        }
+    }
+
+    /// Dalla cache se le occasioni ci sono; altrimenti quella di prima, finché il calcolo fuori non porta la nuova; la
+    /// prima volta e nelle istantanee calcolate qui, come `occasioniMessaggi()`.
+    private func primaOccasione(_ d: DerivatiDati) -> OccasioneMessaggio? {
+        if let pronte = d.occasioniMessaggi { return Self.prima(pronte, cliente: cliente.id) }
+        if !scatto, let t = trovata { return t.occasione }
+        return Self.prima(stato.occasioniMessaggi(), cliente: cliente.id)
+    }
+
+    private static func prima(_ o: OccasioniMessaggi, cliente id: String) -> OccasioneMessaggio? {
+        o.tutte.first { $0.clienteId == id }
+    }
+
+    /// Le occasioni per la chiave di adesso: dalla cache se ci sono, altrimenti calcolate fuori dal thread principale.
+    private func aggiorna() async {
+        guard !scatto else { return }
+        let d = stato.derivatiValidi()
+        guard let k = d.chiave, trovata?.chiave != k else { return }
+        let id = cliente.id
+        if let pronte = d.occasioniMessaggi {
+            trovata = (k, Self.prima(pronte, cliente: id))
+            return
+        }
+        // Come `occasioniMessaggi()`: tutto il portafoglio, poi in modalità cliente solo le sue
+        let dati = stato.datiDeiCalcoli()
+        let modo = stato.modoCliente
+        let oggi = Date()
+        let tutte = await Task.detached(priority: .userInitiated) {
+            MotoreOccasioniMessaggi.calcola(dati: dati, oggi: oggi)
+        }.value
+        // Nel frattempo i dati, il giorno o la modalità sono cambiati: vale il calcolo della chiave nuova
+        guard !Task.isCancelled, stato.derivatiValidi().chiave == k else { return }
+        trovata = (k, Self.prima(modo.map { tutte.soloCliente($0) } ?? tutte, cliente: id))
     }
 }
 
@@ -561,7 +621,9 @@ struct PanoramicaCliente: View {
     var body: some View {
         let _ = ContaCorpi.segna()
         let prossimo = stato.prossimiAppuntamenti.first { $0.clienteId == cliente.id }
-        let aperte = stato.attivitaCliente(cliente.id).filter { !$0.completata }
+        // Servono solo quante sono: contate in un passaggio, senza copiarle né ordinarle
+        let id = cliente.id
+        let aperte: Int = stato.attivita.reduce(0) { $1.clienteId == id && !$1.completata ? $0 + 1 : $0 }
         let aCarico = cliente.famiglia.filter(\.aCarico).count
         VStack(alignment: .leading, spacing: 14) {
             if conQuadro {
@@ -575,14 +637,14 @@ struct PanoramicaCliente: View {
     }
 
     /// Il quadro di sempre: età, nucleo e da seguire, i dati per l'analisi e «Da ricordare».
-    @ViewBuilder private func quadro(prossimo: Appuntamento?, aperte: [Attivita], aCarico: Int) -> some View {
+    @ViewBuilder private func quadro(prossimo: Appuntamento?, aperte: Int, aCarico: Int) -> some View {
             OcchielloSezione(titolo: "Il quadro d'insieme", nota: "Una scheda, tutte le app.")
             FasciaMetriche(metriche: [
                 .init(etichetta: "Età", valore: cliente.eta.map { "\($0) anni" } ?? "—",
                       nota: cliente.professione.isEmpty ? "Professione non indicata" : cliente.professione),
                 .init(etichetta: "Nucleo familiare", valore: "\(cliente.famiglia.count + 1) \(cliente.famiglia.isEmpty ? "persona" : "persone")",
                       nota: aCarico == 0 ? "Nessuno a carico" : "\(aCarico) a carico"),
-                .init(etichetta: "Da seguire", valore: "\(aperte.count) \(aperte.count == 1 ? "attività" : "attività")",
+                .init(etichetta: "Da seguire", valore: "\(aperte) \(aperte == 1 ? "attività" : "attività")",
                       nota: prossimo.map { "Prossimo incontro \(Formati.giorno.string(from: $0.inizio)) \(Formati.meseBreve.string(from: $0.inizio)), \(Formati.ora.string(from: $0.inizio))" }
                           ?? "Nessun incontro in programma"),
             ])
@@ -599,16 +661,20 @@ struct PanoramicaCliente: View {
     }
 
     /// Le app e le schede collegate al dossier.
-    private func collegati(aperte: [Attivita]) -> some View {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: Misure.Rubrica.schedaAppMinima), spacing: 8)], spacing: 8) {
+    private func collegati(aperte: Int) -> some View {
+            let id = cliente.id
+            // Gli appuntamenti del cliente contati senza copiarli né ordinarli (come `appuntamentiCliente(_:).count`)
+            let appuntamenti: Int = stato.appuntamenti.reduce(0) { $1.clienteId == id ? $0 + 1 : $0 }
+            let documenti = contiDocumenti
+            return LazyVGrid(columns: [GridItem(.adaptive(minimum: Misure.Rubrica.schedaAppMinima), spacing: 8)], spacing: 8) {
                 collegamento(.posizioni, "In essere e in proposta")
                 collegamento(.analisi360, "Previdenza, protezione, investimenti")
                 collegamento(.incontri, "Appunti, decisioni e seguiti")
                 // Obiettivi e documenti sono schede di questo dossier: il clic cambia scheda, non apre un'altra app
                 scheda(.obiettivi, .obiettivi, sottotitoloObiettivi, conteggio: stato.obiettiviCliente(cliente.id).count)
-                collegamento(.agenda, "Appuntamenti", conteggio: stato.appuntamentiCliente(cliente.id).count)
-                collegamento(.attivita, "Azioni ancora aperte", conteggio: aperte.count)
-                scheda(.documenti, .documenti, sottotitoloDocumenti, conteggio: stato.documentiCliente(cliente.id).count)
+                collegamento(.agenda, "Appuntamenti", conteggio: appuntamenti)
+                collegamento(.attivita, "Azioni ancora aperte", conteggio: aperte)
+                scheda(.documenti, .documenti, sottotitoloDocumenti(documenti.daLeggere), conteggio: documenti.tutti)
                 collegamento(.note, "Appunti e idee")
                 collegamento(.presentazioni, "Prospetti in PDF")
                 collegamento(.vera, "Ragiona su questo cliente")
@@ -680,11 +746,26 @@ struct PanoramicaCliente: View {
     }
 
     /// «2 da leggere» se ce ne sono, altrimenti personali e dei prodotti.
-    private var sottotitoloDocumenti: String {
-        let voci = stato.vociDocumenti(cliente.id)
-        let daLeggere = voci.filter { MotoreDocumenti.appartiene($0, a: .daLeggere) }.count
+    private func sottotitoloDocumenti(_ daLeggere: Int) -> String {
         if daLeggere > 0 { return "\(daLeggere) da leggere" }
         return "Personali e dei prodotti"
+    }
+
+    /// I documenti del cliente e quanti sono da leggere, in un passaggio. «Da leggere» è la raccolta di
+    /// `MotoreDocumenti.appartiene(_:a: .daLeggere)`: dati letti da confermare (non nei prospetti di Prisma), documento non
+    /// ancora letto o in lettura. Quella raccolta non guarda le differenze, quindi qui non serve il confronto con il
+    /// dossier che `vociDocumenti` fa per ogni documento.
+    private var contiDocumenti: (tutti: Int, daLeggere: Int) {
+        let id = cliente.id
+        let inLettura = stato.documentiInLettura
+        var tutti = 0
+        var daLeggere = 0
+        for d in stato.dati.documenti where d.clienteId == id {
+            tutti += 1
+            let daControllare = d.genere != .prisma && d.campi.contains { !$0.confermato }
+            if daControllare || d.lettura == .daLeggere || inLettura.contains(d.id) { daLeggere += 1 }
+        }
+        return (tutti, daLeggere)
     }
 
     private func collegamento(_ app: AppPrisma, _ sottotitolo: String, conteggio: Int? = nil) -> some View {

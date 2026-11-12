@@ -13,6 +13,9 @@ struct RiquadroToccati: View {
     let eventi: [EventoMercato]
     let vecchi: Bool
     let senzaDati: Bool
+    /// Le schede in una pila pigra (solo quelle in vista): quando il riquadro ha un'altezza sua (riquadri affiancati).
+    /// Impilati, dentro lo scorrimento di tutta l'app, resta la pila normale (il riquadro prende l'altezza del contenuto).
+    var pigro = false
 
     private typealias R = Tema.Apple.Mercato.Riquadro
     private typealias K = Tema.Apple.Mercato.Toccati
@@ -30,9 +33,11 @@ struct RiquadroToccati: View {
                 FraseVuotaMercato(testo: vuoto)
             } else {
                 ScrollView(.vertical, showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: K.fraSchede) {
-                        ForEach(eventi) { e in
-                            SchedaToccatiMercato(evento: e)
+                    Group {
+                        if pigro {
+                            LazyVStack(alignment: .leading, spacing: K.fraSchede) { schede }
+                        } else {
+                            VStack(alignment: .leading, spacing: K.fraSchede) { schede }
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -42,6 +47,12 @@ struct RiquadroToccati: View {
         .padding(R.padding)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .superficieApple(R.superficie, raggio: R.raggio)
+    }
+
+    private var schede: some View {
+        ForEach(eventi) { e in
+            SchedaToccatiMercato(evento: e)
+        }
     }
 
     private var vuoto: String {
@@ -80,7 +91,10 @@ struct SchedaToccatiMercato: View {
         let _ = ContaCorpi.segna()
         let e = evento
         let forma = RoundedRectangle(cornerRadius: K.raggio, style: .continuous)
-        let nomi = Dictionary(stato.clienti.map { ($0.id, $0.nome) }, uniquingKeysWith: { primo, _ in primo })
+        // I nomi dei clienti visibili una volta per dati dei calcoli, non un dizionario di tutti i clienti per scheda
+        let nomi: [String: String] = stato.ricavato("mercato-nomi-clienti") {
+            Dictionary(stato.clienti.map { ($0.id, $0.nome) }, uniquingKeysWith: { primo, _ in primo })
+        }
         let tipoSerie = e.serieId.flatMap { stato.dati.mercato.serie($0)?.tipo }
         let primo = e.toccati.first.flatMap { stato.cliente($0.clienteId) }
         return VStack(alignment: .leading, spacing: 0) {
@@ -175,6 +189,9 @@ struct GruppoAvatarMercato: View {
 struct RiquadroAvvisi: View {
     @Environment(StatoShell.self) var stato
     let sessione: SessioneMercato
+    /// Le righe in una pila pigra: solo quelle in vista si costruiscono e pulsano (riquadri affiancati, con l'altezza
+    /// della finestra). Impilati, dentro lo scorrimento di tutta l'app, resta la pila normale.
+    var pigro = false
 
     private typealias R = Tema.Apple.Mercato.Riquadro
 
@@ -199,9 +216,11 @@ struct RiquadroAvvisi: View {
                                   ? TestiAppMercato.nessunAvviso : TestiAppMercato.nessunAvvisoConSoglie)
             } else {
                 ScrollView(.vertical, showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 0) {
-                        ForEach(avvisi) { a in
-                            RigaAvvisoMercato(avviso: a)
+                    Group {
+                        if pigro {
+                            LazyVStack(alignment: .leading, spacing: 0) { righe(avvisi) }
+                        } else {
+                            VStack(alignment: .leading, spacing: 0) { righe(avvisi) }
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -211,6 +230,12 @@ struct RiquadroAvvisi: View {
         .padding(R.padding)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .superficieApple(R.superficie, raggio: R.raggio)
+    }
+
+    private func righe(_ avvisi: [AvvisoMercato]) -> some View {
+        ForEach(avvisi) { a in
+            RigaAvvisoMercato(avviso: a)
+        }
     }
 }
 

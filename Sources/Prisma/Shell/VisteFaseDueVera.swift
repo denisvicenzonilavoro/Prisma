@@ -495,6 +495,8 @@ private struct SecondiTrenta: ViewModifier, Animatable {
 struct TrentaSecondiDossierVista: View {
     @Environment(StatoShell.self) var stato
     let cliente: Cliente
+    /// La card è uscita del tutto dalla vista scorrendo la Panoramica: la sfera smette di respirare.
+    @State private var fuoriVista = false
 
     private typealias P = Tema.Apple.Clienti.Panoramica
 
@@ -503,7 +505,7 @@ struct TrentaSecondiDossierVista: View {
         if !stato.inModoCliente {
             let primo = cliente.nome.split(separator: " ").first.map(String.init) ?? cliente.nome
             HStack(spacing: F.spazioAscolto) {
-                SferaVera(misura: F.sferaCardTrenta, viva: true, pensa: false)
+                SferaVera(misura: F.sferaCardTrenta, viva: !fuoriVista, pensa: false)
                 VStack(alignment: .leading, spacing: F.spazioTitoliCardTrenta) {
                     Text("Il cliente in 30 secondi").carattereApple(F.titoloCardTrenta).foregroundColor(F.coloreAnelloTrenta)
                     Text("Prima di chiamarlo, te lo racconto io").carattereApple(F.sottotitoloCardTrenta).foregroundColor(F.coloreFonte)
@@ -517,7 +519,37 @@ struct TrentaSecondiDossierVista: View {
             .padding(P.paddingLaterali)
             .frame(maxWidth: .infinity, alignment: .leading)
             .superficieApple(P.superficie)
+            .fuoriDalloScorrimento { fuoriVista = $0 }
         }
+    }
+}
+
+// MARK: - Fuori dallo scorrimento
+
+/// Le card del dossier con la sfera di Vera (il cliente in 30 secondi, il sussurro) stanno nella Panoramica che scorre:
+/// la sfera respira a 30 fotogrammi al secondo anche quando la card è scrollata via, e `onDisappear` lì non arriva (la
+/// colonna non è pigra). Questo dice alla card quando esce del tutto dalla vista dello scorrimento (`true`) e quando ne
+/// rientra anche solo un filo (`false`), così la sfera si ferma solo quando non si vede. Prima di macOS 15 e iOS 18
+/// non c'è il segnale e la sfera resta viva, come prima.
+private struct FuoriDalloScorrimento: ViewModifier {
+    let cambia: (Bool) -> Void
+
+    /// La parte della card che deve restare in vista perché conti come visibile: un filo (l'alone della sfera sta dentro).
+    static let soglia = 0.01
+
+    @ViewBuilder func body(content: Content) -> some View {
+        if #available(macOS 15.0, iOS 18.0, *) {
+            content.onScrollVisibilityChange(threshold: Self.soglia) { visibile in cambia(!visibile) }
+        } else {
+            content
+        }
+    }
+}
+
+extension View {
+    /// `cambia(true)` quando la vista esce del tutto dallo ScrollView che la contiene, `cambia(false)` quando ne rientra.
+    func fuoriDalloScorrimento(_ cambia: @escaping (Bool) -> Void) -> some View {
+        modifier(FuoriDalloScorrimento(cambia: cambia))
     }
 }
 

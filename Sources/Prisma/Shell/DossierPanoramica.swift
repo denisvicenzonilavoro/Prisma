@@ -48,7 +48,7 @@ struct PanoramicaDossierApple: View {
             // «Luce» §5.4.4 (proposta): i traguardi del cliente ancora da festeggiare, con «Festeggialo ›» verso Messaggi;
             // Messaggi non si apre in modalità cliente, e il traguardo è un appunto del consulente
             if !stato.inModoCliente {
-                let daFesteggiare = stato.traguardiDaFesteggiare(cliente: cliente.id)
+                let daFesteggiare = stato.traguardiDaFesteggiareDossier(cliente.id)
                 if !daFesteggiare.isEmpty {
                     DaFesteggiareApple(traguardi: daFesteggiare)
                         .entrataDossier(2)
@@ -70,6 +70,27 @@ struct PanoramicaDossierApple: View {
             }
         } else {
             laterali
+        }
+    }
+}
+
+extension StatoShell {
+    /// I traguardi ancora da festeggiare di un cliente, per la riga «Da festeggiare» del dossier: gli stessi di
+    /// `traguardiDaFesteggiare(cliente:)`, ma calcolati sui soli dati del cliente (non su tutto l'archivio a ogni disegno
+    /// della Panoramica) e tenuti da parte con `ricavato` finché non cambiano i dati dei calcoli, il giorno o l'ora.
+    /// La riga mostra solo titolo e perché e apre Messaggi con l'id: le note del taccuino (l'idea per il regalo) e le
+    /// capsule non entrano, così un tasto in una nota o un cambio d'aspetto non rifanno la Panoramica.
+    fileprivate func traguardiDaFesteggiareDossier(_ id: String) -> [Traguardo] {
+        ricavato("traguardi-dossier|\(id)|\(DerivatiDati.ora())") { () -> [Traguardo] in
+            let tutti = datiDeiCalcoli()
+            var suoi = tutti
+            suoi.clienti = tutti.clienti.filter { $0.id == id }
+            suoi.posizioni = posizioniCliente(id)
+            suoi.obiettivi = tutti.obiettivi.filter { $0.clienteId == id }
+            suoi.appuntamenti = tutti.appuntamenti.filter { $0.clienteId == id }
+            suoi.note = []
+            suoi.capsule = []
+            return MotoreTraguardi.calcola(dati: suoi, oggi: Date()).filter { $0.clienteId == id && $0.festeggiatoIl == nil }
         }
     }
 }

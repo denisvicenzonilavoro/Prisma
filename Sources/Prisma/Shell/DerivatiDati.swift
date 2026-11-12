@@ -262,7 +262,8 @@ extension StatoShell {
     /// impostazioni che non toccano i calcoli, stato delle viste) va nella chiave, o va letto prima, fuori da `calcola`.
     func ricavato<T>(_ chiave: String, _ calcola: () -> T) -> T {
         let d = derivatiValidi()
-        if let v = d.altri[chiave] as? T { return v }
+        // Prima la voce, poi il tipo: con T opzionale `d.altri[chiave] as? T` riuscirebbe anche senza voce (nil)
+        if let voce = d.altri[chiave], let v = voce as? T { return v }
         let v = calcola()
         if d.altri.count >= DerivatiDati.vociMassimeAltri { d.altri.removeAll(keepingCapacity: true) }
         d.altri[chiave] = v

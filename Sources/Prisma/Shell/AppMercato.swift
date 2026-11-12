@@ -53,8 +53,12 @@ private struct CorpoMercato: View {
     var body: some View {
         let _ = ContaCorpi.segna()
         let oggi = Date()
-        let tessere = stato.tessereMercato(oggi: oggi)
-        let eventi = stato.eventiMercato(oggi: oggi)
+        // Tessere e «Chi è toccato» una volta per dati dei calcoli (mercato, soglie, posizioni, clienti, obiettivi), giorno
+        // e ora, non a ogni passaggio del body: MotoreMercato.toccati scorre tutte le posizioni. La configurazione delle
+        // serie si legge una volta per sessione.
+        let ora = DerivatiDati.ora(oggi)
+        let tessere: [TesseraMercato] = stato.ricavato("mercato-tessere|\(ora)") { stato.tessereMercato(oggi: oggi) }
+        let eventi: [EventoMercato] = stato.ricavato("mercato-eventi|\(ora)") { stato.eventiMercato(oggi: oggi) }
         let d = dettaglio
         return GeometryReader { geo in
             let largo = geo.size.width >= D.larghezzaAffiancati
@@ -123,11 +127,13 @@ private struct CorpoMercato: View {
             Group {
                 if largo {
                     HStack(alignment: .top, spacing: D.spazioRiquadri) {
-                        RiquadroToccati(eventi: eventi, vecchi: vecchi, senzaDati: maiAggiornato)
+                        // Affiancati i riquadri hanno l'altezza della finestra: le righe si costruiscono mentre entrano
+                        // in vista (`pigro`)
+                        RiquadroToccati(eventi: eventi, vecchi: vecchi, senzaDati: maiAggiornato, pigro: true)
                             .frame(width: sinistra)
                             .frame(maxHeight: .infinity)
                             .entrataCascata(M.indiceMassimoTessere + 1, base: M.base)
-                        RiquadroAvvisi(sessione: sessione)
+                        RiquadroAvvisi(sessione: sessione, pigro: true)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .entrataCascata(M.indiceMassimoTessere + 2, base: M.base)
                     }
