@@ -481,7 +481,13 @@ enum RinvioEsitoTagliando {
                                                 incontri: incontri, documenti: documenti, regole: regole, oggi: adesso,
                                                 ignorate: ignorate)
             DispatchQueue.main.async { [weak stato] in
-                guard let stato, !stato.inModoCliente, stato.versioneCalcoli == versione, !stato.esitoTagliandoAttuale else { return }
+                guard let stato, !stato.inModoCliente, !stato.esitoTagliandoAttuale else { return }
+                guard stato.versioneCalcoli == versione else {
+                    // Dati cambiati durante il controllo: con un esito in memoria lo rifà la richiesta nata dal cambio
+                    // (onChange di versioneCalcoli); senza esito quelle richieste non partono, quindi si chiede di nuovo qui
+                    if stato.esitoTagliando == nil { RinvioEsitoTagliando.rifai(stato, soloSeManca: true) }
+                    return
+                }
                 stato.esitoTagliando = esito
                 stato.versioneEsitoTagliando = versione
             }
