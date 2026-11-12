@@ -31,9 +31,11 @@ struct VistaPassaparola: View {
         let clienti = stato.dati.clienti
         let potenziali = stato.dati.potenziali
         let posizioni = stato.dati.posizioni
-        let albero = MotorePassaparola.albero(clienti: clienti, potenziali: potenziali, posizioni: posizioni)
-        let ambasciatori = MotorePassaparola.ambasciatori(clienti: clienti, potenziali: potenziali, posizioni: posizioni)
-        let quota = MotorePassaparola.quotaPassaparola(clienti: clienti, posizioni: posizioni, oggi: oggi)
+        // I patrimoni una volta sola, per albero, ambasciatori e quota
+        let netti = MotorePassaparola.patrimoni(posizioni)
+        let albero = MotorePassaparola.albero(clienti: clienti, potenziali: potenziali, posizioni: posizioni, netti: netti)
+        let ambasciatori = MotorePassaparola.ambasciatori(clienti: clienti, potenziali: potenziali, posizioni: posizioni, netti: netti)
+        let quota = MotorePassaparola.quotaPassaparola(clienti: clienti, posizioni: posizioni, oggi: oggi, netti: netti)
         let anni = MotorePassaparola.nuoviPerAnno(clienti: clienti, oggi: oggi)
         // Le pratiche non entrano nei calcoli in cache (DatiPrisma.stessiCalcoli): si leggono vive per la data della firma
         let momenti: [MomentoPerChiedere] = {

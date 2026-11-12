@@ -478,13 +478,13 @@ extension CorpoAppVera {
 
     /// «Cerca nella Biblioteca» sotto l'ultima risposta (`domandaPerBiblioteca`): riconoscere la domanda passa le
     /// espressioni regolari su ogni nome di cliente. Le condizioni che costano poco restano fuori dalla cache; nella
-    /// chiave i due messaggi e se la Biblioteca ha testi in cui cercare (`testi`, che non carica l'indice dal disco:
-    /// quando arriva, la vista si ridisegna e la chiave cambia). I nomi dei clienti cambiano `versioneCalcoli`.
+    /// chiave i due messaggi e se la Biblioteca ha testi in cui cercare (`tutti`, lo stesso stato che legge il calcolo:
+    /// l'indice di solito è già letto in anticipo allo sblocco). I nomi dei clienti cambiano `versioneCalcoli`.
     private func domandaBibliotecaInCache(in elenco: [MessaggioVera]) -> String? {
         guard !stato.veraInCorso, elenco.count >= 2, let ultima = elenco.last, ultima.autore == .vera else { return nil }
         let domanda = elenco[elenco.count - 2]
         guard domanda.autore == .utente else { return nil }
-        let leggibili = stato.biblioteca.testi.contains { !$0.illeggibile && ($0.testo != nil || !$0.articoli.isEmpty) }
+        let leggibili = stato.biblioteca.tutti.contains { !$0.illeggibile && ($0.testo != nil || !$0.articoli.isEmpty) }
         let chiaveCache = "vera-biblioteca-\(ultima.id)-\(domanda.id)-\(domanda.testo.hashValue)-\(leggibili)"
         let trovata: [String] = stato.ricavato(chiaveCache) {
             stato.domandaPerBiblioteca(in: elenco).map { [$0] } ?? []

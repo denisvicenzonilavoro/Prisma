@@ -530,9 +530,11 @@ extension StatoShell {
         Movimenti.dopo(Tema.Moto.Sblocco.durataEntrata) { [weak self] in
             guard let self, self.sistema.giroBlocco == giro, !self.bloccato else { return }
             self.sistema.bloccatoStabile = false
-            // La Biblioteca si legge fuori dal thread principale, a sblocco finito (BibliotecaVera.swift): la prima
-            // apertura, la prima ricerca ⌘K e la prima domanda sulle norme non decodificano più l'indice nel disegno
+            #if os(macOS)
+            // La Biblioteca (solo sul Mac) si legge fuori dal thread principale, a sblocco finito (BibliotecaVera.swift):
+            // la prima apertura, la prima ricerca ⌘K e la prima domanda sulle norme non decodificano più l'indice nel disegno
             self.biblioteca.preparaInAnticipo()
+            #endif
             // Al primo avvio parte l'introduzione «Come funziona Prisma»
             self.dopoSblocco()
             // Il tagliando, se una notte è saltata (a sblocco finito, mai durante l'entrata; CollegaTagliandoShell.swift)
