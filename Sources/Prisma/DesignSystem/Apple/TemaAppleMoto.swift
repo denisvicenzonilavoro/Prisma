@@ -233,6 +233,8 @@ extension Tema.Apple {
             static let massimoPredefinito: Double = 10
             static var animazione: Animation { Curva.molla.animazione(durata) }
             static let ripiego = Molla(risposta: 0.50, smorzamento: 0.65)
+            /// Con il puntatore già sulla scheda: la segue con una molla brevissima, senza ondeggiare.
+            static let segui = Animation.interactiveSpring(response: 0.1, dampingFraction: 0.9)
         }
 
         /// Riquadro della scrivania al passaggio: −3 in y.

@@ -213,9 +213,15 @@ private struct CursoreEntraBlocco: View {
                     return
                 }
                 guard d >= corsa * M.soglia || prevista >= corsa * M.soglia * Tema.Apple.Lucchetto.quotaPrevista else { return }
-                var t = Transaction()
-                t.disablesAnimations = fermo
-                withTransaction(t) { arrivato = true }
+                // La manopola corre fino in fondo con la velocità del dito (prima saltava lì di colpo)
+                let v = Movimenti.velocita(traslazione: d, prevista: prevista, distanza: max(corsa - d, 1))
+                if fermo {
+                    var t = Transaction()
+                    t.disablesAnimations = true
+                    withTransaction(t) { arrivato = true }
+                } else {
+                    withAnimation(Movimenti.curva(Tema.Moto.Sblocco.completa(velocita: v))) { arrivato = true }
+                }
                 entra(Movimenti.velocita(traslazione: d, prevista: prevista, distanza: corsa))
             }
     }

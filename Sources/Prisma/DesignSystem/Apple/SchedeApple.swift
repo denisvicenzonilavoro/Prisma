@@ -98,7 +98,9 @@ struct SchedaInclinabileApple: ViewModifier {
             guard m.width > 0, m.height > 0 else { return }
             let n = CGPoint(x: min(max(p.x / m.width, 0), 1),
                             y: min(max(p.y / m.height, 0), 1))
-            withAnimation(Tema.Apple.Moto.Inclinazione.ripiego.animazione) {
+            // Entrando la molla del tema; poi la scheda segue il puntatore quasi senza ritardo (una molla a ogni
+            // movimento la farebbe inseguire e ondeggiare)
+            withAnimation(sopra ? Tema.Apple.Moto.Inclinazione.segui : Tema.Apple.Moto.Inclinazione.ripiego.animazione) {
                 punto = n
                 sopra = true
                 luce = true

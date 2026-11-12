@@ -496,7 +496,9 @@ extension StatoShell {
         DispatchQueue.main.async { [weak self] in self?.fermaVoce() }
         Movimenti.dopo(Tema.Moto.Blocco.durata) { [weak self] in
             guard let self else { return }
-            if self.modoCliente != nil { self.modoCliente = nil }
+            // Solo se questo blocco è ancora quello in corso: uno sblocco rapido l'ha già tolta (in `sblocca`), e
+            // toglierla qui cadrebbe nel mezzo dell'entrata della scrivania
+            if self.sistema.giroBlocco == giro, self.modoCliente != nil { self.modoCliente = nil }
             // Sotto la schermata: allo sblocco si torna alla scrivania con i widget
             if self.bloccato, self.sistema.paginaVera != 0 || self.sistema.gestoVera.spostamento != 0 {
                 self.nascondiVeraScrivania(animato: false)
@@ -515,6 +517,9 @@ extension StatoShell {
             sbloccoInAttesa = velocita
             return
         }
+        // Il blocco toglie sempre la modalità cliente: se lo sblocco arriva prima che il blocco l'abbia tolta (blocco
+        // e sblocco rapidi), si toglie qui, di colpo, prima che la scrivania entri
+        if modoCliente != nil { diColpo(implicite: false) { modoCliente = nil } }
         let giro = sistema.giroBlocco &+ 1
         sistema.giroBlocco = giro
         Movimenti.anima(Tema.Moto.Sblocco.entrata(velocita: velocita), durata: Tema.Moto.Sblocco.durataEntrata,
@@ -614,11 +619,13 @@ extension StatoShell {
             for (app, da) in fatti where self.sistema.flip[app]?.da == da {
                 self.sistema.flip[app]?.progresso = 1
             }
-        }
-        Movimenti.dopo(Tema.Moto.Finestre.fineIngrandimento) { [weak self] in
-            guard let self else { return }
-            for (app, da) in fatti where self.sistema.flip[app] == PassaggioCornice(da: da, progresso: 1) {
-                self.sistema.flip[app] = nil
+            // Il tempo della pulizia parte con la curva (al giro dopo, dopo l'impaginazione nuova), non dalla chiamata:
+            // così l'ultimo tratto del movimento non salta
+            Movimenti.dopo(Tema.Moto.Finestre.fineIngrandimento) { [weak self] in
+                guard let self else { return }
+                for (app, da) in fatti where self.sistema.flip[app] == PassaggioCornice(da: da, progresso: 1) {
+                    self.sistema.flip[app] = nil
+                }
             }
         }
     }

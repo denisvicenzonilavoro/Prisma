@@ -67,6 +67,8 @@ struct CorpoShell: View {
     @State private var misuraCongelata: CGSize?
     /// La sala della presentazione copre tutto (a dissolvenza finita): la scrivania sotto non si disegna.
     @State private var salaCoprente = false
+    /// Conta le aperture e le chiusure della sala coprente di «Luce»: un'attesa vale solo per il giro in cui è nata.
+    @State private var giroSala = 0
 
     /// La scrivania sotto la sala non si vede: barra, contrassegno della modalità cliente, finestre e comandi del
     /// visore non traspaiono dal velo. Nell'app a dissolvenza finita; nelle istantanee (niente dissolvenza) subito.
@@ -201,9 +203,12 @@ struct CorpoShell: View {
             // «Luce»: anche la presentazione di un'esperienza copre tutto a dissolvenza finita
             .onChange(of: sistema.sovrapposizione?.coprente == true) { coperta in
                 guard !modoIstantanea, stato.presentazione == nil else { return }
+                giroSala &+= 1
+                let giro = giroSala
                 if coperta {
+                    // Chiusa e riaperta in fretta: vale solo l'attesa dell'ultima apertura (la sala è ancora velata)
                     Movimenti.dopo(Tema.Moto.Pannelli.durataPresentazione) {
-                        if sistema.sovrapposizione?.coprente == true { salaCoprente = true }
+                        if giroSala == giro, sistema.sovrapposizione?.coprente == true { salaCoprente = true }
                     }
                 } else {
                     var t = Transaction()
@@ -215,9 +220,11 @@ struct CorpoShell: View {
                 guard !modoIstantanea else { return }
                 if attiva {
                     misuraCongelata = geo.size
-                    // A dissolvenza finita la sala copre tutto: la scrivania sotto smette di disegnarsi
+                    // A dissolvenza finita la sala copre tutto: la scrivania sotto smette di disegnarsi (solo se nel
+                    // frattempo la presentazione non è stata chiusa e riaperta: allora vale l'attesa nuova)
+                    let giro = sistema.giroPresentazione
                     Movimenti.dopo(Tema.Moto.Pannelli.durataPresentazione) {
-                        if stato.presentazione != nil { salaCoprente = true }
+                        if sistema.giroPresentazione == giro, stato.presentazione != nil { salaCoprente = true }
                     }
                 } else {
                     // All'uscita la scrivania c'è già, di colpo, sotto la sala che svanisce
