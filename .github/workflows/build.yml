@@ -624,10 +624,11 @@ jobs:
     permissions:
       contents: read
     # Non usare macos-latest: le code dei runner Apple Silicon gratuiti vanno in timeout.
-    # 90 minuti: su un runner lento la compilazione per iPhone e iPad supera l'ora (12 novembre 2026: fermata a 60
+    # 180 minuti, come il Mac: su un runner lento la compilazione per iPhone e iPad supera l'ora e mezza (12 novembre 2026:
+    # fermata a 60 e poi a 90
     # minuti senza errori, e senza .ipa il rilascio non parte).
     runs-on: macos-15-intel
-    timeout-minutes: 90
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v6
 
