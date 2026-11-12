@@ -108,22 +108,13 @@ struct VoloDallIcona: ViewModifier, Animatable {
                       width: misura.width * k, height: misura.height * k)
     }
 
+    /// L'opacità dipende solo da quanto la finestra è uscita dall'icona, uguale nei due versi: così un volo che
+    /// cambia verso a metà (ridotta e subito ripristinata, chiusa mentre si apre) non lampeggia. Piena da
+    /// `valoreOpaco` in su: in chiusura svanisce nell'ultimo tratto, come prima; in apertura è subito piena.
     private func opacita(fermo: Bool) -> Double {
-        let p = Double(progresso)
-        if fermo { return min(max(p, 0), 1) }
-        if p <= 0 { return 0 }
-        // Al suo posto (quasi sempre): piena, senza cercare il tempo sulla curva
-        if p >= 1 { return 1 }
-        if esce {
-            let t = Tema.Apple.Moto.Curva.finestraApre.tempo(alValore: p)
-            let partenza = Tema.Apple.Moto.VoloFinestra.opacitaPartenza
-            return min(1, partenza + (1 - partenza) * t / Tema.Apple.Moto.VoloFinestra.quotaOpaca)
-        }
-        // Verso l'icona il valore scende da 1 a 0: la curva è a 1 − p
-        let t = Tema.Apple.Moto.Curva.finestraChiude.tempo(alValore: 1 - p)
-        let inizio = Tema.Apple.Moto.FinestraChiude.inizioSvanire
-        guard t > inizio else { return 1 }
-        return max(0, 1 - (t - inizio) / (1 - inizio))
+        let p = min(max(Double(progresso), 0), 1)
+        if fermo { return p }
+        return min(1, p / Tema.Apple.Moto.VoloFinestra.valoreOpaco)
     }
 }
 

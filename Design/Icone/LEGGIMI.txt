@@ -82,6 +82,15 @@ Presentazioni → Prospetti e report · Vera → Vera · Ricerca → Ricerca ·
 Impostazioni → Impostazioni · Prisma → Scrivania (dock, benvenuto, impostazioni) ·
 Studio → Studio · Messaggi → Messaggi · Mercato → Mercato
 
+VERA RIDISEGNATA (12 novembre 2026, scelta lasciata a Claude dall'utente)
+Non viene più dal tema: fondo e glifo sono nella costante VERA dello script.
+- Vera → .vera: fondo #9C84FA → #3B2FA6 (viola notte); la sfera luminosa
+  grande, con un alone morbido, una luce d'aurora dentro (rosa e azzurro sul
+  viola), l'orlo chiaro, il riflesso in alto a sinistra, la luce che rimbalza
+  in basso e una stellina a quattro punte accanto.
+Per rigenerare solo lei (e la tavola di controllo):
+  NODE_PATH=$(npm root -g) node Design/Icone/genera-icone.js --solo-vera
+
 ICONE NUOVE DI «ORIZZONTE» (fondo c1 → c2, glifo)
 - Studio    #7E97B3 → #3F5A78 (blu ardesia): valigetta
 - Messaggi  #F2A675 → #C8683A (terracotta): busta con il pallino rosso e la

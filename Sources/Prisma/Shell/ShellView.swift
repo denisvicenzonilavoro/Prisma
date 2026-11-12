@@ -67,6 +67,8 @@ struct CorpoShell: View {
     @State private var misuraCongelata: CGSize?
     /// La sala della presentazione copre tutto (a dissolvenza finita): la scrivania sotto non si disegna.
     @State private var salaCoprente = false
+    /// Conta le aperture e le chiusure della sala coprente di «Luce»: un'attesa vale solo per il giro in cui è nata.
+    @State private var giroSala = 0
 
     /// La scrivania sotto la sala non si vede: barra, contrassegno della modalità cliente, finestre e comandi del
     /// visore non traspaiono dal velo. Nell'app a dissolvenza finita; nelle istantanee (niente dissolvenza) subito.
@@ -201,9 +203,12 @@ struct CorpoShell: View {
             // «Luce»: anche la presentazione di un'esperienza copre tutto a dissolvenza finita
             .onChange(of: sistema.sovrapposizione?.coprente == true) { coperta in
                 guard !modoIstantanea, stato.presentazione == nil else { return }
+                giroSala &+= 1
+                let giro = giroSala
                 if coperta {
+                    // Chiusa e riaperta in fretta: vale solo l'attesa dell'ultima apertura (la sala è ancora velata)
                     Movimenti.dopo(Tema.Moto.Pannelli.durataPresentazione) {
-                        if sistema.sovrapposizione?.coprente == true { salaCoprente = true }
+                        if giroSala == giro, sistema.sovrapposizione?.coprente == true { salaCoprente = true }
                     }
                 } else {
                     var t = Transaction()
@@ -215,9 +220,11 @@ struct CorpoShell: View {
                 guard !modoIstantanea else { return }
                 if attiva {
                     misuraCongelata = geo.size
-                    // A dissolvenza finita la sala copre tutto: la scrivania sotto smette di disegnarsi
+                    // A dissolvenza finita la sala copre tutto: la scrivania sotto smette di disegnarsi (solo se nel
+                    // frattempo la presentazione non è stata chiusa e riaperta: allora vale l'attesa nuova)
+                    let giro = sistema.giroPresentazione
                     Movimenti.dopo(Tema.Moto.Pannelli.durataPresentazione) {
-                        if stato.presentazione != nil { salaCoprente = true }
+                        if sistema.giroPresentazione == giro, stato.presentazione != nil { salaCoprente = true }
                     }
                 } else {
                     // All'uscita la scrivania c'è già, di colpo, sotto la sala che svanisce
@@ -427,9 +434,13 @@ struct CorpoShell: View {
 
     // MARK: Dock nascosto
 
+    /// Il dock sale sopra le finestre: chi arriva fin laggiù si accorcia con lui, nello stesso movimento.
     private func richiamaDock() {
         annullaNascondiDock()
-        if !dockRichiamato { dockRichiamato = true }
+        guard !dockRichiamato else { return }
+        Movimenti.anima(Tema.Moto.Dock.mostra, durata: Tema.Moto.Dock.durataMostra, animato: !modoIstantanea) {
+            dockRichiamato = true
+        }
     }
 
     private func annullaNascondiDock() {
@@ -440,7 +451,10 @@ struct CorpoShell: View {
     /// Il puntatore ha lasciato il dock richiamato: si nasconde dopo un attimo, se non torna.
     private func nascondiDockTraPoco() {
         annullaNascondiDock()
-        let lavoro = DispatchWorkItem { dockRichiamato = false }
+        // Il dock scende e le finestre accorciate tornano lunghe, con la stessa curva
+        let lavoro = DispatchWorkItem {
+            Movimenti.anima(Tema.Moto.Dock.nascondi, durata: Tema.Moto.Dock.durataNascondi) { dockRichiamato = false }
+        }
         attesaDock.lavoro = lavoro
         DispatchQueue.main.asyncAfter(deadline: .now() + Tema.Moto.Dock.ritardoNascondi, execute: lavoro)
     }
@@ -486,6 +500,9 @@ struct CorpoShell: View {
         let attiva = sistema.appAttiva
         // Le finestre ridotte tengono la cornice che avevano (con il dock nascosto): ridurre l'ultima non le reimpagina
         let areaRidotte = ShellView.area(per: misura, dockNascosto: true)
+        // Il dock nascosto richiamato sopra le finestre: dove arriva il suo spazio, le finestre si accorciano
+        let limiteDock: CGFloat? = dockNascosto && dockRichiamato
+            ? ShellView.area(per: misura, dockNascosto: false).height : nil
         let calmo = !modoIstantanea && Movimenti.calmo
         // Tutte le finestre fuori vista sotto la sala della presentazione (cambia di rado: un valore d'ambiente va bene);
         // coperte, nascoste, ridotte e sotto il blocco lo dice StatoFinestre.finestraInVista a chi lo chiede
@@ -493,7 +510,8 @@ struct CorpoShell: View {
         return ZStack(alignment: .topLeading) {
             ForEach(CorpoShell.inOrdineFisso(elenco)) { f in
                 finestra(f, z: elenco.firstIndex(where: { $0.app == f.app }) ?? 0, attiva: f.app == attiva,
-                         area: f.ridotta ? areaRidotte : area, calmo: calmo, sotto: sotto)
+                         area: f.ridotta ? areaRidotte : area, limiteDock: f.ridotta ? nil : limiteDock,
+                         calmo: calmo, sotto: sotto)
             }
         }
         .frame(width: area.width, height: area.height, alignment: .topLeading)
@@ -506,8 +524,11 @@ struct CorpoShell: View {
     /// riduzione, ripristino: VoloDallIcona, Shell/VoloFinestra.swift). Con «Riduci movimento» il volo è una
     /// dissolvenza breve. Il contenuto dell'app non si rifà durante i movimenti: cambiano solo i valori dei modificatori.
     /// `sotto`: tutte le finestre sono fuori vista (sotto la sala della presentazione, a dissolvenza finita).
-    private func finestra(_ f: StatoShell.Finestra, z: Int, attiva: Bool, area: CGRect, calmo: Bool, sotto: Bool) -> some View {
-        let c = stato.cornice(di: f, in: area)
+    /// `limiteDock`: con il dock richiamato, l'altezza fin dove arrivano le finestre (si accorciano, non si spostano).
+    private func finestra(_ f: StatoShell.Finestra, z: Int, attiva: Bool, area: CGRect, limiteDock: CGFloat?,
+                          calmo: Bool, sotto: Bool) -> some View {
+        let piena = stato.cornice(di: f, in: area)
+        let c = limiteDock.map { CorpoShell.accorcia(piena, fino: $0) } ?? piena
         let w = max(c.width, 1)
         let h = max(c.height, 1)
         let arrivo = sistema.inArrivo.contains(f.app)
@@ -548,6 +569,17 @@ struct CorpoShell: View {
             .accessibilityHidden(f.ridotta || coperta)
             .zIndex(Double(z))
             .transition(uscita)
+    }
+}
+
+extension CorpoShell {
+    /// Una finestra che scende oltre `fino` si accorcia fin lì (mai sotto la sua misura minima); solo se non basta sale.
+    static func accorcia(_ c: CGRect, fino altezza: CGFloat) -> CGRect {
+        guard c.maxY > altezza else { return c }
+        var r = c
+        r.size.height = max(min(Misure.Finestra.minima.height, c.height), altezza - c.minY)
+        if r.maxY > altezza { r.origin.y = max(0, altezza - r.height) }
+        return r
     }
 }
 

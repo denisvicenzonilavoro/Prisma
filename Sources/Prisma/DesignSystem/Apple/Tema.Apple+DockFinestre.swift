@@ -8,10 +8,9 @@ import SwiftUI
 extension Tema.Apple.Moto {
     /// La finestra che vola fra l'icona del dock e la sua cornice (apertura, chiusura, riduzione, ripristino).
     enum VoloFinestra {
-        /// All'uscita dall'icona la finestra è già visibile al 20%.
-        static let opacitaPartenza: Double = 0.2
-        /// …ed è del tutto opaca al 35% del tempo dell'apertura.
-        static let quotaOpaca: Double = 0.35
+        /// La finestra è del tutto opaca quando è uscita dall'icona per questa parte del volo (in chiusura è il punto
+        /// che la curva raggiunge al 60% del tempo: lì comincia a svanire). Una sola regola per i due versi.
+        static let valoreOpaco: Double = 0.18
         /// Senza un'icona da cui partire (app fuori dal dock): appena più piccola, al suo posto.
         static let scalaSulPosto: CGFloat = 0.94
         /// Passi di bisezione per ritrovare il tempo dal valore della curva (2^-24: ben sotto un fotogramma).

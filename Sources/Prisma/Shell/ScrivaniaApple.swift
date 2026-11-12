@@ -32,7 +32,7 @@ struct RiquadriScrivania: View {
     @Environment(StatoFinestre.self) var sistema
 
     var body: some View {
-        CorpoRiquadriScrivania(sistema: sistema, bloccato: sistema.bloccato, davanti: !sistema.visibili.isEmpty)
+        CorpoRiquadriScrivania(sistema: sistema, bloccato: sistema.bloccato, davanti: sistema.appAttiva != nil)
             .equatable()
     }
 

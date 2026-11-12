@@ -8,16 +8,18 @@ import SwiftUI
 extension Tema.Misura {
     enum VeraScrivania {
         // Le due pagine
-        /// Quanto scorre la scrivania (in larghezze) mentre si apre Vera; con «Riduci movimento» niente, solo dissolvenza.
-        static let corsaScrivania: CGFloat = 0.32
-        /// Da quanto lontano arriva Vera (in larghezze).
-        static let corsaVera: CGFloat = 0.22
+        /// Quanto scorre la scrivania (in larghezze) mentre si apre Vera: una pagina intera, così segue il dito
+        /// uno a uno come gli spazi del Mac; con «Riduci movimento» niente, solo dissolvenza.
+        static let corsaScrivania: CGFloat = 1
+        /// Da quanto lontano arriva Vera (in larghezze): dal bordo destro, attaccata alla scrivania.
+        static let corsaVera: CGFloat = 1
         /// Il gesto deve muoversi di tanto (pt) prima di decidere se è orizzontale.
         static let sogliaAvvio: CGFloat = 8
         /// È orizzontale se lo spostamento in x supera di tanto quello in y.
         static let rapportoOrizzontale: CGFloat = 1.3
-        /// Il trascinamento col mouse parte dopo tanti punti (i clic sui widget restano clic).
-        static let distanzaTrascinamento: CGFloat = 24
+        /// Il trascinamento col mouse parte dopo tanti punti (i clic sui widget restano clic). La pagina parte da lì,
+        /// senza scatto: lo spazio di avvio non si recupera di colpo.
+        static let distanzaTrascinamento: CGFloat = 12
 
         // I due puntini delle pagine, sopra il dock
         static let punto: CGFloat = 6
@@ -110,12 +112,12 @@ extension Tema.Moto {
     enum VeraScrivania {
         /// Il passaggio tra le pagine: molla senza rimbalzo, con la velocità del gesto.
         static func pagina(velocita: Double = 0) -> Animation {
-            Tema.Moto.conMolla(risposta: 0.42, smorzamento: 1, velocita: velocita)
+            Tema.Moto.conMolla(risposta: 0.3, smorzamento: 1, velocita: velocita)
         }
-        static let durataPagina: Double = 0.45
+        static let durataPagina: Double = 0.32
         /// Al rilascio si cambia pagina oltre metà corsa, oppure con un colpo più veloce di così (pagine al secondo).
         static let sogliaPagina: CGFloat = 0.5
-        static let velocitaColpo: CGFloat = 0.9
+        static let velocitaColpo: CGFloat = 0.5
         /// La velocità del dito si misura sugli ultimi tanti secondi del gesto.
         static let finestraVelocita: Double = 0.1
         /// Il pannello che si allarga: la stessa molla della mini Vera (da capsula a scheda).

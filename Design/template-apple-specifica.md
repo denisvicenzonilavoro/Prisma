@@ -574,7 +574,7 @@ In SwiftUI è uno `ZStack` in `Shell/` con `zIndex` espliciti: `Tema.Apple.Livel
 - **Voci del template**, in ordine: Scrivania, Clienti, Posizioni, Analisi 360, Agenda, Prospetti, Ruby, Impostazioni. In Prisma restano le voci e le regole di `AppPrisma.delDock`: Posizioni subito dopo Clienti, e le app ospitate (Obiettivi, Documenti, Simulazioni, Confronti, Attività) non hanno una voce propria.
 - **Ingrandimento.**
   - Si calcola `d = |x − centro voce|`, poi `s = 1 + 0,36·max(0, 1 − d/130)`.
-  - L'icona diventa `50·s` (al massimo 68) e la voce `62·(1 + (s − 1)·0,7)`. La transizione è di 0,14 s e il dock cresce verso l'alto.
+  - L'icona diventa `50·s` (al massimo 68) e la voce `62·(1 + (s − 1)·0,7)`. La transizione è di 0,14 s; la capsula del dock non si alza (dal 12 novembre 2026, richiesta dell'utente): le icone ingrandite escono sopra di lei, come nel Dock del Mac, e con il puntatore già sul dock lo seguono con una molla brevissima.
   - Anche la data dell'Agenda si ingrandisce:
     - «NOV» 8·s bold `#E5484D`, a `9 + 50(s−1)·0,2`;
     - il giorno 21·s medium `#222`, a `17 + 50(s−1)·0,34`.

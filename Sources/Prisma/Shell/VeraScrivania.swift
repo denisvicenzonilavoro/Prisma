@@ -15,12 +15,14 @@ import Observation
     @ObservationIgnored var attivo = false
     /// La pagina da cui è partito.
     @ObservationIgnored var partenza: CGFloat = 0
+    /// Lo spostamento del dito quando il gesto è stato preso: la pagina parte da qui, senza scatto.
+    @ObservationIgnored var avvio: CGFloat = 0
 
     /// Segue il dito: `dito` è lo spostamento orizzontale dall'inizio (negativo = verso sinistra, verso Vera).
     /// Oltre le due pagine il movimento rallenta, come gli scorrimenti del Mac.
     func segui(dito: CGFloat, larghezza: CGFloat) {
         let w = max(larghezza, 1)
-        let posizione = Movimenti.elastico(partenza * w - dito, minimo: 0, massimo: w)
+        let posizione = Movimenti.elastico(partenza * w - (dito - avvio), minimo: 0, massimo: w)
         let nuovo = posizione / w - partenza
         guard abs(nuovo - spostamento) > 0.0005 else { return }
         var t = Transaction()
@@ -132,8 +134,10 @@ struct PagineScrivania: View {
                 .environment(\.prismaInVista, !(ferme || (dietroVera && visibile >= 1)))
                 .frame(width: w, height: altezza)
                 .offset(x: calmo ? 0 : -p * w * m.corsaScrivania, y: Misure.Barra.altezza)
-                // Sotto una finestra ingrandita, a transizione finita, la scrivania non si disegna (resta montata)
-                .opacity(nascosti ? 0 : Double(1 - visibile))
+                // Sotto una finestra ingrandita, a transizione finita, la scrivania non si disegna (resta montata).
+                // Le pagine scorrono intere col dito: si dissolvono solo con «Riduci movimento»; a pagina finita
+                // quella fuori schermo non si disegna
+                .opacity(nascosti ? 0 : calmo ? Double(1 - visibile) : (visibile >= 1 ? 0 : 1))
                 .allowsHitTesting(!sistema.scrivaniaNascosta && p < Tema.Moto.VeraScrivania.sogliaPagina)
                 // Simultaneo: il tocco della goccia sul fondo e i riquadri non devono inghiottire il trascinamento
                 .simultaneousGesture(trascinamento(larghezza: w))
@@ -149,7 +153,7 @@ struct PagineScrivania: View {
                 .environment(\.prismaInVista, !ferme)
                 .frame(width: w, height: altezza)
                 .offset(x: calmo ? 0 : (1 - p) * w * m.corsaVera, y: Misure.Barra.altezza)
-                .opacity(nascosti ? 0 : Double(visibile))
+                .opacity(nascosti ? 0 : calmo ? Double(visibile) : (visibile > 0 ? 1 : 0))
                 .allowsHitTesting(p >= Tema.Moto.VeraScrivania.sogliaPagina && !sistema.scrivaniaNascosta)
             }
 
@@ -212,6 +216,7 @@ struct PagineScrivania: View {
                     // Verso Vera dalla scrivania, verso la scrivania da Vera
                     guard (dx < 0 && partenza < 0.5) || (dx > 0 && partenza >= 0.5) else { return }
                     gesto.partenza = partenza
+                    gesto.avvio = dx
                     gesto.attivo = true
                 }
                 gesto.segui(dito: dx, larghezza: w)
