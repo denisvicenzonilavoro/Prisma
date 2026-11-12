@@ -322,6 +322,14 @@ enum VoceConfronto: Hashable {
     /// (non a ogni disegno della barra in alto).
     private(set) var notifiche: [Notifica] = []
     @ObservationIgnored private var timerNotifiche: Timer?
+    /// Ciò che le notifiche leggevano all'ultimo calcolo: con la stessa firma (`FirmaNotifiche`) il ricalcolo darebbe lo
+    /// stesso elenco, quindi l'apertura del pannello, il cambio del cliente attivo e una nota non lo rifanno.
+    @ObservationIgnored private var firmaUltimeNotifiche: FirmaNotifiche?
+    /// Cresce con ogni modifica dei dati che le notifiche possono leggere: tutte tranne le note del taccuino, il cliente
+    /// attivo, gli array riscritti uguali e i campi neutri che le notifiche non leggono.
+    @ObservationIgnored private var versioneDatiNotifiche = 0
+    /// I campi neutri letti dalle notifiche, com'erano all'ultima modifica neutra (`NeutriNotifiche`).
+    @ObservationIgnored private var neutriNotifiche: NeutriNotifiche?
     /// Il giorno e l'ora intera di adesso, osservati: `chiaveVista` e `derivatiValidi` li leggono, così le viste che
     /// mostrano dati ricavati (e i corpi `Equatable` con la `ChiaveVista`) si rifanno allo scoccare dell'ora e a
     /// mezzanotte anche senza modifiche ai dati. Li aggiornano il timer delle notifiche (al minuto) e il cambio di
@@ -672,10 +680,12 @@ enum VoceConfronto: Hashable {
         avviaNotifiche()
         // Il tagliando dei dati: il controllo dovuto (poco dopo l'avvio) e il prossimo turno notturno (CollegaTagliandoShell.swift)
         avviaTagliando()
-        // Lo sblocco chiesto mentre l'archivio arrivava
+        // Lo sblocco chiesto mentre l'archivio arrivava: al giro dopo (come `Movimenti.alGiroDopo`), così il primo
+        // aggiornamento con l'archivio intero (la scrivania con le cache da rifare, sotto la schermata di benvenuto) cade
+        // prima del primo fotogramma dello sblocco, che parte pulito
         if let velocita = sbloccoInAttesa {
             sbloccoInAttesa = nil
-            sblocca(velocita: velocita)
+            DispatchQueue.main.async { [weak self] in self?.sblocca(velocita: velocita) }
         }
     }
 
@@ -712,9 +722,13 @@ enum VoceConfronto: Hashable {
         switch cambio {
         case .calcoli:
             versioneCalcoli &+= 1
+            versioneDatiNotifiche &+= 1
             cambiaVersioneComuneClienti()
         case .calcoliClienti(let ids):
+            // Nessun cliente toccato: l'array è stato riscritto uguale (lo stesso valore dopo un Invio), niente cache da rifare
+            guard !ids.isEmpty else { break }
             versioneCalcoli &+= 1
+            versioneDatiNotifiche &+= 1
             ultimaVersioneClienti &+= 1
             for id in ids { versioniCliente[id] = ultimaVersioneClienti }
             // Un cliente eliminato: la sua voce e la sua versione non restano in memoria fino al prossimo cambio del
@@ -724,12 +738,19 @@ enum VoceConfronto: Hashable {
                 cacheClienti.togli(id)
             }
         case .note:
+            // Le notifiche non leggono le note del taccuino (né il cliente attivo, qui sotto): `versioneDatiNotifiche` resta
             versioneNote &+= 1
         case .neutro:
-            break
+            // Fra i campi neutri le notifiche leggono solo pratiche, schede di adeguatezza, sinistri, capsule, notti e note
+            // dall'iPhone: le conversazioni di Vera, gli spazi e gli altri campi neutri non le rifanno. Gli array non
+            // toccati condividono la memoria con quelli di prima: il confronto costa poco
+            let neutri = NeutriNotifiche(dati)
+            if neutri != neutriNotifiche { versioneDatiNotifiche &+= 1 }
+            neutriNotifiche = neutri
         case .clienteAttivo(let prima):
             if dati.clienteAttivoId != prima { clienteAttivoCambiato.send(dati.clienteAttivoId) }
         case .impostazioni(let prima):
+            versioneDatiNotifiche &+= 1
             if !dati.impostazioni.stessiCalcoli(di: prima) {
                 versioneCalcoli &+= 1
                 cambiaVersioneComuneClienti()
@@ -740,6 +761,8 @@ enum VoceConfronto: Hashable {
             if dati.impostazioni.tagliando != prima.tagliando { programmaTagliando() }
             #endif
         case .tutto(let prima):
+            versioneDatiNotifiche &+= 1
+            neutriNotifiche = NeutriNotifiche(dati)
             // Gli array non toccati condividono la memoria con i vecchi: confrontarli costa O(1)
             let ora = dati.istantanea
             if ora.note != prima.note { versioneNote &+= 1 }
@@ -1633,40 +1656,49 @@ enum VoceConfronto: Hashable {
         return contenutoProspetto(scelta).map { DocumentoStampabile($0) }
     }
 
+    // I testi dei prospetti di un cliente si tengono da parte con `ricavato` (dati dei calcoli, giorno, modalità cliente)
+    // per cliente e ora, come il documento di Prospetti: passare da Prospetto a Report, tornare a una voce già vista o
+    // impaginare il fascicolo non rifà i motori. Leggono solo campi dei calcoli (posizioni, scheda, obiettivi, Analisi 360,
+    // catalogo). Patrimonio, successione, costi e resistenza vengono dalle analisi del dossier in cache (`analisiDossier`):
+    // lo stesso calcolo, con gli stessi dati, del pannello in Posizioni.
+
     /// I testi e i numeri del check-up del primo incontro di un cliente.
     func testiCheckUp(_ id: String) -> TestiCheckUp {
-        TestiCheckUp(MotoreCheckUp.calcola(cliente: self.cliente(id), posizioni: posizioniCliente(id), analisi: analisi360(id), obiettivi: obiettiviCliente(id)))
+        ricavato("testi-checkup|\(id)|\(DerivatiDati.ora())") {
+            TestiCheckUp(MotoreCheckUp.calcola(cliente: self.cliente(id), posizioni: posizioniCliente(id), analisi: analisi360(id), obiettivi: obiettiviCliente(id)))
+        }
     }
 
     /// I testi e i numeri del patrimonio nel tempo di un cliente (lo stesso calcolo del pannello in Posizioni).
     func testiPatrimonio(_ id: String) -> TestiPatrimonio {
-        let mie = posizioniCliente(id)
-        return TestiPatrimonio(MotorePatrimonio.calcola(mie, obiettivi: obiettiviCliente(id)), posizioni: mie, cliente: cliente(id))
+        TestiPatrimonio(analisiDossier(id).patrimonio, posizioni: posizioniCliente(id), cliente: cliente(id))
     }
 
     /// I testi e i numeri del passaggio generazionale di un cliente (lo stesso calcolo del pannello in Posizioni).
     func testiSuccessione(_ id: String) -> TestiSuccessione {
         let c = self.cliente(id)
-        let s = c.map { MotoreSuccessione.calcola(cliente: $0, posizioni: posizioniCliente(id)) }
+        // `analisiDossier` la calcola solo per un cliente visibile, come qui prima
+        let s = analisiDossier(id).successione
             ?? Successione(voci: [], eredi: [], attivoAsse: 0, debiti: 0, fuoriAsse: 0, immobili: 0, ipocatastali: 0, primaCasa: false, conviventeEscluso: nil, avvisi: [])
         return TestiSuccessione(s, cliente: c)
     }
 
     /// I testi e i numeri del costo degli investimenti di un cliente (lo stesso calcolo del pannello in Posizioni).
     func testiCosti(_ id: String) -> TestiCosti {
-        TestiCosti(MotoreCosti.calcola(posizioniCliente(id), prodotti: dati.prodotti, cliente: id), cliente: self.cliente(id))
+        TestiCosti(analisiDossier(id).costi, cliente: self.cliente(id))
     }
 
     /// I testi e i numeri della prova di resistenza di un cliente (lo stesso calcolo del pannello in Posizioni).
     func testiResistenza(_ id: String) -> TestiResistenza {
-        let c = self.cliente(id)
-        return TestiResistenza(MotoreResistenza.calcola(posizioniCliente(id), profilo: c?.profilo), cliente: c)
+        TestiResistenza(analisiDossier(id).prova, cliente: self.cliente(id))
     }
 
     /// I testi e i numeri del capitale in scadenza e della liquidità di un cliente.
     func testiLiquidita(_ id: String) -> TestiLiquidita {
-        let e = MotoreLiquidita.calcola(posizioniCliente(id), obiettivi: obiettiviCliente(id), analisi: analisi360(id).protezione, prodotti: dati.prodotti)
-        return TestiLiquidita(e, cliente: self.cliente(id))
+        ricavato("testi-liquidita|\(id)|\(DerivatiDati.ora())") {
+            let e = MotoreLiquidita.calcola(posizioniCliente(id), obiettivi: obiettiviCliente(id), analisi: analisi360(id).protezione, prodotti: dati.prodotti)
+            return TestiLiquidita(e, cliente: self.cliente(id))
+        }
     }
 
     /// I testi e i numeri del piano per un obiettivo, con il quadro degli altri obiettivi del cliente.
@@ -1679,16 +1711,20 @@ enum VoceConfronto: Hashable {
 
     /// I testi e i numeri della protezione della famiglia di un cliente (ipotesi dall'Analisi 360).
     func testiProtezione(_ id: String) -> TestiProtezione {
-        let intestatario = self.cliente(id)
-        let e = MotoreProtezioneFamiglia.calcola(posizioniCliente(id), cliente: intestatario, analisi: analisi360(id).protezione)
-        return TestiProtezione(e, cliente: intestatario)
+        ricavato("testi-protezione|\(id)|\(DerivatiDati.ora())") {
+            let intestatario = self.cliente(id)
+            let e = MotoreProtezioneFamiglia.calcola(posizioniCliente(id), cliente: intestatario, analisi: analisi360(id).protezione)
+            return TestiProtezione(e, cliente: intestatario)
+        }
     }
 
     /// I testi e i numeri del piano previdenziale di un cliente (ipotesi dall'Analisi 360).
     func testiPrevidenza(_ id: String) -> TestiPrevidenza {
-        let intestatario = self.cliente(id)
-        let e = MotorePrevidenza.calcola(posizioniCliente(id), cliente: intestatario, analisi: analisi360(id).previdenza)
-        return TestiPrevidenza(e, cliente: intestatario)
+        ricavato("testi-previdenza|\(id)|\(DerivatiDati.ora())") {
+            let intestatario = self.cliente(id)
+            let e = MotorePrevidenza.calcola(posizioniCliente(id), cliente: intestatario, analisi: analisi360(id).previdenza)
+            return TestiPrevidenza(e, cliente: intestatario)
+        }
     }
 
     /// I testi e i numeri della sostituzione di `a` con `b` (o del confronto tra due proposte).
@@ -1702,7 +1738,9 @@ enum VoceConfronto: Hashable {
 
     /// I testi e i numeri del resoconto delle posizioni in essere di un cliente.
     func testiResoconto(_ cliente: String) -> TestiResoconto {
-        TestiResoconto(posizioniCliente(cliente), cliente: self.cliente(cliente), prodotti: dati.prodotti)
+        ricavato("testi-resoconto|\(cliente)|\(DerivatiDati.ora())") {
+            TestiResoconto(posizioniCliente(cliente), cliente: self.cliente(cliente), prodotti: dati.prodotti)
+        }
     }
 
     func contenutoProspetto(_ scelta: SceltaProspetto) -> ContenutoProspetto? {
@@ -2257,6 +2295,8 @@ enum VoceConfronto: Hashable {
     func salvaAnalisi(_ id: String, _ a: Analisi360) {
         var x = a
         x.aggiornataIl = Appuntamento.alMinuto(Date())
+        // Già salvata così, nello stesso minuto (Tab o Invio su un campo non cambiato): niente da scrivere né da salvare
+        guard dati.analisi[id] != x else { return }
         dati.analisi[id] = x
     }
 
@@ -3001,20 +3041,27 @@ enum VoceConfronto: Hashable {
         ricalcolaNotifiche()
         modificheDati
             .debounce(for: .milliseconds(400), scheduler: DispatchQueue.main)
-            .sink { [weak self] _ in self?.ricalcolaNotifiche() }
+            // Solo se è cambiato qualcosa che le notifiche leggono: il cambio del cliente attivo (che cade sull'entrata del
+            // dossier) e le note del taccuino non le rifanno
+            .sink { [weak self] _ in self?.ricalcolaNotificheSeServe() }
             .store(in: &abbonamenti)
         avviaTimerNotifiche()
     }
 
     /// Gli appuntamenti finiscono e i giorni cambiano anche senza toccare i dati: un ricalcolo al minuto,
-    /// con la tolleranza che lascia a macOS raggruppare i risvegli.
+    /// con la tolleranza che lascia a macOS raggruppare i risvegli. Il timer scatta all'inizio di ogni minuto: le
+    /// notifiche che calcola valgono per il resto del minuto, così aprire il pannello trova la stessa firma e non le rifà.
     private func avviaTimerNotifiche() {
         timerNotifiche?.invalidate()
-        aggiornaOrologioVista()
-        let timer = Timer(timeInterval: StatoShell.intervalloNotifiche, repeats: true) { [weak self] _ in
+        let adesso = Date()
+        aggiornaOrologioVista(adesso)
+        let intervallo = StatoShell.intervalloNotifiche
+        let minuti = (adesso.timeIntervalSinceReferenceDate / intervallo).rounded(.down)
+        let prossimoMinuto = Date(timeIntervalSinceReferenceDate: (minuti + 1) * intervallo)
+        let timer = Timer(fire: prossimoMinuto, interval: intervallo, repeats: true) { [weak self] _ in
             DispatchQueue.main.async {
                 self?.aggiornaOrologioVista()
-                self?.ricalcolaNotifiche()
+                self?.ricalcolaNotificheSeServe()
             }
         }
         timer.tolerance = StatoShell.tolleranzaNotifiche
@@ -3029,12 +3076,33 @@ enum VoceConfronto: Hashable {
     }
 
     func ricalcolaNotifiche() {
-        let nuove = MotoreNotifiche.calcola(self)
+        let adesso = Date()
+        // La firma prima del calcolo: se il calcolo toccasse i dati, la prossima volta si rifà (mai una firma più nuova)
+        let firma = firmaNotifiche(adesso)
+        let nuove = MotoreNotifiche.calcola(self, oggi: adesso)
+        firmaUltimeNotifiche = firma
         guard nuove != notifiche else { return }
         let primaNuove = notificheNuove
         notifiche = nuove
         // Il numero sulla campanella è cresciuto: l'evento «notifica nuova» (EventiShell.swift)
         annunciaNotificheNuove(prima: primaNuove)
+    }
+
+    /// Ricalcola le notifiche solo se è cambiato qualcosa che leggono dall'ultimo calcolo (`FirmaNotifiche`): con la
+    /// stessa firma `MotoreNotifiche.calcola` darebbe lo stesso elenco, e il calcolo su tutto l'archivio non serve.
+    func ricalcolaNotificheSeServe() {
+        guard firmaNotifiche(Date()) != firmaUltimeNotifiche else { return }
+        ricalcolaNotifiche()
+    }
+
+    /// Ciò che le notifiche leggono oltre ai dati dei calcoli in cache: i dati che possono leggere, il minuto, la modalità
+    /// cliente, la presentazione (le carte della notte) e le carte d'identità dall'iPhone (solo gli id: le carte vivono
+    /// solo in memoria e non restano qui).
+    private func firmaNotifiche(_ adesso: Date) -> FirmaNotifiche {
+        FirmaNotifiche(dati: versioneDatiNotifiche,
+                       minuto: Int((adesso.timeIntervalSinceReferenceDate / StatoShell.intervalloNotifiche).rounded(.down)),
+                       modo: modoCliente, presentazione: presentazione != nil,
+                       carte: carteInArrivo.map(\.id), cartaAperta: nuovoCliente.cartaId)
     }
 
     /// Promemoria del Mac (vedi PromemoriaMac.swift): solo dentro Prisma.app con l'archivio sul disco.
@@ -3990,6 +4058,42 @@ extension StatoShell {
         for f in ["Perché il fondo pensione conviene a Marco?", "E se Marco versasse 100 € in più nel fondo pensione? Spiegalo in tre livelli"] {
             controlla(TreLivelliVera.eUnaRichiesta(f), "Secondo giro: «\(f)» resta dei tre livelli")
         }
+    }
+}
+
+/// Ciò da cui dipende l'elenco delle notifiche (`MotoreNotifiche.calcola`) oltre alle cache dei dati ricavati, che seguono
+/// già i dati, il giorno e la modalità cliente: due calcoli con la stessa firma danno lo stesso elenco.
+fileprivate struct FirmaNotifiche: Equatable {
+    /// `versioneDatiNotifiche`: ogni modifica dei dati, tranne le note del taccuino e il cliente attivo.
+    let dati: Int
+    /// Il minuto (l'intervallo del timer): appuntamenti che finiscono, giorni che cambiano.
+    let minuto: Int
+    let modo: String?
+    /// Con la presentazione le carte della notte non contano.
+    let presentazione: Bool
+    /// Le carte d'identità dall'iPhone (solo gli id) e quella aperta nella scena del nuovo cliente.
+    let carte: [String]
+    let cartaAperta: String?
+}
+
+/// I campi neutri dei dati (che non entrano nei calcoli in cache) letti da `MotoreNotifiche.calcola`, anche attraverso
+/// pratiche, carte della notte e traguardi. Un campo neutro nuovo letto dalle notifiche va aggiunto qui (se manca, le
+/// notifiche lo vedono comunque al ricalcolo del minuto dopo).
+fileprivate struct NeutriNotifiche: Equatable {
+    let pratiche: [Pratica]
+    let schede: [SchedaAdeguatezza]
+    let sinistri: [Sinistro]
+    let capsule: [CapsulaTempo]
+    let notti: [NotteDiLavoro]
+    let noteInArrivo: [NotaInArrivo]
+
+    init(_ dati: DatiVivi) {
+        pratiche = dati.pratiche
+        schede = dati.schedeAdeguatezza
+        sinistri = dati.sinistri
+        capsule = dati.capsule
+        notti = dati.notti
+        noteInArrivo = dati.noteInArrivo
     }
 }
 

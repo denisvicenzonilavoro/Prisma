@@ -181,6 +181,34 @@ final class SessioneEsameOCF: ObservableObject {
     /// La domanda mostrata (nil = coda finita).
     var idAttuale: String? { indice < coda.count ? coda[indice] : nil }
 
+    /// La preparazione e le domande che tornano domani dell'ultimo archivio visto, con il giorno: un passo della sessione
+    /// (domanda dopo, tremolio, filtro, data nel calendario) ridisegna la scheda ma non le rifà. Non pubblicate: scriverle
+    /// dal body non ridisegna niente. Confrontare l'archivio costa poco quando non cambia (gli array condividono la memoria).
+    private var preparazioneFatta: (archivio: ArchivioOCF, giorno: Date, valore: PreparazioneOCF)?
+    private var domaniFatto: (archivio: ArchivioOCF, giorno: Date, valore: Int)?
+
+    /// `MotoreOCF.preparazione` per questo archivio e per oggi (dipende solo dal giorno, non dall'ora).
+    func preparazione(_ a: ArchivioOCF, oggi: Date, cal: Calendar) -> PreparazioneOCF {
+        let giorno = cal.startOfDay(for: oggi)
+        if let f = preparazioneFatta, f.giorno == giorno, f.archivio == a { return f.valore }
+        let p = MotoreOCF.preparazione(a, oggi: oggi, cal: cal)
+        preparazioneFatta = (a, giorno, p)
+        return p
+    }
+
+    /// Quante domande (ancora nell'archivio) tornano domani nel ripasso, per la coda finita. Le domande si cercano in un
+    /// insieme, non una per una nell'elenco.
+    func tornanoDomani(_ a: ArchivioOCF, oggi: Date = Date(), cal: Calendar) -> Int {
+        let giorno = cal.startOfDay(for: oggi)
+        if let f = domaniFatto, f.giorno == giorno, f.archivio == a { return f.valore }
+        let domani = cal.date(byAdding: .day, value: 1, to: giorno) ?? oggi
+        let presenti = Set(a.domande.map(\.id))
+        let n = MotoreOCF.ripassi(a.risposte, cal: cal).values
+            .filter { cal.isDate($0.prossima, inSameDayAs: domani) && presenti.contains($0.domandaId) }.count
+        domaniFatto = (a, giorno, n)
+        return n
+    }
+
     /// La sessione iniziale (e quella chiesta da una scena delle istantanee).
     static func iniziale(_ s: StatoShell) -> SessioneEsameOCF {
         let x = SessioneEsameOCF()
@@ -283,7 +311,8 @@ struct EsameOCFStudioVista: View {
         let a = stato.dati.ocf
         let cal = Calendar.current
         let oggi = Date()
-        let prep = MotoreOCF.preparazione(a, oggi: oggi, cal: cal)
+        // Dalla sessione: si rifà solo con un archivio nuovo (una risposta, un'importazione) o un giorno nuovo
+        let prep = sessione.preparazione(a, oggi: oggi, cal: cal)
         let prova = a.domande.contains { $0.origine == .esempio }
         return GeometryReader { geo in
             if geo.size.width < D.larghezzaColonna {
@@ -835,10 +864,7 @@ private struct CardDomandaOCFVista: View {
     }
 
     private var finito: some View {
-        let cal = Calendar.current
-        let domani = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: Date())) ?? Date()
-        let tornano = MotoreOCF.ripassi(archivio.risposte, cal: cal).values
-            .filter { cal.isDate($0.prossima, inSameDayAs: domani) && archivio.domanda($0.domandaId) != nil }.count
+        let tornano = sessione.tornanoDomani(archivio, cal: Calendar.current)
         return VStack(alignment: .leading, spacing: St.spazio) {
             if let m = sessione.materia {
                 filtro(archivio.materia(m)?.nome ?? m)

@@ -41,6 +41,9 @@ enum MotoreNotifiche {
     /// L'inizio dell'id della notifica di un traguardo (il resto è l'id del traguardo).
     static let prefissoTraguardo = "traguardo-"
 
+    /// Le notifiche di adesso. Lo stato le ricalcola solo quando cambia qualcosa che legge (`FirmaNotifiche` in
+    /// StatoShell.swift): un campo neutro dei dati letto qui va aggiunto anche a `NeutriNotifiche`, una cosa che vive solo
+    /// in memoria alla firma.
     static func calcola(_ stato: StatoShell, oggi: Date = Date()) -> [Notifica] {
         let cal = Calendar.current
         let inizio = cal.startOfDay(for: oggi)
@@ -431,9 +434,10 @@ extension StatoShell {
         notifiche.filter { $0.gruppo != .daSistemare && !notificheViste.contains($0.id) }.count
     }
 
-    /// Apre o chiude il centro notifiche. Il pannello si apre subito; nell'app le notifiche si ricalcolano
-    /// al giro dopo, così il calcolo non cade sul primo fotogramma dell'entrata (nelle istantanee e nelle
-    /// prove subito, perché la schermata ferma le mostri già aggiornate).
+    /// Apre o chiude il centro notifiche. Il pannello si apre subito; le notifiche si ricalcolano solo se è cambiato
+    /// qualcosa che leggono dall'ultimo calcolo (di solito no: il timer le rifà all'inizio di ogni minuto e le modifiche
+    /// dei dati 400 ms dopo). Nell'app il ricalcolo, se serve, va al giro dopo, così non cade sul primo fotogramma
+    /// dell'entrata (nelle istantanee e nelle prove subito, perché la schermata ferma le mostri già aggiornate).
     func alternaNotifiche() {
         // Il pannello mostra quante erano nuove all'apertura («3 nuove»): subito dopo diventano viste
         if !pannelloNotifiche { eventiShell.nuoveAllApertura = notificheNuove }
@@ -443,7 +447,7 @@ extension StatoShell {
         // Novità e notifiche si escludono a vicenda (come notifiche, spazi e ricerca)
         if sistema.pannelloNovita { sistema.pannelloNovita = false }
         guard persistente else {
-            ricalcolaNotifiche()
+            ricalcolaNotificheSeServe()
             eventiShell.nuoveAllApertura = notificheNuove
             segnaNotificheViste()
             return
@@ -451,7 +455,7 @@ extension StatoShell {
         segnaNotificheViste()
         DispatchQueue.main.async { [weak self] in
             guard let self, self.pannelloNotifiche else { return }
-            self.ricalcolaNotifiche()
+            self.ricalcolaNotificheSeServe()
             // Quelle arrivate con il ricalcolo sono già sotto gli occhi (e contano fra le nuove dell'apertura)
             self.eventiShell.nuoveAllApertura += self.notificheNuove
             self.segnaNotificheViste()
@@ -466,7 +470,7 @@ extension StatoShell {
 
     /// Le scadenze di conformità dei clienti visibili; per oggi tenute da parte come gli altri dati ricavati
     /// (la chiave comprende il giorno e la versione dei calcoli), per un altro giorno calcolate ogni volta.
-    /// Il centro notifiche si ricalcola a ogni disegno della barra.
+    /// Le leggono le notifiche, lo stato del lavoro e il Portafoglio.
     func conformitaClienti(oggi: Date) -> [EsitoConformita] {
         guard Calendar.current.isDateInToday(oggi) else {
             return MotoreConformita.calcola(clienti: clienti, posizioni: dati.posizioni,
@@ -474,8 +478,10 @@ extension StatoShell {
         }
         let d = derivatiValidi()
         if let elenco = d.conformitaClienti { return elenco }
-        let elenco = MotoreConformita.calcola(clienti: clienti, posizioni: dati.posizioni,
-                                              regole: dati.impostazioni.conformita, oggi: oggi)
+        // Oggi ogni cliente viene dalla sua voce di CacheClienti (`conformitaCliente`: lo stesso motore con le stesse regole e
+        // lo stesso giorno, uguale al calcolo da zero in ProvaCalcoliCacheClienti): dopo una modifica a un cliente si rifà
+        // solo lui, non tutti i clienti dell'archivio
+        let elenco = clienti.compactMap { conformitaCliente($0.id) }
         d.conformitaClienti = elenco
         return elenco
     }

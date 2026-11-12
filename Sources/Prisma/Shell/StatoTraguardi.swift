@@ -41,11 +41,29 @@ extension StatoShell {
     /// o in sola lettura. La chiamano lo sblocco e l'apertura di Messaggi.
     func segnaObiettiviRaggiunti(oggi: Date = Date()) {
         guard persistente, !solaLettura else { return }
-        let ids = Set(MotoreTraguardi.daSegnareRaggiunti(dati: dati.istantanea))
+        let ids = Set(obiettiviDaSegnareRaggiunti())
         guard !ids.isEmpty else { return }
         let giorno = Posizione.oggiArrotondato
         for i in dati.obiettivi.indices where ids.contains(dati.obiettivi[i].id) {
             dati.obiettivi[i].raggiuntoIl = giorno
+        }
+    }
+
+    /// Gli stessi obiettivi di `MotoreTraguardi.daSegnareRaggiunti` (senza data, importo > 0, accantonato ≥ importo), senza
+    /// costruire `AvanzamentoObiettivo`: per l'accantonato basta sommare le posizioni collegate in essere, mentre il versamento
+    /// necessario (decine di proiezioni mese per mese per ogni obiettivo) qui non serve e cadeva sullo sblocco e
+    /// sull'apertura di Messaggi. Le posizioni si sommano nell'ordine dell'archivio, come `AvanzamentoObiettivo`.
+    private func obiettiviDaSegnareRaggiunti() -> [String] {
+        let candidati = dati.obiettivi.filter { $0.raggiuntoIl == nil && $0.importo > 0 }
+        guard !candidati.isEmpty else { return [] }
+        let posizioni = dati.posizioni
+        // Il posto nell'archivio delle posizioni in essere, per id (con due posizioni con lo stesso id contano tutte e due)
+        var inEssere: [String: [Int]] = [:]
+        for (i, p) in posizioni.enumerated() where p.stato == .inEssere { inEssere[p.id, default: []].append(i) }
+        return candidati.compactMap { o -> String? in
+            let posti = Set(o.posizioniCollegate).flatMap { inEssere[$0] ?? [] }.sorted()
+            let collegate = posti.reduce(0.0) { somma, i in somma + posizioni[i].valore }
+            return o.accantonato + collegate >= o.importo ? o.id : nil
         }
     }
 
