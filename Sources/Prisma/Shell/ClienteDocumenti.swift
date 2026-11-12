@@ -14,6 +14,8 @@ struct DocumentiCliente: View {
     @State private var daEliminare: Documento?
     /// Il pannello di sistema per scegliere i file su iPhone e iPad.
     @State private var sceltaFile = false
+    /// Voci, gruppi e testo piegato delle pagine, tenuti tra un disegno e l'altro (IndiceTestiDocumenti.swift).
+    @State private var memoria = MemoriaElencoDocumenti()
 
     private var filtro: MotoreDocumenti.Filtro {
         var f = MotoreDocumenti.Filtro()
@@ -31,22 +33,35 @@ struct DocumentiCliente: View {
         return conFiltri || conRicerca
     }
 
-    /// I gruppi della scheda: quelli dell'elenco (filtri e ricerca) riordinati nelle cartelle del cliente.
-    /// Il testo dei documenti si legge dal disco senza tenerlo in memoria, e solo se serve.
+    /// Le voci del cliente (stato e confronti): si rifanno solo quando cambiano i dati dei calcoli o i documenti in lettura.
+    private func vociCliente() -> [MotoreDocumenti.Voce] {
+        let id = cliente.id
+        return memoria.voci(MemoriaElencoDocumenti.chiaveDelleVoci(stato, cliente: id)) { stato.vociDocumenti(id) }
+    }
+
+    /// I gruppi della scheda: quelli dell'elenco (filtri e ricerca) riordinati nelle cartelle del cliente, rifatti solo
+    /// quando cambiano le voci, i filtri o la ricerca (posizioni e schede sono dati dei calcoli, nella chiave delle voci).
+    /// Il testo dei documenti si legge dal disco senza tenerlo in memoria, e solo se serve (resta piegato mentre si cerca).
     private func raggruppa(_ voci: [MotoreDocumenti.Voce]) -> [MotoreDocumenti.Gruppo] {
-        let perTipo = MotoreDocumenti.elenco(voci, filtro: filtro, pagine: { stato.testoDocumento($0, memorizza: false) })
-        let posizioni = stato.posizioniCliente(cliente.id).sorted { a, b in
-            if (a.stato == .inEssere) != (b.stato == .inEssere) { return a.stato == .inEssere }
-            return a.nome.localizedCaseInsensitiveCompare(b.nome) == .orderedAscending
-        }
-        return MotoreDocumenti.cartelle(perTipo, posizioni: posizioni) { id in
-            stato.prodotto(id).map { (nome: $0.nome, canale: $0.canale) }
+        let f = filtro
+        let chiave = MemoriaElencoDocumenti.chiaveDeiGruppi(voci: MemoriaElencoDocumenti.chiaveDelleVoci(stato, cliente: cliente.id), filtro: f)
+        memoria.lasciaPagineSeServe(f)
+        return memoria.gruppi(chiave) {
+            let cercate = MemoriaElencoDocumenti.paroleCercate(f)
+            let perTipo = MotoreDocumenti.elenco(voci, filtro: f, pagine: { memoria.pagine($0, cercate: cercate, stato: stato) })
+            let posizioni = stato.posizioniCliente(cliente.id).sorted { a, b in
+                if (a.stato == .inEssere) != (b.stato == .inEssere) { return a.stato == .inEssere }
+                return a.nome.localizedCaseInsensitiveCompare(b.nome) == .orderedAscending
+            }
+            return MotoreDocumenti.cartelle(perTipo, posizioni: posizioni) { id in
+                stato.prodotto(id).map { (nome: $0.nome, canale: $0.canale) }
+            }
         }
     }
 
     var body: some View {
         let _ = ContaCorpi.segna()
-        let voci = stato.vociDocumenti(cliente.id)
+        let voci = vociCliente()
         VStack(spacing: 0) {
             // «Dato al cliente» («Luce» giro 15): le ultime cose date al cliente, solo se ce ne sono
             UsciteDelCliente(clienteId: cliente.id)
@@ -185,7 +200,7 @@ struct DocumentiCliente: View {
     /// «Tutti» e la ricerca si svuota, così si vede nell'elenco.
     private func allinea() {
         guard let id = stato.documentoSelezionato, let d = stato.documento(id), d.clienteId == cliente.id else { return }
-        let visibili = raggruppa(stato.vociDocumenti(cliente.id)).flatMap { $0.voci.map(\.id) }
+        let visibili = raggruppa(vociCliente()).flatMap { $0.voci.map(\.id) }
         guard !visibili.contains(id) else { return }
         mostraTutti()
     }

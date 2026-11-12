@@ -252,14 +252,17 @@ private struct BarraPagineDocumento: View {
     }
 }
 
-/// Un'immagine (foto o scansione) ridotta con ImageIO, letta una volta per file.
+/// Un'immagine (foto o scansione) ridotta con ImageIO, letta una volta per file. La riduzione decodifica tutta la foto
+/// (decine di millisecondi per una foto da 12 MP): si fa fuori dal thread principale, con la rotella intanto.
 private struct ImmagineDocumento: View {
     let url: URL
     @State private var immagine: ImmaginePiattaforma?
+    /// Il file dell'immagine pronta: cambiato documento, quella di prima non resta sotto il titolo nuovo.
+    @State private var letta: URL?
 
     var body: some View {
         Group {
-            if let immagine {
+            if let immagine, letta == url {
                 Image(piattaforma: immagine)
                     .resizable()
                     .scaledToFit()
@@ -269,7 +272,25 @@ private struct ImmagineDocumento: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .task(id: url) { immagine = LetturaDocumenti.anteprima(url) }
+        .task(id: url) {
+            // Già pronta (la vista ricompare con lo stesso file): niente da rifare
+            if letta == url, immagine != nil { return }
+            let file = url
+            let pronta = await Self.riduci(file)
+            // Nel frattempo è arrivato un altro documento (o la vista è sparita): il risultato non serve
+            guard !Task.isCancelled else { return }
+            immagine = pronta
+            letta = file
+        }
+    }
+
+    /// `LetturaDocumenti.anteprima` su una coda di sistema; il risultato torna al chiamante.
+    private static func riduci(_ url: URL) async -> ImmaginePiattaforma? {
+        await withCheckedContinuation { (continua: CheckedContinuation<ImmaginePiattaforma?, Never>) in
+            DispatchQueue.global(qos: .userInitiated).async {
+                continua.resume(returning: LetturaDocumenti.anteprima(url))
+            }
+        }
     }
 }
 
@@ -385,7 +406,11 @@ struct VistaPDF {
             v.highlightedSelections = nil
             var trovata: PDFSelection?
             if let e = evidenzia?.trimmingCharacters(in: .whitespacesAndNewlines), !e.isEmpty {
-                trovata = doc.findString(String(e.prefix(40)), withOptions: .caseInsensitive).first { $0.pages.contains(pg) }
+                let cercato = String(e.prefix(40))
+                // Prima nella sola pagina mostrata (il dato viene da lì): `findString` estrae e cerca il testo di tutte le
+                // pagine. Se lì non si trova, come prima in tutto il documento
+                trovata = Self.cercaNellaPagina(cercato, in: pg)
+                    ?? doc.findString(cercato, withOptions: .caseInsensitive).first { $0.pages.contains(pg) }
             }
             if let s = trovata {
                 s.color = ColorePiattaforma(Tema.Colore.Documenti.evidenziaPDF)
@@ -395,6 +420,16 @@ struct VistaPDF {
                 v.go(to: pg)
             }
             DispatchQueue.main.async { self.muove = false }
+        }
+
+        /// La prima volta che `testo` compare nella pagina (senza badare alle maiuscole), solo se la selezione copre
+        /// proprio quel testo: altrimenti nil, e si cerca come prima.
+        static func cercaNellaPagina(_ testo: String, in pg: PDFPage) -> PDFSelection? {
+            guard let contenuto = pg.string, !contenuto.isEmpty else { return nil }
+            let r = (contenuto as NSString).range(of: testo, options: .caseInsensitive)
+            guard r.location != NSNotFound, r.length > 0, let s = pg.selection(for: r),
+                  s.string?.compare(testo, options: .caseInsensitive) == .orderedSame else { return nil }
+            return s
         }
     }
 

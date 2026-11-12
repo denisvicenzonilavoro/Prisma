@@ -211,48 +211,115 @@ enum MotoreRicerca {
         return 50
     }
 
-    /// Un candidato: titolo, campi (etichetta, valore) in cui cercare e, per i documenti, le pagine.
-    private struct Candidato {
-        var risultato: RisultatoRicerca
-        var campi: [(String, String)] = []
-        var pagine: [String] = []
+    /// Il testo cercato: le parole come le ha scritte l'utente (per l'estratto) e piegate (per il confronto), una volta
+    /// per ricerca e non per candidato.
+    private struct Domanda {
+        let ricerca: String
+        let parole: [String]
+        let ricercaPiegata: String
+        let parolePiegate: [String]
+
+        init(ricerca: String, parole: [String]) {
+            self.ricerca = ricerca
+            self.parole = parole
+            ricercaPiegata = TestoPiegato.piega(ricerca)
+            parolePiegate = parole.map(TestoPiegato.piega)
+        }
     }
 
-    /// Valuta un candidato: nil se manca anche una sola parola.
-    private static func valuta(_ c: Candidato, ricerca: String, parole: [String]) -> RisultatoRicerca? {
-        let titolo = c.risultato.titolo
-        var mancanti = parole.filter { !contiene(titolo, $0) }
+    /// Da dove viene l'estratto di un risultato: il campo o la pagina (indice) e la parola trovata (indice in `parole`).
+    private enum OrigineEstratto {
+        case campo(Int, Int)
+        case pagina(Int, Int)
+    }
+
+    /// Un candidato che ha tutte le parole. L'estratto si scrive dopo, solo per i risultati mostrati (`sezione`).
+    private struct Trovato {
+        var risultato: RisultatoRicerca
+        let candidato: CandidatoRicerca
+        /// Tutte le parole nel titolo: l'estratto del candidato resta com'è.
+        let nelTitolo: Bool
+        let origine: OrigineEstratto?
+    }
+
+    /// Valuta un candidato sui testi piegati (stesse regole di `contiene`): nil se manca anche una sola parola.
+    private static func valuta(_ c: CandidatoRicerca, _ q: Domanda, pagine: PaginePiegate?, stato: StatoShell) -> Trovato? {
+        let titolo = c.titoloPiegato
+        var mancanti = q.parolePiegate.indices.filter { !TestoPiegato.contiene(titolo, q.parolePiegate[$0]) }
         var r = c.risultato
-        r.punteggio = punteggio(titolo: titolo, ricerca: ricerca, parole: parole)
-        guard !mancanti.isEmpty else { return r }
+        guard !mancanti.isEmpty else {
+            r.punteggio = punteggio(c, q)
+            return Trovato(risultato: r, candidato: c, nelTitolo: true, origine: nil)
+        }
         // Le parole che non sono nel titolo vanno cercate nei campi
-        var estratto: String?
-        for (etichetta, valore) in c.campi where !valore.isEmpty {
-            let trovate = mancanti.filter { contiene(valore, $0) }
-            guard !trovate.isEmpty else { continue }
+        var origine: OrigineEstratto?
+        for j in c.campi.indices where !c.campi[j].1.isEmpty {
+            let valore = c.valorePiegato(j)
+            let trovate = mancanti.filter { TestoPiegato.contiene(valore, q.parolePiegate[$0]) }
+            guard let prima = trovate.first else { continue }
             // Il valore già scritto nel dettaglio (il nome del cliente) non si ripete
-            if estratto == nil, !contiene(r.dettaglio, valore) { estratto = "\(etichetta): \(riga(valore, attorno: trovate[0]))" }
+            if origine == nil, !TestoPiegato.contiene(c.dettaglioPiegato, valore) { origine = .campo(j, prima) }
             mancanti.removeAll { trovate.contains($0) }
             if mancanti.isEmpty { break }
         }
         // Poi nel testo delle pagine
-        if !mancanti.isEmpty {
-            for (i, pagina) in c.pagine.enumerated() {
-                let trovate = mancanti.filter { contiene(pagina, $0) }
-                guard !trovate.isEmpty else { continue }
-                if estratto == nil {
-                    estratto = "pag. \(i + 1): \(riga(pagina, attorno: trovate[0]))"
-                    // La Biblioteca si apre sulla pagina trovata
-                    if case .biblioteca(let id, _) = r.destinazione { r.destinazione = .biblioteca(id, pagina: i + 1) }
+        func esamina(_ i: Int, _ pagina: String) {
+            let trovate = mancanti.filter { TestoPiegato.contiene(pagina, q.parolePiegate[$0]) }
+            guard let prima = trovate.first else { return }
+            if origine == nil {
+                origine = .pagina(i, prima)
+                // La Biblioteca si apre sulla pagina trovata
+                if case .biblioteca(let id, _) = r.destinazione { r.destinazione = .biblioteca(id, pagina: i + 1) }
+            }
+            mancanti.removeAll { trovate.contains($0) }
+        }
+        if !mancanti.isEmpty, let fonte = c.fonte {
+            if let tenute = pagine?.tenute(fonte.chiave) {
+                for (i, pagina) in tenute.enumerated() {
+                    esamina(i, pagina)
+                    if mancanti.isEmpty { break }
                 }
-                mancanti.removeAll { trovate.contains($0) }
-                if mancanti.isEmpty { break }
+            } else {
+                // Una pagina alla volta, fino alle parole; letto tutto, il documento resta piegato per i tasti dopo
+                let originali = fonte.originali(stato)
+                var piegate: [String] = []
+                piegate.reserveCapacity(originali.count)
+                for (i, originale) in originali.enumerated() {
+                    let pagina = TestoPiegato.piega(originale)
+                    piegate.append(pagina)
+                    esamina(i, pagina)
+                    if mancanti.isEmpty { break }
+                }
+                if piegate.count == originali.count { pagine?.tieni(fonte.chiave, piegate) }
             }
         }
         guard mancanti.isEmpty else { return nil }
-        r.estratto = estratto
-        r.punteggio -= 20
-        return r
+        // Senza tutte le parole nel titolo né l'inizio né le iniziali possono esserci: il punteggio è il più basso (50)
+        r.punteggio = 50 - 20
+        return Trovato(risultato: r, candidato: c, nelTitolo: false, origine: origine)
+    }
+
+    /// `punteggio(titolo:ricerca:parole:)` sui testi piegati, per un candidato con tutte le parole nel titolo.
+    private static func punteggio(_ c: CandidatoRicerca, _ q: Domanda) -> Int {
+        if TestoPiegato.iniziaCon(c.titoloPiegato, q.ricercaPiegata) { return 300 }
+        let iniziali = c.inizialiPiegate
+        if q.parolePiegate.allSatisfy({ p in iniziali.contains { TestoPiegato.iniziaCon($0, p) } }) { return 200 }
+        return 150
+    }
+
+    /// L'estratto di un risultato mostrato: la riga del campo o della pagina attorno alla parola trovata.
+    private static func estratto(_ t: Trovato, _ q: Domanda, stato: StatoShell) -> String? {
+        guard let origine = t.origine else { return nil }
+        switch origine {
+        case .campo(let j, let p):
+            let (etichetta, valore) = t.candidato.campi[j]
+            return "\(etichetta): \(riga(valore, attorno: q.parole[p]))"
+        case .pagina(let i, let p):
+            guard let fonte = t.candidato.fonte else { return nil }
+            let pagine = fonte.originali(stato)
+            guard pagine.indices.contains(i) else { return nil }
+            return "pag. \(i + 1): \(riga(pagine[i], attorno: q.parole[p]))"
+        }
     }
 
     /// Il pezzo di testo attorno alla parola, su una riga.
@@ -274,7 +341,9 @@ enum MotoreRicerca {
     }
 
     /// La ricerca del pannello: le parole come sempre e, se ci sono, i filtri (`FiltriRicerca`) con i totali per canale.
-    static func cercaCompleta(_ testo: String, in stato: StatoShell, oggi: Date = Date()) -> EsitoRicerca {
+    /// `memoria`: l'indice dei candidati tenuto dal pannello tra un tasto e l'altro (nil = fatto apposta e lasciato).
+    static func cercaCompleta(_ testo: String, in stato: StatoShell, oggi: Date = Date(),
+                              memoria: MemoriaIndiceRicerca? = nil) -> EsitoRicerca {
         let interpretata = FiltriRicerca.interpreta(testo)
         var esito = EsitoRicerca()
         esito.interpretata = interpretata
@@ -282,7 +351,7 @@ enum MotoreRicerca {
             cercaConFiltri(interpretata, in: stato, oggi: oggi, esito: &esito)
         } else {
             // Prima i gruppi che rispondono meglio (come Spotlight); a pari merito l'ordine di sempre
-            esito.sezioni = cercaParole(interpretata.testoLibero, in: stato).enumerated()
+            esito.sezioni = cercaParole(interpretata.testoLibero, in: stato, memoria: memoria).enumerated()
                 .sorted { a, b in a.element.migliore != b.element.migliore ? a.element.migliore > b.element.migliore : a.offset < b.offset }
                 .map(\.element)
         }
@@ -296,112 +365,158 @@ enum MotoreRicerca {
         return nomi
     }
 
-    /// Valuta i candidati di un gruppo, li ordina e tiene i primi `limite`.
-    private static func sezione(_ g: GruppoRicerca, _ elenco: [Candidato], ricerca: String, parole: [String],
-                                limite: Int) -> SezioneRicerca? {
-        let trovati = elenco.compactMap { c -> RisultatoRicerca? in
-            guard !parole.isEmpty else { return c.risultato }
-            return valuta(c, ricerca: ricerca, parole: parole)
-        }
-        .sorted { a, b in
-            if a.punteggio != b.punteggio { return a.punteggio > b.punteggio }
-            if a.ordine != b.ordine { return a.ordine < b.ordine }
-            return a.titolo.localizedCaseInsensitiveCompare(b.titolo) == .orderedAscending
-        }
-        guard !trovati.isEmpty else { return nil }
-        return SezioneRicerca(gruppo: g, risultati: Array(trovati.prefix(limite)), totale: trovati.count)
+    /// L'ordine dei risultati: punteggio, poi `ordine`, poi il titolo in ordine alfabetico.
+    private static func prima(_ a: RisultatoRicerca, _ b: RisultatoRicerca) -> Bool {
+        if a.punteggio != b.punteggio { return a.punteggio > b.punteggio }
+        if a.ordine != b.ordine { return a.ordine < b.ordine }
+        return a.titolo.localizedCaseInsensitiveCompare(b.titolo) == .orderedAscending
     }
 
-    /// La ricerca a parole su tutto l'archivio (come è sempre stata), più le azioni rapide.
-    private static func cercaParole(_ testo: String, in stato: StatoShell) -> [SezioneRicerca] {
-        let ricerca = testo.trimmingCharacters(in: .whitespacesAndNewlines)
-        let parole = parole(ricerca)
-        guard !parole.isEmpty else { return [] }
+    /// I primi `k` nell'ordine di `prima`, gli stessi dell'elenco ordinato (a pari merito resta l'ordine dei candidati):
+    /// con migliaia di risultati e cinque da mostrare non si ordina tutto.
+    private static func primi(_ elenco: [Trovato], _ k: Int) -> [Trovato] {
+        var tenuti: [Trovato] = []
+        tenuti.reserveCapacity(k + 1)
+        for t in elenco {
+            if tenuti.count >= k, let ultimo = tenuti.last, !prima(t.risultato, ultimo.risultato) { continue }
+            var i = tenuti.count
+            while i > 0 && prima(t.risultato, tenuti[i - 1].risultato) { i -= 1 }
+            tenuti.insert(t, at: i)
+            if tenuti.count > k { tenuti.removeLast() }
+        }
+        return tenuti
+    }
+
+    /// Valuta i candidati di un gruppo, li ordina e tiene i primi `limite`; l'estratto si scrive solo per questi.
+    private static func sezione(_ g: GruppoRicerca, _ elenco: [CandidatoRicerca], _ q: Domanda, limite: Int,
+                                pagine: PaginePiegate?, stato: StatoShell) -> SezioneRicerca? {
+        var trovati: [Trovato] = []
+        for c in elenco {
+            if q.parole.isEmpty {
+                trovati.append(Trovato(risultato: c.risultato, candidato: c, nelTitolo: true, origine: nil))
+            } else if let t = valuta(c, q, pagine: pagine, stato: stato) {
+                trovati.append(t)
+            }
+        }
+        guard !trovati.isEmpty else { return nil }
+        let tenuti = limite < trovati.count ? primi(trovati, limite) : trovati.sorted { prima($0.risultato, $1.risultato) }
+        let risultati = tenuti.map { t -> RisultatoRicerca in
+            var r = t.risultato
+            if !t.nelTitolo { r.estratto = estratto(t, q, stato: stato) }
+            return r
+        }
+        return SezioneRicerca(gruppo: g, risultati: risultati, totale: trovati.count)
+    }
+
+    /// Da che cosa dipendono i candidati della ricerca a parole (`IndiceRicerca.Firma`).
+    static func firmaIndice(_ stato: StatoShell) -> IndiceRicerca.Firma {
+        #if os(macOS)
+        let biblioteca = stato.biblioteca.tutti
+        #else
+        // Su iPhone e iPad la Biblioteca non c'è (decisione 114)
+        let biblioteca: [DocumentoBiblioteca] = []
+        #endif
+        return IndiceRicerca.Firma(calcoli: stato.versioneCalcoli, note: stato.versioneNote,
+                                   modoCliente: stato.inModoCliente, biblioteca: biblioteca)
+    }
+
+    /// I candidati della ricerca a parole su tutto l'archivio (come è sempre stata), più le azioni rapide.
+    static func nuovoIndice(_ stato: StatoShell, firma: IndiceRicerca.Firma) -> IndiceRicerca {
         let dati = stato.dati.istantanea
         let nomi = nomiClienti(dati)
         func nome(_ id: String) -> String { nomi[id] ?? "Senza cliente" }
 
-        var candidati: [GruppoRicerca: [Candidato]] = [:]
+        var candidati: [GruppoRicerca: [CandidatoRicerca]] = [:]
         // Anche le app accorpate si trovano per nome: portano all'ospite, sulla scheda giusta (`apri`)
-        candidati[.app] = AppPrisma.allCases.filter { $0 != .ricerca }.map { app -> Candidato in
+        candidati[.app] = AppPrisma.allCases.filter { $0 != .ricerca }.map { app -> CandidatoRicerca in
             #if os(macOS)
             let dettaglio = app.ospite.map { "In \($0.titolo) · \(app.sottotitolo)" } ?? app.sottotitolo
             #else
             let dettaglio = app.sottotitolo
             #endif
-            return Candidato(risultato: RisultatoRicerca(destinazione: .app(app), gruppo: .app, titolo: app.titolo, dettaglio: dettaglio))
+            return CandidatoRicerca(RisultatoRicerca(destinazione: .app(app), gruppo: .app, titolo: app.titolo, dettaglio: dettaglio))
         }
         candidati[.clienti] = dati.clienti.filter { $0.unitaIn == nil }.map { c in
-            Candidato(risultato: RisultatoRicerca(destinazione: .cliente(c.id), gruppo: .clienti, titolo: c.nome, dettaglio: c.tema),
-                      campi: [("Progetto", c.tema), ("Email", c.email), ("Telefono", c.telefono), ("Professione", c.professione),
-                              ("Codice fiscale", c.codiceFiscale), ("Indirizzo", c.indirizzo), ("Nota", c.nota)])
+            CandidatoRicerca(RisultatoRicerca(destinazione: .cliente(c.id), gruppo: .clienti, titolo: c.nome, dettaglio: c.tema),
+                             campi: [("Progetto", c.tema), ("Email", c.email), ("Telefono", c.telefono), ("Professione", c.professione),
+                                     ("Codice fiscale", c.codiceFiscale), ("Indirizzo", c.indirizzo), ("Nota", c.nota)])
         }
         candidati[.posizioni] = dati.posizioni.map { p in
-            Candidato(risultato: RisultatoRicerca(destinazione: .posizione(p.id), gruppo: .posizioni, titolo: p.nome,
-                                                  dettaglio: "\(nome(p.clienteId)) · \(p.stato.nome)", canale: p.canale),
-                      campi: [("Cliente", nome(p.clienteId)), ("Tipologia", p.tipologia), ("Emittente", p.emittente),
-                              ("Contratto", p.numeroContratto), ("Contraente", p.contraente), ("Assicurato", p.assicurato),
-                              ("Beneficiari", p.beneficiari), ("Canale", p.canale.nomeBreve), ("Note", p.note)])
+            CandidatoRicerca(RisultatoRicerca(destinazione: .posizione(p.id), gruppo: .posizioni, titolo: p.nome,
+                                              dettaglio: "\(nome(p.clienteId)) · \(p.stato.nome)", canale: p.canale),
+                             campi: [("Cliente", nome(p.clienteId)), ("Tipologia", p.tipologia), ("Emittente", p.emittente),
+                                     ("Contratto", p.numeroContratto), ("Contraente", p.contraente), ("Assicurato", p.assicurato),
+                                     ("Beneficiari", p.beneficiari), ("Canale", p.canale.nomeBreve), ("Note", p.note)])
         }
+        // Il testo delle pagine si legge solo quando serve (parole non trovate nel titolo e nei dati), poi resta piegato
         candidati[.documenti] = dati.documenti.map { d in
-            Candidato(risultato: RisultatoRicerca(destinazione: .documento(d.id), gruppo: .documenti, titolo: d.titolo,
-                                                  dettaglio: "\(nome(d.clienteId)) · \(d.tipo.nome)"),
-                      campi: [("Cliente", nome(d.clienteId))] + d.campi.map { ($0.chiave.nome, $0.valore) },
-                      pagine: stato.testoDocumento(d, memorizza: false))
+            CandidatoRicerca(RisultatoRicerca(destinazione: .documento(d.id), gruppo: .documenti, titolo: d.titolo,
+                                              dettaglio: "\(nome(d.clienteId)) · \(d.tipo.nome)"),
+                             campi: [("Cliente", nome(d.clienteId))] + d.campi.map { ($0.chiave.nome, $0.valore) },
+                             fonte: .documento(d))
         }
         candidati[.note] = dati.note.filter { !$0.vuota }.map { n in
-            Candidato(risultato: RisultatoRicerca(destinazione: .nota(n.id), gruppo: .note, titolo: n.titoloMostrato,
-                                                  dettaglio: "\(nome(n.clienteId)) · \(Formati.dataEstesa.string(from: n.aggiornataIl))"),
-                      campi: [("Cliente", nome(n.clienteId)), ("Testo", n.testo)])
+            CandidatoRicerca(RisultatoRicerca(destinazione: .nota(n.id), gruppo: .note, titolo: n.titoloMostrato,
+                                              dettaglio: "\(nome(n.clienteId)) · \(Formati.dataEstesa.string(from: n.aggiornataIl))"),
+                             campi: [("Cliente", nome(n.clienteId)), ("Testo", n.testo)])
         }
         candidati[.appuntamenti] = dati.appuntamenti.map { a in
-            Candidato(risultato: RisultatoRicerca(destinazione: .appuntamento(a.id), gruppo: .appuntamenti, titolo: a.titolo,
-                                                  dettaglio: "\(nome(a.clienteId)) · \(Formati.dataOra.string(from: a.inizio))", canale: a.canale),
-                      campi: [("Cliente", nome(a.clienteId)), ("Luogo", a.luogo), ("Note", a.note)])
+            CandidatoRicerca(RisultatoRicerca(destinazione: .appuntamento(a.id), gruppo: .appuntamenti, titolo: a.titolo,
+                                              dettaglio: "\(nome(a.clienteId)) · \(Formati.dataOra.string(from: a.inizio))", canale: a.canale),
+                             campi: [("Cliente", nome(a.clienteId)), ("Luogo", a.luogo), ("Note", a.note)])
         }
         candidati[.attivita] = dati.attivita.map { a in
-            Candidato(risultato: RisultatoRicerca(destinazione: .attivita(a.id), gruppo: .attivita, titolo: a.titolo,
-                                                  dettaglio: "\(nome(a.clienteId)) · \(a.completata ? "completata" : "entro il \(Formati.dataEstesa.string(from: a.scadenza))")"),
-                      campi: [("Cliente", nome(a.clienteId)), ("Note", a.note)])
+            CandidatoRicerca(RisultatoRicerca(destinazione: .attivita(a.id), gruppo: .attivita, titolo: a.titolo,
+                                              dettaglio: "\(nome(a.clienteId)) · \(a.completata ? "completata" : "entro il \(Formati.dataEstesa.string(from: a.scadenza))")"),
+                             campi: [("Cliente", nome(a.clienteId)), ("Note", a.note)])
         }
         candidati[.obiettivi] = dati.obiettivi.map { o in
-            Candidato(risultato: RisultatoRicerca(destinazione: .obiettivo(o.id), gruppo: .obiettivi, titolo: o.titolo,
-                                                  dettaglio: "\(nome(o.clienteId)) · \(Formati.euro(o.importo)) entro il \(Formati.dataEstesa.string(from: o.scadenza))"),
-                      campi: [("Cliente", nome(o.clienteId)), ("Note", o.note)])
+            CandidatoRicerca(RisultatoRicerca(destinazione: .obiettivo(o.id), gruppo: .obiettivi, titolo: o.titolo,
+                                              dettaglio: "\(nome(o.clienteId)) · \(Formati.euro(o.importo)) entro il \(Formati.dataEstesa.string(from: o.scadenza))"),
+                             campi: [("Cliente", nome(o.clienteId)), ("Note", o.note)])
         }
         candidati[.incontri] = dati.incontri.map { i in
-            Candidato(risultato: RisultatoRicerca(destinazione: .incontro(i.id), gruppo: .incontri, titolo: i.titolo,
-                                                  dettaglio: "\(nome(i.clienteId)) · \(Formati.dataEstesa.string(from: i.data))"),
-                      campi: [("Cliente", nome(i.clienteId)), ("Preoccupazioni", i.preoccupazioni), ("Progetti", i.progetti),
-                              ("Esperienza", i.esperienza), ("Appunti", i.appunti), ("Decisioni", i.decisioni),
-                              ("Prossima attività", i.prossimaAttivita)])
+            CandidatoRicerca(RisultatoRicerca(destinazione: .incontro(i.id), gruppo: .incontri, titolo: i.titolo,
+                                              dettaglio: "\(nome(i.clienteId)) · \(Formati.dataEstesa.string(from: i.data))"),
+                             campi: [("Cliente", nome(i.clienteId)), ("Preoccupazioni", i.preoccupazioni), ("Progetti", i.progetti),
+                                     ("Esperienza", i.esperienza), ("Appunti", i.appunti), ("Decisioni", i.decisioni),
+                                     ("Prossima attività", i.prossimaAttivita)])
         }
         candidati[.prodotti] = dati.prodotti.map { p in
-            Candidato(risultato: RisultatoRicerca(destinazione: .prodotto(p.id), gruppo: .prodotti, titolo: p.nome,
-                                                  dettaglio: [p.emittente, p.tipologia].filter { !$0.isEmpty }.joined(separator: " · "), canale: p.canale),
-                      campi: [("Emittente", p.emittente), ("Tipologia", p.tipologia), ("Canale", p.canale.nomeBreve),
-                              ("Garanzie", p.garanzie), ("Liquidabilità", p.liquidabilita), ("Fonte", p.fonte), ("Note", p.note)])
+            CandidatoRicerca(RisultatoRicerca(destinazione: .prodotto(p.id), gruppo: .prodotti, titolo: p.nome,
+                                              dettaglio: [p.emittente, p.tipologia].filter { !$0.isEmpty }.joined(separator: " · "), canale: p.canale),
+                             campi: [("Emittente", p.emittente), ("Tipologia", p.tipologia), ("Canale", p.canale.nomeBreve),
+                                     ("Garanzie", p.garanzie), ("Liquidabilità", p.liquidabilita), ("Fonte", p.fonte), ("Note", p.note)])
         }
         #if os(macOS)
         // «Luce» §8.1.5.2 punto 6: i documenti della Biblioteca, nel titolo, nell'edizione e nel testo delle pagine
         // (gli illeggibili non hanno testo); su iPhone e iPad la Biblioteca non c'è (decisione 114)
-        candidati[.biblioteca] = stato.biblioteca.tutti.filter { !$0.illeggibile }.map { d in
-            Candidato(risultato: RisultatoRicerca(destinazione: .biblioteca(d.id, pagina: 1), gruppo: .biblioteca, titolo: d.titolo,
-                                                  dettaglio: [d.dettaglio, d.edizione].filter { !$0.isEmpty }.joined(separator: " · "),
-                                                  canale: d.canale),
-                      campi: [("Edizione", d.edizione), ("Sigla", d.sigla)],
-                      pagine: stato.trovaPagina.pagine(d))
+        candidati[.biblioteca] = firma.biblioteca.filter { !$0.illeggibile }.map { d in
+            CandidatoRicerca(RisultatoRicerca(destinazione: .biblioteca(d.id, pagina: 1), gruppo: .biblioteca, titolo: d.titolo,
+                                              dettaglio: [d.dettaglio, d.edizione].filter { !$0.isEmpty }.joined(separator: " · "),
+                                              canale: d.canale),
+                             campi: [("Edizione", d.edizione), ("Sigla", d.sigla)],
+                             fonte: .biblioteca(d))
         }
         #endif
 
-        candidati[.azioni] = AzioneRicerca.allCases.filter { $0 != .modoCliente || !stato.inModoCliente }.map { a in
-            Candidato(risultato: RisultatoRicerca(destinazione: .app(.ricerca), gruppo: .azioni, titolo: a.titolo,
-                                                  dettaglio: a.dettaglio, azione: a),
-                      campi: [("Azione", a.paroleChiave)])
+        candidati[.azioni] = AzioneRicerca.allCases.filter { $0 != .modoCliente || !firma.modoCliente }.map { a in
+            CandidatoRicerca(RisultatoRicerca(destinazione: .app(.ricerca), gruppo: .azioni, titolo: a.titolo,
+                                              dettaglio: a.dettaglio, azione: a),
+                             campi: [("Azione", a.paroleChiave)])
         }
+        return IndiceRicerca(firma: firma, candidati: candidati)
+    }
 
+    /// La ricerca a parole su tutto l'archivio, con l'indice del pannello (`memoria`) o con uno fatto apposta.
+    private static func cercaParole(_ testo: String, in stato: StatoShell, memoria: MemoriaIndiceRicerca?) -> [SezioneRicerca] {
+        let ricerca = testo.trimmingCharacters(in: .whitespacesAndNewlines)
+        let parole = parole(ricerca)
+        guard !parole.isEmpty else { return [] }
+        let q = Domanda(ricerca: ricerca, parole: parole)
+        let indice = memoria?.indice(stato) ?? nuovoIndice(stato, firma: firmaIndice(stato))
         return GruppoRicerca.allCases.compactMap { g in
-            sezione(g, candidati[g] ?? [], ricerca: ricerca, parole: parole, limite: perGruppo)
+            sezione(g, indice.candidati[g] ?? [], q, limite: perGruppo, pagine: indice.pagine, stato: stato)
         }
     }
 
@@ -415,8 +530,7 @@ enum MotoreRicerca {
         func nome(_ id: String) -> String { nomi[id] ?? "Senza cliente" }
         var prodotti: [String: Prodotto] = [:]
         for x in dati.prodotti { prodotti[x.id] = x }
-        let ricerca = r.testoLibero
-        let parole = r.parole
+        let q = Domanda(ricerca: r.testoLibero, parole: r.parole)
         let scadenze = r.filtri.contains { if case .scade = $0 { return true } else { return false } }
 
         // Posizioni: per scadenza se si filtra la scadenza, altrimenti dalla più grande
@@ -424,15 +538,15 @@ enum MotoreRicerca {
             if scadenze { return (a.scadenza ?? .distantFuture) < (b.scadenza ?? .distantFuture) }
             return a.valore > b.valore
         }
-        let candidatiPosizioni = posizioni.enumerated().map { i, p -> Candidato in
+        let candidatiPosizioni = posizioni.enumerated().map { i, p -> CandidatoRicerca in
             var risultato = RisultatoRicerca(destinazione: .posizione(p.id), gruppo: .posizioni, titolo: p.nome,
                                              dettaglio: "\(nome(p.clienteId)) · \(p.stato.nome)",
                                              estratto: FiltriRicerca.dettaglio(p, filtri: r.filtriPosizioni, prodotto: p.prodottoId.flatMap { prodotti[$0] }),
                                              canale: p.canale)
             risultato.ordine = i + 1
-            return Candidato(risultato: risultato,
-                             campi: [("Cliente", nome(p.clienteId)), ("Tipologia", p.tipologia), ("Emittente", p.emittente),
-                                     ("Contratto", p.numeroContratto), ("Note", p.note)])
+            return CandidatoRicerca(risultato,
+                                    campi: [("Cliente", nome(p.clienteId)), ("Tipologia", p.tipologia), ("Emittente", p.emittente),
+                                            ("Contratto", p.numeroContratto), ("Note", p.note)])
         }
         let filtriClienti = r.filtriClienti.map(\.descrizione).joined(separator: " · ")
         // Con «conformita:» l'estratto del cliente sono le sue voci da sistemare (le prime due), con il canale se è uno solo;
@@ -441,7 +555,7 @@ enum MotoreRicerca {
             if case .conformita(let x) = f { return x } else { return nil }
         }.first
         let canaleScritto = FiltriRicerca.canaleDelFiltro(r)
-        let candidatiClienti = filtrati.clienti.map { c -> Candidato in
+        let candidatiClienti = filtrati.clienti.map { c -> CandidatoRicerca in
             var estratto: String? = filtriClienti.isEmpty ? nil : filtriClienti
             var canaleEstratto: Canale?
             if let f = filtroConf, let e = filtrati.conformita[c.id],
@@ -450,12 +564,12 @@ enum MotoreRicerca {
                 let canali = Set(MotoreConformita.vociFiltro(e, f, canale: canaleScritto).prefix(2).map(\.canale))
                 if canali.count == 1, let unico = canali.first { canaleEstratto = unico }
             }
-            return Candidato(risultato: RisultatoRicerca(destinazione: .cliente(c.id), gruppo: .clienti, titolo: c.nome, dettaglio: c.tema,
-                                                         estratto: estratto, canale: canaleEstratto),
-                             campi: [("Progetto", c.tema), ("Professione", c.professione), ("Nota", c.nota)])
+            return CandidatoRicerca(RisultatoRicerca(destinazione: .cliente(c.id), gruppo: .clienti, titolo: c.nome, dettaglio: c.tema,
+                                                     estratto: estratto, canale: canaleEstratto),
+                                    campi: [("Progetto", c.tema), ("Professione", c.professione), ("Nota", c.nota)])
         }
         // Con le parole il nome trovato non si ripete come estratto: l'estratto dei filtri resta
-        func conEstratto(_ s: SezioneRicerca?, _ originali: [Candidato]) -> SezioneRicerca? {
+        func conEstratto(_ s: SezioneRicerca?, _ originali: [CandidatoRicerca]) -> SezioneRicerca? {
             guard let s else { return nil }
             var estratti: [ChiaveRisultato: String] = [:]
             for c in originali { if let e = c.risultato.estratto { estratti[c.risultato.id] = e } }
@@ -467,11 +581,11 @@ enum MotoreRicerca {
             return SezioneRicerca(gruppo: s.gruppo, risultati: risultati, totale: s.totale)
         }
         esito.sezioni = [
-            conEstratto(sezione(.clienti, candidatiClienti, ricerca: ricerca, parole: parole, limite: perGruppoFiltri), candidatiClienti),
-            conEstratto(sezione(.posizioni, candidatiPosizioni, ricerca: ricerca, parole: parole, limite: perGruppoFiltri), candidatiPosizioni),
+            conEstratto(sezione(.clienti, candidatiClienti, q, limite: perGruppoFiltri, pagine: nil, stato: stato), candidatiClienti),
+            conEstratto(sezione(.posizioni, candidatiPosizioni, q, limite: perGruppoFiltri, pagine: nil, stato: stato), candidatiPosizioni),
         ].compactMap { $0 }
         // Con le parole i totali sono di ciò che resta (tutti i risultati, non solo quelli mostrati)
-        guard !parole.isEmpty else { return }
+        guard !q.parole.isEmpty else { return }
         func ids(_ s: SezioneRicerca?) -> Set<String> {
             Set(s?.risultati.compactMap { x -> String? in
                 switch x.destinazione {
@@ -481,11 +595,11 @@ enum MotoreRicerca {
             } ?? [])
         }
         if !r.filtriPosizioni.isEmpty {
-            let restano = ids(sezione(.posizioni, candidatiPosizioni, ricerca: ricerca, parole: parole, limite: Int.max))
+            let restano = ids(sezione(.posizioni, candidatiPosizioni, q, limite: Int.max, pagine: nil, stato: stato))
             esito.totali = FiltriRicerca.totali(filtrati.posizioni.filter { restano.contains($0.id) })
             esito.totaliDeiClienti = false
         } else {
-            let restano = ids(sezione(.clienti, candidatiClienti, ricerca: ricerca, parole: parole, limite: Int.max))
+            let restano = ids(sezione(.clienti, candidatiClienti, q, limite: Int.max, pagine: nil, stato: stato))
             esito.totali = FiltriRicerca.totali(dati.posizioni.filter { $0.stato == .inEssere && restano.contains($0.clienteId) })
             esito.totaliDeiClienti = true
         }
