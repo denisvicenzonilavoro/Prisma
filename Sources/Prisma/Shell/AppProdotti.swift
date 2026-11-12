@@ -6,6 +6,8 @@ struct AppProdotti: View {
     @Environment(StatoShell.self) var stato
     @State var modulo: Prodotto?
     @State var moduloCondizioni: Prodotto?
+    /// «Metti su un cliente»: il prodotto sul cliente in due passi (ModuloProdottoSulCliente).
+    @State var sulCliente: RichiestaProdottoCliente?
     @State var confermaEliminazione = false
     @State var ricerca = ""
 
@@ -84,6 +86,11 @@ struct AppProdotti: View {
         .altreAppApple()
         .sheet(item: $modulo) { p in
             ModuloProdotto(bozza: p, nuovo: stato.prodotto(p.id) == nil) { stato.salvaProdotto($0) }
+        }
+        .sheet(item: $sulCliente) { r in
+            ModuloProdottoSulCliente(prodotto: r.prodottoId.flatMap { stato.prodotto($0) }, statoIniziale: r.stato,
+                                     clienteId: stato.clienteAttivoId, clienteScelto: r.clienteScelto)
+                .environment(stato)
         }
         .sheet(item: $moduloCondizioni) { p in
             ModuloCondizioni(bozza: p.condizioni ?? CondizioniContratto(), prodotto: p.nome) { nuove in
@@ -499,8 +506,12 @@ struct AppProdotti: View {
                     }
                 }
                 HStack(spacing: 8) {
-                    Button { stato.proponi(p) } label: { Label("Crea una proposta per \(cliente)", systemImage: "plus") }
-                        .buttonStyle(StileBlu())
+                    Button { sulCliente = RichiestaProdottoCliente(prodottoId: p.id, stato: .proposta, clienteScelto: true) } label: {
+                        Label("Metti su un cliente…", systemImage: "plus")
+                    }
+                    .buttonStyle(StileBlu())
+                    .disabled(stato.solaLettura)
+                    .help("Proposta o posizione in essere per \(cliente) o un altro cliente: scrivi solo importi e durata")
                     if p.area.proiettabile {
                         Button { stato.simula(p) } label: { Label("Simula", systemImage: "slider.horizontal.3") }
                             .buttonStyle(StileVetro())
