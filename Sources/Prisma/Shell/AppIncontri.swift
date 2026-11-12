@@ -15,21 +15,28 @@ struct AppIncontri: View {
     @State private var ultimaVoltaIntera = false
 
     private var cliente: String { stato.clienteAttivoId }
+    /// Gli incontri del cliente (dal più recente): filtrati e ordinati su tutto l'archivio, quindi il body li chiede una
+    /// volta sola e li passa alle parti che li usano.
     private var elenco: [Incontro] { stato.incontriCliente(cliente) }
 
     /// L'incontro aperto: quello scelto, altrimenti il primo da preparare, altrimenti il più recente.
-    private var corrente: Incontro? {
+    private func scegliCorrente(_ elenco: [Incontro]) -> Incontro? {
         if let i = stato.incontro(stato.incontroAperto), i.clienteId == cliente { return i }
         return elenco.first { $0.stato == .preparazione } ?? elenco.first
     }
 
+    /// L'incontro aperto adesso, per le azioni (al tocco, non nel body).
+    private var corrente: Incontro? { scegliCorrente(elenco) }
+
     var body: some View {
         let _ = ContaCorpi.segna()
+        let elenco = self.elenco
+        let aperto = scegliCorrente(elenco)
         // Nel passo «Ascolto» il copilota dell'incontro (giro 5, CopilotaIncontro.swift) prende tutta la finestra;
         // le tre domande scritte e gli appunti restano a un tocco («Domande e appunti»)
         SceltaAscoltoIncontri(copilota: stato.copilota, ascolto: stato.schedaIncontro == .ascolto,
-                              clienteId: cliente, incontro: corrente) {
-            quaderno
+                              clienteId: cliente, incontro: aperto) {
+            quaderno(elenco: elenco, corrente: aperto)
         }
         // Tema Apple: card piatte, scala tipografica, pulsanti e tendine del template; le cascate ripartono
         // cambiando cliente
@@ -54,9 +61,9 @@ struct AppIncontri: View {
     }
 
     /// Il quaderno dell'incontro: barra, testata con il percorso, il passo aperto e il piede.
-    private var quaderno: some View {
+    private func quaderno(elenco: [Incontro], corrente: Incontro?) -> some View {
         VStack(alignment: .leading, spacing: Misure.IncontriImpaginazione.spazio) {
-            barra
+            barra(elenco: elenco, corrente: corrente)
                 .entrataCascata(0, base: Tema.Apple.Moto.Cascata.baseDentroApp)
             if let i = corrente {
                 testata(i)
@@ -64,7 +71,7 @@ struct AppIncontri: View {
                 // Ogni fase si impagina sullo spazio che resta: le schede riempiono la larghezza
                 // e la barra in basso resta sempre dentro la finestra
                 GeometryReader { geo in
-                    fase(i, area: geo.size)
+                    fase(i, elenco: elenco, area: geo.size)
                         .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -88,9 +95,9 @@ struct AppIncontri: View {
         )
     }
 
-    @ViewBuilder private func fase(_ i: Incontro, area: CGSize) -> some View {
+    @ViewBuilder private func fase(_ i: Incontro, elenco: [Incontro], area: CGSize) -> some View {
         switch stato.schedaIncontro {
-        case .preparazione: preparazione(i, area: area)
+        case .preparazione: preparazione(i, elenco: elenco, area: area)
         case .ascolto: ascolto(i, area: area)
         case .passi:
             if i.stato == .concluso { concluso(i, area: area) } else { passi(i, area: area) }
@@ -121,14 +128,15 @@ struct AppIncontri: View {
     // MARK: - Barra
 
     /// Solo la scelta del cliente e dell'incontro, e il nuovo incontro: tutto il resto è nella testata.
-    private var barra: some View {
+    private func barra(elenco: [Incontro], corrente: Incontro?) -> some View {
         let m = Tema.Misura.Incontri.self
+        let scelto = corrente?.id ?? ""
         return HStack(spacing: Misure.IncontriImpaginazione.spazio) {
             MenuTendina(selezione: Bindable(stato).clienteAttivoId,
                         opzioni: stato.clienti.map { ($0.id, $0.nome) },
                         larghezza: m.menuCliente)
             if !elenco.isEmpty {
-                MenuTendina(selezione: Binding(get: { corrente?.id ?? "" }, set: { stato.incontroAperto = $0 }),
+                MenuTendina(selezione: Binding(get: { scelto }, set: { stato.incontroAperto = $0 }),
                             opzioni: elenco.map { i in
                                 (i.id, "\(Formati.dataBreve.string(from: i.data)) · \(i.titolo)\(i.stato == .concluso ? " ✓" : "")")
                             },
@@ -314,7 +322,7 @@ struct AppIncontri: View {
         (.risparmio, "Quanto dedicare ogni mese al progetto?", "Importo, scadenza e impegni già presenti."),
     ]
 
-    private func preparazione(_ i: Incontro, area: CGSize) -> some View {
+    private func preparazione(_ i: Incontro, elenco: [Incontro], area: CGSize) -> some View {
         let m = Misure.IncontriImpaginazione.self
         let colonne = m.colonneTemi(area.width)
         let confermate = stato.analisi360(i.clienteId).confermate
@@ -329,7 +337,7 @@ struct AppIncontri: View {
                 }
                 .padding(.top, m.staccoNota)
                 grigliaTemi(i, colonne: colonne, confermate: confermate)
-                ultimaVolta(i)
+                ultimaVolta(i, elenco: elenco)
             }
         }
     }
@@ -389,7 +397,8 @@ struct AppIncontri: View {
         let mi = Tema.Misura.Incontri.self
         let ci = Tema.Colore.Incontri.self
         let posizioni = stato.posizioniCliente(i.clienteId)
-        let riepilogo = RiepilogoPosizioni(posizioni)
+        // Dalla cache del cliente (lo stesso quadro di `RiepilogoPosizioni(posizioni)`, non rifatto a ogni body)
+        let riepilogo = stato.riepilogoPosizioniCliente(i.clienteId)
         let scadenze = posizioni.filter { $0.scadeEntro(RiepilogoPosizioni.giorniScadenza) }
         let proposte = posizioni.filter { $0.stato == .proposta && $0.esito != .accettata && $0.esito != .rifiutata }
         return tessera("DAL DOSSIER") {
@@ -531,9 +540,11 @@ struct AppIncontri: View {
         .disabled(i.stato == .concluso)
     }
 
-    /// L'ultima volta: data, titolo e le decisioni in due righe; il resto a un tocco.
-    @ViewBuilder private func ultimaVolta(_ i: Incontro) -> some View {
-        if let p = stato.incontriCliente(i.clienteId).first(where: { $0.stato == .concluso && $0.id != i.id }) {
+    /// L'ultima volta: data, titolo e le decisioni in due righe; il resto a un tocco. `elenco`: gli incontri del cliente
+    /// della finestra, già letti dal body (l'incontro aperto è sempre suo).
+    @ViewBuilder private func ultimaVolta(_ i: Incontro, elenco: [Incontro]) -> some View {
+        let suoi = i.clienteId == cliente ? elenco : stato.incontriCliente(i.clienteId)
+        if let p = suoi.first(where: { $0.stato == .concluso && $0.id != i.id }) {
             let mi = Tema.Misura.Incontri.self
             let decisioni = p.decisioni.isEmpty ? "Nessuna decisione registrata." : p.decisioni
             let lunghe = decisioni.count > mi.caratteriBreve
@@ -676,7 +687,7 @@ struct AppIncontri: View {
             // Stretta: le proposte e, sotto, il prossimo passo scorrono insieme
             ScrollView {
                 VStack(alignment: .leading, spacing: m.spazio) {
-                    contenutoProposte(i)
+                    ParteIncontri { contenutoProposte(i) }
                         .padding(m.margine)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
                         .modifier(CartaIncontro())
@@ -687,12 +698,12 @@ struct AppIncontri: View {
             HStack(alignment: .top, spacing: m.spazio) {
                 // Poche proposte: la scheda è alta quanto il contenuto; tante: scorre dentro la finestra
                 ViewThatFits(in: .vertical) {
-                    contenutoProposte(i)
+                    ParteIncontri { contenutoProposte(i) }
                         .padding(m.margine)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
                         .modifier(CartaIncontro())
                     ScrollView {
-                        contenutoProposte(i)
+                        ParteIncontri { contenutoProposte(i) }
                             .padding(m.margine)
                             .frame(maxWidth: .infinity, alignment: .topLeading)
                     }
@@ -709,6 +720,8 @@ struct AppIncontri: View {
         }
     }
 
+    /// Le proposte con la loro testa. Sta dentro `ParteIncontri`: le spunte (`proposteScelte`) e la lettura in corso si
+    /// leggono lì, così una spunta rifà solo l'elenco delle proposte e non tutto il quaderno.
     private func contenutoProposte(_ i: Incontro) -> some View {
         let mi = Tema.Misura.Incontri.self
         let proposte = stato.proposteIncontro[i.id]
@@ -973,6 +986,14 @@ struct AppIncontri: View {
                 .foregroundColor(Tema.Apple.Colore.rosso)
         }
     }
+}
+
+/// Una parte del quaderno costruita nel body di questa vista e non in quello dell'app: ciò che legge di StatoShell (le
+/// proposte spuntate) iscrive solo lei. Stessa impaginazione del contenuto.
+private struct ParteIncontri<Contenuto: View>: View {
+    let contenuto: () -> Contenuto
+
+    var body: some View { contenuto() }
 }
 
 /// Scheda del quaderno degli incontri: la card piatta del tema Apple (raggio 22, bordo `separatore`).

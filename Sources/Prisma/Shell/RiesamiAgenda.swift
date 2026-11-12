@@ -11,6 +11,39 @@ struct RiesamiDelMese {
     static func nessuno(_ mese: Date) -> RiesamiDelMese { .init(mese: mese, daFissare: [], fissati: []) }
 }
 
+/// I conti delle schede della striscia (punti dell'ordine del giorno e quanti ad alta priorità), tenuti da parte dalla
+/// vista dell'Agenda cliente per cliente. Le cache di DerivatiDati si svuotano a ogni modifica dei dati dei calcoli: senza
+/// questa memoria una spunta in un'attività rifarebbe il riesame (fonte di Vera, motore, occasioni) di tutti i clienti
+/// della striscia, fino a dodici. Qui ogni scheda ha la chiave della voce del suo cliente in CacheClienti (dati comuni,
+/// dati di quel cliente, giorno, modalità cliente) più ciò che `riesameCliente` guarda in più (ora, la coppia della
+/// sostituzione aperta in Prospetti, l'unica parte del prospetto che la fonte di Vera legge, e l'orizzonte della
+/// sostituzione): una modifica a un cliente rifà solo la sua. Si usa solo dal thread principale.
+final class MemoriaStrisciaRiesami {
+    struct Chiave: Equatable {
+        let voce: CacheClienti.Chiave
+        let ora: Int
+        let attuale: String?
+        let alternativa: String?
+        let orizzonte: Int?
+    }
+
+    struct Conti {
+        let punti: Int?
+        let alta: Int
+    }
+
+    private var voci: [String: (chiave: Chiave, conti: Conti)] = [:]
+
+    /// I conti del cliente, dalla memoria se la chiave è la stessa (oltre `vociMassimeAltri` clienti si svuota).
+    func conti(_ id: String, chiave: Chiave, calcola: () -> Conti) -> Conti {
+        if let v = voci[id], v.chiave == chiave { return v.conti }
+        let c = calcola()
+        if voci.count >= DerivatiDati.vociMassimeAltri { voci.removeAll(keepingCapacity: true) }
+        voci[id] = (chiave: chiave, conti: c)
+        return c
+    }
+}
+
 /// La bozza di un riesame con lo spazio trovato (nil = nessuno spazio libero: data proposta come prima).
 struct RiesamePianificato: Identifiable {
     let appuntamento: Appuntamento
@@ -51,6 +84,23 @@ extension StatoShell {
         if d.riesamiMese.count >= DerivatiDati.vociMassimeAgenda { d.riesamiMese.removeAll() }
         d.riesamiMese[k] = r
         return r
+    }
+
+    /// I conti della scheda di un cliente nella striscia: dalla memoria della vista finché non cambia nulla di ciò da cui
+    /// dipende il suo riesame, altrimenti da `riesameCliente`.
+    func contiStrisciaRiesami(_ id: String, memoria: MemoriaStrisciaRiesami) -> MemoriaStrisciaRiesami.Conti {
+        var attuale: String?
+        var alternativa: String?
+        if case .sostituzione(let a, let b, _)? = prospetto {
+            attuale = a
+            alternativa = b
+        }
+        let k = MemoriaStrisciaRiesami.Chiave(voce: voceCliente(id).chiave, ora: DerivatiDati.ora(), attuale: attuale,
+                                              alternativa: alternativa, orizzonte: orizzonteSostituzione)
+        return memoria.conti(id, chiave: k) {
+            let r = riesameCliente(id)
+            return MemoriaStrisciaRiesami.Conti(punti: r?.punti.count, alta: r?.punti.filter { $0.priorita == .alta }.count ?? 0)
+        }
     }
 
     /// Il calcolo dei riesami del mese, senza memoria: una passata sui dovuti e sulle revisioni in agenda.

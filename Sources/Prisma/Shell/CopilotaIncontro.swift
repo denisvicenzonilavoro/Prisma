@@ -143,11 +143,18 @@ struct ColonnaOggiCopilota: View {
 
     private typealias C = Tema.Apple.Copilota.Colonna
 
+    /// Gli appuntamenti di oggi con un cliente visibile, una volta sola per dati dei calcoli, giorno e modalità cliente
+    /// (cache comune `ricavato`): la colonna si rifà a ogni frase dell'ascolto, e prima ogni volta scorreva tutto
+    /// l'archivio con un calendario per appuntamento. Il giorno si confronta con due date.
     private var oggi: [Appuntamento] {
-        let cal = Calendar.current
-        return stato.dati.appuntamenti
-            .filter { cal.isDateInToday($0.inizio) && stato.cliente($0.clienteId) != nil }
-            .sorted { $0.inizio < $1.inizio }
+        stato.ricavato("copilota-oggi") { () -> [Appuntamento] in
+            let cal = Calendar.current
+            let inizio = cal.startOfDay(for: Date())
+            let fine = cal.date(byAdding: .day, value: 1, to: inizio) ?? inizio
+            return stato.dati.appuntamenti
+                .filter { $0.inizio >= inizio && $0.inizio < fine && stato.cliente($0.clienteId) != nil }
+                .sorted { $0.inizio < $1.inizio }
+        }
     }
 
     var body: some View {
@@ -485,7 +492,7 @@ struct TestataCopilota: View {
             .layoutPriority(1)
             Spacer(minLength: 0)
             if conOnda {
-                OndaNastroApple(livelli: copilota.livelli, ascolta: copilota.fase == .ascolto)
+                OndaCopilota(copilota: copilota)
             }
             if !copilota.ascolta, let s = sessione, !(s.schede.isEmpty && s.trascrizione.isEmpty) {
                 Button("Il verbale") { apriVerbale() }
@@ -509,12 +516,20 @@ struct TestataCopilota: View {
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
         } else if copilota.fase == .ascolto, copilota.scena == nil {
-            TimelineView(.periodic(from: Date(), by: 1)) { ctx in
+            TimelineView(.periodic(from: inizioContatore, by: 1)) { ctx in
                 riga(TestiCopilota.ascolto(copilota.secondi(ctx.date)))
             }
         } else {
             riga(testoStato)
         }
+    }
+
+    /// L'inizio del contatore: la ripresa in corso, spostata della frazione di secondo delle riprese già finite. Resta lo
+    /// stesso a ogni rivalutazione della testata (prima era `Date()`: il periodo ripartiva a ogni livello del microfono) e
+    /// il contatore cambia proprio allo scoccare di ogni secondo d'ascolto.
+    private var inizioContatore: Date {
+        guard let inizio = copilota.inizio else { return Date() }
+        return inizio.addingTimeInterval(-copilota.secondiPrima.truncatingRemainder(dividingBy: 1))
     }
 
     private func riga(_ t: String) -> some View {
@@ -580,6 +595,17 @@ struct TestataCopilota: View {
 
     private func apriVerbale() {
         copilota.dettaglio.apri(StatoCopilotaIncontro.idVerbale, misura: Tema.Apple.Copilota.Verbale.misura)
+    }
+}
+
+/// L'onda della testata, a parte: i livelli del microfono arrivano una decina di volte al secondo e li legge solo lei,
+/// così la testata (avatar, titoli, contatore, pulsante) non si rifà a ogni livello. Stessa onda di prima.
+@MainActor
+private struct OndaCopilota: View {
+    let copilota: StatoCopilotaIncontro
+
+    var body: some View {
+        OndaNastroApple(livelli: copilota.livelli, ascolta: copilota.fase == .ascolto)
     }
 }
 
@@ -651,6 +677,8 @@ struct TrascrizioneCopilotaVista: View {
                                                          inCorso: false, indicata: copilota.indicata == p.id) {
                                     if let s = sessione { stato.cambiaChiCopilota(p.id, sessione: s.id) }
                                 }
+                                // Le righe finite restano ferme mentre la riga in corso cresce parola per parola
+                                .equatable()
                                 .id(p.id)
                                 .entrataStile(.rigaCopilota)
                             }
@@ -701,7 +729,7 @@ struct TrascrizioneCopilotaVista: View {
 }
 
 /// Una riga della trascrizione: chi parla (largo 56) e il testo, parola per parola, con le evidenze.
-struct RigaTrascrizioneCopilota: View {
+struct RigaTrascrizioneCopilota: View, Equatable {
     let chi: String
     let coloreChi: Color
     let testo: String
@@ -713,6 +741,14 @@ struct RigaTrascrizioneCopilota: View {
     @Environment(\.prismaStatoFinale) private var fermo
 
     private typealias R = Tema.Apple.Copilota.Trascrizione
+
+    /// Uguali se mostrano la stessa cosa (con `.equatable()`, solo sulle righe finite): la chiusura del tocco su «chi» non
+    /// si confronta, ma cambia solo con il pezzo, che è nell'`id` della riga. Così a ogni parola della riga in corso le
+    /// righe finite non si rifanno né si rimisurano parola per parola.
+    nonisolated static func == (a: RigaTrascrizioneCopilota, b: RigaTrascrizioneCopilota) -> Bool {
+        a.chi == b.chi && a.coloreChi == b.coloreChi && a.testo == b.testo && a.evidenze == b.evidenze
+            && a.inCorso == b.inCorso && a.indicata == b.indicata
+    }
 
     var body: some View {
         let parole = ParolaCopilota.parole(testo, evidenze: evidenze)

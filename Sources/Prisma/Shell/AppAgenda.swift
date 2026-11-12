@@ -18,6 +18,8 @@ struct AppAgenda: View {
     @State var riesamiRidotti = false
     /// La riga in testa al modulo dopo «Pianifica» (nil per le altre aperture del modulo).
     @State var spiegazioneModulo: String?
+    /// I conti delle schede della striscia, cliente per cliente (RiesamiAgenda.swift): dura quanto la finestra aperta.
+    @State private var memoriaRiesami = MemoriaStrisciaRiesami()
 
     private var cal: Calendar { CalendarioAgenda.cal }
     private var giorno: Date { stato.giornoAgenda }
@@ -127,7 +129,8 @@ struct AppAgenda: View {
         } else {
             testo = "Mai incontrato in Prisma"
         }
-        let r = stato.riesameCliente(d.id)
+        // Dalla memoria della vista: dopo una modifica si rifà solo il riesame del cliente toccato, non tutta la striscia
+        let conti = stato.contiStrisciaRiesami(d.id, memoria: memoriaRiesami)
         return VoceRiesameAgenda(
             id: d.id,
             nome: d.cliente.nome,
@@ -135,8 +138,8 @@ struct AppAgenda: View {
             tinta: d.cliente.tinta.colori,
             stato: testo,
             scaduto: d.scaduto(oggi),
-            punti: r?.punti.count,
-            alta: r?.punti.filter { $0.priorita == .alta }.count ?? 0,
+            punti: conti.punti,
+            alta: conti.alta,
             canali: MotorePianificazione.canali(stato.posizioniCliente(d.id))
         )
     }
@@ -285,7 +288,7 @@ struct AppAgenda: View {
     private var vistaMese: some View {
         let settimane = CalendarioAgenda.settimane(meseDi: giorno)
         // Appuntamenti, attività, scadenze e occasioni dei giorni visibili, raggruppati una volta sola
-        let indice = stato.giorniAgenda(settimane.flatMap { $0 })
+        let indice = indiceGiorni(settimane.flatMap { $0 })
         return GeometryReader { geo in
             let larghezza = Misure.AgendaImpaginazione.dettaglio(geo.size.width)
             HStack(spacing: 0) {
@@ -293,7 +296,7 @@ struct AppAgenda: View {
                            canale: { stato.canaleAppuntamento($0) }, seleziona: { seleziona($0) })
                     .padding(Misure.AgendaImpaginazione.calendario)
                     .frame(width: max(0, geo.size.width - larghezza))
-                colonnaMese(indice)
+                ParteAgenda { colonnaMese(indice) }
                     .frame(width: larghezza)
             }
         }
@@ -304,7 +307,7 @@ struct AppAgenda: View {
     /// settimana a pillola, la data e la giornata con gli impegni e la linea dell'ora.
     private var vistaSettimana: some View {
         let settimane = CalendarioAgenda.settimane(meseDi: giorno)
-        let indice = stato.giorniAgenda(settimane.flatMap { $0 })
+        let indice = indiceGiorni(settimane.flatMap { $0 })
         let s = Tema.Apple.Agenda.Settimana.self
         return HStack(alignment: .top, spacing: Tema.Apple.Agenda.Disposizione.spazio) {
             BarraLateraleAgendaApple(giorno: giorno, settimane: settimane, indice: indice, strato: strato,
@@ -327,7 +330,7 @@ struct AppAgenda: View {
     /// scadenze, occasioni e il dettaglio di sempre della riga scelta).
     private var vistaGiorno: some View {
         // Il giorno guarda la sua settimana: la nota della colonna conta la settimana
-        let indice = stato.giorniAgenda(CalendarioAgenda.giorni(settimanaDi: giorno))
+        let indice = indiceGiorni(CalendarioAgenda.giorni(settimanaDi: giorno))
         let s = Tema.Apple.Agenda.Settimana.self
         return GeometryReader { geo in
             let larghezza = Misure.AgendaImpaginazione.dettaglio(geo.size.width)
@@ -340,7 +343,7 @@ struct AppAgenda: View {
                         .entrataCascata(1, sfocatura: false)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                colonnaMese(indice, fondo: false)
+                ParteAgenda { colonnaMese(indice, fondo: false) }
                     .frame(width: larghezza)
                     .cardAgendaApple()
                     .entrataCascata(2, sfocatura: false)
@@ -356,7 +359,7 @@ struct AppAgenda: View {
             HStack(spacing: 0) {
                 ElencoOccasioniAgenda(elenco: elenco)
                     .frame(width: max(0, geo.size.width - larghezza))
-                dettaglio(GiorniAgenda(), elenco: elenco)
+                ParteAgenda { dettaglio(GiorniAgenda(), elenco: elenco) }
                     .frame(width: larghezza)
             }
         }
@@ -420,8 +423,21 @@ struct AppAgenda: View {
         azzeraScelta()
     }
 
-    /// Lo strato delle occasioni nella settimana e nel mese (Impostazioni › Occasioni).
-    private var strato: Bool { stato.dati.impostazioni.occasioni.inAgenda }
+    /// Lo strato delle occasioni nella settimana e nel mese (Impostazioni › Occasioni). Letto senza iscrivere la vista a
+    /// tutte le impostazioni (aspetto, sfondo…): lo strato entra nei calcoli, quindi cambiandolo cambia `versioneCalcoli`,
+    /// che l'Agenda segue già (riepilogo delle attività, riesami, giorni).
+    private var strato: Bool { stato.dati.impostazioniDeiCalcoli.occasioni.inAgenda }
+
+    /// I giorni mostrati raggruppati (`giorniAgenda`), dalla cache comune dei dati ricavati: con la cache piena il body
+    /// non rilegge le impostazioni (la chiave di `giorniAgenda` legge lo strato da `dati.impostazioni`), così cambiare
+    /// l'aspetto o un'impostazione che non tocca i calcoli non rifà tutta l'Agenda. Lo strato entra nei calcoli: se cambia,
+    /// la cache si svuota con `versioneCalcoli`. Nella chiave il filtro cliente, che non è un dato dei calcoli.
+    private func indiceGiorni(_ giorni: [Date]) -> GiorniAgenda {
+        guard let primo = giorni.min(), let ultimo = giorni.max() else { return GiorniAgenda() }
+        let chiave = "agenda-giorni|\(primo.timeIntervalSinceReferenceDate)|\(ultimo.timeIntervalSinceReferenceDate)|"
+            + (stato.filtroClienteAgenda ?? "-")
+        return stato.ricavato(chiave) { stato.giorniAgenda(giorni) }
+    }
 
     /// La colonna destra del mese: la giornata scelta oppure, scelta una riga, il suo dettaglio (con il ritorno).
     /// `fondo`: il fondo e il filo della colonna (nella vista Giorno la colonna è una card a sé).
@@ -1019,6 +1035,10 @@ struct DettaglioAppuntamento: View {
         let posizione = evento.posizioneId.flatMap { id in stato.posizioni.first { $0.id == id } }
         let collegate = stato.attivitaCollegate(evento.id)
         let canale = stato.canaleAppuntamento(evento)
+        // Una volta sola per body: le azioni compaiono in più versioni della fila (ViewThatFits) e ognuna rifaceva la
+        // ricerca del fascicolo fra i documenti e dell'incontro fra gli incontri
+        let archiviato = stato.fascicoloArchiviato(per: evento)
+        let aperto = stato.dati.incontri.contains { $0.appuntamentoId == evento.id }
         VStack(alignment: .leading, spacing: 0) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
@@ -1142,11 +1162,11 @@ struct DettaglioAppuntamento: View {
             VStack(spacing: spazio) {
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: spazio) {
-                        azioneIncontro
+                        azioneIncontro(aperto)
                         azioneVera
                     }
                     VStack(spacing: spazio) {
-                        azioneIncontro
+                        azioneIncontro(aperto)
                         azioneVera
                     }
                 }
@@ -1155,7 +1175,7 @@ struct DettaglioAppuntamento: View {
                         azioneConcluso(concluso)
                         azioneModifica
                         azioneAttivita
-                        azioneFascicolo
+                        azioneFascicolo(archiviato)
                     }
                     VStack(spacing: spazio) {
                         HStack(spacing: spazio) {
@@ -1164,14 +1184,14 @@ struct DettaglioAppuntamento: View {
                         }
                         HStack(spacing: spazio) {
                             azioneAttivita
-                            azioneFascicolo
+                            azioneFascicolo(archiviato)
                         }
                     }
                     VStack(spacing: spazio) {
                         azioneConcluso(concluso)
                         azioneModifica
                         azioneAttivita
-                        azioneFascicolo
+                        azioneFascicolo(archiviato)
                     }
                 }
             }
@@ -1203,10 +1223,10 @@ struct DettaglioAppuntamento: View {
         PulsanteAzione(titolo: "Attività collegata", simbolo: "checklist", azione: nuovaAttivita)
     }
 
-    private var azioneFascicolo: some View {
-        let archiviato = stato.fascicoloArchiviato(per: evento)
-        return PulsanteAzione(titolo: archiviato == nil ? "Prepara il fascicolo" : "Apri il fascicolo",
-                              simbolo: "doc.text") {
+    /// `archiviato`: il fascicolo già in Documenti, cercato una volta dal body (al tocco si cerca di nuovo).
+    private func azioneFascicolo(_ archiviato: Documento?) -> some View {
+        PulsanteAzione(titolo: archiviato == nil ? "Prepara il fascicolo" : "Apri il fascicolo",
+                       simbolo: "doc.text") {
             if let d = stato.fascicoloArchiviato(per: evento) {
                 if !evento.clienteId.isEmpty { stato.clienteAttivoId = evento.clienteId }
                 stato.documentoSelezionato = d.id
@@ -1219,10 +1239,10 @@ struct DettaglioAppuntamento: View {
                                 : "Il fascicolo consegnato è in Documenti: aprilo")
     }
 
-    private var azioneIncontro: some View {
-        let aperto = stato.dati.incontri.contains { $0.appuntamentoId == evento.id }
-        return PulsanteAzione(titolo: aperto ? "Apri l'incontro" : "Prepara l'incontro", principale: true,
-                              simbolo: "list.bullet.rectangle") {
+    /// `aperto`: c'è già un incontro per questo appuntamento (dal body).
+    private func azioneIncontro(_ aperto: Bool) -> some View {
+        PulsanteAzione(titolo: aperto ? "Apri l'incontro" : "Prepara l'incontro", principale: true,
+                       simbolo: "list.bullet.rectangle") {
             stato.apriIncontro(per: evento)
         }
         .help(aperto ? "Apri l'incontro: appunti e decisioni" : "Prepara l'incontro: temi, ascolto, prossimi passi")
@@ -1272,8 +1292,24 @@ extension StatoShell {
     /// Il canale da mostrare per un appuntamento: il suo o, se non è indicato, quello della posizione collegata.
     func canaleAppuntamento(_ e: Appuntamento) -> Canale? {
         if let c = e.canale { return c }
-        return e.posizioneId.flatMap { id in posizioni.first { $0.id == id } }?.canale
+        guard let id = e.posizioneId else { return nil }
+        // Il canale di ogni posizione in un dizionario, una volta per dati dei calcoli: le pillole del mese lo chiedono
+        // per ogni appuntamento e prima ogni richiesta scorreva tutte le posizioni (con due posizioni con lo stesso id
+        // vale la prima, come con `first(where:)`)
+        let canali: [String: Canale] = ricavato("agenda-canali-posizioni") {
+            Dictionary(posizioni.map { ($0.id, $0.canale) }, uniquingKeysWith: { primo, _ in primo })
+        }
+        return canali[id]
     }
+}
+
+/// Una parte dell'Agenda costruita nel body di questa vista e non in quello dell'Agenda: ciò che legge di StatoShell (la
+/// riga scelta nella colonna del giorno) iscrive solo lei. Un clic su un appuntamento, un'attività o un'occasione rifà
+/// la colonna, non la barra, la striscia dei riesami e le celle del mese. Stessa impaginazione del contenuto.
+private struct ParteAgenda<Contenuto: View>: View {
+    let contenuto: () -> Contenuto
+
+    var body: some View { contenuto() }
 }
 
 private extension View {

@@ -83,7 +83,7 @@ struct PannelloAggiornaValori: View {
             ricalcolaElenco()
             ricalcolaGriglia()
         }
-        .onChange(of: bozze) { _ in ricalcolaGriglia() }
+        // Le caselle della griglia non hanno un onChange: ogni battuta rifà solo l'esito della sua riga (`scriviBozza`)
         .onChange(of: ambito) { _ in aggiornaElencoGriglia() }
         .onChange(of: canale) { _ in aggiornaElencoGriglia() }
     }
@@ -153,13 +153,37 @@ struct PannelloAggiornaValori: View {
                                                                  dataComune: dataComune, oggi: Date())
     }
 
+    /// Una battuta in una casella della griglia: la casella e l'esito della sua sola riga, nello stesso giro (un
+    /// passaggio del pannello invece di due, e niente indici di tutte le posizioni a ogni tasto). Ogni riga della
+    /// griglia ha la sua posizione e la catena degli esiti è per posizione, quindi l'esito di una riga non dipende
+    /// dalle altre: rifarlo da solo dà lo stesso risultato di `ricalcolaGriglia`, nello stesso ordine (id della riga).
+    private func scriviBozza(_ b: AggiornaValori.Bozza, per p: Posizione) {
+        bozze[p.id] = b
+        let sola: [String: AggiornaValori.Bozza] = [p.id: b]
+        let righe = AggiornaValori.righe(bozze: sola, elenco: elencoGriglia)
+        // La posizione com'è adesso nei dati, come in `ricalcolaGriglia` (senza: la riga risulta non trovata)
+        let attuale = stato.posizioni.filter { $0.id == p.id }
+        let nuovi: [AggiornaValori.Esito] = righe.isEmpty ? []
+            : AggiornaValori.esiti(righe, posizioni: attuale, clienti: [], dataComune: dataComune, oggi: Date())
+        var esiti = esitiGriglia
+        esiti.removeAll { $0.riga.posizioneId == p.id }
+        for e in nuovi {
+            let posto = esiti.firstIndex { $0.riga.id > e.riga.id } ?? esiti.count
+            esiti.insert(e, at: posto)
+        }
+        esitiGriglia = esiti
+    }
+
     /// Nella griglia un valore a zero non si registra mai da qui: si chiude dalla scheda della posizione.
     private var esclusiGriglia: Set<Int> { AggiornaValori.esclusiIniziali(esitiGriglia) }
 
+    /// I nomi dei clienti per id: una volta per dati dei calcoli (non a ogni battuta nella griglia).
     private var nomiClienti: [String: String] {
-        var nomi: [String: String] = [:]
-        for c in stato.clienti where nomi[c.id] == nil { nomi[c.id] = c.nome }
-        return nomi
+        stato.ricavato("aggiorna-valori-nomi") { () -> [String: String] in
+            var nomi: [String: String] = [:]
+            for c in stato.clienti where nomi[c.id] == nil { nomi[c.id] = c.nome }
+            return nomi
+        }
     }
 
     private var daRegistrare: Int {
@@ -548,7 +572,7 @@ struct PannelloAggiornaValori: View {
                                         esito: esitiPerPosizione[p.id],
                                         attiva: fuocoSu(p.id),
                                         fuoco: $fuoco,
-                                        scrivi: { b in bozze[p.id] = b },
+                                        scrivi: { b in scriviBozza(b, per: p) },
                                         invio: { avanza(dopo: i, proxy: proxy) })
                                 .equatable()
                                 .id(p.id)
