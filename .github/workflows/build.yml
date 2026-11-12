@@ -550,7 +550,9 @@ jobs:
       # Più scene che sull'iPhone (tutte le app, in verticale e in orizzontale): 92 istantanee, fino a 35 min sui runner Intel lenti
       - name: iPad · istantanee
         if: always() && steps.avvio-ipad.outcome == 'success'
-        timeout-minutes: 45
+        # 60 minuti: l'11/11 ne bastavano 26, il 12/11 su un runner lento (anche l'avvio del simulatore 1,6 volte più
+        # lento) 45 non sono bastati per l'ultima scena; il job resta sotto il suo limite di 180
+        timeout-minutes: 60
         run: bash Supporto/iOS/istantanee.sh "$PAD" anteprime-ios/ipad
 
       - name: iPad · spegni
