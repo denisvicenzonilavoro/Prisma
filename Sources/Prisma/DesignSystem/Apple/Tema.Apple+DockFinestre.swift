@@ -42,6 +42,19 @@ extension Tema.Apple.Moto.Curva {
         return (a * x1 + b * x2 + c, a * y1 + b * y2 + c)
     }
 
+    /// Il valore della curva al tempo `t` (0…1): dove si trova un movimento a quel punto della sua durata.
+    func valore(alTempo t: Double) -> Double {
+        if t <= 0 { return 0 }
+        if t >= 1 { return 1 }
+        var basso = 0.0
+        var alto = 1.0
+        for _ in 0..<Tema.Apple.Moto.VoloFinestra.passiCurva {
+            let medio = (basso + alto) / 2
+            if punto(alParametro: medio).x >= t { alto = medio } else { basso = medio }
+        }
+        return punto(alParametro: alto).y
+    }
+
     /// Il tempo (0…1) in cui la curva arriva per la prima volta al valore `v`. Vale anche per le curve che
     /// superano 1 (apertura della finestra): la salita fino al picco è monotona e si cerca lì.
     func tempo(alValore v: Double) -> Double {

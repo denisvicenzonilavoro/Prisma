@@ -1,5 +1,6 @@
 import Combine
 import Observation
+import QuartzCore
 import SwiftUI
 
 // Proprietario: G1 (movimento delle finestre). Creato dalle fondamenta (G0).
@@ -89,6 +90,9 @@ import SwiftUI
     @ObservationIgnored var giroBlocco = 0
     @ObservationIgnored var giroScrivania = 0
     @ObservationIgnored var giroPresentazione = 0
+    /// Quando è partita la curva del passaggio FLIP di ogni finestra (al giro dopo il cambio): un secondo zoom a metà
+    /// del primo riparte dalla cornice che si vede, non da quella di arrivo.
+    @ObservationIgnored var inizioFlip: [AppPrisma: CFTimeInterval] = [:]
 
     var visibili: [Finestra] { elenco.filter { !$0.ridotta } }
     /// App in primo piano (nil = scrivania).
