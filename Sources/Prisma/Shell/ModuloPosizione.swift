@@ -298,6 +298,7 @@ struct ModuloPosizione: View {
         bozza.sri = s.sri
         bozza.incidenzaCostiKID = s.incidenzaCostiKID
         bozza.periodoRaccomandato = s.periodoConsigliato
+        bozza.scartiScenariKID = s.scartiScenariKID
         if !s.garanzie.isEmpty { bozza.garanzie = s.garanzie }
         if s.area == .protezione, bozza.rischio == nil { bozza.rischio = ImportaPosizioni.rischio(s.nome + " " + s.tipologia) }
         if s.area != .protezione { bozza.rischio = nil }

@@ -8,6 +8,8 @@ struct AppProdotti: View {
     @State var moduloCondizioni: Prodotto?
     /// «Metti su un cliente»: il prodotto sul cliente in due passi (ModuloProdottoSulCliente).
     @State var sulCliente: RichiestaProdottoCliente?
+    /// «Dai documenti»: la scheda letta da KID, DIP e condizioni (ModuloSchedaDaiDocumenti).
+    @State var daiDocumenti: RichiestaSchedaDocumenti?
     @State var confermaEliminazione = false
     @State var ricerca = ""
 
@@ -76,6 +78,10 @@ struct AppProdotti: View {
                             .font(Tema.Apple.AltreApp.titoloScheda.fontLeggibile)
                             .foregroundColor(Tema.Apple.AltreApp.testo)
                         Button { nuova() } label: { Label("Nuova scheda", systemImage: "plus") }.buttonStyle(StileBlu())
+                        Button { daiDocumenti = RichiestaSchedaDocumenti() } label: {
+                            Label("Dai documenti…", systemImage: "doc.text.magnifyingglass")
+                        }
+                        .buttonStyle(StileVetro())
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .entrataCascata(0, base: Tema.Apple.Moto.Cascata.baseDentroApp)
@@ -86,6 +92,10 @@ struct AppProdotti: View {
         .altreAppApple()
         .sheet(item: $modulo) { p in
             ModuloProdotto(bozza: p, nuovo: stato.prodotto(p.id) == nil) { stato.salvaProdotto($0) }
+        }
+        .sheet(item: $daiDocumenti) { r in
+            ModuloSchedaDaiDocumenti(esistente: r.esistente)
+                .environment(stato)
         }
         .sheet(item: $sulCliente) { r in
             ModuloProdottoSulCliente(prodotto: r.prodottoId.flatMap { stato.prodotto($0) }, statoIniziale: r.stato,
@@ -236,6 +246,9 @@ struct AppProdotti: View {
         VStack(spacing: 0) {
             HStack(spacing: Misure.ColonneStrumento.spazioTestata) {
                 CampoRicerca(testo: $ricerca, segnaposto: "Cerca prodotto o compagnia")
+                PulsanteIcona(simbolo: "doc.text.magnifyingglass", aiuto: "Nuova scheda dai documenti: KID, DIP, condizioni, scheda costi") {
+                    daiDocumenti = RichiestaSchedaDocumenti()
+                }
                 PulsanteIcona(simbolo: "plus", aiuto: "Nuova scheda prodotto") { nuova() }
             }
             .testataColonna()
@@ -518,6 +531,12 @@ struct AppProdotti: View {
                     }
                     Button { modulo = p } label: { Label("Modifica", systemImage: "pencil") }
                         .buttonStyle(StileVetro())
+                    Button { daiDocumenti = RichiestaSchedaDocumenti(esistente: p) } label: {
+                        Label("Aggiorna dai documenti…", systemImage: "doc.text.magnifyingglass")
+                    }
+                    .buttonStyle(StileVetro())
+                    .disabled(stato.solaLettura)
+                    .help("Leggi il KID nuovo, il DIP aggiuntivo o le condizioni e aggiorna costi, scenari e penali della scheda")
                     Spacer()
                     Button { confermaEliminazione = true } label: {
                         Label("Elimina la scheda…", systemImage: "trash").foregroundColor(Tema.Apple.Colore.rosso)

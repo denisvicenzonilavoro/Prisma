@@ -5,7 +5,9 @@ import SwiftUI
 /// non si disegnano fuori schermo):
 /// - 900: il primo passo, il catalogo con la ricerca e il canale (dossier di Giulia, chiaro e scuro);
 /// - 901: il secondo passo, il piano di risparmio del catalogo di prova come proposta per Giulia;
-/// - 902: lo stesso come posizione in essere (valore di oggi e numero di contratto).
+/// - 902: lo stesso come posizione in essere (valore di oggi e numero di contratto);
+/// - 903: «La scheda dai documenti», la revisione dei dati letti dal KID e dal DIP aggiuntivo di prova
+///   (`TestiLettoreProdotto`), chiaro e scuro.
 extension Istantanee {
     nonisolated static var sceneProdottoCliente: [(nome: String, prepara: (StatoShell) -> Void)] {
         [
@@ -13,6 +15,8 @@ extension Istantanee {
             ("900-prodotto-sul-cliente-catalogo-scuro", { s in giulia(s) }),
             ("901-prodotto-sul-cliente-dati", { s in giulia(s) }),
             ("902-prodotto-sul-cliente-in-essere", { s in giulia(s) }),
+            ("903-scheda-dai-documenti", { s in s.apri(.prodotti) }),
+            ("903-scheda-dai-documenti-scuro", { s in s.apri(.prodotti) }),
         ]
     }
 
@@ -24,6 +28,20 @@ extension Istantanee {
     /// La shell con sopra il foglio; nil per le altre scene.
     static func moduloProdottoClienteIstantanea(_ nome: String, _ s: StatoShell) -> AnyView? {
         guard nome.hasPrefix("90"), sceneProdottoCliente.contains(where: { $0.nome == nome }) else { return nil }
+        if nome.hasPrefix("903") {
+            let letti = [LettoreProdotto.DocumentoDaLeggere(nome: "KID di prova.pdf", pagine: TestiLettoreProdotto.kid),
+                         LettoreProdotto.DocumentoDaLeggere(nome: "DIP aggiuntivo di prova.pdf", pagine: TestiLettoreProdotto.dipAggiuntivo)]
+            return AnyView(
+                ZStack {
+                    ShellView()
+                    Tema.Colore.velo
+                    ModuloSchedaDaiDocumenti(esistente: nil, letti: letti)
+                        .background(Tema.Apple.Colore.cardPiena)
+                        .clipShape(RoundedRectangle(cornerRadius: Tema.Apple.Raggio.finestra, style: .continuous))
+                        .ombraApple(.finestra)
+                }
+            )
+        }
         let prodotto: Prodotto? = nome.hasPrefix("900") ? nil
             : s.prodotto("prodotto-risparmio-rivalutabile") ?? s.dati.prodotti.first
         let statoIniziale: StatoPosizione = nome.hasPrefix("902") ? .inEssere : .proposta

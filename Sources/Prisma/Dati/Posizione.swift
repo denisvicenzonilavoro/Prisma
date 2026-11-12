@@ -214,6 +214,11 @@ struct Posizione: Identifiable, Codable, Hashable {
     // il Codable è sintetizzato, quindi ogni campo nuovo DEVE essere Optional (gli archivi di prima
     // non lo hanno). Senza questi dati i motori si comportano come prima.
 
+    /// Scarti degli scenari del KID dal moderato, al periodo raccomandato, in punti: [sfavorevole, favorevole]
+    /// (dalla scheda prodotto, `Prodotto.scartiScenariKID`). Con questi i tre scenari delle proiezioni seguono il KID
+    /// invece dei ±2 punti di Prisma (12 novembre 2026).
+    var scartiScenariKID: [Double]?
+
     /// Movimenti reali con la loro data (versamenti, riscatti parziali, cedole), dal più vecchio.
     /// Se mancano, i flussi si ricostruiscono da decorrenza, premi e rilevazioni.
     var movimenti: [Movimento]?
