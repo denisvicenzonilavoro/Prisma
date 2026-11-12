@@ -124,6 +124,10 @@ extension StatoShell {
 
     // MARK: - Il filo lungo
 
+    /// I token delle istruzioni della chat, contati una volta: il testo del pacchetto non cambia mentre l'app gira e il
+    /// filo lungo li chiede a ogni ridisegno della chat.
+    private static let tokenIstruzioniChat = NucleoVera.token(IstruzioniVera.chat)
+
     /// «Il filo lungo» sullo schermo (template: «Memoria della conversazione» e «Riassunto che Vera tiene da parte»): per una
     /// conversazione lunga, quanta finestra occupa (stima dei token di Prisma) e, se delle battute sono già uscite, il
     /// riassunto che Vera porta con sé. nil per le conversazioni brevi.
@@ -132,7 +136,7 @@ extension StatoShell {
         guard storia.count >= FiloMostrato.minimoMessaggi else { return nil }
         // La finestra scelta in Impostazioni › Vera (la stessa che Prisma passa al nucleo)
         let finestra = FinestraVera.valida(dati.impostazioni.vera.finestra)
-        let istruzioni = NucleoVera.token(IstruzioniVera.chat)
+        let istruzioni = Self.tokenIstruzioniChat
         let budget = max(0, finestra - istruzioni - NucleoVera.riservaRisposta - FiloMostrato.riservaUltimo)
         let uscite = FiloLungoVera.uscite(storia, budget: budget)
         let dentro = storia.suffix(max(0, storia.count - uscite.count))

@@ -10,20 +10,20 @@ enum IstruzioniVera {
         return t.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    // Chat, mini e conversazione si leggono una volta sola: le risorse del pacchetto non cambiano mentre l'app gira, e
+    // la chat le chiede a ogni domanda e il filo lungo a ogni ridisegno (prima ogni volta era una lettura dal disco).
+
     /// Istruzioni della chat; in sviluppo (`swift run`) ripiega su una versione minima.
-    static var chat: String {
+    static let chat: String =
         testo("chat") ?? "Sei Vera, l'assistente di un consulente finanziario italiano (canali Alleanza Assicurazioni e indipendente). Rispondi in italiano usando solo i dati della scheda del cliente; non inventare numeri e distingui sempre il canale."
-    }
 
     /// La risposta breve della mini finestra di Vera.
-    static var mini: String {
+    static let mini: String =
         testo("mini") ?? "Rispondi in al massimo tre frasi brevi, senza elenchi: le cifre nel dettaglio le mostra Prisma sotto la risposta."
-    }
 
     /// Istruzioni della modalità conversazione (uso generale).
-    static var conversazione: String {
+    static let conversazione: String =
         testo("conversazione") ?? "Sei Vera, l'assistente di un consulente finanziario italiano. Rispondi in italiano, in modo naturale e utile, a domande di ogni tipo. Non inventare dati dei clienti."
-    }
 }
 
 /// Un motore che scrive testo libero (Qwen sul Mac): lo usano chat, commenti e spiegazioni dei documenti.

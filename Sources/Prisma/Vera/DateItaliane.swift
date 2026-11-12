@@ -122,9 +122,27 @@ enum DateItaliane {
             .trimmingCharacters(in: CharacterSet.whitespaces.union(CharacterSet(charactersIn: ",.;:")))
     }
 
+    /// Gli schemi già compilati. `cerca` passa le stesse espressioni a ogni domanda a Vera, su ogni nome di cliente e
+    /// nel tagliando, e compilarle costava più che usarle. NSCache è sicura tra i thread (il tagliando gira anche in
+    /// sottofondo) e un NSRegularExpression è immutabile; il limite tiene in memoria pochi schemi anche con molti clienti.
+    private static let compilati: NSCache<NSString, NSRegularExpression> = {
+        let c = NSCache<NSString, NSRegularExpression>()
+        c.countLimit = 1_500
+        return c
+    }()
+
+    /// Lo schema compilato (senza distinguere maiuscole e minuscole), dalla cache se c'è già; nil se non è valido.
+    private static func espressione(_ schema: String) -> NSRegularExpression? {
+        let chiave = schema as NSString
+        if let re = compilati.object(forKey: chiave) { return re }
+        guard let re = try? NSRegularExpression(pattern: schema, options: [.caseInsensitive]) else { return nil }
+        compilati.setObject(re, forKey: chiave)
+        return re
+    }
+
     /// La prima corrispondenza e i suoi gruppi ("" per un gruppo vuoto).
     static func cerca(_ schema: String, _ testo: String) -> (NSRange, [String])? {
-        guard let re = try? NSRegularExpression(pattern: schema, options: [.caseInsensitive]),
+        guard let re = espressione(schema),
               let m = re.firstMatch(in: testo, range: NSRange(location: 0, length: (testo as NSString).length)) else { return nil }
         let ns = testo as NSString
         let gruppi = (0..<m.numberOfRanges).map { i -> String in

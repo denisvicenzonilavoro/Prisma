@@ -395,8 +395,8 @@ struct VeraScrivania: View {
         let elenco = messaggi
         // Il quadro visivo va sotto l'ultima risposta di Vera: le cifre le calcola Prisma
         let ultima = elenco.last.flatMap { $0.autore == .vera ? $0 : nil }
-        let quadro = stato.veraInCorso ? nil : ultima.flatMap { stato.quadroVera(per: $0, in: elenco, portafoglio: portafoglio) }
-        let domandaBiblioteca = stato.domandaPerBiblioteca(in: elenco)
+        let quadro = stato.veraInCorso ? nil : ultima.flatMap { quadroInCache(per: $0, in: elenco) }
+        let domandaBiblioteca = domandaBibliotecaInCache(in: elenco)
         return ScrollViewReader { lettore in
             ScrollView {
                 VStack(spacing: m.spazioMessaggi) {
@@ -428,6 +428,41 @@ struct VeraScrivania: View {
                 if pensa { withAnimation { lettore.scrollTo("pensa", anchor: .bottom) } }
             }
         }
+    }
+
+    // Come nell'app Vera: la pagina si ridisegna spesso (il fuoco del campo, l'inizio e la fine di una risposta, la
+    // misura), e quadro e domanda per la Biblioteca si ricavano una volta per risposta (`ricavato`, validi finché non
+    // cambiano i dati dei calcoli). Nella chiave ciò che non è un dato dei calcoli; il risultato sta in un array, così un
+    // nil in cache non si confonde con una voce che non c'è.
+
+    /// La scheda dei calcoli dell'ultima risposta (`quadroVera`). Nella chiave di chi si parla (cliente o portafoglio) e
+    /// l'ora (le scadenze guardano adesso); la domanda è quella prima della risposta, che non cambia.
+    private func quadroInCache(per ultima: MessaggioVera, in elenco: [MessaggioVera]) -> QuadroVera? {
+        let q: [QuadroVera] = stato.ricavato("vera-scrivania-quadro-\(stato.chiaveConversazione)-\(ultima.id)-\(DerivatiDati.ora())") {
+            stato.quadroVera(per: ultima, in: elenco, portafoglio: portafoglio).map { [$0] } ?? []
+        }
+        return q.first
+    }
+
+    /// «Cerca nella Biblioteca» sotto l'ultima risposta (`domandaPerBiblioteca`): riconoscere la domanda passa le
+    /// espressioni regolari su ogni nome di cliente. Le condizioni che costano poco restano fuori dalla cache; nella
+    /// chiave i due messaggi e se la Biblioteca ha testi in cui cercare (`testi`, che non carica l'indice dal disco:
+    /// quando arriva, la vista si ridisegna e la chiave cambia). I nomi dei clienti cambiano `versioneCalcoli`.
+    /// Solo sul Mac, come `domandaPerBiblioteca` (decisione 114).
+    private func domandaBibliotecaInCache(in elenco: [MessaggioVera]) -> String? {
+        #if os(macOS)
+        guard !stato.veraInCorso, elenco.count >= 2, let ultima = elenco.last, ultima.autore == .vera else { return nil }
+        let domanda = elenco[elenco.count - 2]
+        guard domanda.autore == .utente else { return nil }
+        let leggibili = stato.biblioteca.testi.contains { !$0.illeggibile && ($0.testo != nil || !$0.articoli.isEmpty) }
+        let chiaveCache = "vera-scrivania-biblioteca-\(ultima.id)-\(domanda.id)-\(domanda.testo.hashValue)-\(leggibili)"
+        let trovata: [String] = stato.ricavato(chiaveCache) {
+            stato.domandaPerBiblioteca(in: elenco).map { [$0] } ?? []
+        }
+        return trovata.first
+        #else
+        return nil
+        #endif
     }
 
     // MARK: Pezzi comuni
