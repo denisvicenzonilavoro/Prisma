@@ -137,13 +137,7 @@ struct FinestraInterna: View {
     /// A destra: di chi parla la finestra (il suo cliente o il suo contesto) e il pulsante per affiancarla.
     private var strumenti: some View {
         HStack(spacing: Tema.Misura.Shell.strumentiFinestraSpazio) {
-            if let contesto = stato.contesto(di: finestra.app) {
-                Text(contesto)
-                    .font(Tema.Testo.Shell.contestoFinestra)
-                    .foregroundColor(Tema.Colore.inchiostroSecondario)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-            }
+            ContestoFinestra(app: finestra.app)
             Button {
                 stato.affianca(finestra.app)
             } label: {
@@ -179,6 +173,26 @@ struct FinestraInterna: View {
                 }
         )
         .help("Ridimensiona")
+    }
+}
+
+// MARK: - Contesto
+
+/// Di chi parla la finestra, in una vista a sé: trascinare o ridimensionare la finestra (lo stato dei gesti rifà
+/// il body della cornice a ogni movimento) non rifà il giro dei clienti, e una modifica ai clienti ridisegna solo
+/// questa scritta, non la cornice di ogni finestra aperta.
+private struct ContestoFinestra: View {
+    @Environment(StatoShell.self) var stato
+    let app: AppPrisma
+
+    var body: some View {
+        if let contesto = stato.contesto(di: app) {
+            Text(contesto)
+                .font(Tema.Testo.Shell.contestoFinestra)
+                .foregroundColor(Tema.Colore.inchiostroSecondario)
+                .lineLimit(1)
+                .truncationMode(.tail)
+        }
     }
 }
 

@@ -798,6 +798,7 @@ private struct OndaMini: View {
 
     @Environment(\.prismaCalmo) private var calmo
     @Environment(\.modoIstantanea) private var istantanea
+    @ObservedObject private var visibilita = VisibilitaPrisma.condivisa
     @State private var giro = false
 
     private typealias M = Tema.Apple.PrismaCliente.Mini
@@ -805,18 +806,23 @@ private struct OndaMini: View {
 
     var body: some View {
         let ferma = calmo || istantanea
-        let scala: CGFloat = istantanea ? O.scalaFerma : (calmo ? 1 : (giro ? O.scalaA : O.scalaDa))
-        let opacita: Double = calmo ? O.opacitaFerma : (istantanea ? O.opacitaDa / 2 : (giro ? 0 : O.opacitaDa))
+        let inVista = visibilita.visibile
+        // Con Prisma non in vista (nascosta, coperta, Mac a riposo) l'onda si ferma; torna a girare, sfasata come
+        // all'apertura, quando Prisma si rivede
+        let gira = giro && inVista
+        let scala: CGFloat = istantanea ? O.scalaFerma : (calmo ? 1 : (gira ? O.scalaA : O.scalaDa))
+        let opacita: Double = calmo ? O.opacitaFerma : (istantanea ? O.opacitaDa / 2 : (gira ? 0 : O.opacitaDa))
         Circle()
             .strokeBorder(M.coloreOnda, lineWidth: M.bordoOnda)
             .frame(width: M.onda, height: M.onda)
             .scaleEffect(scala)
             .opacity(opacita)
+            // Senza animazione (Prisma non in vista) il valore nuovo toglie l'onda ripetuta in corso
+            .animation(inVista ? Animation.easeOut(duration: O.durata).repeatForever(autoreverses: false).ritardoPrisma(Double(indice) * O.sfasamento) : nil,
+                       value: gira)
             .onAppear {
                 guard !ferma else { return }
-                withAnimation(.easeOut(duration: O.durata).repeatForever(autoreverses: false).ritardoPrisma(Double(indice) * O.sfasamento)) {
-                    giro = true
-                }
+                giro = true
             }
             .accessibilityHidden(true)
     }

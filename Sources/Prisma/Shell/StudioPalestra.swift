@@ -97,7 +97,7 @@ struct PalestraStudioVista: View {
     private typealias P = Tema.Apple.Palestra
 
     var body: some View {
-        let scheda = palestra.schedaMostrata(stato)
+        let scheda = Self.schedaMostrata(palestra, stato: stato)
         GeometryReader { geo in
             let colonna = geo.size.width < P.larghezzaColonna * 2.4 ? P.larghezzaColonnaMinima : P.larghezzaColonna
             HStack(alignment: .top, spacing: P.gioco) {
@@ -116,6 +116,25 @@ struct PalestraStudioVista: View {
         .onExitCommand { palestra.annulla() }
         #endif
     }
+
+    /// La scheda da mostrare, come `StatoPalestra.schedaMostrata`, ma quella di un cliente vero viene dalla cache dei dati
+    /// ricavati: la recita legge solo cliente, incontri, obiettivi e posizioni (tutti dati dei calcoli), mentre la fonte di
+    /// Vera intera (note, documenti, agenda, Analisi 360…) a ogni disegno costava e iscriveva la vista a tutto l'archivio.
+    /// Il cliente scelto dipende anche dal cliente attivo: si legge fuori ed entra nella chiave.
+    private static func schedaMostrata(_ palestra: StatoPalestra, stato: StatoShell) -> SchedaRecita? {
+        if palestra.fase != .attesa, let s = palestra.scheda { return s }
+        if palestra.usaInventato { return palestra.schedaScelta(stato) }
+        guard let c = palestra.clienteScelto(stato) else { return nil }
+        return stato.ricavato("studio.palestra.scheda|" + c.id) {
+            SchedaPalestraInCache(scheda: stato.fonteVera(c.id).map { PalestraVera.scheda($0) })
+        }.scheda
+    }
+}
+
+/// La scheda di un cliente nella cache dei dati ricavati: una struttura, non un opzionale, perché una scheda nil resti
+/// in cache e si distingua da una voce assente.
+private struct SchedaPalestraInCache {
+    let scheda: SchedaRecita?
 }
 
 // MARK: - Colonna sinistra
@@ -200,28 +219,8 @@ private struct ColonnaPalestra: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 4)
-            selettore
+            SelettorePalestra(stato: stato, palestra: palestra)
         }
-    }
-
-    /// «Allenati con…»: i clienti dell'archivio e il profilo inventato (bloccato durante l'allenamento).
-    private var selettore: some View {
-        Menu {
-            ForEach(stato.clienti) { c in
-                Button(c.nome) { palestra.scegli(cliente: c.id) }
-            }
-            Divider()
-            Button(TestiPalestra.inventato) { palestra.scegliInventato() }
-        } label: {
-            Text(TestiPalestra.allenatiCon)
-                .carattereApple(P.selettore)
-                .foregroundColor(P.coloreSelettore)
-        }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .fixedSize()
-        .disabled(palestra.inCorso)
-        .help(TestiPalestra.allenatiCon)
     }
 
     @ViewBuilder private var tile: some View {
@@ -274,6 +273,35 @@ private struct ColonnaPalestra: View {
         TextField(titolo, text: testo)
             .textFieldStyle(.roundedBorder)
             .carattereApple(P.profilo)
+    }
+}
+
+/// «Allenati con…»: i clienti dell'archivio e il profilo inventato (bloccato durante l'allenamento). Una vista a parte:
+/// il menu con tutti i clienti si rifà solo quando cambiano i clienti o l'allenamento comincia o finisce, non a ogni
+/// turno della colonna.
+private struct SelettorePalestra: View {
+    let stato: StatoShell
+    let palestra: StatoPalestra
+
+    private typealias P = Tema.Apple.Palestra
+
+    var body: some View {
+        Menu {
+            ForEach(stato.clienti) { c in
+                Button(c.nome) { palestra.scegli(cliente: c.id) }
+            }
+            Divider()
+            Button(TestiPalestra.inventato) { palestra.scegliInventato() }
+        } label: {
+            Text(TestiPalestra.allenatiCon)
+                .carattereApple(P.selettore)
+                .foregroundColor(P.coloreSelettore)
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .disabled(palestra.inCorso)
+        .help(TestiPalestra.allenatiCon)
     }
 }
 

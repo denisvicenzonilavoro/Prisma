@@ -5,8 +5,9 @@ private typealias K = Tema.Colore.Adeguatezza
 
 /// La scheda di adeguatezza nel dettaglio di una proposta (giro 4, specifica 1): semaforo complessivo, sette
 /// controlli a semaforo, le scelte del consulente (bisogno, sostituita, fonte del capitale, motivazione), i
-/// documenti da consegnare con le spunte, i pulsanti del PDF e la firma. Calcolata a richiesta a ogni corpo:
-/// una proposta sola, niente cache.
+/// documenti da consegnare con le spunte, i pulsanti del PDF e la firma. Calcolata a richiesta, una proposta sola:
+/// l'esito resta in memoria finché non cambiano i dati dei calcoli, la scheda o l'elenco dei documenti
+/// (`esitoAdeguatezzaPannello`).
 struct PannelloAdeguatezza: View {
     @Environment(StatoShell.self) var stato
     @Environment(\.modoIstantanea) var modoIstantanea
@@ -19,7 +20,7 @@ struct PannelloAdeguatezza: View {
     var body: some View {
         let _ = ContaCorpi.segna()
         if let ingresso = stato.ingressoAdeguatezza(posizione) {
-            contenuto(ingresso, MotoreAdeguatezza.calcola(ingresso))
+            contenuto(ingresso, stato.esitoAdeguatezzaPannello(ingresso))
         }
     }
 

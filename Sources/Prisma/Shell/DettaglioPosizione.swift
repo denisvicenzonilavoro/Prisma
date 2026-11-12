@@ -21,14 +21,17 @@ struct DettaglioPosizione: View {
     var body: some View {
         let _ = ContaCorpi.segna()
         let p = posizione
-        let prodotto = stato.prodotto(p.prodottoId)
-        let finanziariaInEssere = p.area.proiettabile && p.stato == .inEssere
-        // Calcoli del dettaglio: andamento, rendimento dei versamenti, gestione separata, riscatto
-        let andamentoPosizione: AndamentoPosizione? = finanziariaInEssere ? MotoreAndamento.calcola(p) : nil
-        let voce: VoceResoconto? = finanziariaInEssere ? MotoreResoconto.voce(p, prodotto: prodotto) : nil
-        // Il Ramo I o, per una multiramo a due parti, la sola parte in gestione separata
-        let gestione: EsitoGestioneSeparata? = p.area.proiettabile ? (MotoreGestioneSeparata.calcola(p) ?? MotoreGestioneSeparata.calcolaParte(p)) : nil
-        let riscatto: EsitoRiscatto? = MotoreRiscatto.calcola(p, prodotto: prodotto)
+        // Calcoli del dettaglio (andamento, rendimento dei versamenti, gestione separata, riscatto, costi, fiscalità,
+        // proiezione): una volta per posizione finché non cambiano i dati dei calcoli o il giorno. Prima ripartivano
+        // a ogni passata del corpo: il metodo aperto, un avviso, un foglio, l'ancora, ogni passata di Posizioni.
+        // La posizione, il prodotto e il profilo del cliente sono tutti dati dei calcoli: basta l'id nella chiave.
+        let calcoli: CalcoliDettaglio = stato.ricavato("dettaglio-posizione|\(p.id)") {
+            CalcoliDettaglio(p, prodotto: stato.prodotto(p.prodottoId), orizzonteCliente: orizzonteCliente)
+        }
+        let andamentoPosizione = calcoli.andamento
+        let voce = calcoli.voce
+        let gestione = calcoli.gestione
+        let riscatto = calcoli.riscatto
         VStack(spacing: 0) {
             barraNavigazione
             ScrollViewReader { lettore in
@@ -60,10 +63,10 @@ struct DettaglioPosizione: View {
                                               alignment: .leading)
                             if p.area.proiettabile {
                                 VStack(alignment: .leading, spacing: 22) {
-                                    costiERischio(prodotto)
-                                    if p.stato == .inEssere {
+                                    costiERischio(calcoli)
+                                    if p.stato == .inEssere, let f = calcoli.fisco {
                                         // Il rendimento dei versamenti va qui solo se manca il pannello dell'andamento
-                                        fiscalita(prodotto, voce: andamentoPosizione == nil ? voce : nil)
+                                        fiscalita(f, voce: andamentoPosizione == nil ? voce : nil)
                                         storico(voce)
                                     }
                                 }
@@ -81,8 +84,8 @@ struct DettaglioPosizione: View {
                         if let r = riscatto, !r.righe.isEmpty {
                             PannelloRiscatto(esito: r).id("dettaglio-riscatto")
                         }
-                        if p.area.proiettabile {
-                            proiezione
+                        if let x = calcoli.proiezione {
+                            proiezione(x)
                         } else if p.area == .protezione {
                             protezione
                         }
@@ -300,12 +303,12 @@ struct DettaglioPosizione: View {
         }
     }
 
-    private func costiERischio(_ prodotto: Prodotto?) -> some View {
+    private func costiERischio(_ calcoli: CalcoliDettaglio) -> some View {
         let p = posizione
         let l = Tema.Misura.MotoriPosizioni.etichettaRiga
         // Il RIY come nel KID: calcolato da Prisma e, se c'è, quello dichiarato (solo nelle schermate)
-        let incidenza: IncidenzaCostiKID? = p.stato == .chiusa ? nil : MotoreCosti.incidenzaKID(p, prodotto: prodotto)
-        let composizione: ComposizionePosizione? = p.area.proiettabile ? MotoreResistenza.composizione(p) : nil
+        let incidenza = calcoli.incidenza
+        let composizione = calcoli.composizione
         let incoerenze = incoerenzeProposta
         return PannelloAnalisi(titolo: "Costi, ipotesi e rischio") { EmptyView() } contenuto: {
             VStack(spacing: 0) {
@@ -406,9 +409,8 @@ struct DettaglioPosizione: View {
     }
 
     /// Imposte e netto se si chiudesse oggi; per la previdenza l'aliquota per causa.
-    private func fiscalita(_ prodotto: Prodotto?, voce: VoceResoconto?) -> some View {
-        let f = MotoreFiscale.calcola(posizione, prodotto: prodotto)
-        return PannelloAnalisi(titolo: "Se si chiudesse oggi") { EmptyView() } contenuto: {
+    private func fiscalita(_ f: EsitoFiscale, voce: VoceResoconto?) -> some View {
+        PannelloAnalisi(titolo: "Se si chiudesse oggi") { EmptyView() } contenuto: {
             VStack(alignment: .leading, spacing: 0) {
                 RigaDato("Regime", f.regime.nome, larghezza: 118)
                 if f.regime == .previdenza {
@@ -588,11 +590,11 @@ struct DettaglioPosizione: View {
 
     // MARK: - Proiezione
 
-    private var proiezione: some View {
-        let parametri = ParametriProiezione(posizione: posizione, orizzonteCliente: orizzonteCliente)
-        let scenari = MotoreProiezione.scenari(parametri)
+    private func proiezione(_ x: ProiezioneDettaglio) -> some View {
+        let parametri = x.parametri
+        let scenari = x.scenari
         let atteso = scenari[1].esito
-        let impatto = MotoreProiezione.impattoCosti(parametri)
+        let impatto = x.impatto
         // Multiramo a due parti: la gestione separata nel tempo, sotto la linea dell'atteso
         let gestione = parametri.gestione
         let nota = gestione.map {
@@ -759,6 +761,50 @@ struct DettaglioPosizione: View {
             .foregroundColor(colore)
             .padding(Misure.Analisi.cellaMargine)
             .frame(width: larghezza, alignment: .trailing)
+    }
+}
+
+/// I calcoli del dettaglio di una posizione, fatti insieme una volta (`StatoShell.ricavato`): ognuno solo dove il
+/// dettaglio lo mostra, come prima nel corpo.
+private struct CalcoliDettaglio {
+    let andamento: AndamentoPosizione?
+    let voce: VoceResoconto?
+    /// Il Ramo I o, per una multiramo a due parti, la sola parte in gestione separata.
+    let gestione: EsitoGestioneSeparata?
+    let riscatto: EsitoRiscatto?
+    /// Costi, composizione e proiezione: solo per le posizioni proiettabili (le sole con quei pannelli).
+    let incidenza: IncidenzaCostiKID?
+    let composizione: ComposizionePosizione?
+    /// «Se si chiudesse oggi»: solo per le finanziarie in essere.
+    let fisco: EsitoFiscale?
+    let proiezione: ProiezioneDettaglio?
+
+    init(_ p: Posizione, prodotto: Prodotto?, orizzonteCliente: Int?) {
+        let proiettabile = p.area.proiettabile
+        let finanziariaInEssere = proiettabile && p.stato == .inEssere
+        andamento = finanziariaInEssere ? MotoreAndamento.calcola(p) : nil
+        let v: VoceResoconto? = finanziariaInEssere ? MotoreResoconto.voce(p, prodotto: prodotto) : nil
+        voce = v
+        gestione = proiettabile ? (MotoreGestioneSeparata.calcola(p) ?? MotoreGestioneSeparata.calcolaParte(p)) : nil
+        riscatto = MotoreRiscatto.calcola(p, prodotto: prodotto)
+        incidenza = proiettabile && p.stato != .chiusa ? MotoreCosti.incidenzaKID(p, prodotto: prodotto) : nil
+        composizione = proiettabile ? MotoreResistenza.composizione(p) : nil
+        // La voce del resoconto ha già lo stesso calcolo fiscale (stessa posizione, stesso prodotto, oggi): non si rifà
+        fisco = finanziariaInEssere ? (v?.fisco ?? MotoreFiscale.calcola(p, prodotto: prodotto)) : nil
+        proiezione = proiettabile ? ProiezioneDettaglio(ParametriProiezione(posizione: p, orizzonteCliente: orizzonteCliente)) : nil
+    }
+}
+
+/// La proiezione del dettaglio: parametri, i tre scenari e quanto tolgono i costi.
+private struct ProiezioneDettaglio {
+    let parametri: ParametriProiezione
+    let scenari: [(nome: String, rendimento: Double, esito: EsitoProiezione)]
+    let impatto: Double
+
+    init(_ parametri: ParametriProiezione) {
+        self.parametri = parametri
+        scenari = MotoreProiezione.scenari(parametri)
+        impatto = MotoreProiezione.impattoCosti(parametri)
     }
 }
 

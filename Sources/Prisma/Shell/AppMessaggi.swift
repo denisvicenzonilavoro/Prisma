@@ -90,7 +90,10 @@ final class RichiestaIstantaneaMessaggi {
 @MainActor
 struct AppMessaggi: View {
     @Environment(StatoShell.self) var stato
-    @StateObject private var sessione = SessioneMessaggi()
+    /// La sessione (`@Observable`): l'app legge solo l'occasione scelta e il messaggio riaperto dal dossier, quindi un
+    /// pezzo del testo che arriva da Vera o un tasto nel messaggio rifanno il pannello (anzi, solo il suo testo), non
+    /// l'elenco delle occasioni.
+    @State private var sessione = SessioneMessaggi()
 
     @Environment(\.prismaCalmo) private var calmo
     @Environment(\.prismaScatto) private var scatto
@@ -156,8 +159,11 @@ struct AppMessaggi: View {
                 .opacity(esce ? 0 : 1)
                 .offset(x: esce ? M.spostamentoCambio : 0)
         } else if let o, let c = stato.cliente(o.clienteId) {
-            let tono: Binding<TonoMessaggio> = richiesta.map { r in Binding.constant(r.tono) } ?? $sessione.tono
-            let canale: Binding<CanaleMessaggio> = richiesta.map { r in Binding.constant(r.canale) } ?? $sessione.canale
+            // Tono e canale vanno e vengono dalla sessione: il pannello, che li legge, si ridisegna da sé
+            let tono: Binding<TonoMessaggio> = richiesta.map { r in Binding.constant(r.tono) }
+                ?? Binding(get: { sessione.tono }, set: { sessione.tono = $0 })
+            let canale: Binding<CanaleMessaggio> = richiesta.map { r in Binding.constant(r.canale) }
+                ?? Binding(get: { sessione.canale }, set: { sessione.canale = $0 })
             PannelloMessaggio(sessione: sessione, occasione: o, cliente: c, tono: tono, canale: canale,
                               compatto: compatto, incorniciato: true,
                               base: cambiato ? M.baseCambio : M.baseApertura,
@@ -232,6 +238,12 @@ struct ColonnaOccasioniMessaggi: View {
         let forma = RoundedRectangle(cornerRadius: C.raggio, style: .continuous)
         // «Da festeggiare» in cima (i traguardi, Luce giro 5), poi «Da mandare oggi» e «Questa settimana»
         let gruppi: [(String, [OccasioneMessaggio])] = GruppoMessaggio.allCases.map { g in (g.titolo, elenco.voci(g)) }
+        // La posizione di ogni voce per la cascata, in un passaggio (non una ricerca nell'elenco per ogni voce)
+        let tutte = elenco.tutte
+        let indici = Dictionary(tutte.enumerated().map { ($1.id, $0) }, uniquingKeysWith: { primo, _ in primo })
+        // I traguardi del menu «Da festeggiare» dalla cache, non il motore dei traguardi per ogni voce a ogni passaggio
+        // (il menu contestuale si costruisce insieme al body)
+        let traguardi = tutte.contains { $0.tipo == .traguardo } ? traguardiDelMenu() : [:]
         return VStack(alignment: .leading, spacing: 0) {
             if elenco.nessuna {
                 occhiello(GruppoMessaggio.oggi.titolo, primo: true)
@@ -248,11 +260,11 @@ struct ColonnaOccasioniMessaggi: View {
                         ForEach(Array(visibili.enumerated()), id: \.offset) { g, gruppo in
                             occhiello(gruppo.0, primo: g == 0)
                             ForEach(gruppo.1) { o in
-                                let i = indice(o)
+                                let i = indici[o.id] ?? 0
                                 VoceOccasioneMessaggio(occasione: o, cliente: stato.cliente(o.clienteId), scelta: o.id == scelta) {
                                     tocca(o.id)
                                 }
-                                .contextMenu { menuTraguardo(o) }
+                                .contextMenu { menuTraguardo(o, traguardi: traguardi) }
                                 .entrataCascata(min(i, M.voceMassima), base: base, sfocatura: false)
                             }
                         }
@@ -276,18 +288,33 @@ struct ColonnaOccasioniMessaggi: View {
         .superficieApple(C.superficie, raggio: C.raggio)
     }
 
-    /// Il menu di una voce «Da festeggiare»: «Segna come festeggiato» e «Non è un traguardo» (Luce giro 5).
-    @ViewBuilder private func menuTraguardo(_ o: OccasioneMessaggio) -> some View {
-        if o.tipo == .traguardo, let t = stato.traguardo(o.origine.riferimento) {
-            if t.festeggiatoIl == nil {
-                Button("Segna come festeggiato") { stato.segnaFesteggiato(t) }
+    /// Il menu di una voce «Da festeggiare»: «Segna come festeggiato» e «Non è un traguardo» (Luce giro 5). Il traguardo
+    /// vero si cerca solo quando si sceglie la voce.
+    @ViewBuilder private func menuTraguardo(_ o: OccasioneMessaggio, traguardi: [String: Bool]) -> some View {
+        if o.tipo == .traguardo, let festeggiato = traguardi[o.origine.riferimento] {
+            if !festeggiato {
+                Button("Segna come festeggiato") {
+                    if let t = stato.traguardo(o.origine.riferimento) { stato.segnaFesteggiato(t) }
+                }
             }
-            Button("Non è un traguardo") { stato.scartaTraguardo(t) }
+            Button("Non è un traguardo") {
+                if let t = stato.traguardo(o.origine.riferimento) { stato.scartaTraguardo(t) }
+            }
         }
     }
 
-    private func indice(_ o: OccasioneMessaggio) -> Int {
-        elenco.tutte.firstIndex { $0.id == o.id } ?? 0
+    /// I traguardi di adesso per il menu (id → già festeggiato), una volta per dati dei calcoli e giorno, come le
+    /// occasioni. Quali traguardi ci sono e se sono festeggiati dipende solo dai dati dei calcoli (le regole dei traguardi
+    /// stanno nelle impostazioni dei calcoli): note e capsule cambiano solo l'idea per il regalo e la capsula. Con due
+    /// traguardi con lo stesso id vale il primo, come in `StatoShell.traguardo(_:)`.
+    private func traguardiDelMenu() -> [String: Bool] {
+        stato.ricavato("messaggi-menu-traguardi") { () -> [String: Bool] in
+            var stati: [String: Bool] = [:]
+            for t in MotoreTraguardi.calcola(dati: stato.datiDeiCalcoli(), oggi: Date()) where stati[t.id] == nil {
+                stati[t.id] = t.festeggiatoIl != nil
+            }
+            return stati
+        }
     }
 
     private func occhiello(_ titolo: String, primo: Bool) -> some View {

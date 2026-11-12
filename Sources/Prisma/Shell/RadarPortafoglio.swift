@@ -113,7 +113,7 @@ private struct CorpoRadar: View {
     }
 
     private var radarVista: some View {
-        RadarModelli(radar: radar, aperto: aperto) { id in
+        RadarModelli(radar: radar, aperto: aperto, sistema: stato.sistema) { id in
             aperto = id
             apri(id)
         } modello: { _ in
@@ -177,37 +177,47 @@ struct RadarModelli: View {
     let radar: RadarPortafoglio
     /// Il punto da cui è nato il dettaglio aperto: sotto di lui c'è l'ancora del dettaglio.
     let aperto: String?
+    /// Le finestre di Prisma: il movimento si ferma quando Posizioni non si vede (MovimentoRadar).
+    var sistema: StatoFinestre? = nil
     let apri: (String) -> Void
     let modello: (String) -> Void
     /// Doppio clic su un punto: il dossier del cliente.
     var dossier: (String) -> Void = { _ in }
 
-    @State private var sopra: String?
+    /// Il punto sotto il puntatore: fuori dallo stato della vista, lo legge solo il fumetto (FumettoRadar).
+    @State private var puntatore = PuntatoreRadar()
+    /// L'ultima geometria calcolata, per misura e radar.
+    @State private var memoria = MemoriaGeometriaRadar()
     @State private var visibile = false
     /// Il punto scelto con la tastiera (Tab scorre i fuori tolleranza dal più lontano, Invio apre il dettaglio).
     @State private var tastiera: String?
     @FocusState private var conFuoco: Bool
     @Environment(\.prismaStatoFinale) private var fermo
+    @Environment(\.prismaScatto) private var scatto
     @Environment(\.modoIstantanea) private var istantanea
 
     private typealias R = Tema.Apple.Posizioni.Radar
 
     var body: some View {
         GeometryReader { g in
-            let geo = GeometriaRadar(dimensione: g.size, radar: radar)
+            // La stessa misura e gli stessi punti (un dettaglio che si apre, Tab, la comparsa): la geometria di prima,
+            // senza rifare la ricerca dei posti liberi per tutti i punti
+            let geo = memoria.geometria(g.size, radar)
             ZStack(alignment: .topLeading) {
                 fondo
                 Canvas { ctx, _ in disegnaGriglia(ctx, geo) }
-                FascioRadar(centro: geo.centro, raggio: geo.raggio)
-                    .allowsHitTesting(false)
+                MovimentoRadar(sistema: sistema) { vivo in
+                    FascioRadar(centro: geo.centro, raggio: geo.raggio, vivo: vivo)
+                        .allowsHitTesting(false)
+                }
                 Canvas { ctx, _ in disegnaPunti(ctx, geo) }
                     .opacity(visibile || fermo ? 1 : 0)
                     .animation(Tema.Apple.Moto.Curva.uscita.animazione(R.Moto.durataPunti).ritardoPrisma(R.Moto.ritardoPunti), value: visibile)
-                anelliVivi(geo)
+                MovimentoRadar(sistema: sistema) { vivo in anelliVivi(geo, vivo: vivo) }
                 anelloTastiera(geo)
                 nomiModelli(geo)
                 ancora(geo)
-                fumetto(geo)
+                FumettoRadar(puntatore: puntatore, radar: radar, geo: geo)
             }
             .contentShape(Rectangle())
             // Il doppio clic prima del clic singolo: SwiftUI aspetta il secondo tocco solo dove c'è il doppio
@@ -235,16 +245,20 @@ struct RadarModelli: View {
                 if !fuoco { tastiera = nil }
             }
             .onContinuousHover(coordinateSpace: .local) { fase in
+                // Solo il fumetto si ridisegna, e solo quando cambia il punto sotto il puntatore
+                let nuovo: String?
                 switch fase {
-                case .active(let p): sopra = geo.punto(vicinoA: p)?.id
-                case .ended: sopra = nil
+                case .active(let p): nuovo = geo.punto(vicinoA: p)?.id
+                case .ended: nuovo = nil
                 }
+                if puntatore.sopra != nuovo { puntatore.sopra = nuovo }
             }
             .accessibilityElement(children: .contain)
             .accessibilityLabel("Radar del portafoglio")
         }
         .clipShape(RoundedRectangle(cornerRadius: R.raggioCard, style: .continuous))
-        .onAppear { visibile = true }
+        // Nelle istantanee i punti sono già in vista (`fermo`): scriverlo rifarebbe il radar una seconda volta
+        .onAppear { if !scatto { visibile = true } }
     }
 
     private var fondo: some View {
@@ -328,9 +342,9 @@ struct RadarModelli: View {
         }
     }
 
-    /// Gli anelli che pulsano attorno agli avatar fuori tolleranza (solo con il movimento).
-    @ViewBuilder private func anelliVivi(_ geo: GeometriaRadar) -> some View {
-        if !fermo {
+    /// Gli anelli che pulsano attorno agli avatar fuori tolleranza (solo con il movimento e con il radar in vista).
+    @ViewBuilder private func anelliVivi(_ geo: GeometriaRadar, vivo: Bool) -> some View {
+        if !fermo && vivo {
             ForEach(radar.voci.filter { $0.fuori && !$0.bozzaPronta && geo.conAvatar.contains($0.id) }) { v in
                 AnelloPulsante()
                     .frame(width: 2 * R.anelloGrande, height: 2 * R.anelloGrande)
@@ -349,7 +363,7 @@ struct RadarModelli: View {
         } else {
             tastiera = ordine[0]
         }
-        sopra = tastiera
+        puntatore.sopra = tastiera
     }
 
     /// L'anello bianco attorno al punto scelto con Tab.
@@ -391,10 +405,24 @@ struct RadarModelli: View {
                 .allowsHitTesting(false)
         }
     }
+}
 
-    /// Il fumetto del punto sotto il puntatore: nome, modello e distanza.
-    @ViewBuilder private func fumetto(_ geo: GeometriaRadar) -> some View {
-        if let id = sopra, let v = radar.voci.first(where: { $0.id == id }) {
+/// Il punto sotto il puntatore (o scelto con Tab). Un oggetto e non uno stato del radar: cambia a ogni punto che si
+/// sfiora e lo legge solo il fumetto, così passare sul radar non rifà geometria, le due tele e le 200 ancore.
+@Observable final class PuntatoreRadar {
+    var sopra: String?
+}
+
+/// Il fumetto del punto sotto il puntatore: nome, modello e distanza. È l'unica vista che legge il puntatore.
+private struct FumettoRadar: View {
+    let puntatore: PuntatoreRadar
+    let radar: RadarPortafoglio
+    let geo: GeometriaRadar
+
+    private typealias R = Tema.Apple.Posizioni.Radar
+
+    var body: some View {
+        if let id = puntatore.sopra, let v = radar.voci.first(where: { $0.id == id }) {
             let p = geo.posizione(v)
             VStack(alignment: .leading, spacing: 2) {
                 Text(v.nome).carattereApple(Tema.Apple.Carattere.barra)
@@ -412,6 +440,45 @@ struct RadarModelli: View {
     }
 }
 
+/// L'ultima geometria del radar con la sua misura e il suo radar: una classe, così ricordarla non è un cambio di
+/// stato della vista. Le passate del corpo con la stessa misura e gli stessi punti la riusano.
+final class MemoriaGeometriaRadar {
+    private var ultima: (dimensione: CGSize, radar: RadarPortafoglio, geo: GeometriaRadar)?
+
+    func geometria(_ dimensione: CGSize, _ radar: RadarPortafoglio) -> GeometriaRadar {
+        if let u = ultima, u.dimensione == dimensione, u.radar == radar { return u.geo }
+        let geo = GeometriaRadar(dimensione: dimensione, radar: radar)
+        ultima = (dimensione, radar, geo)
+        return geo
+    }
+}
+
+/// Il movimento infinito del radar (fascio e anelli che pulsano) solo quando si può vedere. Le finestre coperte da
+/// una finestra ingrandita o ridotte nel dock restano montate (ShellView), come tutto con Prisma nascosto o a riposo:
+/// prima il fascio e fino a `massimoAvatar` anelli si animavano a ogni fotogramma anche lì. Solo questa vista osserva
+/// le finestre (come `SchemaConPausaOvunque`): il radar non si ridisegna quando si spostano.
+private struct MovimentoRadar<Contenuto: View>: View {
+    let sistema: StatoFinestre?
+    @ViewBuilder let contenuto: (Bool) -> Contenuto
+    @ObservedObject private var visibilita = VisibilitaPrisma.condivisa
+
+    var body: some View {
+        contenuto(inVista)
+    }
+
+    private var inVista: Bool {
+        guard visibilita.visibile else { return false }
+        #if os(macOS)
+        if let s = sistema {
+            // Il blocco conta a transizione finita, sotto la schermata; allo sblocco il movimento riparte subito
+            if s.bloccato && s.bloccatoStabile { return false }
+            if s.coperte.contains(.posizioni) || s.spente.contains(.posizioni) { return false }
+        }
+        #endif
+        return true
+    }
+}
+
 /// L'ancora del dettaglio sta solo sotto il punto aperto (un'ancora per punto costerebbe con 200 clienti).
 private struct AncoraPunto: ViewModifier {
     let attiva: Bool
@@ -425,14 +492,15 @@ private struct AncoraPunto: ViewModifier {
 private struct FascioRadar: View {
     let centro: CGPoint
     let raggio: CGFloat
-    @State private var gira = false
+    /// false quando il radar non si può vedere (MovimentoRadar): il fascio sta fermo, senza l'animazione infinita.
+    var vivo = true
     @Environment(\.prismaStatoFinale) private var fermo
 
     private typealias R = Tema.Apple.Posizioni.Radar
 
     var body: some View {
         let ampiezza = R.ampiezzaFascio
-        Canvas { ctx, size in
+        let tela = Canvas { ctx, size in
             let c = CGPoint(x: size.width / 2, y: size.height / 2)
             var spicchio = Path()
             spicchio.move(to: c)
@@ -450,12 +518,26 @@ private struct FascioRadar: View {
             ctx.stroke(bordo, with: .color(R.bordoFascio), lineWidth: R.spessoreBordoFascio)
         }
         .frame(width: 2 * raggio, height: 2 * raggio)
-        .rotationEffect(.degrees(fermo ? R.angoloFermo : (gira ? 270 : -90)))
-        .position(centro)
-        .onAppear {
-            guard !fermo else { return }
-            withAnimation(R.Moto.animazioneFascio) { gira = true }
+        Group {
+            if fermo || !vivo {
+                tela.rotationEffect(.degrees(R.angoloFermo))
+            } else {
+                tela.modifier(GiroFascio())
+            }
         }
+        .position(centro)
+    }
+}
+
+/// Il giro infinito del fascio: parte alla comparsa e finisce con il modificatore, così fermare il fascio (radar che
+/// non si vede) toglie davvero l'animazione infinita, e rivederlo la fa ripartire.
+private struct GiroFascio: ViewModifier {
+    @State private var gira = false
+
+    func body(content: Content) -> some View {
+        content
+            .rotationEffect(.degrees(gira ? 270 : -90))
+            .onAppear { withAnimation(Tema.Apple.Posizioni.Radar.Moto.animazioneFascio) { gira = true } }
     }
 }
 

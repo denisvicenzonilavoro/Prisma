@@ -23,7 +23,8 @@ extension Tema.Ombra {
     static let passoMisuraPrecalcolata: CGFloat = 2
 }
 
-/// Le bitmap delle ombre. Solo dal thread principale (SwiftUI valuta i body lì).
+/// Le bitmap delle ombre. Solo dal thread principale (SwiftUI valuta i body lì); `prepara` disegna fuori,
+/// ma cache e conteggio li tocca solo qui.
 enum OmbraPrecalcolata {
     /// L'immagine e dove tagliarla: `margine` = quanto esce dalla forma, `bordo` / `bordoAlto` = lato delle fette
     /// d'angolo in orizzontale e in verticale (al centro restano 2 pt che si stirano).
@@ -40,10 +41,35 @@ enum OmbraPrecalcolata {
     /// Le chiavi dalla meno usata di recente alla più usata.
     private static var ordine: [String] = []
 
+    /// Che cosa disegnare e con quale chiave: raggio a passi, strati che contano e forma (lunga o alla misura).
+    private struct Voce {
+        let chiave: String
+        let raggio: CGFloat
+        let strati: [StratoOmbra]
+        let scala: CGFloat
+        let margine: CGFloat
+        let forma: CGSize
+    }
+
     /// `misura`: la misura della forma. Senza, o con lati abbastanza lunghi, la bitmap è quella a 9 fette che
     /// vale per ogni misura; un lato più corto di quanto servono le fette d'angolo si disegna alla sua misura
     /// (prima, stirando fette che si sovrapponevano, l'ombra usciva spostata o in un riquadro spurio).
     static func ombra(raggio: CGFloat, strati: [StratoOmbra], scala: CGFloat, misura: CGSize? = nil) -> Pronta? {
+        guard let v = voce(raggio: raggio, strati: strati, scala: scala, misura: misura) else { return nil }
+        if let pronta = cache[v.chiave] {
+            if ordine.last != v.chiave, let i = ordine.firstIndex(of: v.chiave) {
+                ordine.remove(at: i)
+                ordine.append(v.chiave)
+            }
+            return pronta
+        }
+        guard let pronta = disegna(v) else { return nil }
+        disegnate += 1
+        conserva(pronta, chiave: v.chiave)
+        return pronta
+    }
+
+    private static func voce(raggio: CGFloat, strati: [StratoOmbra], scala: CGFloat, misura: CGSize?) -> Voce? {
         var strati = strati
         if let misura, misura.width > 0, misura.height > 0 {
             // Uno strato che rientra di metà del lato corto o più non disegna nulla (lo salta `disegna`): fuori
@@ -67,23 +93,66 @@ enum OmbraPrecalcolata {
             return max(2, (valore / passo).rounded(.down) * passo)
         }
         let forma = CGSize(width: lato(misura?.width), height: lato(misura?.height))
-        let voce = chiave(raggio: raggio, strati: strati, scala: scala) + "#\(forma.width)x\(forma.height)"
-        if let pronta = cache[voce] {
-            if ordine.last != voce, let i = ordine.firstIndex(of: voce) {
-                ordine.remove(at: i)
-                ordine.append(voce)
-            }
-            return pronta
-        }
-        guard let pronta = disegna(raggio: raggio, strati: strati, scala: scala,
-                                   margine: estensioni.margine, forma: forma) else { return nil }
-        disegnate += 1
+        let nome = Self.chiave(raggio: raggio, strati: strati, scala: scala) + "#\(forma.width)x\(forma.height)"
+        return Voce(chiave: nome, raggio: raggio, strati: strati, scala: scala, margine: estensioni.margine, forma: forma)
+    }
+
+    /// Tiene la bitmap appena disegnata; oltre il limite toglie le meno usate di recente.
+    private static func conserva(_ pronta: Pronta, chiave: String) {
         while cache.count >= Tema.Ombra.limitePrecalcolate, !ordine.isEmpty {
             cache[ordine.removeFirst()] = nil
         }
-        cache[voce] = pronta
-        ordine.append(voce)
-        return pronta
+        cache[chiave] = pronta
+        ordine.append(chiave)
+    }
+
+    /// Le ombre a 9 fette che non dipendono dalla misura (finestre attive e inattive, normali e ingrandite;
+    /// dettaglio), con la scala dello schermo: si sfocano una volta fuori dal thread principale, così la prima
+    /// apertura, il primo ingrandimento e il primo dettaglio non le disegnano nel primo fotogramma del movimento.
+    /// Dal thread principale (la chiama la shell all'avvio vero, mai nelle istantanee e nelle prove).
+    @MainActor static func preparaShell() {
+        #if os(macOS)
+        let scala = NSScreen.main?.backingScaleFactor ?? 2
+        var richieste: [(raggio: CGFloat, strati: [StratoOmbra])] = []
+        for raggio in [Tema.Raggio.finestra, Tema.Raggio.finestraIngrandita] {
+            richieste.append((raggio: raggio, strati: Tema.Ombra.finestra(attiva: true)))
+            richieste.append((raggio: raggio, strati: Tema.Ombra.finestra(attiva: false)))
+        }
+        // L'ombra del dettaglio è la stessa in chiaro e in scuro
+        richieste.append((raggio: Tema.Apple.Moto.DettaglioApre.raggioFinale,
+                          strati: Tema.Apple.Ombra.dettaglio.strati(scuro: false)))
+        prepara(richieste, scala: scala)
+        #endif
+    }
+
+    /// Disegna fuori dal thread principale le bitmap a 9 fette che mancano. Fuori si disegna soltanto (solo
+    /// CoreGraphics e immagini, colori RGB fissi): cache, ordine e conteggio si toccano solo qui sul principale.
+    private static func prepara(_ richieste: [(raggio: CGFloat, strati: [StratoOmbra])], scala: CGFloat) {
+        let voci = richieste.compactMap { voce(raggio: $0.raggio, strati: $0.strati, scala: scala, misura: nil) }
+            .filter { cache[$0.chiave] == nil }
+        guard !voci.isEmpty else { return }
+        DispatchQueue.global(qos: .utility).async {
+            let pronte = voci.map { v in (chiave: v.chiave, pronta: OmbraPrecalcolata.disegna(v)) }
+            DispatchQueue.main.async {
+                for p in pronte {
+                    // Un body può averla già disegnata nel frattempo: resta quella
+                    guard let pronta = p.pronta, OmbraPrecalcolata.cache[p.chiave] == nil else { continue }
+                    OmbraPrecalcolata.disegnate += 1
+                    OmbraPrecalcolata.conserva(pronta, chiave: p.chiave)
+                }
+            }
+        }
+    }
+
+    /// Stessi strati, campo per campo (StratoOmbra non è Equatable).
+    static func stessiStrati(_ a: [StratoOmbra], _ b: [StratoOmbra]) -> Bool {
+        guard a.count == b.count else { return false }
+        for (x, y) in zip(a, b) {
+            if x.colore != y.colore || x.y != y.y || x.sfocatura != y.sfocatura || x.espansione != y.espansione {
+                return false
+            }
+        }
+        return true
     }
 
     private static func chiave(raggio: CGFloat, strati: [StratoOmbra], scala: CGFloat) -> String {
@@ -118,8 +187,13 @@ enum OmbraPrecalcolata {
     /// La forma al centro è grande abbastanza perché a metà di ogni lato l'ombra sia quella di un lato lungo:
     /// le fette d'angolo (`bordo`) contengono tutto ciò che dipende dagli angoli, il centro (2 pt) si stira.
     /// Un lato corto (`forma` più piccola della forma lunga) si disegna alla sua misura: lì si stirano solo 2 pt.
-    private static func disegna(raggio: CGFloat, strati: [StratoOmbra], scala: CGFloat,
-                                margine: CGFloat, forma misuraForma: CGSize) -> Pronta? {
+    /// Solo CoreGraphics e immagini: si può chiamare anche fuori dal thread principale (`prepara`).
+    private static func disegna(_ v: Voce) -> Pronta? {
+        let raggio = v.raggio
+        let strati = v.strati
+        let scala = v.scala
+        let margine = v.margine
+        let misuraForma = v.forma
         guard !strati.isEmpty else { return nil }
         let larghezza = misuraForma.width + 2 * margine
         let altezza = misuraForma.height + 2 * margine
@@ -188,11 +262,24 @@ enum OmbraPrecalcolata {
 /// Al posto di OmbreVetro: la bitmap pronta, stirata alla misura della forma.
 /// `misuraEsatta` (di solito): legge la misura della forma, così i lati corti (riquadri bassi, pillole) hanno
 /// l'ombra giusta. Senza (finestre, dettaglio che cresce): la bitmap non cambia mai con la misura.
-struct OmbraVetroPronta: View {
+struct OmbraVetroPronta: View, Equatable {
     let raggio: CGFloat
     let strati: [StratoOmbra]
-    var misuraEsatta = true
+    let misuraEsatta: Bool
     @Environment(\.displayScale) private var scala
+
+    init(raggio: CGFloat, strati: [StratoOmbra], misuraEsatta: Bool = true) {
+        self.raggio = raggio
+        self.strati = strati
+        self.misuraEsatta = misuraEsatta
+    }
+
+    /// Gli strati arrivano in un array nuovo a ogni body di chi la usa (anche a ogni fotogramma del dettaglio e
+    /// dell'inclinazione): a parità di raggio e strati il body non si rifà e la chiave non si ricostruisce.
+    /// La scala dello schermo (ambiente) e la misura (GeometryReader) la aggiornano comunque.
+    nonisolated static func == (a: OmbraVetroPronta, b: OmbraVetroPronta) -> Bool {
+        a.raggio == b.raggio && a.misuraEsatta == b.misuraEsatta && OmbraPrecalcolata.stessiStrati(a.strati, b.strati)
+    }
 
     var body: some View {
         Group {

@@ -270,6 +270,9 @@ enum MotoreStudio {
         let posizioneId: String
         let clienteId: String
         let data: Date
+        /// Il mese di `data` come numero intero (`indiceMese`: anno × 12 + mese − 1, nel calendario del calcolo): il
+        /// cruscotto conta ricavi e incassi per mese con questo, senza chiedere mese e anno al calendario evento per evento.
+        let mese: Int
         /// Su cosa si calcola (€): premio unico più prima annualità, oppure la rata.
         let base: Double
         let tipo: TipoProvvigione
@@ -279,6 +282,16 @@ enum MotoreStudio {
 
     /// Quante rate al massimo si scorrono per una posizione in un intervallo (un intervallo di Studio dura meno di 3 anni).
     private static let rateMassime = 400
+
+    /// Il mese di una data come numero intero (anno × 12 + mese − 1): due mesi di fila differiscono di 1, anche a
+    /// cavallo d'anno.
+    static func indiceMese(_ d: Date, cal: Calendar) -> Int {
+        let c = cal.dateComponents([.year, .month], from: d)
+        return (c.year ?? 0) * 12 + (c.month ?? 1) - 1
+    }
+
+    /// Il posto del mese nei 12 valori di un anno (gennaio = 0), da `indiceMese`.
+    private static func postoNellAnno(_ mese: Int) -> Int { (mese % 12 + 12) % 12 }
 
     /// Le provvigioni di una posizione con la data in [`da`, `a`). Contano solo le posizioni Alleanza in essere con la
     /// decorrenza, nelle aree `ImpostazioniStudio.areeProvvigionali`:
@@ -291,13 +304,13 @@ enum MotoreStudio {
               let decorrenza = p.decorrenza, da < a else { return [] }
         let aliquote = studio.aliquoteInserite(per: p.area)
         var elenco: [Evento] = []
-        func aggiungi(_ data: Date, base: Double, tipo: TipoProvvigione, aliquota: Double?) {
+        func aggiungi(_ data: Date, mese: Int?, base: Double, tipo: TipoProvvigione, aliquota: Double?) {
             guard base.isFinite, base > 0, data >= da, data < a else { return }
-            elenco.append(Evento(posizioneId: p.id, clienteId: p.clienteId, data: data, base: base, tipo: tipo,
-                                 importo: aliquota.map { base * $0 / 100 }))
+            elenco.append(Evento(posizioneId: p.id, clienteId: p.clienteId, data: data, mese: mese ?? indiceMese(data, cal: cal),
+                                 base: base, tipo: tipo, importo: aliquota.map { base * $0 / 100 }))
         }
         // Nuova produzione alla decorrenza
-        aggiungi(decorrenza, base: max(0, p.versamentoIniziale) + max(0, p.premioAnnuo), tipo: .nuovaProduzione,
+        aggiungi(decorrenza, mese: nil, base: max(0, p.versamentoIniziale) + max(0, p.premioAnnuo), tipo: .nuovaProduzione,
                  aliquota: aliquote?.nuovaProduzione)
         // Rate dalla seconda annualità
         let volte = p.frequenza.volteAllAnno
@@ -306,12 +319,26 @@ enum MotoreStudio {
         let tipo = AliquoteProvvigione.voceSuccessiva(area: p.area)
         let aliquota = aliquote?.successiva(area: p.area)
         let mesiAlInizio = cal.dateComponents([.month], from: decorrenza, to: da).month ?? 0
+        // Nel calendario gregoriano il mese della rata k è quello della prima rata aggiunta più (k − k₀) × passo:
+        // `date(byAdding: .month)` porta il giorno a fine mese ma non cambia mese. Così il calendario si chiede una volta
+        // per posizione invece che per ogni rata (con gli altri calendari, rata per rata come prima)
+        let mesiDiFila = cal.identifier == .gregorian || cal.identifier == .iso8601
+        var prima: (k: Int, mese: Int)?
         var k = max(volte, mesiAlInizio / passo - 1)
         var giri = 0
         while giri < rateMassime {
             guard let data = cal.date(byAdding: .month, value: k * passo, to: decorrenza), data < a else { break }
             if let fine = p.scadenza, data >= fine { break }
-            aggiungi(data, base: p.premio, tipo: tipo, aliquota: aliquota)
+            if data >= da {
+                let mese: Int
+                if mesiDiFila, let prima {
+                    mese = prima.mese + (k - prima.k) * passo
+                } else {
+                    mese = indiceMese(data, cal: cal)
+                    prima = (k: k, mese: mese)
+                }
+                aggiungi(data, mese: mese, base: p.premio, tipo: tipo, aliquota: aliquota)
+            }
             k += 1
             giri += 1
         }
@@ -347,7 +374,9 @@ enum MotoreStudio {
         let mancaAliquote = studio.senzaAliquote
         let nessunaParcella = parcelle.isEmpty
 
-        // Tutte le provvigioni dall'inizio dell'anno prima alla fine della finestra degli incassi, in un passaggio
+        // Tutte le provvigioni dall'inizio dell'anno prima alla fine della finestra degli incassi, in un passaggio.
+        // Senza nessuna aliquota non servono: ogni importo sarebbe nil e le cifre Alleanza non si mostrano (ricavi,
+        // incassi e ricavi per cliente restano gli stessi), quindi niente rate da scorrere sul calendario
         let fineEventi = max(fineIncassi, inizioAnnoProssimo)
         var eventi: [Evento] = []
         var senzaDecorrenza = 0
@@ -356,8 +385,12 @@ enum MotoreStudio {
                ImpostazioniStudio.areeProvvigionali.contains(p.area) {
                 senzaDecorrenza += 1
             }
-            eventi.append(contentsOf: Self.eventi(p, studio: studio, da: inizioAnnoPrima, a: fineEventi, cal: cal))
+            if !mancaAliquote {
+                eventi.append(contentsOf: Self.eventi(p, studio: studio, da: inizioAnnoPrima, a: fineEventi, cal: cal))
+            }
         }
+        // Il mese di ogni parcella, una volta sola (serve ai ricavi dei tre periodi e agli incassi)
+        let mesiParcelle = mieParcelle.map { indiceMese($0.data, cal: cal) }
 
         // Ricavi di un anno fino a una data (esclusa)
         func ricavi(annoInizio: Date, fino: Date, mesiContati: Int) -> CruscottoStudio.Ricavi {
@@ -366,13 +399,13 @@ enum MotoreStudio {
             var senza = Set<String>()
             for e in eventi where e.data >= annoInizio && e.data < fino {
                 if let importo = e.importo {
-                    alleanza[cal.component(.month, from: e.data) - 1] += importo
+                    alleanza[postoNellAnno(e.mese)] += importo
                 } else {
                     senza.insert(e.posizioneId)
                 }
             }
-            for r in mieParcelle where r.data >= annoInizio && r.data < fino {
-                indipendente[cal.component(.month, from: r.data) - 1] += r.importo
+            for (i, r) in mieParcelle.enumerated() where r.data >= annoInizio && r.data < fino {
+                indipendente[postoNellAnno(mesiParcelle[i])] += r.importo
             }
             return CruscottoStudio.Ricavi(anno: cal.component(.year, from: annoInizio), mesiContati: mesiContati,
                                           alleanzaPerMese: mancaAliquote ? nil : alleanza, indipendentePerMese: indipendente,
@@ -435,22 +468,22 @@ enum MotoreStudio {
             firmateConDate: giorniFirma.count, fase: fase, ferme: ferme)
 
         // Incassi dei prossimi 12 mesi, dal 1° del mese prossimo
-        let annoIncassi = cal.component(.year, from: inizioIncassi)
-        let meseIncassi = cal.component(.month, from: inizioIncassi)
-        func indiceIncasso(_ d: Date) -> Int? {
+        // Il posto di una data nei 12 mesi: la distanza in mesi interi dal primo (`indiceMese`, già noto per eventi e parcelle)
+        let primoMeseIncassi = indiceMese(inizioIncassi, cal: cal)
+        func indiceIncasso(_ d: Date, mese: Int) -> Int? {
             guard d >= inizioIncassi, d < fineIncassi else { return nil }
-            let i = (cal.component(.year, from: d) - annoIncassi) * 12 + cal.component(.month, from: d) - meseIncassi
+            let i = mese - primoMeseIncassi
             return i >= 0 && i < 12 ? i : nil
         }
         var incassoAlleanza = [Double](repeating: 0, count: 12)
         var incassoIndipendente = [Double](repeating: 0, count: 12)
         var senzaAliquotaIncassi = Set<String>()
         for e in eventi {
-            guard let i = indiceIncasso(e.data) else { continue }
+            guard let i = indiceIncasso(e.data, mese: e.mese) else { continue }
             if let importo = e.importo { incassoAlleanza[i] += importo } else { senzaAliquotaIncassi.insert(e.posizioneId) }
         }
-        for r in mieParcelle where !r.incassata {
-            if let i = indiceIncasso(r.data) { incassoIndipendente[i] += r.importo }
+        for (j, r) in mieParcelle.enumerated() where !r.incassata {
+            if let i = indiceIncasso(r.data, mese: mesiParcelle[j]) { incassoIndipendente[i] += r.importo }
         }
         let mesiIncasso: [CruscottoStudio.MeseIncasso] = (0..<12).map { i in
             CruscottoStudio.MeseIncasso(inizio: cal.date(byAdding: .month, value: i, to: inizioIncassi) ?? inizioIncassi,

@@ -23,12 +23,15 @@ import SwiftUI
 //   barra dei pulsanti resta in fondo e scorre solo il testo.
 // - «Riduci movimento»: niente cascata né comparsa parola per parola (tutto subito); istantanee: stato finale, il
 //   testo come testo (senza il campo), nessun puntino.
+// - Il testo in arrivo da Vera e le correzioni li leggono solo il testo (TestoMessaggioSessione, CampoTestoMessaggio) e
+//   gli avvisi dello stile (AvvisiStileSessione): un pezzo del flusso o un tasto rifanno loro, non tutto il pannello.
 // Valori in DesignSystem/Apple/Tema.Apple+Messaggi.swift.
 
 @MainActor
 struct PannelloMessaggio: View {
     @Environment(StatoShell.self) var stato
-    @ObservedObject var sessione: SessioneMessaggi
+    /// La sessione (`@Observable`): il pannello segue solo ciò che legge (tono, canale, testo pronto, chi scrive).
+    let sessione: SessioneMessaggi
     let occasione: OccasioneMessaggio
     let cliente: Cliente
     @Binding var tono: TonoMessaggio
@@ -56,13 +59,22 @@ struct PannelloMessaggio: View {
     /// «Scrive come te» (fase 4 di Vera, funzione 15): le regole dello stile che il testo pronto non rispetta.
     @ViewBuilder
     private var avvisiStile: some View {
-        if let s = pronto {
-            AvvisiStileMessaggioVista(testo: s.testo, clienteId: cliente.id)
+        if pronto != nil {
+            AvvisiStileSessione(sessione: sessione, chiave: chiave, scrittoIstantanea: scrittoIstantanea,
+                                clienteId: cliente.id)
                 .padding(.top, Tema.Apple.Messaggi.Barra.sopra)
         }
     }
 
+    /// Il testo pronto com'è arrivato, senza le correzioni: basta al pannello (chi ha scritto, l'oggetto, l'avviso, i
+    /// pulsanti), che così non si rifà a ogni tasto nel messaggio. Il testo corretto lo leggono il testo del messaggio,
+    /// gli avvisi dello stile e le azioni (`corretto`).
     private var pronto: TestoScrittoMessaggio? {
+        scrittoIstantanea ?? sessione.arrivato(chiave)
+    }
+
+    /// Il testo pronto con le correzioni, come si apre e si salva (letto solo nelle azioni, fuori dal body).
+    private var corretto: TestoScrittoMessaggio? {
         scrittoIstantanea ?? sessione.scritto(chiave)
     }
 
@@ -112,7 +124,7 @@ struct PannelloMessaggio: View {
             }
             .sheet(item: $lettura) { e in
                 FoglioSecondaLettura(esito: e, avanti: "Apri lo stesso", correggi: { e in
-                    if let s = pronto { sessione.correggi(chiave, e.corretto(s.testo)) }
+                    if let s = corretto { sessione.correggi(chiave, e.corretto(s.testo)) }
                 }, continua: { apri(riletto: true) })
             }
             .alert(TestiMessaggi.confermaConsensoTitolo, isPresented: $chiediConsenso) {
@@ -276,34 +288,13 @@ struct PannelloMessaggio: View {
                     .foregroundColor(P.coloreProva)
                     .padding(.top, P.sopraProva)
             }
-            testoMessaggio
+            TestoMessaggioSessione(sessione: sessione, chiave: chiave, scrittoIstantanea: scrittoIstantanea, scrive: scrive,
+                                   compatto: compatto)
                 .padding(.top, T.sopra)
             cifre
             nota
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    /// Il testo: i puntini finché non arriva niente, poi parola per parola, poi il campo da correggere.
-    @ViewBuilder private var testoMessaggio: some View {
-        let k = chiave
-        let nuvoletta = canale == .messaggi
-        let correggibile = !scatto && pronto != nil && !scrive && sessione.comparsi.contains(k)
-        if correggibile {
-            CampoTestoMessaggio(testo: Binding(get: { sessione.testo(k) ?? "" }, set: { sessione.correggi(k, $0) }))
-                .contenitoreTestoMessaggio(nuvoletta: nuvoletta, compatto: compatto)
-        } else if pronto == nil && sessione.parziale.isEmpty {
-            PuntiniScrittura()
-                .padding(.top, T.sopraPuntini)
-                .frame(maxWidth: .infinity, minHeight: nuvoletta ? nil : (compatto ? T.altezzaMinimaCompatta : T.altezzaMinima),
-                       alignment: nuvoletta ? .topTrailing : .topLeading)
-        } else {
-            TestoProgressivo(testo: pronto?.testo ?? sessione.parziale, passo: Tema.Apple.Messaggi.Moto.parola,
-                             anima: !scatto, finito: { sessione.comparso(k) })
-                .carattereApple(T.carattere)
-                .id("\(k.occasione)-\(k.tono.rawValue)-\(k.canale.rawValue)-\(sessione.giri[k] ?? 0)")
-                .contenitoreTestoMessaggio(nuvoletta: nuvoletta, compatto: compatto)
-        }
     }
 
     /// Le cifre della scheda come piccole etichette: le sole che il testo può citare.
@@ -427,7 +418,7 @@ struct PannelloMessaggio: View {
     /// Apre Mail o Messaggi già compilati (mai un invio) e ricorda il messaggio segnato nel dossier.
     private func apri(riletto: Bool = false) {
         let k = chiave
-        guard let s = pronto else { return }
+        guard let s = corretto else { return }
         // La seconda lettura: parole a rischio e cifre senza fonte (anche nel testo corretto a mano)
         if !riletto {
             let e = stato.secondaLetturaMessaggio(occasione, testo: s.testo)
@@ -447,7 +438,7 @@ struct PannelloMessaggio: View {
     /// Salva nel dossier (o aggiorna il messaggio già salvato o aperto, che resta aperto).
     private func salva() {
         let k = chiave
-        guard let s = pronto else { return }
+        guard let s = corretto else { return }
         let prima = sessione.idSalvato(k)
         let statoPrima = prima.flatMap { id in stato.dati.messaggi.first(where: { $0.id == id })?.stato }
         let nuovo: StatoMessaggio = (statoPrima == .apertoInMail || statoPrima == .apertoInMessaggi) ? (statoPrima ?? .salvato) : .salvato
@@ -456,6 +447,68 @@ struct PannelloMessaggio: View {
         }
         sessione.ricordaSalvato(k, id: m.id)
         stato.mostraAvviso(TestiMessaggi.salvato(cliente.nome))
+    }
+}
+
+// MARK: - Il testo del messaggio
+
+/// Il testo: i puntini finché non arriva niente, poi parola per parola, poi il campo da correggere. Una vista a sé,
+/// l'unica che legge il testo in arrivo da Vera: un pezzo del flusso rifà lei, non testata, controlli, cifre e
+/// pulsanti del pannello. Le correzioni le legge solo il campo (dentro il suo Binding), così un tasto rifà il campo.
+@MainActor
+private struct TestoMessaggioSessione: View {
+    let sessione: SessioneMessaggi
+    let chiave: ChiaveTestoMessaggio
+    /// Solo nelle istantanee: il testo già pronto.
+    let scrittoIstantanea: TestoScrittoMessaggio?
+    let scrive: Bool
+    let compatto: Bool
+
+    @Environment(\.prismaScatto) private var scatto
+
+    private typealias T = Tema.Apple.Messaggi.Testo
+
+    var body: some View {
+        let k = chiave
+        let nuvoletta = k.canale == .messaggi
+        let pronto = scrittoIstantanea ?? sessione.arrivato(k)
+        let correggibile = !scatto && pronto != nil && !scrive && sessione.comparsi.contains(k)
+        if correggibile {
+            CampoTestoMessaggio(testo: Binding(get: { sessione.testo(k) ?? "" }, set: { sessione.correggi(k, $0) }))
+                .contenitoreTestoMessaggio(nuvoletta: nuvoletta, compatto: compatto)
+        } else if pronto == nil && sessione.parziale.isEmpty {
+            PuntiniScrittura()
+                .padding(.top, T.sopraPuntini)
+                .frame(maxWidth: .infinity, minHeight: nuvoletta ? nil : (compatto ? T.altezzaMinimaCompatta : T.altezzaMinima),
+                       alignment: nuvoletta ? .topTrailing : .topLeading)
+        } else {
+            // Con le correzioni: la seconda lettura può correggere il testo prima che la comparsa finisca
+            let testo: String = pronto == nil ? sessione.parziale : (scrittoIstantanea?.testo ?? sessione.testo(k) ?? "")
+            TestoProgressivo(testo: testo, passo: Tema.Apple.Messaggi.Moto.parola,
+                             anima: !scatto, finito: { sessione.comparso(k) })
+                .carattereApple(T.carattere)
+                .id("\(k.occasione)-\(k.tono.rawValue)-\(k.canale.rawValue)-\(sessione.giri[k] ?? 0)")
+                .contenitoreTestoMessaggio(nuvoletta: nuvoletta, compatto: compatto)
+        }
+    }
+}
+
+// MARK: - Gli avvisi dello stile
+
+/// Gli avvisi dello stile sul testo corretto: una vista a sé, così un tasto nel messaggio rifà lei (e il campo), non
+/// il pannello. Il pannello la mostra solo quando il testo è pronto.
+@MainActor
+private struct AvvisiStileSessione: View {
+    let sessione: SessioneMessaggi
+    let chiave: ChiaveTestoMessaggio
+    /// Solo nelle istantanee: il testo già pronto.
+    let scrittoIstantanea: TestoScrittoMessaggio?
+    let clienteId: String
+
+    var body: some View {
+        let k = chiave
+        AvvisiStileMessaggioVista(testo: scrittoIstantanea?.testo ?? sessione.testo(k) ?? "", clienteId: clienteId,
+                                  messaggio: "\(k.occasione)-\(k.tono.rawValue)-\(k.canale.rawValue)")
     }
 }
 

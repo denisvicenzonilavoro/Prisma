@@ -383,12 +383,17 @@ struct NodoSpedizione: View {
 
     @Environment(\.prismaCalmo) private var calmo
     @Environment(\.modoIstantanea) private var istantanea
+    @ObservedObject private var visibilita = VisibilitaPrisma.condivisa
     @State private var respira = false
 
     private typealias S = Tema.Apple.Pratiche.Spedizione
     private typealias R = Tema.Apple.Pratiche.Moto.RespiroNodo
 
     var body: some View {
+        let fermo = Tema.Apple.Moto.statoFinale(calmo: calmo, istantanea: istantanea)
+        let inVista = visibilita.visibile
+        // Con Prisma non in vista (nascosta, coperta, Mac a riposo) il respiro si ferma: niente fotogrammi per nessuno
+        let gonfio = respira && inVista
         ZStack {
             switch stato {
             case .fatta:
@@ -406,10 +411,12 @@ struct NodoSpedizione: View {
             }
         }
         .frame(width: S.nodo, height: S.nodo)
-        .scaleEffect(respira ? R.scala : 1)
+        .scaleEffect(gonfio ? R.scala : 1)
+        // Senza animazione (Prisma non in vista) il valore nuovo toglie il respiro ripetuto in corso
+        .animation(inVista ? R.animazione : nil, value: gonfio)
         .onAppear {
-            guard stato == .adesso, !Tema.Apple.Moto.statoFinale(calmo: calmo, istantanea: istantanea) else { return }
-            withAnimation(R.animazione) { respira = true }
+            guard stato == .adesso, !fermo else { return }
+            respira = true
         }
         .animation(Tema.Apple.Moto.animazione(Tema.Apple.Pratiche.Moto.Spedizione.nodo, calmo: calmo, istantanea: istantanea), value: stato)
     }

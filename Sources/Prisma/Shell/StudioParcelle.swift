@@ -123,6 +123,33 @@ extension StatoShell {
     }
 }
 
+// MARK: - Testi e controlli in memoria
+
+/// I testi della fattura su carta e i dati che mancano per il file XML, per parcella: si calcolano alla prima richiesta e
+/// restano finché valgono i dati dei calcoli (la memoria sta in `StatoShell.ricavato`). Parcelle, clienti e dati di
+/// fatturazione entrano tutti nei calcoli, quindi un clic sull'elenco o un passo del ridimensionamento della finestra non
+/// rifanno la ricerca del cliente, le voci fiscali e i controlli. Solo dal thread principale.
+private final class FattureInMemoria {
+    private var fogli: [String: TestiFattura] = [:]
+    private var controlli: [String: [DatoMancante]] = [:]
+
+    /// `StatoShell.testiFattura(_:)` della parcella.
+    func testi(_ p: Parcella, stato: StatoShell) -> TestiFattura {
+        if let t = fogli[p.id] { return t }
+        let t = stato.testiFattura(p)
+        fogli[p.id] = t
+        return t
+    }
+
+    /// Ciò che manca per il file XML della parcella, con il cliente visibile (come la colonna delle azioni).
+    func mancanti(_ p: Parcella, stato: StatoShell) -> [DatoMancante] {
+        if let m = controlli[p.id] { return m }
+        let m = MotoreFattura.mancanti(parcella: p, cliente: stato.cliente(p.clienteId), consulente: stato.datiFatturazione)
+        controlli[p.id] = m
+        return m
+    }
+}
+
 // MARK: - La scheda
 
 /// Lo stato del file XML nella colonna delle azioni: preparato per una parcella (con l'indirizzo dove è stato salvato).
@@ -169,11 +196,14 @@ struct ParcelleStudioVista: View {
 
     var body: some View {
         let _ = ContaCorpi.segna()
-        let elenco = Self.ordinate(stato.parcelle)
+        // Ordine, totali, testi e controlli dalla cache dei dati ricavati (parcelle, clienti e dati di fatturazione entrano
+        // nei calcoli; i totali guardano solo il giorno): un clic sull'elenco cambia solo la scelta
+        let elenco = stato.ricavato("studio.parcelle.elenco") { Self.ordinate(stato.parcelle) }
         let richiesta = RichiestaIstantaneaParcelle.per(stato)
         let idScelto = scelta ?? richiesta?.parcellaId
         let p = idScelto.flatMap { id in elenco.first { $0.id == id } } ?? elenco.first
-        let totali = stato.totaliParcelle()
+        let totali = stato.ricavato("studio.parcelle.totali") { stato.totaliParcelle() }
+        let fatture = stato.ricavato("studio.parcelle.fatture") { FattureInMemoria() }
         let xml: FileXMLPronto? = fileXML ?? richiesta?.fileXML.flatMap { nome in
             p.map { FileXMLPronto(parcellaId: $0.id, nome: nome, url: nil) }
         }
@@ -183,7 +213,7 @@ struct ParcelleStudioVista: View {
                 barra(elenco, scelta: p?.id, totali: totali)
                     .frame(width: laterale)
                     .frame(maxHeight: .infinity, alignment: .top)
-                anteprima(p, xml: xml)
+                anteprima(p, xml: xml, fatture: fatture)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .entrataCascata(min(elenco.count, 8), base: base)
             }
@@ -259,10 +289,12 @@ struct ParcelleStudioVista: View {
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(alignment: .leading, spacing: Tema.Apple.Parcelle.Voce.fraVoci) {
                         ForEach(Array(elenco.enumerated()), id: \.element.id) { i, p in
+                            // `.equatable()`: a un clic rifanno il corpo solo la voce lasciata e quella scelta
                             VoceParcellaApple(parcella: p, cliente: stato.cliente(p.clienteId), scelta: p.id == scelta,
-                                              scaduta: MotoreParcelle.scaduta(p, oggi: oggi)) {
-                                scegli(p.id)
+                                              scaduta: MotoreParcelle.scaduta(p, oggi: oggi)) { calmo, istantanea in
+                                scegli(p.id, calmo: calmo, istantanea: istantanea)
                             }
+                            .equatable()
                             .contextMenu { menu(p) }
                             .entrataCascata(min(i, 8), base: base, sfocatura: false)
                         }
@@ -308,7 +340,7 @@ struct ParcelleStudioVista: View {
 
     // MARK: Anteprima
 
-    private func anteprima(_ p: Parcella?, xml: FileXMLPronto?) -> some View {
+    private func anteprima(_ p: Parcella?, xml: FileXMLPronto?, fatture: FattureInMemoria) -> some View {
         let a = Tema.Apple.Parcelle.Anteprima.self
         let z = Tema.Apple.Parcelle.Azioni.self
         let forma = RoundedRectangle(cornerRadius: a.raggio, style: .continuous)
@@ -316,14 +348,14 @@ struct ParcelleStudioVista: View {
             let spazioFoglio = max(1, geo.size.width - z.larghezza - z.margine * 2)
             ZStack(alignment: .topLeading) {
                 if let p {
-                    let testi = stato.testiFattura(p)
+                    let testi = fatture.testi(p, stato: stato)
                     FoglioFatturaAnteprima(testi: testi, scala: Self.scala(larghezza: spazioFoglio, altezza: geo.size.height))
                         .equatable()
                         .frame(width: spazioFoglio, alignment: .top)
                         .padding(.top, a.margineAlto)
                         .id(p.id)
                         .transition(.cambioFattura(calmo: calmo))
-                    azioni(p, testi: testi, xml: xml?.parcellaId == p.id ? xml : nil)
+                    azioni(p, testi: testi, mancanti: fatture.mancanti(p, stato: stato), xml: xml?.parcellaId == p.id ? xml : nil)
                         .frame(width: z.larghezza, alignment: .topLeading)
                         .padding(.top, z.margine)
                         .padding(.trailing, z.margine)
@@ -352,10 +384,9 @@ struct ParcelleStudioVista: View {
 
     // MARK: Azioni
 
-    private func azioni(_ p: Parcella, testi: TestiFattura, xml: FileXMLPronto?) -> some View {
+    private func azioni(_ p: Parcella, testi: TestiFattura, mancanti: [DatoMancante], xml: FileXMLPronto?) -> some View {
         let z = Tema.Apple.Parcelle.Azioni.self
         let cliente = stato.cliente(p.clienteId)
-        let mancanti = MotoreFattura.mancanti(parcella: p, cliente: cliente, consulente: stato.datiFatturazione)
         return VStack(alignment: .leading, spacing: z.spazio) {
             Button { preparaXML(p) } label: {
                 Text("Prepara il file XML").frame(maxWidth: .infinity)
@@ -483,6 +514,12 @@ struct ParcelleStudioVista: View {
     // MARK: Fare
 
     private func scegli(_ id: String) {
+        scegli(id, calmo: calmo, istantanea: istantanea)
+    }
+
+    /// La scelta di una voce: «Riduci movimento» e istantanee arrivano da chi chiama (la voce dell'elenco li legge dal suo
+    /// ambiente, così l'azione di una voce che non ha rifatto il corpo non usa valori vecchi).
+    private func scegli(_ id: String, calmo: Bool, istantanea: Bool) {
         guard id != scelta else { return }
         let animazione = Tema.Apple.Moto.animazione(Tema.Apple.Parcelle.Moto.entrata, calmo: calmo, istantanea: istantanea)
         let cambia = {
@@ -687,12 +724,14 @@ private struct TileStatoFattura<Contenuto: View>: View {
 
 /// Una voce dell'elenco (`.rub`): avatar 34, nome 14 bold e «numero · descrizione» 12; a destra l'importo 13,5 bold e
 /// lo stato colorato. Sotto il puntatore `chip`, scelta `selezioneVoce`, il fondo cambia in 0,25 s.
-private struct VoceParcellaApple: View {
+private struct VoceParcellaApple: View, Equatable {
     let parcella: Parcella
     let cliente: Cliente?
     let scelta: Bool
     let scaduta: Bool
-    let azione: () -> Void
+    /// La scelta della voce, con «Riduci movimento» e istantanee letti qui (dall'ambiente della voce): l'azione resta
+    /// giusta anche quando la voce non rifà il corpo, quindi non conta nel confronto.
+    let azione: (_ calmo: Bool, _ istantanea: Bool) -> Void
 
     @Environment(\.prismaCalmo) private var calmo
     @Environment(\.modoIstantanea) private var istantanea
@@ -700,9 +739,13 @@ private struct VoceParcellaApple: View {
 
     private typealias V = Tema.Apple.Parcelle.Voce
 
+    nonisolated static func == (a: VoceParcellaApple, b: VoceParcellaApple) -> Bool {
+        a.parcella == b.parcella && a.cliente == b.cliente && a.scelta == b.scelta && a.scaduta == b.scaduta
+    }
+
     var body: some View {
         let forma = RoundedRectangle(cornerRadius: V.raggio, style: .continuous)
-        return Button(action: azione) {
+        return Button(action: { azione(calmo, istantanea) }) {
             HStack(spacing: V.spazioAvatar) {
                 avatar
                 VStack(alignment: .leading, spacing: V.spazioTitoli) {

@@ -4,7 +4,7 @@ import SwiftUI
 // - SferaVera: il solo simbolo di Vera. Gradiente radiale con il riflesso conico che gira in 6 s; `viva` respira in
 //   4 s, `pensa` pulsa (1 → 1,1 → 1 in 0,9 s) al posto del respiro. Si muove solo quando è sullo schermo, mai con
 //   «Riduci movimento» né nelle istantanee (fotogramma 0). Niente Timer: TimelineView a 30 fotogrammi, in pausa
-//   appena la sfera è ferma.
+//   appena la sfera è ferma o fuori vista (`\.prismaInVista`, Prisma che non si vede: resta sull'ultimo fotogramma).
 // - PuntiniScrittura: i tre puntini «sta scrivendo»; fermi a 0,4 con calma e nelle istantanee.
 // - TestoProgressivo: le parole compaiono una alla volta, al più una ogni 0,038 s, senza dissolvenza: è il ritmo
 //   minimo di presentazione del testo che Qwen scrive in streaming, non una finta scrittura. Con calma e nelle
@@ -26,6 +26,10 @@ struct SferaVera: View {
     var pensa: Bool
 
     @Environment(\.prismaStatoFinale) private var fermo
+    /// Chi la contiene sa che non si vede (`\.prismaInVista`): la scrivania sotto una finestra o dietro Vera.
+    @Environment(\.prismaInVista) private var inVista
+    /// Prisma non si vede (finestra nascosta, ridotta o coperta, Mac a riposo), come per la tela animata.
+    @ObservedObject private var visibilita = VisibilitaPrisma.condivisa
     @State private var visibile = false
     @State private var inizioPensa: Date?
 
@@ -37,7 +41,10 @@ struct SferaVera: View {
 
     var body: some View {
         let muove = !fermo && visibile && (viva || pensa)
-        TimelineView(.animation(minimumInterval: 1 / Tema.Apple.Vera.Sfera.fotogrammi, paused: !muove)) { contesto in
+        // Fuori vista la sfera resta sull'ultimo fotogramma (niente salto a riposo) e riparte quando torna davanti:
+        // trenta fotogrammi al secondo che nessuno vede sono lavoro tolto alle finestre e all'acqua
+        let sospesa = !inVista || !visibilita.visibile
+        TimelineView(.animation(minimumInterval: 1 / Tema.Apple.Vera.Sfera.fotogrammi, paused: !muove || sospesa)) { contesto in
             corpo(muove ? Self.fase(al: contesto.date, viva: viva, pensa: pensa, inizioPensa: inizioPensa) : .riposo)
         }
         .frame(width: misura, height: misura)
@@ -123,11 +130,15 @@ struct SferaVera: View {
 /// di 5 con opacità 1, per il resto del ciclo resta a 0,4. Con calma e nelle istantanee fermi a 0,4.
 struct PuntiniScrittura: View {
     @Environment(\.prismaStatoFinale) private var fermo
+    /// Fuori vista (`\.prismaInVista`, Prisma che non si vede) i puntini restano dove sono, come la sfera.
+    @Environment(\.prismaInVista) private var inVista
+    @ObservedObject private var visibilita = VisibilitaPrisma.condivisa
 
     var body: some View {
         let e = Tema.Apple.Vera.Puntini.self
         let m = Tema.Apple.Moto.Puntini.self
-        TimelineView(.animation(minimumInterval: 1 / e.fotogrammi, paused: fermo)) { contesto in
+        let sospesi = !inVista || !visibilita.visibile
+        TimelineView(.animation(minimumInterval: 1 / e.fotogrammi, paused: fermo || sospesi)) { contesto in
             let t = contesto.date.timeIntervalSinceReferenceDate
             HStack(spacing: e.spazio) {
                 ForEach(0..<3, id: \.self) { i in
@@ -175,6 +186,7 @@ struct TestoProgressivo: View {
     /// La bolla in arrivo consegna alla risposta finita le parole già mostrate: la risposta riparte da lì.
     enum Staffetta { case nessuna, consegna, riceve }
 
+    /// Il testo così come arriva: le cifre si uniscono al segno nel `body`, una volta per testo (`Pronto`).
     let testo: String
     var passo: Double = Tema.Apple.Moto.Testo.parola
     /// false: tutto subito (i messaggi già letti).
@@ -190,6 +202,8 @@ struct TestoProgressivo: View {
     @State private var partito = false
     @State private var concluso = false
     @State private var ultimoPasso = Date.distantPast
+    /// Il testo pronto e dove finisce ogni parola, per l'ultimo testo ricevuto.
+    @State private var pronto = Pronto()
 
     /// Le parole mostrate dalla bolla in arrivo e quando (vale per poco: è la stessa risposta).
     @MainActor private static var consegnate: (parole: Int, quando: Date)? = nil
@@ -198,8 +212,7 @@ struct TestoProgressivo: View {
 
     init(testo: String, passo: Double = Tema.Apple.Moto.Testo.parola, anima: Bool = true, staffetta: Staffetta = .nessuna,
          avanza: (() -> Void)? = nil, finito: (() -> Void)? = nil) {
-        // «164.000 €» e «− 200 €» non si spezzano a fine riga
-        self.testo = CifreDoc.unisciAlSegno(testo)
+        self.testo = testo
         self.passo = passo
         self.anima = anima
         self.staffetta = staffetta
@@ -208,16 +221,38 @@ struct TestoProgressivo: View {
     }
 
     var body: some View {
-        let fini = Self.fini(testo)
+        // «164.000 €» e «− 200 €» non si spezzano a fine riga. Testo pronto e fini delle parole si rifanno solo quando
+        // il testo cambia: non a ogni parola mostrata né ogni volta che la vista madre si rifà
+        let p = pronto.per(testo)
+        let fini = p.fini
         let tutto = fermo || !anima
         let n = tutto ? fini.count : min(mostrate, fini.count)
-        Text(Self.prefisso(testo, fini: fini, parole: n))
+        Text(Self.prefisso(p.testo, fini: fini, parole: n))
             .frame(maxWidth: .infinity, alignment: .leading)
             .fixedSize(horizontal: false, vertical: true)
             .onAppear { parti(totale: fini.count) }
             .task(id: fini.count) { await scorri(totale: fini.count) }
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel(Text(testo))
+            .accessibilityLabel(Text(p.testo))
+    }
+
+    /// Il testo da mostrare (cifre unite al segno) e dove finisce ogni parola, ricavati dall'ultimo testo ricevuto.
+    /// Una classe dentro `@State`: si aggiorna durante il `body` senza rifare la vista. Le fini valgono solo per il
+    /// testo da cui sono nate, perciò si usano sempre insieme al suo `testo`.
+    private final class Pronto {
+        private var origine: String?
+        private(set) var testo = ""
+        private(set) var fini: [String.Index] = []
+
+        func per(_ s: String) -> (testo: String, fini: [String.Index]) {
+            if origine != s {
+                let t = CifreDoc.unisciAlSegno(s)
+                origine = s
+                testo = t
+                fini = TestoProgressivo.fini(t)
+            }
+            return (testo, fini)
+        }
     }
 
     @MainActor private func parti(totale: Int) {
@@ -276,6 +311,22 @@ struct TestoProgressivo: View {
         guard n > 0, !fini.isEmpty else { return "" }
         if n >= fini.count { return s }
         return String(s[..<fini[n - 1]])
+    }
+}
+
+// MARK: - In vista
+
+private struct ChiavePrismaInVista: EnvironmentKey {
+    static let defaultValue = true
+}
+
+extension EnvironmentValues {
+    /// false quando chi contiene la vista sa che non si vede, a transizione finita: la scrivania sotto una finestra
+    /// ingrandita, dietro la pagina di Vera o sotto la schermata di blocco (PagineScrivania). La sfera e i puntini di
+    /// Vera si fermano dove sono e ripartono quando la vista torna davanti; l'aspetto non cambia.
+    var prismaInVista: Bool {
+        get { self[ChiavePrismaInVista.self] }
+        set { self[ChiavePrismaInVista.self] = newValue }
     }
 }
 

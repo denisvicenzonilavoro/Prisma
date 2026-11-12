@@ -97,6 +97,10 @@ struct PagineScrivania: View {
     @Environment(\.modoIstantanea) private var modoIstantanea
     /// Vera resta montata finché la pagina torna del tutto ai widget (poi si smonta: memoria).
     @State private var veraMontata = false
+    /// Vera è davanti del tutto, a molla finita: la scrivania dietro non si vede (`\.prismaInVista`).
+    @State private var dietroVera = false
+    /// Conta i passaggi della pagina: un'attesa vale solo se nel frattempo la pagina non si è mossa di nuovo.
+    @State private var giroPagina = 0
 
     init(sistema: StatoFinestre, gesto: GestoPaginaVera, misura: CGSize) {
         self.sistema = sistema
@@ -112,6 +116,9 @@ struct PagineScrivania: View {
         let w = misura.width
         let altezza = max(0, misura.height - Misure.Barra.altezza - Misure.Dock.riservato)
         let nascosti = sistema.bloccato || sistema.scrivaniaNascosta
+        // Fuori vista a transizione finita (sotto una finestra ingrandita o sotto il blocco): le animazioni continue
+        // della pagina (la sfera di Vera) si fermano dove sono; all'inizio dello sblocco ripartono
+        let ferme = sistema.scrivaniaNascosta || (sistema.bloccato && sistema.bloccatoStabile)
         let calmo = movimentoRidotto
         ZStack(alignment: .topLeading) {
             // Lo sfondo va in trasparenza: un velo leggero, l'acqua sotto continua a muoversi
@@ -121,6 +128,8 @@ struct PagineScrivania: View {
                 .allowsHitTesting(false)
 
             Scrivania()
+                // Anche dietro Vera a molla finita: la scrivania torna in vista appena la pagina si muove
+                .environment(\.prismaInVista, !(ferme || (dietroVera && visibile >= 1)))
                 .frame(width: w, height: altezza)
                 .offset(x: calmo ? 0 : -p * w * m.corsaScrivania, y: Misure.Barra.altezza)
                 // Sotto una finestra ingrandita, a transizione finita, la scrivania non si disegna (resta montata)
@@ -137,6 +146,7 @@ struct PagineScrivania: View {
                         .gesture(trascinamento(larghezza: w))
                     VeraScrivania(attiva: sistema.paginaVera >= 1 && gesto.spostamento == 0)
                 }
+                .environment(\.prismaInVista, !ferme)
                 .frame(width: w, height: altezza)
                 .offset(x: calmo ? 0 : (1 - p) * w * m.corsaVera, y: Misure.Barra.altezza)
                 .opacity(nascosti ? 0 : Double(visibile))
@@ -149,10 +159,14 @@ struct PagineScrivania: View {
                     .opacity(nascosti ? 0 : 1)
             }
         }
-        .onAppear { if visibile > 0 { veraMontata = true } }
+        .onAppear {
+            if visibile > 0 { veraMontata = true }
+            if visibile >= 1 { segnaDietroVera(true) }
+        }
         .onChange(of: visibile > 0) { aperta in
             if aperta { veraMontata = true }
         }
+        .onChange(of: visibile >= 1) { davanti in segnaDietroVera(davanti) }
         .onChange(of: sistema.paginaVera) { pagina in
             if pagina != 0 {
                 veraMontata = true
@@ -166,6 +180,22 @@ struct PagineScrivania: View {
             Movimenti.dopo(Tema.Moto.VeraScrivania.durataPagina) {
                 if sistema.paginaVera == 0 && gesto.spostamento == 0 { veraMontata = false }
             }
+        }
+    }
+
+    /// Vera davanti del tutto: a molla finita la scrivania dietro non si vede più. Appena la pagina si muove (gesto o
+    /// ritorno ai widget) la scrivania torna in vista subito, prima di ricomparire.
+    private func segnaDietroVera(_ davanti: Bool) {
+        let giro = giroPagina &+ 1
+        giroPagina = giro
+        guard davanti else {
+            if dietroVera { dietroVera = false }
+            return
+        }
+        // Nelle istantanee la sfera è già ferma (`prismaStatoFinale`)
+        guard !modoIstantanea else { return }
+        Movimenti.dopo(Tema.Moto.VeraScrivania.durataPagina) {
+            if giroPagina == giro && sistema.paginaVera >= 1 && gesto.spostamento == 0 { dietroVera = true }
         }
     }
 
@@ -365,22 +395,17 @@ struct VeraScrivania: View {
         let elenco = messaggi
         // Il quadro visivo va sotto l'ultima risposta di Vera: le cifre le calcola Prisma
         let ultima = elenco.last.flatMap { $0.autore == .vera ? $0 : nil }
-        let quadro = stato.veraInCorso ? nil : ultima.flatMap { stato.quadroVera(per: $0, in: elenco, portafoglio: portafoglio) }
-        let domandaBiblioteca = stato.domandaPerBiblioteca(in: elenco)
+        let quadro = stato.veraInCorso ? nil : ultima.flatMap { quadroInCache(per: $0, in: elenco) }
+        let domandaBiblioteca = domandaBibliotecaInCache(in: elenco)
         return ScrollViewReader { lettore in
             ScrollView {
                 VStack(spacing: m.spazioMessaggi) {
                     ForEach(elenco) { msg in
                         // La scheda dei calcoli sta nella bolla dell'ultima risposta, come nell'app Vera
-                        NuvolaVera(messaggio: msg, nomeUtente: stato.nomeUtente, azioniCliente: !portafoglio,
-                                  creaAttivita: { stato.attivitaDaVera(msg) }, aggiungiNota: { stato.notaDaVera(msg) },
-                                  attivitaProposta: { stato.attivitaDaProposta($0, messaggio: msg.id) },
-                                  posizioneProposta: { stato.posizioneDaProposta($0, messaggio: msg.id) },
-                                  apriAzione: { stato.apriAzioneVera($0) },
-                                  annullaAzione: { stato.annullaAzioneVera($0, messaggio: msg.id) },
-                                  quadro: msg.id == ultima?.id ? quadro : nil,
-                                  domandaBiblioteca: msg.id == ultima?.id ? domandaBiblioteca : nil,
-                                  cercaBiblioteca: { stato.cercaNellaBiblioteca($0) })
+                        BollaVeraScrivania(messaggio: msg, nomeUtente: stato.nomeUtente, portafoglio: portafoglio,
+                                           quadro: msg.id == ultima?.id ? quadro : nil,
+                                           domandaBiblioteca: msg.id == ultima?.id ? domandaBiblioteca : nil)
+                            .equatable()
                             .id(msg.id)
                     }
                     if stato.veraInCorso {
@@ -403,6 +428,41 @@ struct VeraScrivania: View {
                 if pensa { withAnimation { lettore.scrollTo("pensa", anchor: .bottom) } }
             }
         }
+    }
+
+    // Come nell'app Vera: la pagina si ridisegna spesso (il fuoco del campo, l'inizio e la fine di una risposta, la
+    // misura), e quadro e domanda per la Biblioteca si ricavano una volta per risposta (`ricavato`, validi finché non
+    // cambiano i dati dei calcoli). Nella chiave ciò che non è un dato dei calcoli; il risultato sta in un array, così un
+    // nil in cache non si confonde con una voce che non c'è.
+
+    /// La scheda dei calcoli dell'ultima risposta (`quadroVera`). Nella chiave di chi si parla (cliente o portafoglio) e
+    /// l'ora (le scadenze guardano adesso); la domanda è quella prima della risposta, che non cambia.
+    private func quadroInCache(per ultima: MessaggioVera, in elenco: [MessaggioVera]) -> QuadroVera? {
+        let q: [QuadroVera] = stato.ricavato("vera-scrivania-quadro-\(stato.chiaveConversazione)-\(ultima.id)-\(DerivatiDati.ora())") {
+            stato.quadroVera(per: ultima, in: elenco, portafoglio: portafoglio).map { [$0] } ?? []
+        }
+        return q.first
+    }
+
+    /// «Cerca nella Biblioteca» sotto l'ultima risposta (`domandaPerBiblioteca`): riconoscere la domanda passa le
+    /// espressioni regolari su ogni nome di cliente. Le condizioni che costano poco restano fuori dalla cache; nella
+    /// chiave i due messaggi e se la Biblioteca ha testi in cui cercare (`tutti`, lo stesso stato che legge il calcolo:
+    /// l'indice di solito è già letto in anticipo allo sblocco). I nomi dei clienti cambiano `versioneCalcoli`.
+    /// Solo sul Mac, come `domandaPerBiblioteca` (decisione 114).
+    private func domandaBibliotecaInCache(in elenco: [MessaggioVera]) -> String? {
+        #if os(macOS)
+        guard !stato.veraInCorso, elenco.count >= 2, let ultima = elenco.last, ultima.autore == .vera else { return nil }
+        let domanda = elenco[elenco.count - 2]
+        guard domanda.autore == .utente else { return nil }
+        let leggibili = stato.biblioteca.tutti.contains { !$0.illeggibile && ($0.testo != nil || !$0.articoli.isEmpty) }
+        let chiaveCache = "vera-scrivania-biblioteca-\(ultima.id)-\(domanda.id)-\(domanda.testo.hashValue)-\(leggibili)"
+        let trovata: [String] = stato.ricavato(chiaveCache) {
+            stato.domandaPerBiblioteca(in: elenco).map { [$0] } ?? []
+        }
+        return trovata.first
+        #else
+        return nil
+        #endif
     }
 
     // MARK: Pezzi comuni
@@ -483,18 +543,65 @@ struct VeraScrivania: View {
         (.settimana, "La settimana"),
     ]
 
-    /// Il campo a capsula del tema Apple (`cardPiena`, ombra `card`) con il tasto d'invio tondo da 36
-    /// (niente microfono: qui Vera scrive soltanto).
+    /// Il campo con il tasto d'invio (`CampoVeraScrivania`).
     private var campo: some View {
+        CampoVeraScrivania(portafoglio: portafoglio, attivo: $campoAttivo) { invia($0) }
+    }
+}
+
+/// Una bolla della conversazione (`NuvolaVera`) che si ridisegna solo se cambia ciò che mostra: le azioni sono
+/// chiusure, che SwiftUI non sa confrontare, e senza il confronto ogni risposta nuova o cambio di stato di Vera
+/// rifarebbe tutte le bolle. Le azioni dipendono solo dal messaggio e da StatoShell: restano fuori dal confronto.
+private struct BollaVeraScrivania: View, Equatable {
+    let messaggio: MessaggioVera
+    let nomeUtente: String
+    /// La conversazione di tutto il portafoglio: niente «Crea attività» e «Nota del cliente».
+    let portafoglio: Bool
+    let quadro: QuadroVera?
+    let domandaBiblioteca: String?
+    @Environment(StatoShell.self) private var stato
+
+    nonisolated static func == (a: BollaVeraScrivania, b: BollaVeraScrivania) -> Bool {
+        // In due passi: una catena lunga di confronti tra opzionali rallenta il controllo dei tipi
+        guard a.messaggio == b.messaggio, a.nomeUtente == b.nomeUtente, a.portafoglio == b.portafoglio else { return false }
+        return a.quadro == b.quadro && a.domandaBiblioteca == b.domandaBiblioteca
+    }
+
+    var body: some View {
+        let msg = messaggio
+        NuvolaVera(messaggio: msg, nomeUtente: nomeUtente, azioniCliente: !portafoglio,
+                   creaAttivita: { stato.attivitaDaVera(msg) }, aggiungiNota: { stato.notaDaVera(msg) },
+                   attivitaProposta: { stato.attivitaDaProposta($0, messaggio: msg.id) },
+                   posizioneProposta: { stato.posizioneDaProposta($0, messaggio: msg.id) },
+                   apriAzione: { stato.apriAzioneVera($0) },
+                   annullaAzione: { stato.annullaAzioneVera($0, messaggio: msg.id) },
+                   quadro: quadro,
+                   domandaBiblioteca: domandaBiblioteca,
+                   cercaBiblioteca: { stato.cercaNellaBiblioteca($0) })
+    }
+}
+
+/// Il campo a capsula del tema Apple (`cardPiena`, ombra `card`) con il tasto d'invio tondo da 36
+/// (niente microfono: qui Vera scrive soltanto). Una vista a sé perché è la sola a leggere `domandaVera`: un tasto
+/// premuto rifà il campo, non la conversazione, il quadro e la Biblioteca della pagina.
+private struct CampoVeraScrivania: View {
+    @Environment(StatoShell.self) var stato
+    let portafoglio: Bool
+    /// Il fuoco del campo, tenuto dalla pagina (il cursore ci va quando la pagina è davanti).
+    let attivo: FocusState<Bool>.Binding
+    let invia: (String) -> Void
+
+    var body: some View {
+        let _ = ContaCorpi.segna()
         let c = Tema.Apple.Vera.Campo.self
-        return HStack(alignment: .bottom, spacing: c.spazio) {
+        HStack(alignment: .bottom, spacing: c.spazio) {
             TextField(portafoglio ? "Chiedi del portafoglio…" : c.segnaposto,
                       text: Bindable(stato).domandaVera, axis: .vertical)
                 .textFieldStyle(.plain)
                 .carattereApple(c.testo)
                 .foregroundColor(c.coloreTesto)
                 .lineLimit(1...4)
-                .focused($campoAttivo)
+                .focused(attivo)
                 .onSubmit { invia(stato.domandaVera) }
                 .frame(maxWidth: .infinity, minHeight: c.tasto, alignment: .leading)
             Button { invia(stato.domandaVera) } label: { Image(systemName: "arrow.up") }

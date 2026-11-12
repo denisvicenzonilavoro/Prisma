@@ -18,9 +18,11 @@ extension StatoShell {
     // MARK: - Occasioni per intervallo
 
     /// Le occasioni dei clienti visibili (in modalità cliente solo il suo) tra due giorni, senza i tipi spenti.
+    /// Le regole si leggono senza iscrivere la vista a tutte le impostazioni (`impostazioniDeiCalcoli`): entrano nei calcoli,
+    /// quindi cambiandole cambia `versioneCalcoli`, che chi chiede le occasioni segue già (`occasioniInMemoria`).
     func occasioni(da: Date, a: Date) -> [Occasione] {
         let k = chiaveOccasioni(da: da, a: a)
-        let regole = dati.impostazioni.occasioni
+        let regole = dati.impostazioniDeiCalcoli.occasioni
         return occasioniInMemoria(k) {
             MotoreOccasioni.calcola(clienti: clienti, posizioni: posizioni, prodotti: dati.prodotti,
                                     da: k.da, a: k.a, regole: regole, oggi: Date())
@@ -41,15 +43,32 @@ extension StatoShell {
     }
 
     /// Le occasioni della vista «Occasioni»: 12 mesi dal primo del mese di `giornoAgenda`, filtro cliente e gruppo.
-    /// Non dipende dallo strato del calendario (`inAgenda`), ma rispetta i tipi spenti.
+    /// Non dipende dallo strato del calendario (`inAgenda`), ma rispetta i tipi spenti. Filtrate una volta sola finché
+    /// non cambiano i dati dei calcoli (cache comune `ricavato`, con mese, filtro e gruppo nella chiave): il body
+    /// dell'Agenda le chiede a ogni disegno.
     var elencoOccasioniAgenda: [Occasione] {
         let cal = Calendar.current
-        let inizio = cal.dateInterval(of: .month, for: giornoAgenda)?.start ?? cal.startOfDay(for: giornoAgenda)
-        let fine = cal.date(byAdding: .month, value: RegoleOccasioni.mesiElenco, to: inizio) ?? inizio
+        let inizio = inizioElencoOccasioni
         let filtro = filtroClienteAgenda
         let gruppo = gruppoOccasioniAgenda
-        return occasioni(da: inizio, a: fine)
-            .filter { (filtro == nil || $0.clienteId == filtro) && (gruppo == nil || $0.tipo.gruppo == gruppo) }
+        return ricavato(chiaveElencoOccasioni) { () -> [Occasione] in
+            let fine = cal.date(byAdding: .month, value: RegoleOccasioni.mesiElenco, to: inizio) ?? inizio
+            return occasioni(da: inizio, a: fine)
+                .filter { (filtro == nil || $0.clienteId == filtro) && (gruppo == nil || $0.tipo.gruppo == gruppo) }
+        }
+    }
+
+    /// Il primo giorno della vista «Occasioni»: il primo del mese di `giornoAgenda`.
+    private var inizioElencoOccasioni: Date {
+        let cal = Calendar.current
+        return cal.dateInterval(of: .month, for: giornoAgenda)?.start ?? cal.startOfDay(for: giornoAgenda)
+    }
+
+    /// Ciò che decide l'elenco della vista «Occasioni» oltre ai dati dei calcoli (mese, filtro cliente, gruppo): la chiave
+    /// delle sue voci nella cache comune `ricavato`, anche per i mesi della colonna (ElencoOccasioniAgenda).
+    fileprivate var chiaveElencoOccasioni: String {
+        "agenda-occasioni|\(inizioElencoOccasioni.timeIntervalSinceReferenceDate)|\(filtroClienteAgenda ?? "-")|"
+            + (gruppoOccasioniAgenda?.rawValue ?? "-")
     }
 
     /// Dalle notifiche: vista «Occasioni» su oggi, l'occasione selezionata, nessun filtro cliente.
@@ -75,7 +94,7 @@ extension StatoShell {
         let oggi = Date()
         let inizio = cal.startOfDay(for: oggi)
         let fine = cal.date(byAdding: .month, value: RegoleOccasioni.mesiRiesame, to: inizio) ?? inizio
-        let regole = dati.impostazioni.occasioni
+        let regole = dati.impostazioniDeiCalcoli.occasioni
         let suoi = posizioniCliente(id)
         let prodotti = dati.prodotti
         let calcola = {
@@ -117,7 +136,8 @@ extension StatoShell {
 
     private func chiaveOccasioni(da: Date, a: Date, cliente: String? = nil) -> ChiaveOccasioni {
         let cal = Calendar.current
-        let r = dati.impostazioni.occasioni
+        // Senza iscrivere la vista a tutte le impostazioni (vedi `occasioni(da:a:)`)
+        let r = dati.impostazioniDeiCalcoli.occasioni
         return ChiaveOccasioni(da: cal.startOfDay(for: da), a: cal.startOfDay(for: a), spenti: r.tipiSpenti,
                                etaTCM: r.etaLimiteTCM, etaLTC: r.etaLimiteLTC, cliente: cliente)
     }
@@ -493,9 +513,18 @@ struct ElencoOccasioniAgenda: View {
         var id: Date { inizio }
     }
 
-    private var mesi: [Mese] {
+    /// I mesi dell'elenco e i conteggi del riepilogo, ricavati insieme.
+    private struct Raggruppate {
+        let mesi: [Mese]
+        let alleanza: Int
+        let indipendente: Int
+    }
+
+    /// Un passaggio sull'elenco: i mesi (un calendario per occasione) e quante sono di ogni canale.
+    private static func raggruppa(_ elenco: [Occasione]) -> Raggruppate {
         let cal = Calendar.current
         var gruppi: [Mese] = []
+        var alleanza = 0, indipendente = 0
         for o in elenco {
             let inizio = cal.dateInterval(of: .month, for: o.data)?.start ?? cal.startOfDay(for: o.data)
             if let ultimo = gruppi.last, ultimo.inizio == inizio {
@@ -503,21 +532,28 @@ struct ElencoOccasioniAgenda: View {
             } else {
                 gruppi.append(Mese(inizio: inizio, voci: [o]))
             }
+            if o.canale == .alleanza { alleanza += 1 }
+            if o.canale == .indipendente { indipendente += 1 }
         }
-        return gruppi
+        return Raggruppate(mesi: gruppi, alleanza: alleanza, indipendente: indipendente)
     }
 
     var body: some View {
         let m = Misure.Occasioni.self
+        // Una volta sola per elenco (la chiave di `elencoOccasioniAgenda`, con quante sono e la prima e l'ultima): un tocco
+        // su un'occasione rifà questo body, e prima ogni tocco raggruppava di nuovo per mese centinaia di occasioni
+        let impronta = "|mesi|\(elenco.count)|\(elenco.first?.id ?? "-")|\(elenco.last?.id ?? "-")"
+        let gruppi = stato.ricavato(stato.chiaveElencoOccasioni + impronta) { Self.raggruppa(elenco) }
+        let scelta = stato.occasioneSelezionata?.id
         VStack(spacing: 0) {
-            testata
+            testata(gruppi)
             ScrollView {
                 // Pigro: con molti clienti 12 mesi hanno centinaia di occasioni
                 LazyVStack(spacing: 0) {
                     if elenco.isEmpty {
                         vuoto
                     } else {
-                        ForEach(mesi) { mese in
+                        ForEach(gruppi.mesi) { mese in
                             Text(Formati.meseAnno.string(from: mese.inizio).uppercased())
                                 .font(Tipo.paginaOcchiello)
                                 .tracking(m.tracciaOcchiello)
@@ -526,7 +562,7 @@ struct ElencoOccasioniAgenda: View {
                                 .padding(m.occhiello)
                             ForEach(mese.voci) { o in
                                 RigaOccasioneAgenda(occasione: o, cliente: stato.cliente(o.clienteId)?.nome ?? "Cliente",
-                                                    conData: true, selezionata: stato.occasioneSelezionata?.id == o.id) {
+                                                    conData: true, selezionata: scelta == o.id) {
                                     stato.occasioneSelezionata = o
                                     stato.appuntamentoSelezionato = nil
                                 }
@@ -539,7 +575,7 @@ struct ElencoOccasioniAgenda: View {
         }
     }
 
-    private var testata: some View {
+    private func testata(_ gruppi: Raggruppate) -> some View {
         let m = Misure.Occasioni.self
         return VStack(alignment: .leading, spacing: m.spazioRiepilogo) {
             HStack(alignment: .center, spacing: m.spazioTestata) {
@@ -551,7 +587,7 @@ struct ElencoOccasioniAgenda: View {
                 Spacer(minLength: 0)
                 MenuTendina(selezione: Bindable(stato).gruppoOccasioniAgenda, opzioni: opzioniGruppo, larghezza: m.menuGruppo)
             }
-            riepilogo
+            riepilogo(gruppi)
         }
         .padding(m.testata)
     }
@@ -563,11 +599,11 @@ struct ElencoOccasioniAgenda: View {
         return opzioni
     }
 
-    /// «23 occasioni · 9 Alleanza · 11 indipendente», senza le parti a zero.
-    private var riepilogo: some View {
+    /// «23 occasioni · 9 Alleanza · 11 indipendente», senza le parti a zero (i conteggi da `raggruppa`).
+    private func riepilogo(_ gruppi: Raggruppate) -> some View {
         let n = elenco.count
-        let alleanza = elenco.filter { $0.canale == .alleanza }.count
-        let indipendente = elenco.filter { $0.canale == .indipendente }.count
+        let alleanza = gruppi.alleanza
+        let indipendente = gruppi.indipendente
         var testo = Text("\(n)").font(Tipo.notaSettimanaForte) + Text(n == 1 ? " occasione" : " occasioni")
         if alleanza > 0 {
             testo = testo + Text(" · ") + Text("\(alleanza)").font(Tipo.notaSettimanaForte) + Text(" Alleanza")

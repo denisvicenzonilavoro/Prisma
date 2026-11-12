@@ -9,31 +9,64 @@ struct AppProdotti: View {
     @State var confermaEliminazione = false
     @State var ricerca = ""
 
-    private var elenco: [Prodotto] {
+    /// Le schede in ordine di nome, ordinate una volta per dati dei calcoli (`stato.prodotti` riordina a ogni lettura).
+    private var ordinati: [Prodotto] {
+        stato.ricavato("prodotti-ordinati") { stato.prodotti }
+    }
+
+    /// Le schede con i filtri del canale e dell'area e la ricerca.
+    private func filtrati(_ tutti: [Prodotto]) -> [Prodotto] {
         let testo = ricerca.trimmingCharacters(in: .whitespaces).lowercased()
-        return stato.prodotti
-            .filter { stato.filtroCanaleProdotti == nil || $0.canale == stato.filtroCanaleProdotti }
-            .filter { stato.filtroAreaProdotti == nil || $0.area == stato.filtroAreaProdotti }
+        let canale = stato.filtroCanaleProdotti
+        let area = stato.filtroAreaProdotti
+        return tutti
+            .filter { canale == nil || $0.canale == canale }
+            .filter { area == nil || $0.area == area }
             .filter { testo.isEmpty || $0.nome.lowercased().contains(testo) || $0.emittente.lowercased().contains(testo) }
     }
 
+    private static func schedaScelta(in elenco: [Prodotto], id: String?) -> Prodotto? {
+        elenco.first { $0.id == id } ?? elenco.first
+    }
+
     private var scelto: Prodotto? {
-        elenco.first { $0.id == stato.prodottoSelezionato } ?? elenco.first
+        Self.schedaScelta(in: filtrati(ordinati), id: stato.prodottoSelezionato)
+    }
+
+    /// Quante schede in tutto, da verificare, per canale e per area: in un passaggio, non un filtro per voce.
+    private struct Conteggi {
+        var totale = 0
+        var daVerificare = 0
+        var perCanale: [Canale: Int] = [:]
+        var perArea: [AreaPosizione: Int] = [:]
+
+        init(_ prodotti: [Prodotto]) {
+            for p in prodotti {
+                totale += 1
+                if p.daVerificare { daVerificare += 1 }
+                perCanale[p.canale, default: 0] += 1
+                perArea[p.area, default: 0] += 1
+            }
+        }
     }
 
     var body: some View {
         let _ = ContaCorpi.segna()
+        // Una volta per passaggio: l'elenco ordinato dalla cache, i filtri e la scheda scelta qui e non per ogni riga
+        let elenco = filtrati(ordinati)
+        let attuale = Self.schedaScelta(in: elenco, id: stato.prodottoSelezionato)
+        let conti = Conteggi(stato.dati.prodotti)
         CorniceStrumento(
             notaStato: "Schede compilate dal consulente · verifica sempre condizioni e costi sul KID in vigore",
-            notaDestra: "\(stato.prodotti.count) schede · \(stato.prodotti.filter(\.daVerificare).count) da verificare"
+            notaDestra: "\(conti.totale) schede · \(conti.daVerificare) da verificare"
         ) {
-            rail
+            rail(conti)
         } contenuto: {
             // Elenco e scheda nello stesso contenitore dell'elenco laterale, divisi da un filo
             ColonneAffiancate(larghezza: Misure.ColonneStrumento.elenco) {
-                colonnaElenco
+                colonnaElenco(elenco, sceltoId: attuale?.id)
             } flessibile: {
-                if let p = scelto {
+                if let p = attuale {
                     dettaglio(p)
                 } else {
                     VStack(spacing: 8) {
@@ -155,14 +188,14 @@ struct AppProdotti: View {
 
     // MARK: - Elenco laterale
 
-    @ViewBuilder private var rail: some View {
+    @ViewBuilder private func rail(_ conti: Conteggi) -> some View {
         DossierRail()
         // Il canale come in Documenti e in Posizioni: una voce per canale, un secondo clic toglie il filtro
         EtichettaRail(testo: "Canale")
         VStack(spacing: 0) {
             ForEach(Canale.allCases) { c in
                 VoceNavigazione(titolo: c.nomeBreve, colore: Tema.Apple.AltreApp.canale(c),
-                                conteggio: stato.prodotti.filter { $0.canale == c }.count,
+                                conteggio: conti.perCanale[c] ?? 0,
                                 attiva: stato.filtroCanaleProdotti == c) {
                     stato.filtroCanaleProdotti = stato.filtroCanaleProdotti == c ? nil : c
                 }
@@ -171,12 +204,12 @@ struct AppProdotti: View {
         }
         EtichettaRail(testo: "Aree")
         VStack(spacing: 0) {
-            VoceNavigazione(titolo: "Tutte le aree", conteggio: stato.prodotti.count, attiva: stato.filtroAreaProdotti == nil) {
+            VoceNavigazione(titolo: "Tutte le aree", conteggio: conti.totale, attiva: stato.filtroAreaProdotti == nil) {
                 stato.filtroAreaProdotti = nil
             }
             ForEach([AreaPosizione.investimento, .risparmio, .previdenza, .protezione]) { a in
                 VoceNavigazione(titolo: a.nome, colore: Colori.Analisi.area(a),
-                                conteggio: stato.prodotti.filter { $0.area == a }.count, attiva: stato.filtroAreaProdotti == a) {
+                                conteggio: conti.perArea[a] ?? 0, attiva: stato.filtroAreaProdotti == a) {
                     stato.filtroAreaProdotti = a
                 }
             }
@@ -192,7 +225,7 @@ struct AppProdotti: View {
 
     // MARK: - Elenco
 
-    private var colonnaElenco: some View {
+    private func colonnaElenco(_ elenco: [Prodotto], sceltoId: String?) -> some View {
         VStack(spacing: 0) {
             HStack(spacing: Misure.ColonneStrumento.spazioTestata) {
                 CampoRicerca(testo: $ricerca, segnaposto: "Cerca prodotto o compagnia")
@@ -202,7 +235,7 @@ struct AppProdotti: View {
             ScrollView {
                 VStack(spacing: 0) {
                     ForEach(elenco) { p in
-                        Button { stato.prodottoSelezionato = p.id } label: { rigaElenco(p, attiva: p.id == scelto?.id) }
+                        Button { stato.prodottoSelezionato = p.id } label: { rigaElenco(p, attiva: p.id == sceltoId) }
                             .buttonStyle(StileSemplice())
                     }
                 }
@@ -255,7 +288,7 @@ struct AppProdotti: View {
 
     // MARK: - Condizioni e fonte
 
-    private func pannelloCondizioni(_ p: Prodotto) -> some View {
+    private func pannelloCondizioni(_ p: Prodotto, cifre: CifreScheda) -> some View {
         PannelloAnalisi(titolo: "Condizioni") { EmptyView() } contenuto: {
             VStack(spacing: 0) {
                 RigaDato("Garanzie", p.garanzie)
@@ -263,8 +296,8 @@ struct AppProdotti: View {
                 RigaDato("Fiscalità", p.aliquotaFiscale.map { Formati.percentuale($0) + " sul rendimento" } ?? "")
                 if p.area.proiettabile {
                     // Breve: dichiarato e calcolato; l'esempio e il periodo sono nell'aiuto e nella tessera
-                    RigaDato("Costi come nel KID", testoKIDBreve(p))
-                        .help(testoKID(p))
+                    RigaDato("Costi come nel KID", cifre.kidBreve)
+                        .help(cifre.kid)
                 } else {
                     // Senza tessere in testa (protezione) il rischio resta nell'elenco
                     HStack(alignment: .center, spacing: 12) {
@@ -370,14 +403,39 @@ struct AppProdotti: View {
         }
     }
 
+    /// Le cifre della scheda che non cambiano con la ricerca, i filtri o un'altra scheda aperta prima: la proiezione
+    /// d'esempio, il peso dei costi, i costi come nel KID e le posizioni collegate.
+    private struct CifreScheda {
+        let parametri: ParametriProiezione
+        let versato: Double
+        let netto: Double
+        let impatto: Double
+        let composizione: String
+        let kid: String
+        let kidBreve: String
+        let usi: [Posizione]
+    }
+
+    /// Le cifre della scheda una volta per dati dei calcoli (schede e posizioni), giorno e ora (i costi del KID guardano la
+    /// data di oggi), non a ogni tasto nella ricerca: la scheda aperta si ridisegna con l'elenco.
+    private func cifre(_ p: Prodotto) -> CifreScheda {
+        stato.ricavato("prodotti-scheda|\(p.id)|\(DerivatiDati.ora())") { () -> CifreScheda in
+            let parametri = p.parametriEsempio
+            let esito = MotoreProiezione.calcola(parametri)
+            return CifreScheda(parametri: parametri, versato: esito.versato, netto: esito.netto,
+                               impatto: MotoreProiezione.impattoCosti(parametri),
+                               composizione: MotoreMultiramo.rigaComposizione(p.proposta(per: "")),
+                               kid: testoKID(p), kidBreve: testoKIDBreve(p), usi: stato.posizioniDelProdotto(p.id))
+        }
+    }
+
     private func dettaglio(_ p: Prodotto) -> some View {
-        let parametri = p.parametriEsempio
-        let esito = MotoreProiezione.calcola(parametri)
-        let impatto = MotoreProiezione.impattoCosti(parametri)
+        let c = cifre(p)
+        let parametri = c.parametri
         // Multiramo a due parti: costo e rendimento pesati sulle due parti (dalla proiezione d'esempio)
         let dueParti = parametri.gestione != nil
-        let composizione = MotoreMultiramo.rigaComposizione(p.proposta(per: ""))
-        let usi = stato.posizioniDelProdotto(p.id)
+        let composizione = c.composizione
+        let usi = c.usi
         let cliente = stato.clienteAttivo?.nome ?? "il cliente"
         return ScrollView {
             VStack(alignment: .leading, spacing: 16) {
@@ -394,8 +452,8 @@ struct AppProdotti: View {
                 if p.area.proiettabile {
                     tessere(p, parametri: parametri, dueParti: dueParti, composizione: composizione)
                         .entrataCascata(1, base: Tema.Apple.Moto.Cascata.baseDentroApp)
-                    PesoCostiProdotto(titolo: "Su 10.000 € in 10 anni", versato: esito.versato, netto: esito.netto,
-                                      costi: impatto, coloreGuadagno: Colori.Analisi.area(p.area))
+                    PesoCostiProdotto(titolo: "Su 10.000 € in 10 anni", versato: c.versato, netto: c.netto,
+                                      costi: c.impatto, coloreGuadagno: Colori.Analisi.area(p.area))
                         .inclinazione(massimo: Tema.Apple.AltreApp.inclinazioneGrande, raggio: Tema.Apple.AltreApp.raggioTile)
                         .entrataCascata(2, base: Tema.Apple.Moto.Cascata.baseDentroApp)
                 }
@@ -403,12 +461,12 @@ struct AppProdotti: View {
                 // Condizioni e fonte affiancate se c'è posto, altrimenti una sotto l'altra (finestra non ingrandita)
                 ViewThatFits(in: .horizontal) {
                     HStack(alignment: .top, spacing: Misure.SchedaProdotto.spazioAffiancate) {
-                        pannelloCondizioni(p)
+                        pannelloCondizioni(p, cifre: c)
                         pannelloFonte(p)
                     }
                     .frame(idealWidth: Misure.SchedaProdotto.affiancate, maxWidth: .infinity, alignment: .leading)
                     VStack(alignment: .leading, spacing: Misure.SchedaProdotto.spazioImpilate) {
-                        pannelloCondizioni(p)
+                        pannelloCondizioni(p, cifre: c)
                         pannelloFonte(p)
                     }
                 }

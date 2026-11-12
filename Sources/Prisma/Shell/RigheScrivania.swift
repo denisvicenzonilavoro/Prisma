@@ -118,8 +118,13 @@ struct ElencoClienti: View {
 
     var body: some View {
         let _ = ContaCorpi.segna()
+        // Letti una volta: `stato.clienti` filtra tutto l'archivio a ogni lettura, e chiederlo per ogni riga (per il
+        // filo sotto) costava un elenco intero per cliente
+        let elenco = stato.clienti
+        let ultimo = elenco.last?.id
+        let attivo = stato.clienteAttivoId
         VStack(alignment: .leading, spacing: 0) {
-            ForEach(stato.clienti) { c in
+            ForEach(elenco) { c in
                 Button {
                     stato.clienteAttivoId = c.id
                     aperto = false
@@ -131,7 +136,7 @@ struct ElencoClienti: View {
                             Text(c.tema).font(Tipo.rigaSecondario).foregroundColor(Colori.Colonna.rigaSecondario)
                         }
                         Spacer(minLength: 12)
-                        if c.id == stato.clienteAttivoId {
+                        if c.id == attivo {
                             Image(systemName: "checkmark").foregroundColor(Colori.Colonna.collegamento)
                         }
                     }
@@ -140,9 +145,9 @@ struct ElencoClienti: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(StileSemplice())
-                .fondoPassaggio(.arrotondata(Tema.Raggio.vocePopover), selezionata: c.id == stato.clienteAttivoId)
+                .fondoPassaggio(.arrotondata(Tema.Raggio.vocePopover), selezionata: c.id == attivo)
                 .padding(.horizontal, 4)
-                if c.id != stato.clienti.last?.id {
+                if c.id != ultimo {
                     Rectangle().fill(Tema.Colore.separatore).frame(height: Tema.Misura.filo)
                         .padding(.horizontal, 12)
                 }

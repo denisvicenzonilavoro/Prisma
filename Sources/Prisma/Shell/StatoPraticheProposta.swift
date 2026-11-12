@@ -27,8 +27,8 @@ import SwiftUI
     fileprivate(set) var richieste: [BisognoScoperto] = []
 
     @ObservationIgnored fileprivate var sequenza: Task<Void, Never>?
-    @ObservationIgnored fileprivate var cacheBisogni: (versione: Int, valore: [BisognoScoperto])?
-    @ObservationIgnored fileprivate var cacheCostruite: (versione: Int, valore: [String: PropostaCostruita]) = (-1, [:])
+    @ObservationIgnored fileprivate var cacheBisogni: (chiave: ChiaveProposta, valore: [BisognoScoperto])?
+    @ObservationIgnored fileprivate var cacheCostruite: (chiave: ChiaveProposta?, valore: [String: PropostaCostruita]) = (nil, [:])
 
     /// Ferma la sequenza in corso (cambio di bisogno o di scheda).
     func fermaSequenza() {
@@ -65,6 +65,21 @@ import SwiftUI
     static func chiaveProdotto(_ b: BisognoScoperto) -> String {
         b.area.rawValue + (b.rischio.map { "·" + $0.rawValue } ?? "")
     }
+}
+
+/// Ciò da cui dipendono i bisogni scoperti e le proposte costruite (oltre al bisogno e alle scelte nella chiave delle
+/// proposte): i dati dei calcoli, il giorno e la modalità cliente (la chiave di DerivatiDati), più ciò che i motori
+/// leggono fuori dai dati dei calcoli (le schede di adeguatezza, le consegne e le pratiche delle impostazioni) e lo stato
+/// della scheda (proposte costruite, ultimi prodotti, richieste da fuori). Con `versioneDati` un altro cliente attivo, un
+/// messaggio di Vera o una nota rifacevano i bisogni di tutti i clienti e impaginavano di nuovo la proposta.
+fileprivate struct ChiaveProposta: Equatable {
+    let calcoli: DerivatiDati.Chiave?
+    let schede: [SchedaAdeguatezza]
+    let consegna: ImpostazioniConsegna
+    let pratiche: ImpostazioniPratiche
+    let costruite: [String: String]
+    let ultimi: [String: String]
+    let richieste: [BisognoScoperto]
 }
 
 /// Quello che la colonna mostra per il bisogno scelto: le tappe accese, il riquadro finale, la bozza.
@@ -121,11 +136,20 @@ extension StatoShell {
                          simulazioni: [], obiettivi: obiettiviCliente(clienteId), prodotti: dati.prodotti)
     }
 
+    /// La chiave delle cache della scheda per lo stato di adesso (letta nel body, iscrive la vista solo a ciò che conta).
+    fileprivate func chiaveProposta() -> ChiaveProposta {
+        let p = praticheProposta
+        let imp = dati.impostazioni
+        return ChiaveProposta(calcoli: derivatiValidi().chiave, schede: dati.schedeAdeguatezza, consegna: imp.consegna,
+                              pratiche: imp.pratiche, costruite: p.costruite, ultimi: p.ultimoProdotto, richieste: p.richieste)
+    }
+
     /// I bisogni scoperti dall'analisi di tutti i clienti: prima il più urgente di ognuno, poi il secondo, e così via
-    /// (nell'ordine della rubrica). Ricalcolati solo quando cambiano i dati.
+    /// (nell'ordine della rubrica). Ricalcolati solo quando cambia ciò che i motori leggono (`ChiaveProposta`).
     func bisogniProposta() -> [BisognoScoperto] {
         let p = praticheProposta
-        if let c = p.cacheBisogni, c.versione == versioneDati { return c.valore }
+        let chiave = chiaveProposta()
+        if let c = p.cacheBisogni, c.chiave == chiave { return c.valore }
         let oggi = Date()
         var perCliente: [[BisognoScoperto]] = []
         let schede = Dictionary(grouping: dati.schedeAdeguatezza, by: \.clienteId)
@@ -153,15 +177,16 @@ extension StatoShell {
             tutti += giro
             rango += 1
         }
-        p.cacheBisogni = (versioneDati, tutti)
+        p.cacheBisogni = (chiave, tutti)
         return tutti
     }
 
-    /// La proposta costruita per un bisogno (con la scelta di prodotto della sessione), tenuta da parte finché i dati
-    /// non cambiano: il prospetto si impagina una volta sola.
+    /// La proposta costruita per un bisogno (con la scelta di prodotto della sessione), tenuta da parte finché non cambia
+    /// ciò che il motore legge (`ChiaveProposta`): il prospetto si impagina una volta sola.
     func propostaCostruita(_ b: BisognoScoperto) -> PropostaCostruita? {
         let p = praticheProposta
-        if p.cacheCostruite.versione != versioneDati { p.cacheCostruite = (versioneDati, [:]) }
+        let chiaveDati = chiaveProposta()
+        if p.cacheCostruite.chiave != chiaveDati { p.cacheCostruite = (chiaveDati, [:]) }
         // I modelli di Pratiche › Moduli (letti con `moduli.carica()` all'apertura della scheda): cambiati, si ricostruisce
         let modelli = moduli.tutti
         let chiave = b.id + "|" + (b.propostaId ?? "") + "|" + (p.sceltaProdotto[b.id] ?? "") + "|"
@@ -169,8 +194,8 @@ extension StatoShell {
         if let r = p.cacheCostruite.valore[chiave] { return r }
         guard let fonte = fonteProposta(b.clienteId) else { return nil }
         let bozza = b.propostaId.flatMap { id in dati.posizioni.first { $0.id == id } }
-        // La chiave è `versioneDati` (già letta qui sopra, quindi osservata): l'archivio si legge senza iscrivere la
-        // vista a ogni campo
+        // La chiave (già letta qui sopra, quindi osservata) ha i dati dei calcoli e i campi neutri che il motore legge:
+        // l'archivio si legge senza iscrivere la vista a ogni campo
         let r = MotoreProposta.costruisci(b, fonte: fonte, dati: dati.istantaneaNonOsservata, bozzaEsistente: bozza,
                                           prodottoScelto: p.sceltaProdotto[b.id],
                                           ultimo: p.ultimoProdotto[StatoPraticheProposta.chiaveProdotto(b)],

@@ -772,6 +772,9 @@ struct ImpegnoGiornataApple: View {
     }
 
     private func apri() {
+        // I punti da toccare (riesame, memoria del riesame, priorità: motori in cache) si preparano prima di aprire: la
+        // traccia si monta a metà dell'espansione e lì un riesame da rifare farebbe perdere fotogrammi
+        if let dettaglio, !dettaglio.aperto { _ = stato.puntiDaToccare(evento) }
         dettaglio?.apri(TracciaImpegnoApple.id(per: evento.id), misura: Tema.Apple.Agenda.Traccia.misura)
     }
 }

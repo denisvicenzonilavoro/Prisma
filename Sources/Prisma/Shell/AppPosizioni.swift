@@ -280,7 +280,12 @@ struct AppPosizioni: View {
                     .equatable()
             }
             // Solo le ancore del portafoglio: quelle del dossier le consuma la vista del cliente
-            .onAppear { if AppPosizioni.ancorePortafoglio.contains(stato.ancoraPosizioni ?? "") { scorri(lettore) } }
+            .onAppear {
+                if AppPosizioni.ancorePortafoglio.contains(stato.ancoraPosizioni ?? "") { scorri(lettore) }
+                // Le voci del radar che mancano si preparano fuori dal thread principale (fuori dal body): il primo
+                // passaggio a Radar le trova pronte. Non fa niente nelle istantanee, nelle prove e con pochi clienti
+                stato.preparaRadarInSottofondo()
+            }
             .onChange(of: stato.ancoraPosizioni) { a in if AppPosizioni.ancorePortafoglio.contains(a ?? "") { scorri(lettore) } }
         }
     }

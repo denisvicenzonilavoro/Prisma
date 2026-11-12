@@ -23,11 +23,20 @@ final class StatoSpotlight: ObservableObject {
     private(set) var elenco: [RisultatoRicerca] = []
     private(set) var indici: [ChiaveRisultato: Int] = [:]
 
+    /// I candidati della ricerca a parole, pronti per i tasti successivi finché il pannello è aperto (si rifanno solo
+    /// quando cambiano i dati che leggono: IndiceTestiRicerca.swift).
+    private let memoria = MemoriaIndiceRicerca()
+    /// Il testo e la versione dei dati dell'ultimo esito: riaprendo il pannello con la ricerca di prima, onAppear e
+    /// onChange chiederebbero due volte la stessa ricerca sugli stessi dati.
+    private var ultimo: (testo: String, dati: Int)?
+
     var scelto: RisultatoRicerca? { elenco.indices.contains(selezione) ? elenco[selezione] : nil }
     var vuoto: Bool { testo.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 
     func aggiorna(_ stato: StatoShell) {
-        let e = MotoreRicerca.cercaCompleta(testo, in: stato)
+        let versione = stato.versioneDati
+        if let u = ultimo, u.testo == testo, u.dati == versione { return }
+        let e = MotoreRicerca.cercaCompleta(testo, in: stato, memoria: memoria)
         elenco = e.elenco
         var posti: [ChiaveRisultato: Int] = [:]
         for (i, r) in elenco.enumerated() { posti[r.id] = i }
@@ -35,6 +44,7 @@ final class StatoSpotlight: ObservableObject {
         esito = e
         suggerimenti = FiltriRicerca.suggerimenti(per: testo)
         selezione = 0
+        ultimo = (testo: testo, dati: versione)
     }
 
     func sposta(_ passo: Int) {

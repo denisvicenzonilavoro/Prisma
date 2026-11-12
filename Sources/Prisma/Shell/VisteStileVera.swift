@@ -234,18 +234,35 @@ struct AvvisiStileMessaggioVista: View {
     @Environment(StatoShell.self) var stato
     let testo: String
     let clienteId: String
+    /// Quale messaggio (occasione, tono e canale): con lo stesso messaggio, cliente e profilo un testo nuovo è il
+    /// consulente che scrive.
+    var messaggio = ""
     @State private var violazioni: [ViolazioneStile] = []
+    /// Per quale testo, messaggio, cliente e profilo sono gli avvisi mostrati.
+    @State private var ultima: ChiaveAvvisi? = nil
+    @Environment(\.prismaScatto) private var scatto
 
-    /// Gli avvisi si rifanno quando cambia il testo, il cliente o il profilo dello stile (una regola spenta in
-    /// Impostazioni, una firma riscritta, Vera che impara di nuovo dopo un invio): il profilo si legge nel body,
-    /// così l'osservazione lo segue anche con il pannello aperto.
-    private struct ChiaveAvvisi: Equatable {
+    /// Mentre il consulente scrive, gli avvisi aspettano questa pausa nella digitazione (in nanosecondi).
+    private static let pausaDigitazione: UInt64 = 300_000_000
+
+    /// Gli avvisi si rifanno quando cambia il testo, il messaggio, il cliente o il profilo dello stile (una regola
+    /// spenta in Impostazioni, una firma riscritta, Vera che impara di nuovo dopo un invio): il profilo si legge nel
+    /// body, così l'osservazione lo segue anche con il pannello aperto.
+    struct ChiaveAvvisi: Equatable {
         let testo: String
         let clienteId: String
+        let messaggio: String
         let profilo: ProfiloStile
+
+        /// Lo stesso messaggio per lo stesso cliente e con lo stesso profilo (può cambiare solo il testo).
+        func stessoMessaggio(_ altra: ChiaveAvvisi) -> Bool {
+            clienteId == altra.clienteId && messaggio == altra.messaggio && profilo == altra.profilo
+        }
     }
 
     var body: some View {
+        let chiave = ChiaveAvvisi(testo: testo, clienteId: clienteId, messaggio: messaggio,
+                                  profilo: stato.dati.impostazioni.stileVera)
         VStack(alignment: .leading, spacing: 6) {
             if !violazioni.isEmpty {
                 Text("IL TUO STILE").carattereApple(F.occhiello).foregroundColor(Tema.Apple.stileVera)
@@ -254,8 +271,18 @@ struct AvvisiStileMessaggioVista: View {
                 }
             }
         }
-        .task(id: ChiaveAvvisi(testo: testo, clienteId: clienteId, profilo: stato.dati.impostazioni.stileVera)) {
-            violazioni = stato.violazioniStile(testo, clienteId: clienteId)
+        .task(id: chiave) {
+            // Il consulente sta scrivendo nel messaggio (cambia solo il testo): le regole si rileggono a una pausa della
+            // digitazione, non a ogni tasto (`violazioniStile` scorre i messaggi del dossier sul thread principale).
+            // Alla comparsa, con un altro messaggio, cliente o profilo e nelle istantanee, subito come prima.
+            if !scatto, let u = ultima, u.stessoMessaggio(chiave) {
+                try? await Task.sleep(nanoseconds: Self.pausaDigitazione)
+                if Task.isCancelled { return }
+            }
+            let v = stato.violazioniStile(chiave.testo, clienteId: chiave.clienteId)
+            // Gli stessi avvisi di prima: la vista non si rifà
+            if v != violazioni { violazioni = v }
+            ultima = chiave
         }
     }
 }

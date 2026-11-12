@@ -1,8 +1,9 @@
 import Foundation
 
 /// La scheda di adeguatezza nello stato di Prisma (giro 4, specifica 1): lettura e modifica della scheda,
-/// esito calcolato a richiesta (niente cache: una proposta sola, quando si apre il dettaglio o si preme un
-/// pulsante del PDF), consegne, firma ed elenco dei documenti delle Impostazioni.
+/// esito calcolato a richiesta (una proposta sola, quando si apre il dettaglio o si preme un pulsante del PDF; il
+/// pannello del dettaglio lo tiene in memoria con `esitoAdeguatezzaPannello`), consegne, firma ed elenco dei
+/// documenti delle Impostazioni.
 extension StatoShell {
     func schedaAdeguatezza(_ posizioneId: String) -> SchedaAdeguatezza? {
         dati.schedeAdeguatezza.first { $0.posizioneId == posizioneId }
@@ -37,7 +38,11 @@ extension StatoShell {
         guard let c = cliente(p.clienteId) else { return nil }
         let posizioni = posizioniCliente(p.clienteId)
         let analisi = analisi360(p.clienteId)
-        let bisogni = MotoreBisogni.rileva(cliente: c, posizioni: posizioni, analisi: analisi, oggi: oggi)
+        // Per oggi i bisogni del cliente sono già in cache (`bisogniRilevati`, stessi ingressi; il motore guarda la data
+        // solo per l'anno): il pannello della proposta non rifà il motore a ogni passata. Per un altro giorno si rifanno.
+        let bisogni = Calendar.current.isDateInToday(oggi)
+            ? bisogniRilevati(p.clienteId)
+            : MotoreBisogni.rileva(cliente: c, posizioni: posizioni, analisi: analisi, oggi: oggi)
         return IngressoAdeguatezza(proposta: p, cliente: c, posizioni: posizioni, prodotti: dati.prodotti,
                                    obiettivi: obiettiviCliente(p.clienteId), bisogni: bisogni,
                                    protezione: analisi.protezione,
@@ -47,6 +52,26 @@ extension StatoShell {
 
     func esitoAdeguatezza(_ p: Posizione, oggi: Date = Date()) -> EsitoAdeguatezza? {
         ingressoAdeguatezza(p, oggi: oggi).map { MotoreAdeguatezza.calcola($0) }
+    }
+
+    /// L'esito per il pannello della proposta (PannelloAdeguatezza), in memoria per posizione e ora finché non cambiano i
+    /// dati dei calcoli, il giorno o la modalità cliente (come ogni `ricavato`). La proposta, la scheda e l'elenco dei
+    /// documenti si confrontano con quelli dell'ultimo esito (la scheda e l'elenco non sono dati dei calcoli): una
+    /// spunta o una scelta rifanno subito i sette controlli, un corpo rifatto per altro (l'aspetto, un'altra scheda, il
+    /// metodo aperto, un foglio) no.
+    func esitoAdeguatezzaPannello(_ i: IngressoAdeguatezza) -> EsitoAdeguatezza {
+        let memoria: MemoriaEsitoAdeguatezza = ricavato("adeguatezza|\(i.proposta.id)|\(DerivatiDati.ora(i.oggi))") {
+            MemoriaEsitoAdeguatezza()
+        }
+        if let e = memoria.esito, memoria.proposta == i.proposta, memoria.scheda == i.scheda, memoria.voci == i.voci {
+            return e
+        }
+        let e = MotoreAdeguatezza.calcola(i)
+        memoria.proposta = i.proposta
+        memoria.scheda = i.scheda
+        memoria.voci = i.voci
+        memoria.esito = e
+        return e
     }
 
     /// I dati del PDF: controlli (registrati alla firma, se firmata), griglia dell'esperienza, bisogno e date.
@@ -114,4 +139,13 @@ extension StatoShell {
     func ripristinaDocumentiConsegna() {
         dati.impostazioni.consegna = ImpostazioniConsegna()
     }
+}
+
+/// L'ultimo esito del pannello di una proposta, con la proposta, la scheda e l'elenco dei documenti da cui è nato
+/// (vedi `StatoShell.esitoAdeguatezzaPannello`). Vive nei dati ricavati: si butta con loro.
+final class MemoriaEsitoAdeguatezza {
+    var proposta: Posizione?
+    var scheda: SchedaAdeguatezza?
+    var voci: [VoceDocumento] = []
+    var esito: EsitoAdeguatezza?
 }

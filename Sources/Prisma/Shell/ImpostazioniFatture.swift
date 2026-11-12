@@ -107,10 +107,13 @@ struct SezioneDatiFatture: View {
                             larghezza: I.menu)
             }
             riga("Dicitura sulla fattura", "Facoltativa: il testo esatto lo dai tu o il commercialista") {
-                TextField("", text: legame(\.regime.frasePiede), axis: .vertical)
-                    .lineLimit(I.righeDicitura)
-                    .campoTesto()
-                    .frame(width: I.campoLungo)
+                // Come gli altri testi: passa all'archivio poco dopo l'ultimo tasto
+                TestoRinviato(testo: legame(\.regime.frasePiede), salvaOra: { stato.salvaOra() }) { bozza in
+                    TextField("", text: bozza, axis: .vertical)
+                        .lineLimit(I.righeDicitura)
+                        .campoTesto()
+                        .frame(width: I.campoLungo)
+                }
             }
         }
     }
@@ -250,11 +253,15 @@ struct SezioneDatiFatture: View {
         RigaImpostazione(titolo: titolo, sottotitolo: sottotitolo, accessorio: campo)
     }
 
+    /// Il testo passa all'archivio poco dopo l'ultimo tasto (TestoRinviato), come il nome dell'utente: ogni lettera
+    /// ridisegna solo il campo, non cambia le impostazioni (e tutte le cache dei calcoli) a ogni tasto.
     private func testo(_ k: WritableKeyPath<DatiFatturazione, String>, larghezza: CGFloat) -> some View {
-        TextField("", text: legame(k), prompt: Text(verbatim: "—"))
-            .campoTesto()
-            .autocorrectionDisabled()
-            .frame(width: larghezza)
+        TestoRinviato(testo: legame(k), salvaOra: { stato.salvaOra() }) { bozza in
+            TextField("", text: bozza, prompt: Text(verbatim: "—"))
+                .campoTesto()
+                .autocorrectionDisabled()
+                .frame(width: larghezza)
+        }
     }
 
     private func numero(_ k: WritableKeyPath<DatiFatturazione, Double?>, unita: String, larghezza: CGFloat) -> some View {

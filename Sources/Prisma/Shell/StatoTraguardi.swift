@@ -11,7 +11,7 @@ extension StatoShell {
 
     /// I traguardi degli ultimi 7 giorni dei clienti visibili (in modalità cliente solo i suoi).
     func traguardi(oggi: Date = Date()) -> [Traguardo] {
-        let tutti = MotoreTraguardi.calcola(dati: datiTraguardi(), oggi: oggi)
+        let tutti = traguardiDellArchivio(oggi: oggi)
         guard let solo = modoCliente else { return tutti }
         return tutti.filter { $0.clienteId == solo }
     }
@@ -23,7 +23,36 @@ extension StatoShell {
 
     /// Il traguardo con quell'id (nil se non c'è più o è uscito dalla finestra).
     func traguardo(_ id: String, oggi: Date = Date()) -> Traguardo? {
-        MotoreTraguardi.calcola(dati: datiTraguardi(), oggi: oggi).first { $0.id == id }
+        traguardiDellArchivio(oggi: oggi).first { $0.id == id }
+    }
+
+    /// MotoreTraguardi su tutto l'archivio: per oggi una volta per dati dei calcoli, giorno, modalità cliente e ora (come
+    /// gli altri dati ricavati), perché lo chiedono a ogni passaggio il pannello del traguardo in Messaggi, il centro
+    /// notifiche e il menu delle voci; per un altro giorno calcolato ogni volta, come la conformità. Note (l'idea per il
+    /// regalo) e capsule (la capsula dell'obiettivo) non sono dati dei calcoli: la versione delle note e l'impronta delle
+    /// capsule stanno nella chiave, lette fuori dal calcolo, così chi chiede i traguardi si aggiorna anche con loro.
+    private func traguardiDellArchivio(oggi: Date) -> [Traguardo] {
+        guard Calendar.current.isDateInToday(oggi) else {
+            return MotoreTraguardi.calcola(dati: datiTraguardi(), oggi: oggi)
+        }
+        let chiave = "traguardi|\(DerivatiDati.ora(oggi))|\(versioneNote)|\(improntaCapsuleTraguardi())"
+        return ricavato(chiave) { () -> [Traguardo] in
+            MotoreTraguardi.calcola(dati: datiTraguardi(), oggi: oggi)
+        }
+    }
+
+    /// Tutto ciò che `MotoreCapsule.perObiettivo` guarda per scegliere la capsula di un traguardo: id, obiettivo e stato
+    /// delle capsule legate a un obiettivo, nell'ordine dell'archivio (vale la prima sigillata). Le capsule sono un campo
+    /// neutro, senza versione: leggerle qui iscrive chi chiede i traguardi, come quando le leggeva il calcolo.
+    private func improntaCapsuleTraguardi() -> Int {
+        var impronta = Hasher()
+        for c in dati.capsule {
+            guard case .obiettivo(let obiettivo) = c.apertura else { continue }
+            impronta.combine(c.id)
+            impronta.combine(obiettivo)
+            impronta.combine(c.stato)
+        }
+        return impronta.finalize()
     }
 
     /// L'archivio per MotoreTraguardi: i dati dei calcoli (senza iscriversi a tutto l'archivio) più le note (l'idea per
@@ -41,11 +70,29 @@ extension StatoShell {
     /// o in sola lettura. La chiamano lo sblocco e l'apertura di Messaggi.
     func segnaObiettiviRaggiunti(oggi: Date = Date()) {
         guard persistente, !solaLettura else { return }
-        let ids = Set(MotoreTraguardi.daSegnareRaggiunti(dati: dati.istantanea))
+        let ids = Set(obiettiviDaSegnareRaggiunti())
         guard !ids.isEmpty else { return }
         let giorno = Posizione.oggiArrotondato
         for i in dati.obiettivi.indices where ids.contains(dati.obiettivi[i].id) {
             dati.obiettivi[i].raggiuntoIl = giorno
+        }
+    }
+
+    /// Gli stessi obiettivi di `MotoreTraguardi.daSegnareRaggiunti` (senza data, importo > 0, accantonato ≥ importo), senza
+    /// costruire `AvanzamentoObiettivo`: per l'accantonato basta sommare le posizioni collegate in essere, mentre il versamento
+    /// necessario (decine di proiezioni mese per mese per ogni obiettivo) qui non serve e cadeva sullo sblocco e
+    /// sull'apertura di Messaggi. Le posizioni si sommano nell'ordine dell'archivio, come `AvanzamentoObiettivo`.
+    private func obiettiviDaSegnareRaggiunti() -> [String] {
+        let candidati = dati.obiettivi.filter { $0.raggiuntoIl == nil && $0.importo > 0 }
+        guard !candidati.isEmpty else { return [] }
+        let posizioni = dati.posizioni
+        // Il posto nell'archivio delle posizioni in essere, per id (con due posizioni con lo stesso id contano tutte e due)
+        var inEssere: [String: [Int]] = [:]
+        for (i, p) in posizioni.enumerated() where p.stato == .inEssere { inEssere[p.id, default: []].append(i) }
+        return candidati.compactMap { o -> String? in
+            let posti = Set(o.posizioniCollegate).flatMap { inEssere[$0] ?? [] }.sorted()
+            let collegate = posti.reduce(0.0) { somma, i in somma + posizioni[i].valore }
+            return o.accantonato + collegate >= o.importo ? o.id : nil
         }
     }
 

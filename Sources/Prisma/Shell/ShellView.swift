@@ -183,7 +183,12 @@ struct CorpoShell: View {
                 raccogliURL(fornitori) { stato.importaFileTrascinati($0) }
                 return true
             }
-            .onAppear { aggiornaArea(geo.size) }
+            .onAppear {
+                aggiornaArea(geo.size)
+                // Le ombre delle finestre e del dettaglio si sfocano una volta fuori dal thread principale, prima della
+                // prima apertura (mai nelle istantanee e nelle prove: lì si disegnano dove servono, come sempre)
+                if !modoIstantanea { OmbraPrecalcolata.preparaShell() }
+            }
             // La dimensione nuova, non l'area calcolata nel disegno precedente (durante la presentazione, quella congelata)
             .onChange(of: geo.size) { aggiornaArea(misuraCongelata ?? $0) }
             .onChange(of: dockNascosto) { nascosto in
@@ -482,10 +487,13 @@ struct CorpoShell: View {
         // Le finestre ridotte tengono la cornice che avevano (con il dock nascosto): ridurre l'ultima non le reimpagina
         let areaRidotte = ShellView.area(per: misura, dockNascosto: true)
         let calmo = !modoIstantanea && Movimenti.calmo
+        // Tutte le finestre fuori vista a transizione finita: sotto il blocco (come la scrivania in PagineScrivania)
+        // o sotto la sala della presentazione
+        let sotto = (sistema.bloccato && sistema.bloccatoStabile) || sottoSala
         return ZStack(alignment: .topLeading) {
             ForEach(CorpoShell.inOrdineFisso(elenco)) { f in
                 finestra(f, z: elenco.firstIndex(where: { $0.app == f.app }) ?? 0, attiva: f.app == attiva,
-                         area: f.ridotta ? areaRidotte : area, calmo: calmo)
+                         area: f.ridotta ? areaRidotte : area, calmo: calmo, sotto: sotto)
             }
         }
         .frame(width: area.width, height: area.height, alignment: .topLeading)
@@ -497,13 +505,19 @@ struct CorpoShell: View {
     /// FLIP (ingrandisci, affianca, spazi) e il volo dall'icona del dock e verso di lei (apertura, chiusura,
     /// riduzione, ripristino: VoloDallIcona, Shell/VoloFinestra.swift). Con «Riduci movimento» il volo è una
     /// dissolvenza breve. Il contenuto dell'app non si rifà durante i movimenti: cambiano solo i valori dei modificatori.
-    private func finestra(_ f: StatoShell.Finestra, z: Int, attiva: Bool, area: CGRect, calmo: Bool) -> some View {
+    /// `sotto`: tutte le finestre sono fuori vista (sotto il blocco o la sala, a transizione finita).
+    private func finestra(_ f: StatoShell.Finestra, z: Int, attiva: Bool, area: CGRect, calmo: Bool, sotto: Bool) -> some View {
         let c = stato.cornice(di: f, in: area)
         let w = max(c.width, 1)
         let h = max(c.height, 1)
         let arrivo = sistema.inArrivo.contains(f.app)
         let coperta = sistema.coperte.contains(f.app)
         let nascosta = sistema.nascoste.contains(f.app)
+        // Ridotta nel dock a genio finito (`spente`; nelle istantanee subito)
+        let spenta = f.ridotta && (modoIstantanea || sistema.spente.contains(f.app))
+        // Fuori vista le animazioni continue del contenuto (la sfera e i puntini di Vera, `\.prismaInVista`) restano
+        // sull'ultimo fotogramma e ripartono quando la finestra torna davanti: niente trenta fotogrammi a opacità 0
+        let inVista = !(coperta || nascosta || spenta || sotto)
         let flip = sistema.flip[f.app]
         // Al suo posto se non sta uscendo dall'icona, se non è ridotta e se non vi sta rientrando (chiusa)
         let alSuoPosto = !arrivo && !f.ridotta && !sistema.rientrano.contains(f.app)
@@ -517,6 +531,7 @@ struct CorpoShell: View {
         let uscita: AnyTransition = modoIstantanea || nascosta ? AnyTransition.identity
             : AnyTransition.chiusuraFinestra(ancora: centro)
         return FinestraInterna(finestra: f, attiva: attiva, area: area)
+            .environment(\.prismaInVista, inVista)
             .frame(width: c.width, height: c.height, alignment: .topLeading)
             .modifier(EffettoCornice(progresso: flip?.progresso ?? 1, da: flip?.da ?? c, a: c))
             .modifier(VoloDallIcona(alSuoPosto: alSuoPosto, icona: icona, misura: c.size, calmo: calmo))
@@ -527,7 +542,7 @@ struct CorpoShell: View {
             .allowsHitTesting(!f.ridotta && !coperta && !nascosta)
             // Ridotta nel dock resta montata (si riapre subito), ma i suoi comandi da tastiera tacciono: a genio
             // finito (`spente`), perché spegnere i controlli ridisegna tutta l'app e non deve cadere nel movimento
-            .disabled(f.ridotta && (modoIstantanea || sistema.spente.contains(f.app)))
+            .disabled(spenta)
             .accessibilityHidden(f.ridotta || coperta)
             .zIndex(Double(z))
             .transition(uscita)

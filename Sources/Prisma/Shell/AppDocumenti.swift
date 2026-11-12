@@ -14,6 +14,8 @@ struct AppDocumenti: View {
     @State private var daEliminare: Documento?
     /// Il pannello di sistema per scegliere i file da importare su iPhone e iPad (File, iCloud Drive).
     @State private var sceltaFile = false
+    /// Voci, gruppi e testo piegato delle pagine, tenuti tra un disegno e l'altro (IndiceTestiDocumenti.swift).
+    @State private var memoria = MemoriaElencoDocumenti()
 
     private var cliente: String { stato.clienteAttivoId }
 
@@ -33,14 +35,27 @@ struct AppDocumenti: View {
         return conFiltri || conRicerca
     }
 
-    /// I gruppi dell'elenco. Il testo dei documenti si legge dal disco senza tenerlo in memoria, e solo se serve.
+    /// Le voci del cliente (stato e confronti): si rifanno solo quando cambiano i dati dei calcoli o i documenti in lettura.
+    private func vociCliente() -> [MotoreDocumenti.Voce] {
+        let id = cliente
+        return memoria.voci(MemoriaElencoDocumenti.chiaveDelleVoci(stato, cliente: id)) { stato.vociDocumenti(id) }
+    }
+
+    /// I gruppi dell'elenco, rifatti solo quando cambiano le voci, i filtri o la ricerca. Il testo dei documenti si legge
+    /// dal disco senza tenerlo in memoria, e solo se serve (resta piegato mentre si cerca).
     private func raggruppa(_ voci: [MotoreDocumenti.Voce]) -> [MotoreDocumenti.Gruppo] {
-        MotoreDocumenti.elenco(voci, filtro: filtro, pagine: { stato.testoDocumento($0, memorizza: false) })
+        let f = filtro
+        let chiave = MemoriaElencoDocumenti.chiaveDeiGruppi(voci: MemoriaElencoDocumenti.chiaveDelleVoci(stato, cliente: cliente), filtro: f)
+        memoria.lasciaPagineSeServe(f)
+        return memoria.gruppi(chiave) {
+            let cercate = MemoriaElencoDocumenti.paroleCercate(f)
+            return MotoreDocumenti.elenco(voci, filtro: f, pagine: { memoria.pagine($0, cercate: cercate, stato: stato) })
+        }
     }
 
     var body: some View {
         let _ = ContaCorpi.segna()
-        let voci = stato.vociDocumenti(cliente)
+        let voci = vociCliente()
         let gruppi = raggruppa(voci)
         let mostrate = gruppi.flatMap { $0.voci.map(\.voce) }
         // Il documento scelto se è tra quelli mostrati, altrimenti il primo: documentoSelezionato non si riscrive
@@ -81,7 +96,7 @@ struct AppDocumenti: View {
     /// «Tutti» e la ricerca si svuota, così si vede nell'elenco.
     private func allinea() {
         guard let id = stato.documentoSelezionato, let d = stato.documento(id), d.clienteId == cliente else { return }
-        let visibili = raggruppa(stato.vociDocumenti(cliente)).flatMap { $0.voci.map(\.id) }
+        let visibili = raggruppa(vociCliente()).flatMap { $0.voci.map(\.id) }
         guard !visibili.contains(id) else { return }
         mostraTutti()
     }

@@ -13,7 +13,14 @@ import Observation
 
     let persistente: Bool
     @ObservationIgnored private var caricata = false
+    /// La lettura in anticipo di biblioteca.json è partita e `carica()` non ne ha ancora preso il risultato (solo
+    /// thread principale).
+    @ObservationIgnored private var inAnticipo = false
+    /// Il risultato della lettura in anticipo (nil: biblioteca.json non c'è): si scrive e si legge solo sulla coda
+    /// dell'anticipo.
+    @ObservationIgnored private var lettiInAnticipo: [TestoNorma]?
     private static let coda = DispatchQueue(label: "prisma.biblioteca", qos: .userInitiated)
+    private static let codaAnticipo = DispatchQueue(label: "prisma.biblioteca.anticipo", qos: .utility)
 
     init(persistente: Bool) { self.persistente = persistente }
 
@@ -23,6 +30,11 @@ import Observation
     /// Dopo un ripristino: rilegge l'indice della cartella ripristinata.
     func ricarica() {
         Self.coda.sync {}
+        // Una lettura in anticipo partita prima del ripristino ha letto la cartella di prima: si scarta
+        if inAnticipo {
+            inAnticipo = false
+            Self.codaAnticipo.sync { self.lettiInAnticipo = nil }
+        }
         caricata = false
         testi = []
         scelto = nil
@@ -36,10 +48,44 @@ import Observation
     func carica() {
         guard !caricata else { return }
         caricata = true
-        guard persistente, let d = try? Data(contentsOf: Self.indice) else { return }
+        guard persistente else { return }
+        if inAnticipo {
+            // La lettura in anticipo è partita: si prende il suo risultato (aspettando la fine, se non è ancora finita)
+            inAnticipo = false
+            let letti = Self.codaAnticipo.sync { () -> [TestoNorma]? in
+                let presi = self.lettiInAnticipo
+                self.lettiInAnticipo = nil
+                return presi
+            }
+            if let letti { testi = letti }
+            return
+        }
+        if let letti = Self.leggiIndice() { testi = letti }
+    }
+
+    /// Allo sblocco (sul Mac): legge e decodifica biblioteca.json fuori dal thread principale, e il risultato entra
+    /// nello stato sul thread principale, fuori dal disegno delle viste. Così la prima apertura della Biblioteca, la
+    /// prima ricerca e la prima domanda sulle norme non decodificano l'indice (con il testo degli articoli) mentre la
+    /// vista si disegna. Nelle prove e nelle istantanee (non persistente) non fa nulla: lì resta tutto sincrono.
+    func preparaInAnticipo() {
+        guard persistente, !caricata, !inAnticipo else { return }
+        inAnticipo = true
+        Self.codaAnticipo.async { [weak self] in
+            let letti = Self.leggiIndice()
+            guard let self else { return }
+            self.lettiInAnticipo = letti
+            DispatchQueue.main.async { [weak self] in self?.carica() }
+        }
+    }
+
+    /// I testi di biblioteca.json, nil se il file non c'è (senza toccare lo stato: anche fuori dal thread principale).
+    private static func leggiIndice() -> [TestoNorma]? {
+        guard let d = try? Data(contentsOf: indice) else { return nil }
         let dec = JSONDecoder()
         dec.dateDecodingStrategy = .iso8601
-        testi = ((try? dec.decode(ElencoTollerante<TestoNorma>.self, from: d)) ?? nil)?.elementi ?? []
+        let elenco: ElencoTollerante<TestoNorma>? = try? dec.decode(ElencoTollerante<TestoNorma>.self, from: d)
+        let letti: [TestoNorma] = elenco?.elementi ?? []
+        return letti
     }
 
     private func salva() {

@@ -201,6 +201,43 @@ final class RichiestaIstantaneaTrack {
     }
 }
 
+// MARK: - Ordine e linee, in memoria
+
+/// Le linee del confronto delle raccomandazioni, calcolate alla prima card (o al primo dettaglio) che le chiede e tenute
+/// finché valgono i dati dei calcoli: la memoria sta in `StatoShell.ricavato`, con la stessa validità del track record
+/// da cui vengono le voci. Così né l'elenco (anche a ogni passo del ridimensionamento) né il dettaglio rifanno
+/// MotoreAndamento e il confronto con il riferimento a ogni disegno. Solo dal thread principale.
+private final class MemoriaTrackRecord {
+    /// La tabella dei riferimenti di questi dati (i riferimenti entrano nei calcoli).
+    let tabella: TabellaRiferimenti
+    /// Le linee per id della voce; nil = la voce non ha linee (anche questo resta in memoria).
+    private var fatte: [String: PresentazioneTrackRecord.Linee?] = [:]
+
+    init(tabella: TabellaRiferimenti) {
+        self.tabella = tabella
+    }
+
+    func linee(_ v: TrackRecord.Voce) -> PresentazioneTrackRecord.Linee? {
+        if let l = fatte[v.id] { return l }
+        let l = PresentazioneTrackRecord.linee(v, tabella: tabella)
+        fatte.updateValue(l, forKey: v.id)
+        return l
+    }
+}
+
+private extension StatoShell {
+    /// Le voci del track record di oggi nell'ordine dell'elenco, ordinate una volta per dati dei calcoli e giorno.
+    func vociTrackRecordOrdinate() -> [TrackRecord.Voce] {
+        ricavato("studio.track.ordine") { PresentazioneTrackRecord.ordinate(trackRecord().voci) }
+    }
+
+    /// La memoria delle linee (con la tabella dei riferimenti) per i dati dei calcoli di adesso. I riferimenti si leggono
+    /// senza iscrivere la vista alle impostazioni: entrano nei calcoli, quindi in `versioneCalcoli`.
+    func memoriaTrackRecord() -> MemoriaTrackRecord {
+        ricavato("studio.track.linee") { MemoriaTrackRecord(tabella: TabellaRiferimenti(dati.impostazioniDeiCalcoli.riferimenti)) }
+    }
+}
+
 // MARK: - La scheda
 
 struct TrackRecordStudioVista: View {
@@ -249,28 +286,31 @@ private struct ElencoTrackRecord: View, Equatable {
         // Dalla cache (DerivatiDati): calcolato una volta per versione dei dati e per giorno, mai qui
         let t = stato.trackRecord()
         let prova = stato.haDatiDiProva
+        // Anche l'ordine e le linee delle card vengono dalla cache, fuori dal GeometryReader: a ogni passo del
+        // ridimensionamento cambiano solo la larghezza e ciò che ne dipende (grafico e colonne delle tile)
+        let voci: [TrackRecord.Voce] = t.raccomandazioni == 0 ? [] : stato.vociTrackRecordOrdinate()
+        let memoria = stato.memoriaTrackRecord()
         return GeometryReader { geo in
             ScrollView(.vertical, showsIndicators: false) {
-                contenuto(t, prova: prova, larghezza: geo.size.width)
+                contenuto(t, voci: voci, memoria: memoria, prova: prova, larghezza: geo.size.width)
                     .frame(width: geo.size.width, alignment: .topLeading)
             }
         }
     }
 
-    @ViewBuilder private func contenuto(_ t: TrackRecord, prova: Bool, larghezza: CGFloat) -> some View {
+    @ViewBuilder private func contenuto(_ t: TrackRecord, voci: [TrackRecord.Voce], memoria: MemoriaTrackRecord,
+                                        prova: Bool, larghezza: CGFloat) -> some View {
         if t.raccomandazioni == 0 {
             VuotoTrackRecord(apriPosizioni: { stato.apri(.posizioni) })
                 .entrataCascata(0, base: base)
         } else {
-            pieno(t, prova: prova, larghezza: larghezza)
+            pieno(t, voci: voci, memoria: memoria, prova: prova, larghezza: larghezza)
         }
     }
 
-    private func pieno(_ t: TrackRecord, prova: Bool, larghezza: CGFloat) -> some View {
+    private func pieno(_ t: TrackRecord, voci: [TrackRecord.Voce], memoria: MemoriaTrackRecord, prova: Bool,
+                       larghezza: CGFloat) -> some View {
         let d = Tema.Apple.Studio.Track.Disposizione.self
-        // Senza iscrivere il corpo alle impostazioni: i riferimenti entrano nei calcoli, quindi nella chiave
-        let tabella = TabellaRiferimenti(stato.dati.impostazioniDeiCalcoli.riferimenti)
-        let voci = PresentazioneTrackRecord.ordinate(t.voci)
         let conGrafico = larghezza >= d.larghezzaConGrafico
         let colonne = larghezza < d.larghezzaTileStrette ? d.colonneTileStrette : d.colonneTile
         return VStack(alignment: .leading, spacing: 0) {
@@ -282,10 +322,12 @@ private struct ElencoTrackRecord: View, Equatable {
                 .entrataCascata(d.primaCard - 1, base: base)
             VStack(alignment: .leading, spacing: d.spazioCard) {
                 ForEach(Array(voci.enumerated()), id: \.element.id) { i, v in
+                    // `.equatable()`: a un ridimensionamento o a un cambio d'altre voci le card uguali non rifanno il corpo
                     CardRaccomandazione(voce: v, cliente: stato.cliente(v.raccomandazione.clienteId),
-                                        linee: conGrafico ? PresentazioneTrackRecord.linee(v, tabella: tabella) : nil,
+                                        linee: conGrafico ? memoria.linee(v) : nil,
                                         conGrafico: conGrafico, indiceLinee: 2 * i,
                                         apri: { apri(v.id) })
+                        .equatable()
                         .entrataCascata(min(d.primaCard + i, d.indiceMassimoCascata), base: base)
                 }
             }
@@ -446,14 +488,20 @@ private struct AvatarTrackRecord: View {
     }
 }
 
-private struct CardRaccomandazione: View {
+private struct CardRaccomandazione: View, Equatable {
     let voce: TrackRecord.Voce
     let cliente: Cliente?
     let linee: PresentazioneTrackRecord.Linee?
     let conGrafico: Bool
     /// Indice del primo tracciato della card nella schermata (alternativa, poi proposta).
     let indiceLinee: Int
+    /// Apre il dettaglio di questa voce: chiama sempre lo stesso presentatore della scheda, quindi non conta nel confronto.
     let apri: () -> Void
+
+    nonisolated static func == (a: CardRaccomandazione, b: CardRaccomandazione) -> Bool {
+        a.voce == b.voce && a.cliente == b.cliente && a.linee == b.linee && a.conGrafico == b.conGrafico
+            && a.indiceLinee == b.indiceLinee
+    }
 
     var body: some View {
         let c = Tema.Apple.Studio.Track.Card.self
@@ -588,8 +636,6 @@ struct DettaglioRaccomandazione: View {
     let id: String
 
     @Environment(\.statoDettaglioApple) private var dettaglio
-    /// La nota che si sta scrivendo (si aggiunge con «Aggiungi nota», poi il campo si svuota).
-    @State private var bozza = ""
 
     var body: some View {
         if let v = stato.trackRecord().voci.first(where: { $0.id == id }) {
@@ -600,17 +646,19 @@ struct DettaglioRaccomandazione: View {
     private func contenuto(_ v: TrackRecord.Voce) -> some View {
         let d = Tema.Apple.Studio.Track.Dettaglio.self
         let cliente = stato.cliente(v.raccomandazione.clienteId)
-        let tabella = TabellaRiferimenti(stato.dati.impostazioni.riferimenti)
+        // Tabella e linee dalla memoria dell'elenco (stessa validità del track record), senza iscrivere il dettaglio a
+        // tutte le impostazioni: i riferimenti entrano nei calcoli, quindi nel track record
+        let memoria = stato.memoriaTrackRecord()
         return VStack(alignment: .leading, spacing: 0) {
             TestataDettaglioTrack(voce: v, cliente: cliente)
             HStack(alignment: .top, spacing: d.spazioColonne) {
                 ScrollView(.vertical, showsIndicators: false) {
-                    ColonnaSinistraTrack(voce: v, tabella: tabella, bozza: $bozza, solaLettura: stato.solaLettura,
-                                         aggiungi: { aggiungi(v) })
+                    ColonnaSinistraTrack(voce: v, tabella: memoria.tabella, solaLettura: stato.solaLettura,
+                                         aggiungi: { testo in aggiungi(testo, a: v) })
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                ColonnaDestraTrack(voce: v, linee: PresentazioneTrackRecord.linee(v, tabella: tabella))
+                ColonnaDestraTrack(voce: v, linee: memoria.linee(v))
                     .frame(width: d.larghezzaDestra, alignment: .topLeading)
             }
             .padding(.top, d.corpoSopra)
@@ -641,10 +689,10 @@ struct DettaglioRaccomandazione: View {
     }
 
     /// Aggiunge la nota alla raccomandazione: solo un'aggiunta, con la data di oggi. Le note di prima restano.
-    private func aggiungi(_ v: TrackRecord.Voce) {
-        guard !stato.solaLettura else { return }
-        guard stato.aggiungiNota(bozza, aRaccomandazione: v.raccomandazione.id) else { return }
-        bozza = ""
+    /// true = aggiunta (il campo si svuota).
+    private func aggiungi(_ testo: String, a v: TrackRecord.Voce) -> Bool {
+        guard !stato.solaLettura else { return false }
+        return stato.aggiungiNota(testo, aRaccomandazione: v.raccomandazione.id)
     }
 }
 
@@ -719,9 +767,9 @@ private struct NotaDettaglioTrack: View {
 private struct ColonnaSinistraTrack: View {
     let voce: TrackRecord.Voce
     let tabella: TabellaRiferimenti
-    @Binding var bozza: String
     let solaLettura: Bool
-    let aggiungi: () -> Void
+    /// Aggiunge la nota scritta; true = aggiunta.
+    let aggiungi: (String) -> Bool
 
     var body: some View {
         let d = Tema.Apple.Studio.Track.Dettaglio.self
@@ -796,7 +844,6 @@ private struct ColonnaSinistraTrack: View {
 
     private var note: some View {
         let d = Tema.Apple.Studio.Track.Dettaglio.self
-        let vuota = bozza.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         return BloccoTrack("Note") {
             if r.note.isEmpty {
                 NotaDettaglioTrack(testo: TestiTrackRecord.nessunaNota, colore: d.mancante)
@@ -814,20 +861,40 @@ private struct ColonnaSinistraTrack: View {
                     }
                 }
             }
-            if !solaLettura {
-                HStack(spacing: d.spazioCampo) {
-                    TextField(TestiTrackRecord.segnapostoNota, text: $bozza)
-                        .campoTesto()
-                        .onSubmit(aggiungi)
-                    Button(TestiTrackRecord.aggiungiNota, action: aggiungi)
-                        .buttonStyle(.apple)
-                        .disabled(vuota)
-                }
-                .padding(.top, d.campoSopra)
-            }
+            CampoNotaTrack(solaLettura: solaLettura, aggiungi: aggiungi)
             NotaDettaglioTrack(testo: TestiTrackRecord.conformita)
                 .padding(.top, d.notaSopra)
         }
+    }
+}
+
+/// Il campo della nota nuova con «Aggiungi nota». La bozza vive qui: un tasto ridisegna solo il campo, non il dettaglio
+/// (colonne, linee, testata). In sola lettura non c'è niente (e nemmeno spazio), ma la bozza resta.
+private struct CampoNotaTrack: View {
+    let solaLettura: Bool
+    let aggiungi: (String) -> Bool
+
+    /// La nota che si sta scrivendo (si aggiunge con «Aggiungi nota», poi il campo si svuota).
+    @State private var bozza = ""
+
+    var body: some View {
+        let d = Tema.Apple.Studio.Track.Dettaglio.self
+        let vuota = bozza.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        if !solaLettura {
+            HStack(spacing: d.spazioCampo) {
+                TextField(TestiTrackRecord.segnapostoNota, text: $bozza)
+                    .campoTesto()
+                    .onSubmit(invia)
+                Button(TestiTrackRecord.aggiungiNota, action: invia)
+                    .buttonStyle(.apple)
+                    .disabled(vuota)
+            }
+            .padding(.top, d.campoSopra)
+        }
+    }
+
+    private func invia() {
+        if aggiungi(bozza) { bozza = "" }
     }
 }
 

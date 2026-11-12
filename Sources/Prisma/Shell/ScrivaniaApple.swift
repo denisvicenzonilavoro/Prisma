@@ -18,7 +18,9 @@ import SwiftUI
 //   blocco per blocco (`EntrataBloccoScrivania`), mai sull'insieme (un livello fuori schermo grande quanto la
 //   scrivania, con tutte le ombre dentro). Sotto una finestra ingrandita, a transizione finita, non si disegna.
 // - Prestazioni: un vetro per riquadro (mai annidato: dentro solo fondi pieni); il contenuto di ogni riquadro
-//   è una sottovista `Equatable` che si rifà solo con una `ChiaveVista` nuova, come i widget di prima.
+//   è una sottovista `Equatable` che si rifà solo con una `ChiaveVista` nuova, come i widget di prima. Sotto una
+//   finestra ingrandita la mossa, Vera e le scadenze restano sugli ultimi valori (`UltimiValoriScrivania`): le
+//   modifiche fatte nelle app non rifanno i loro motori finché la scrivania non torna in vista.
 // - Tutte le cifre vengono dai motori di Prisma: mossa del giorno (MotoreMossaDelGiorno), riepilogo delle
 //   posizioni, stato del lavoro (MotoreStatoDelLavoro), agenda, attività e scadenze.
 
@@ -496,14 +498,51 @@ struct CifraScrivania: View {
     }
 }
 
+// MARK: - Riquadri fuori vista
+
+/// Gli ultimi valori di un riquadro della scrivania. Sotto una finestra ingrandita, a transizione finita, la scrivania
+/// non si disegna ma resta montata (`StatoFinestre.scrivaniaNascosta`): lì il riquadro ripassa questi senza leggere i
+/// dati né i motori, e il suo corpo (che non legge lo stato) non si rifà, così le modifiche fatte nelle app non
+/// ricalcolano qui sotto la mossa del giorno, le domande di Vera e le scadenze. Quando la scrivania torna in vista il
+/// riquadro rilegge subito, nello stesso aggiornamento di colpo (`aggiornaCoperte`): il primo fotogramma visibile ha già
+/// i valori nuovi. Solo per i riquadri di testi, che cambiano di colpo: numeri che contano e anelli (agenda, portafoglio,
+/// studio) conterebbero allo scoprirsi, e restano sempre aggiornati. Una classe: si aggiorna dal body senza rifare la vista.
+private final class UltimiValoriScrivania<Valori> {
+    private var ultimi: Valori?
+
+    /// Gli ultimi valori se `fermi` (e ce ne sono già), altrimenti quelli di adesso (`calcola`), tenuti per dopo.
+    func valori(fermi: Bool, _ calcola: () -> Valori) -> Valori {
+        if fermi, let v = ultimi { return v }
+        let v = calcola()
+        ultimi = v
+        return v
+    }
+}
+
+private enum ScrivaniaFuoriVista {
+    /// La scrivania è sotto una finestra ingrandita: fuori vista (`\.prismaInVista`, che su iPhone e iPad resta vero) e
+    /// nascosta. Dietro la pagina di Vera e sotto il solo blocco i riquadri restano vivi: lì la scrivania torna in vista
+    /// dentro un'animazione (la molla della pagina, l'entrata dello sblocco), dove un testo che cambia si vedrebbe
+    /// sfumare, e all'avvio l'archivio arriva proprio sotto il blocco (lo sblocco non deve ricalcolare nulla).
+    @MainActor static func fermi(_ stato: StatoShell, inVista: Bool) -> Bool {
+        !inVista && stato.sistema.scrivaniaNascosta
+    }
+}
+
 // MARK: - La mossa del giorno
 
 private struct RiquadroMossa: View {
     @Environment(StatoShell.self) var stato
+    @Environment(\.prismaInVista) private var inVista
+    /// Sotto una finestra ingrandita la mossa resta l'ultima calcolata (`UltimiValoriScrivania`).
+    @State private var ultimi = UltimiValoriScrivania<ValoriMossaScrivania>()
 
     var body: some View {
         let _ = ContaCorpi.segna()
-        CorpoMossaScrivania(stato: stato, chiave: stato.chiaveVista)
+        let v = ultimi.valori(fermi: ScrivaniaFuoriVista.fermi(stato, inVista: inVista)) {
+            ValoriMossaScrivania(chiave: stato.chiaveVista, esito: stato.mossaDelGiorno())
+        }
+        CorpoMossaScrivania(stato: stato, chiave: v.chiave, esito: v.esito)
             .equatable()
             .riquadroScrivania(apre: { apriPosizioni() })
     }
@@ -521,9 +560,18 @@ private struct RiquadroMossa: View {
     }
 }
 
+/// La mossa calcolata dal riquadro, con la chiave dei dati da cui viene.
+private struct ValoriMossaScrivania {
+    let chiave: ChiaveVista
+    let esito: EsitoMossaDelGiorno
+}
+
 private struct CorpoMossaScrivania: View, Equatable {
     let stato: StatoShell
     let chiave: ChiaveVista
+    /// Dal riquadro (`RiquadroMossa`): il body non legge lo stato, così le modifiche dei dati non lo rifanno da sole
+    /// (Observation) mentre la scrivania è nascosta.
+    let esito: EsitoMossaDelGiorno
     @State private var originePrepara = OrigineApertura()
     @State private var origineDossier = OrigineApertura()
 
@@ -531,7 +579,6 @@ private struct CorpoMossaScrivania: View, Equatable {
 
     var body: some View {
         let m = Tema.Apple.Scrivania.Mossa.self
-        let esito = stato.mossaDelGiorno()
         return HStack(alignment: .center, spacing: m.spazio) {
             SferaMossaScrivania(iniziali: esito.mossa?.cliente.iniziali)
             testo(esito)
@@ -974,15 +1021,21 @@ private struct CorpoPortafoglioScrivania: View, Equatable {
 
 private struct RiquadroVeraScrivania: View {
     @Environment(StatoShell.self) var stato
+    @Environment(\.prismaInVista) private var inVista
+    /// Sotto una finestra ingrandita la frase e le domande restano le ultime calcolate (`UltimiValoriScrivania`).
+    @State private var ultimi = UltimiValoriScrivania<SuggerimentiVeraScrivania>()
 
     var body: some View {
         let _ = ContaCorpi.segna()
+        let suggerimenti = ultimi.valori(fermi: ScrivaniaFuoriVista.fermi(stato, inVista: inVista)) {
+            stato.suggerimentiVeraScrivania()
+        }
         // Le finestre stanno in `StatoFinestre`, che StatoShell non inoltra: le osserva SferaScrivaniaScoperta
-        SferaScrivaniaScoperta(sistema: stato.sistema) { scoperta in corpo(viva: scoperta) }
+        SferaScrivaniaScoperta(sistema: stato.sistema) { scoperta in corpo(viva: scoperta, suggerimenti: suggerimenti) }
     }
 
-    private func corpo(viva: Bool) -> some View {
-        CorpoVeraScrivaniaApple(stato: stato, chiave: stato.chiaveVista, pronta: stato.qwen.disponibilita.pronto,
+    private func corpo(viva: Bool, suggerimenti: SuggerimentiVeraScrivania) -> some View {
+        CorpoVeraScrivaniaApple(stato: stato, suggerimenti: suggerimenti, pronta: stato.qwen.disponibilita.pronto,
                                nomeMotore: stato.qwen.nome, inCorso: stato.veraInCorso,
                                consentita: stato.appConsentita(.vera),
                                // La sfera respira solo con la scrivania scoperta: sotto le finestre resta ferma
@@ -1012,7 +1065,9 @@ private struct SferaScrivaniaScoperta<C: View>: View {
 
 private struct CorpoVeraScrivaniaApple: View, Equatable {
     let stato: StatoShell
-    let chiave: ChiaveVista
+    /// Dal riquadro (`RiquadroVeraScrivania`): il body non legge lo stato, così le modifiche dei dati non lo rifanno da
+    /// sole (Observation) mentre la scrivania è nascosta. Si confrontano loro, non la chiave: non sono in cache.
+    let suggerimenti: SuggerimentiVeraScrivania
     let pronta: Bool
     let nomeMotore: String
     let inCorso: Bool
@@ -1020,13 +1075,13 @@ private struct CorpoVeraScrivaniaApple: View, Equatable {
     let viva: Bool
 
     nonisolated static func == (a: CorpoVeraScrivaniaApple, b: CorpoVeraScrivaniaApple) -> Bool {
-        a.chiave == b.chiave && a.pronta == b.pronta && a.nomeMotore == b.nomeMotore && a.inCorso == b.inCorso
+        guard a.suggerimenti == b.suggerimenti else { return false }
+        return a.pronta == b.pronta && a.nomeMotore == b.nomeMotore && a.inCorso == b.inCorso
             && a.consentita == b.consentita && a.viva == b.viva
     }
 
     var body: some View {
         let e = Tema.Apple.Scrivania.Vera.self
-        let suggerimenti = stato.suggerimentiVeraScrivania()
         return VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: e.spazioTesta) {
                 SferaVera(misura: e.sfera, viva: viva, pensa: inCorso)
@@ -1208,10 +1263,14 @@ private struct RigaDaFareScrivania: View {
 
 private struct RiquadroScadenzeScrivania: View {
     @Environment(StatoShell.self) var stato
+    @Environment(\.prismaInVista) private var inVista
+    /// Sotto una finestra ingrandita le scadenze restano le ultime calcolate (`UltimiValoriScrivania`).
+    @State private var ultimi = UltimiValoriScrivania<ValoriScadenzeScrivania>()
 
     var body: some View {
         let _ = ContaCorpi.segna()
-        CorpoScadenzeScrivania(stato: stato, chiave: stato.chiaveVista)
+        let v = ultimi.valori(fermi: ScrivaniaFuoriVista.fermi(stato, inVista: inVista)) { valoriAdesso() }
+        CorpoScadenzeScrivania(stato: stato, chiave: v.chiave, scadenze: v.scadenze, clienti: v.clienti)
             .equatable()
             .riquadroScrivania(apre: {
                 stato.posizioneInDettaglio = nil
@@ -1219,17 +1278,37 @@ private struct RiquadroScadenzeScrivania: View {
                 stato.apri(.posizioni)
             })
     }
+
+    /// Le scadenze di adesso, con i clienti delle righe che possono entrare nel riquadro.
+    private func valoriAdesso() -> ValoriScadenzeScrivania {
+        let scadenze = stato.riepilogoTuttePosizioni.inScadenza
+        var clienti: [String: Cliente] = [:]
+        for p in scadenze.prefix(max(1, Tema.Apple.Scrivania.Scadenze.righeMassime)) where clienti[p.clienteId] == nil {
+            clienti[p.clienteId] = stato.cliente(p.clienteId)
+        }
+        return ValoriScadenzeScrivania(chiave: stato.chiaveVista, scadenze: scadenze, clienti: clienti)
+    }
+}
+
+/// Le scadenze calcolate dal riquadro, con la chiave dei dati da cui vengono.
+private struct ValoriScadenzeScrivania {
+    let chiave: ChiaveVista
+    let scadenze: [Posizione]
+    let clienti: [String: Cliente]
 }
 
 private struct CorpoScadenzeScrivania: View, Equatable {
     let stato: StatoShell
     let chiave: ChiaveVista
+    /// Dal riquadro (`RiquadroScadenzeScrivania`): il body non legge lo stato, così le modifiche dei dati non lo rifanno
+    /// da sole (Observation) mentre la scrivania è nascosta.
+    let scadenze: [Posizione]
+    let clienti: [String: Cliente]
 
     nonisolated static func == (a: CorpoScadenzeScrivania, b: CorpoScadenzeScrivania) -> Bool { a.chiave == b.chiave }
 
     var body: some View {
         let s = Tema.Apple.Scrivania.Scadenze.self
-        let scadenze = stato.riepilogoTuttePosizioni.inScadenza
         return VStack(alignment: .leading, spacing: 0) {
             TestataRiquadro(titolo: "In scadenza entro \(RiepilogoPosizioni.giorniScadenza) giorni", simbolo: s.simbolo)
             GeometryReader { geo in
@@ -1242,7 +1321,7 @@ private struct CorpoScadenzeScrivania: View, Equatable {
                             .foregroundColor(Tema.Apple.Colore.inchiostro2)
                     }
                     ForEach(Array(scadenze.prefix(entrano))) { p in
-                        RigaScadenzaScrivania(posizione: p, cliente: stato.cliente(p.clienteId)) { stato.apriPosizione(p) }
+                        RigaScadenzaScrivania(posizione: p, cliente: clienti[p.clienteId]) { stato.apriPosizione(p) }
                     }
                 }
                 .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)

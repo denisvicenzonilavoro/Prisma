@@ -22,7 +22,6 @@ struct VistaPassaparola: View {
     @Environment(StatoShell.self) var stato
     @Environment(\.prismaStatoFinale) private var statoFinale
     @Environment(\.prismaCalmo) private var calmo
-    @State private var tracciati = false
 
     private typealias P = Tema.Apple.Passaparola
 
@@ -32,9 +31,11 @@ struct VistaPassaparola: View {
         let clienti = stato.dati.clienti
         let potenziali = stato.dati.potenziali
         let posizioni = stato.dati.posizioni
-        let albero = MotorePassaparola.albero(clienti: clienti, potenziali: potenziali, posizioni: posizioni)
-        let ambasciatori = MotorePassaparola.ambasciatori(clienti: clienti, potenziali: potenziali, posizioni: posizioni)
-        let quota = MotorePassaparola.quotaPassaparola(clienti: clienti, posizioni: posizioni, oggi: oggi)
+        // I patrimoni una volta sola, per albero, ambasciatori e quota
+        let netti = MotorePassaparola.patrimoni(posizioni)
+        let albero = MotorePassaparola.albero(clienti: clienti, potenziali: potenziali, posizioni: posizioni, netti: netti)
+        let ambasciatori = MotorePassaparola.ambasciatori(clienti: clienti, potenziali: potenziali, posizioni: posizioni, netti: netti)
+        let quota = MotorePassaparola.quotaPassaparola(clienti: clienti, posizioni: posizioni, oggi: oggi, netti: netti)
         let anni = MotorePassaparola.nuoviPerAnno(clienti: clienti, oggi: oggi)
         // Le pratiche non entrano nei calcoli in cache (DatiPrisma.stessiCalcoli): si leggono vive per la data della firma
         let momenti: [MomentoPerChiedere] = {
@@ -44,10 +45,11 @@ struct VistaPassaparola: View {
             x.pratiche = stato.dati.pratiche
             return MotorePassaparola.momentoGiusto(dati: x, oggi: oggi)
         }()
-        let mostra = tracciati || statoFinale
+        // Il rametto evidenziato e la comparsa (tracciati) li leggono l'albero, gli ambasciatori e le colonne: un clic su
+        // un ambasciatore o l'avvio dei tratti ridisegnano solo loro, senza rifare qui i motori su tutti i clienti
         return HStack(alignment: .top, spacing: P.spazio) {
             VStack(alignment: .leading, spacing: P.spazio) {
-                DisegnoAlbero(albero: albero, clienti: clienti, evidenziato: stato.potenziali.evidenziato, mostra: mostra,
+                DisegnoAlbero(albero: albero, clienti: clienti, statoFinale: statoFinale,
                               calmo: calmo || statoFinale, tocca: tocca)
                     .frame(minWidth: P.larghezzaAlberoMinima, idealWidth: P.larghezzaAlbero, maxWidth: P.larghezzaAlbero,
                            maxHeight: .infinity, alignment: .topLeading)
@@ -59,25 +61,19 @@ struct VistaPassaparola: View {
             }
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: P.spazio) {
-                    AmbasciatoriCard(ambasciatori: ambasciatori, quota: quota, evidenziato: stato.potenziali.evidenziato) { id in
-                        stato.potenziali.evidenziato = stato.potenziali.evidenziato == id ? nil : id
-                    }
+                    AmbasciatoriCard(ambasciatori: ambasciatori, quota: quota)
                     if let m = momenti.first, let c = stato.cliente(m.clienteId) {
                         MomentoGiustoCard(momento: m, cliente: c, pronto: stato.richiestaPreparata(m)) {
                             stato.preparaRichiestaPresentazione(m)
                         }
                     }
-                    ColonneAnniPassaparola(anni: anni, mostra: mostra, calmo: calmo || statoFinale)
+                    ColonneAnniPassaparola(anni: anni, statoFinale: statoFinale, calmo: calmo || statoFinale)
                 }
             }
             .frame(width: P.larghezzaColonnaDestra)
         }
         .padding(P.padding)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .onAppear {
-            guard !statoFinale else { return }
-            tracciati = true
-        }
     }
 
     /// Clic su un nodo: il dossier del cliente o il dettaglio del potenziale.
@@ -192,17 +188,22 @@ private struct CurvaLegame: Shape {
 }
 
 private struct DisegnoAlbero: View {
+    @Environment(StatoShell.self) var stato
     let albero: AlberoPassaparola
     let clienti: [Cliente]
-    let evidenziato: String?
-    let mostra: Bool
+    let statoFinale: Bool
     let calmo: Bool
     let tocca: (NodoPassaparola) -> Void
+    /// Legami e nodi compaiono dopo il primo disegno (la vista intera non si rifà per questo).
+    @State private var tracciati = false
 
     private typealias P = Tema.Apple.Passaparola
     private typealias M = Tema.Apple.Moto.Passaparola
 
     var body: some View {
+        // Letti qui, fuori dal GeometryReader: il clic su un ambasciatore ridisegna l'albero
+        let evidenziato = stato.potenziali.evidenziato
+        let mostra = tracciati || statoFinale
         GeometryReader { g in
             let d = DisposizioneAlbero(albero, larghezza: g.size.width)
             ScrollView(.vertical, showsIndicators: false) {
@@ -212,7 +213,7 @@ private struct DisegnoAlbero: View {
                         .foregroundColor(Tema.Apple.Colore.inchiostro2)
                         .padding(.leading, P.padding)
                         .padding(.top, P.padding / 2)
-                    legami(d)
+                    legami(d, evidenziato: evidenziato, mostra: mostra)
                     tu(d.tu)
                     ForEach(d.nodi) { n in
                         NodoPassaparolaVista(disposto: n, mostra: mostra, calmo: calmo,
@@ -227,9 +228,13 @@ private struct DisegnoAlbero: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(TestiPassaparola.etichettaAlbero(anno: albero.annoPiuVecchio))
+        .onAppear {
+            guard !statoFinale else { return }
+            tracciati = true
+        }
     }
 
-    @ViewBuilder private func legami(_ d: DisposizioneAlbero) -> some View {
+    @ViewBuilder private func legami(_ d: DisposizioneAlbero, evidenziato: String?, mostra: Bool) -> some View {
         ForEach(d.nodi) { n in
             let spento = evidenziato != nil && n.ramo != evidenziato
             let curva = CurvaLegame(da: CGPoint(x: n.padre.x + n.raggioPadre, y: n.padre.y),
@@ -349,14 +354,19 @@ private struct NodoPassaparolaVista: View {
 // MARK: - Colonna destra
 
 private struct AmbasciatoriCard: View {
+    @Environment(StatoShell.self) var stato
     let ambasciatori: [Ambasciatore]
     let quota: QuotaPassaparola?
-    let evidenziato: String?
-    let scegli: (String) -> Void
 
     private typealias P = Tema.Apple.Passaparola
 
+    /// Clic su un ambasciatore: i suoi rami evidenziati nell'albero (un secondo clic li spegne).
+    private func scegli(_ id: String) {
+        stato.potenziali.evidenziato = stato.potenziali.evidenziato == id ? nil : id
+    }
+
     var body: some View {
+        let evidenziato = stato.potenziali.evidenziato
         VStack(alignment: .leading, spacing: P.spazioRighe) {
             Text(TestiPassaparola.ambasciatori.uppercased())
                 .carattereApple(Tema.Apple.Carattere.etichetta)
@@ -445,14 +455,17 @@ private struct MomentoGiustoCard: View {
 
 private struct ColonneAnniPassaparola: View {
     let anni: [(anno: Int, dalPassaparola: Int, totali: Int)]
-    let mostra: Bool
+    let statoFinale: Bool
     let calmo: Bool
+    /// Le colonne crescono dopo il primo disegno (la vista intera non si rifà per questo).
+    @State private var tracciati = false
 
     private typealias P = Tema.Apple.Passaparola
     private typealias M = Tema.Apple.Moto.Passaparola
 
     var body: some View {
         let massimo = max(1, anni.map { $0.dalPassaparola }.max() ?? 1)
+        let mostra = tracciati || statoFinale
         VStack(alignment: .leading, spacing: P.spazioRighe) {
             Text(TestiPassaparola.nuoviTitolo.uppercased())
                 .carattereApple(Tema.Apple.Carattere.etichetta)
@@ -485,5 +498,9 @@ private struct ColonneAnniPassaparola: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .superficieApple(Tema.Apple.Superficie.cardPiatta)
         .entrataCascata(3, base: Tema.Apple.Moto.Cascata.baseDentroApp)
+        .onAppear {
+            guard !statoFinale else { return }
+            tracciati = true
+        }
     }
 }

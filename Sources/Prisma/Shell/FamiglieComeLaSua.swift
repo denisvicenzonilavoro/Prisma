@@ -543,7 +543,8 @@ struct FraseCifraFamiglie: View {
             avanzamento = 1
             return
         }
-        withAnimation(.linear(duration: Tema.Apple.Moto.Numero.durata(indice: indice))) { avanzamento = 1 }
+        // Al ritmo dell'app, come `NumeroCheConta` (Tema.Apple.Moto.ritmo)
+        withAnimation(.linear(duration: Tema.Apple.Moto.tempo(Tema.Apple.Moto.Numero.durata(indice: indice)))) { avanzamento = 1 }
     }
 
     private func riparti() {
@@ -551,7 +552,7 @@ struct FraseCifraFamiglie: View {
         var senza = Transaction()
         senza.disablesAnimations = true
         withTransaction(senza) { avanzamento = 0 }
-        withAnimation(.linear(duration: Tema.Apple.Moto.NumeroCambio.durata)) { avanzamento = 1 }
+        withAnimation(.linear(duration: Tema.Apple.Moto.tempo(Tema.Apple.Moto.NumeroCambio.durata))) { avanzamento = 1 }
     }
 }
 

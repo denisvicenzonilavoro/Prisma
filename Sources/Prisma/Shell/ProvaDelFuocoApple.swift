@@ -374,8 +374,14 @@ struct ProvaDelFuocoApple: View, Equatable {
     @ViewBuilder private func lista(_ e: EsitoProvaFuoco?, misura: MisuraRigaFuoco) -> some View {
         let r = Tema.Apple.Posizioni.Fuoco.Riga.self
         if let e {
-            let clienti = Dictionary(stato.dati.clienti.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
-            let canali = Self.canaliInEssere(stato.posizioni)
+            // I clienti per id e i canali in essere: una volta per dati dei calcoli, giorno e modalità cliente, non a
+            // ogni passo del cursore, a ogni risultato o a ogni fotogramma di un ridimensionamento
+            let indice: IndiceProvaFuoco = stato.ricavato("prova-fuoco-indice") {
+                IndiceProvaFuoco(clienti: Dictionary(stato.dati.clienti.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a }),
+                                 canali: Self.canaliInEssere(stato.posizioni))
+            }
+            let clienti = indice.clienti
+            let canali = indice.canali
             let righe = righeMostrate(e)
             ScrollView(.vertical) {
                 LazyVStack(alignment: .leading, spacing: r.passo) {
@@ -431,6 +437,12 @@ struct ProvaDelFuocoApple: View, Equatable {
         }
         return insiemi.mapValues { s in Canale.allCases.filter { s.contains($0) } }
     }
+}
+
+/// Ciò che le righe di «Chi chiamare» leggono dei clienti: il cliente per id e i canali delle posizioni in essere.
+private struct IndiceProvaFuoco {
+    let clienti: [String: Cliente]
+    let canali: [String: [Canale]]
 }
 
 /// «Chiama»: il cliente, il nome e il numero (nil se manca o non sembra un numero).

@@ -75,6 +75,10 @@ struct RisultatoBiblioteca: Equatable {
     /// Il testo letto dai file, al più ~4 milioni di caratteri (i meno recenti si dimenticano).
     @ObservationIgnored private var cache: [String: [String]] = [:]
     @ObservationIgnored private var ordineCache: [String] = []
+    /// I caratteri di ogni documento in cache e il loro totale: contati una volta all'ingresso, tolti all'uscita
+    /// (niente riconteggio di tutte le pagine in cache a ogni documento letto).
+    @ObservationIgnored private var pesiCache: [String: Int] = [:]
+    @ObservationIgnored private var totaleCache = 0
     private static let tettoCache = 4_000_000
     private static let coda = DispatchQueue(label: "prisma.biblioteca.indice", qos: .utility)
     static let codaLettura = DispatchQueue(label: "prisma.biblioteca.lettura", qos: .userInitiated)
@@ -94,6 +98,8 @@ struct RisultatoBiblioteca: Equatable {
         compito = nil
         cache = [:]
         ordineCache = []
+        pesiCache = [:]
+        totaleCache = 0
         firmaIndice = nil
         indiceInCorso = nil
         indice = .vuoto
@@ -110,16 +116,27 @@ struct RisultatoBiblioteca: Equatable {
         if let c = cache[d.id] { return c }
         let lette = Self.leggi(d, memoria: nil)
         guard !lette.isEmpty else { return [] }
-        cache[d.id] = lette
-        ordineCache.removeAll { $0 == d.id }
-        ordineCache.append(d.id)
-        var totale = cache.values.reduce(0) { $0 + $1.reduce(0) { $0 + $1.count } }
-        while totale > Self.tettoCache, ordineCache.count > 1 {
-            let via = ordineCache.removeFirst()
-            totale -= cache[via]?.reduce(0) { $0 + $1.count } ?? 0
-            cache[via] = nil
+        metti(d.id, lette)
+        while totaleCache > Self.tettoCache, ordineCache.count > 1 {
+            togliDallaCache(ordineCache[0])
         }
         return lette
+    }
+
+    /// Mette (o rimette) un documento in cache, in fondo all'ordine, con il conto dei suoi caratteri.
+    private func metti(_ id: String, _ pagine: [String]) {
+        togliDallaCache(id)
+        let peso = pagine.reduce(0) { $0 + $1.count }
+        cache[id] = pagine
+        pesiCache[id] = peso
+        totaleCache += peso
+        ordineCache.append(id)
+    }
+
+    private func togliDallaCache(_ id: String) {
+        cache[id] = nil
+        totaleCache -= pesiCache.removeValue(forKey: id) ?? 0
+        ordineCache.removeAll { $0 == id }
     }
 
     /// Il testo di un documento senza toccare lo stato (anche fuori dal thread principale).
@@ -144,8 +161,7 @@ struct RisultatoBiblioteca: Equatable {
             memoria[id] = pagine
             return
         }
-        cache[id] = pagine
-        ordineCache.append(id)
+        metti(id, pagine)
         let testo = pagine.joined(separator: LetturaDocumenti.separatorePagine)
         Self.codaLettura.async {
             try? FileManager.default.createDirectory(at: Self.cartella, withIntermediateDirectories: true)
@@ -155,8 +171,7 @@ struct RisultatoBiblioteca: Equatable {
 
     func dimentica(_ id: String) {
         memoria[id] = nil
-        cache[id] = nil
-        ordineCache.removeAll { $0 == id }
+        togliDallaCache(id)
         if persistente {
             let file = Self.cartella.appendingPathComponent("\(id).txt")
             Self.codaLettura.async { try? FileManager.default.removeItem(at: file) }

@@ -205,6 +205,12 @@ struct FoglioBiblioteca: View {
 // MARK: - Le pagine dei PDF
 
 #if os(macOS)
+/// Le righe di una pagina già calcolate (l'oggetto della cache: NSCache vuole una classe).
+private final class RighePaginaPDF {
+    let righe: [CGRect]
+    init(_ righe: [CGRect]) { self.righe = righe }
+}
+
 /// Le immagini delle pagine dei PDF (una alla volta, poche in memoria) e le righe della frase sulla pagina.
 enum PagineBiblioteca {
     private static let immagini: NSCache<NSString, NSImage> = {
@@ -213,9 +219,34 @@ enum PagineBiblioteca {
         return c
     }()
 
+    /// Gli ultimi PDF aperti (al più due): il foglio si ridisegna più volte per pagina (il giro, l'evidenziatore che
+    /// riparte, la frase di Vera) e riaprire il file vorrebbe dire rileggerlo e analizzarlo dal disco ogni volta.
+    private static let documenti: NSCache<NSString, PDFDocument> = {
+        let c = NSCache<NSString, PDFDocument>()
+        c.countLimit = 2
+        return c
+    }()
+
+    /// Le righe delle frasi per documento, pagina e frasi: con la cache piena il ridisegno non rifà `selection(for:)`.
+    private static let righeFatte: NSCache<NSString, RighePaginaPDF> = {
+        let c = NSCache<NSString, RighePaginaPDF>()
+        c.countLimit = 12
+        return c
+    }()
+
     private static func pagina(_ d: DocumentoBiblioteca, _ n: Int) -> PDFPage? {
         let url = StatoTrovaPagina.cartella.appendingPathComponent(d.file)
-        guard FileManager.default.fileExists(atPath: url.path), let pdf = PDFDocument(url: url), n >= 1, n <= pdf.pageCount else { return nil }
+        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+        let chiave = url.path as NSString
+        let pdf: PDFDocument
+        if let aperto = documenti.object(forKey: chiave) {
+            pdf = aperto
+        } else {
+            guard let nuovo = PDFDocument(url: url) else { return nil }
+            documenti.setObject(nuovo, forKey: chiave)
+            pdf = nuovo
+        }
+        guard n >= 1, n <= pdf.pageCount else { return nil }
         return pdf.page(at: n - 1)
     }
 
@@ -253,11 +284,16 @@ enum PagineBiblioteca {
 
     /// Le righe delle frasi sulla pagina (0…1, origine in alto): `selection(for:)` e `selectionsByLine()`.
     static func righe(_ d: DocumentoBiblioteca, pagina n: Int, frasi: [String]) -> [CGRect] {
-        guard !frasi.isEmpty, let p = pagina(d, n), let s = p.string else { return [] }
+        guard !frasi.isEmpty else { return [] }
+        // Contano solo i primi 400 caratteri di ogni frase (quelli cercati sulla pagina): la chiave tiene solo quelli
+        let cercate = frasi.map { String($0.prefix(400)) }
+        let chiave = "\(d.id)#\(n)#\(cercate.joined(separator: "\u{1}"))" as NSString
+        if let fatte = righeFatte.object(forKey: chiave) { return fatte.righe }
+        guard let p = pagina(d, n), let s = p.string else { return [] }
         let b = p.bounds(for: .mediaBox)
         var r: [CGRect] = []
-        for f in frasi {
-            guard let intervallo = MotoreBiblioteca.intervallo(String(f.prefix(400)), in: s),
+        for f in cercate {
+            guard let intervallo = MotoreBiblioteca.intervallo(f, in: s),
                   let sel = p.selection(for: NSRange(intervallo, in: s)) else { continue }
             for riga in sel.selectionsByLine() {
                 let x = riga.bounds(for: p)
@@ -265,7 +301,14 @@ enum PagineBiblioteca {
                                 width: x.width / b.width, height: x.height / b.height))
             }
         }
+        righeFatte.setObject(RighePaginaPDF(r), forKey: chiave)
         return r
+    }
+
+    /// Alla chiusura della Biblioteca: i PDF aperti e le righe non servono più (il Mac ha poca memoria).
+    static func libera() {
+        documenti.removeAllObjects()
+        righeFatte.removeAllObjects()
     }
 }
 #endif

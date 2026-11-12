@@ -34,8 +34,9 @@ struct Presentazione {
 
 extension StatoShell {
     /// Mostra il documento a tutto schermo. Per un documento di un cliente accende anche la modalità cliente.
-    /// Prima la sala compare in dissolvenza sopra la scrivania, poi (a dissolvenza finita) la finestra passa a
-    /// tutto schermo: sotto la sala non si reimpagina niente.
+    /// Prima la sala compare in dissolvenza sopra la scrivania, poi (a dissolvenza finita) si accende la modalità
+    /// cliente e la finestra passa a tutto schermo: sotto la sala non si reimpagina niente mentre il velo scende.
+    /// Senza animazioni (`persistente` falso: prove e istantanee) la modalità cliente si accende subito.
     /// `daPagina`: la pagina da cui si parte (quella dell'anteprima di Prospetti).
     func presenta(_ d: DocumentoStampabile, delCliente: Bool = true, daPagina: Int = 0) {
         guard !d.pagine.isEmpty else { return }
@@ -65,9 +66,23 @@ extension StatoShell {
         Movimenti.anima(Tema.Moto.Pannelli.presentazione, durata: Tema.Moto.Pannelli.durataPresentazione, animato: persistente) {
             presentazione = p
         }
+        // Un giro nuovo: ciò che parte a dissolvenza finita vale solo per questa presentazione (la chiusura cambia giro)
+        let giro = sistema.giroPresentazione &+ 1
+        sistema.giroPresentazione = giro
         if accendeModoCliente {
-            entraModoCliente(avviso: false)
-            presentazione?.haAccesoModoCliente = inModoCliente
+            if persistente {
+                // La modalità cliente azzera i dati ricavati e rifà i body di tutte le finestre aperte, documento di
+                // Prospetti compreso: parte a velo opaco e foglio cresciuto, sotto la sala, non nel primo fotogramma
+                // della dissolvenza (che altrimenti salta)
+                let idCliente = p.clienteId
+                Movimenti.dopo(Tema.Moto.Pannelli.durataPresentazione) { [weak self] in
+                    guard let self, self.sistema.giroPresentazione == giro, self.presentazione != nil,
+                          !self.inModoCliente, self.clienteAttivoId == idCliente else { return }
+                    self.accendiModoClienteDellaSala()
+                }
+            } else {
+                accendiModoClienteDellaSala()
+            }
         }
         if pannelloNotifiche { pannelloNotifiche = false }
         if sistema.pannelloNovita { sistema.pannelloNovita = false }
@@ -77,8 +92,6 @@ extension StatoShell {
         #if os(macOS)
         if persistente { NSApp.keyWindow?.makeFirstResponder(nil) }
         guard let finestra = schermoIntero else { return }
-        let giro = sistema.giroPresentazione &+ 1
-        sistema.giroPresentazione = giro
         Movimenti.dopo(Tema.Moto.Pannelli.durataPresentazione) { [weak self, weak finestra] in
             guard let self, let finestra, self.sistema.giroPresentazione == giro, self.presentazione != nil,
                   !finestra.styleMask.contains(.fullScreen) else { return }
@@ -88,6 +101,12 @@ extension StatoShell {
         // Su iPhone e iPad la sala è già a tutto schermo: basta togliere la tastiera dai campi sotto il velo
         if persistente { _ = UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }
         #endif
+    }
+
+    /// La modalità cliente accesa dalla presentazione: all'uscita si spegne.
+    private func accendiModoClienteDellaSala() {
+        entraModoCliente(avviso: false)
+        presentazione?.haAccesoModoCliente = inModoCliente
     }
 
     func paginaSeguente() {

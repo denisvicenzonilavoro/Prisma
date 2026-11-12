@@ -55,7 +55,7 @@ extension ProvaBackup {
 
         // La regola dei contatori, campo per campo, uguale a `stessiCalcoli` (calcoli) e alle note (versioneNote)
         let altroCliente = stato.dati.clienti.last!.id
-        let modifiche: [(String, (DatiVivi) -> Void)] = [
+        var modifiche: [(String, (DatiVivi) -> Void)] = [
             ("una nota", { $0.note[0].testo += "·" }),
             ("una nota nuova", { $0.note.append(Nota(clienteId: altroCliente, titolo: "Prova", testo: "")) }),
             ("le conversazioni", { $0.conversazioni["prova"] = [] }),
@@ -83,6 +83,7 @@ extension ProvaBackup {
             ("il profilo di stile", { $0.impostazioni.stileVera.firma = .scritta("Prova") }),
             ("le voci chiuse del sussurro", { $0.sussurriChiusi.append(SussurroChiuso(clienteId: altroCliente, chiave: "prova", chiusoIl: Date())) }),
         ]
+        modifiche += modificheNeutre(altroCliente)
         for (nome, modifica) in modifiche {
             let prima = stato.dati.istantanea
             let (s, c, n, v) = (segnali, stato.versioneCalcoli, stato.versioneNote, stato.versioneDati)
@@ -99,6 +100,15 @@ extension ProvaBackup {
             }
             guard (stato.versioneNote != n) == (dopo.note != prima.note) else {
                 return "dati a pezzi: \(nome): la versione delle note non segue le note"
+            }
+        }
+        // I campi neutri scritti spesso (ascolto del copilota, Prisma ovunque, storie, ⌘K): nessuna cache rifatta, nemmeno
+        // quella del cliente toccato
+        for (nome, modifica) in modificheNeutre(altroCliente) {
+            let (c, vc) = (stato.versioneCalcoli, stato.versioneCliente(altroCliente))
+            modifica(stato.dati)
+            guard stato.versioneCalcoli == c, stato.versioneCliente(altroCliente) == vc else {
+                return "dati a pezzi: \(nome) rifà le cache dei calcoli"
             }
         }
         guard clientiAttivi == [altroCliente] else { return "dati a pezzi: il cambio del cliente attivo non si annuncia una volta sola" }
@@ -128,6 +138,21 @@ extension ProvaBackup {
         stato.dati.clienti[0].nome += "·"
         guard segnali == s1 + 2 else { return "dati a pezzi: dopo carica le modifiche non fanno più partire il salvataggio" }
         return nil
+    }
+
+    /// I campi che non entrano in nessun calcolo in cache e si scrivono spesso: una frase finita durante l'ascolto del
+    /// copilota, una sincronizzazione di Prisma ovunque, la storia della settimana aperta, una ricerca salvata di ⌘K.
+    static func modificheNeutre(_ cliente: String) -> [(String, (DatiVivi) -> Void)] {
+        [
+            ("le sessioni del copilota", { $0.sessioniCopilota += ProvaBackup.sessioniCopilotaDiProva(clienteId: cliente) }),
+            ("il giornale di Prisma ovunque", { $0.giornaleOvunque = [] }),
+            ("i conflitti di Prisma ovunque", { $0.conflittiOvunque = [] }),
+            ("gli arrivi di Prisma ovunque", { $0.arriviOvunque = [] }),
+            ("le inquadrature dall'iPhone", { $0.inquadratureDaConfermare = [] }),
+            ("le impostazioni di Prisma ovunque", { $0.impostazioni.ovunque.lamport += 1 }),
+            ("la storia già vista", { $0.impostazioni.storie.ultimoAnnoVisto = ($0.impostazioni.storie.ultimoAnnoVisto ?? 2000) + 1 }),
+            ("le ricerche salvate", { $0.impostazioni.ricercheSalvate.insert(RicercaSalvata(nome: "Prova", testo: "prova"), at: 0) }),
+        ]
     }
 
     /// Le letture mirate della revisione della tappa 1: l'ora e il giorno arrivano alle viste dei dati ricavati,

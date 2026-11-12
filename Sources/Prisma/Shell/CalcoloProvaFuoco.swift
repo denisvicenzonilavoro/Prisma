@@ -13,16 +13,59 @@ final class CalcoloProvaFuoco: ObservableObject {
     private var chiaveBase: Int?
     private var compito: Task<Void, Never>?
     private var sequenza = SequenzaRicalcoli()
+    /// La base che si sta preparando fuori dal thread principale, con la sua chiave.
+    private var compitoBase: Task<Void, Never>?
+    private var chiaveInPreparazione: Int?
+    /// Lo scenario chiesto mentre la base si prepara: si calcola appena la base c'è (vince l'ultimo).
+    private var scenarioInAttesa: ScenarioFuoco?
 
     /// Prepara (o riusa) la base. `chiave` cambia quando cambiano i dati dei calcoli o il giorno.
+    /// La base passa in rassegna tutti i clienti (composizione di ogni posizione, copertura di ogni obiettivo con le
+    /// sue proiezioni): si prepara fuori dal thread principale, così aprire la prova del fuoco non ferma la finestra.
+    /// Intanto gli scenari chiesti aspettano (`scenarioInAttesa`) e «Ricalcolo…» segue `inCorso`, come per lo scenario.
     func preparaBase(chiave: Int, clienti: [Cliente], posizioni: [Posizione], obiettivi: [Obiettivo], oggi: Date) {
-        guard chiave != chiaveBase || base == nil else { return }
-        base = MotoreProvaFuoco.prepara(clienti: clienti, posizioni: posizioni, obiettivi: obiettivi, oggi: oggi)
-        chiaveBase = chiave
+        if compitoBase != nil {
+            if chiave == chiaveInPreparazione { return }
+        } else if chiave == chiaveBase, base != nil {
+            return
+        }
+        compitoBase?.cancel()
+        // Uno scenario sulla base di prima non vale più: si rifà sulla nuova
+        compito?.cancel()
+        compito = nil
+        _ = sequenza.nuovo()
+        chiaveInPreparazione = chiave
+        inCorso = true
+        compitoBase = Task { @MainActor [weak self] in
+            // Annullabile come `MotoreProvaFuoco.calcolaInSottofondo`: annullato il compito, la preparazione si ferma
+            // al cliente successivo e il risultato è nil
+            let lavoro = Task.detached(priority: .userInitiated) { () -> BaseProvaFuoco? in
+                MotoreProvaFuoco.prepara(clienti: clienti, posizioni: posizioni, obiettivi: obiettivi, oggi: oggi,
+                                         annullato: { Task.isCancelled })
+            }
+            let nuova = await withTaskCancellationHandler { await lavoro.value } onCancel: { lavoro.cancel() }
+            guard let self, !Task.isCancelled, self.chiaveInPreparazione == chiave, let nuova else { return }
+            self.base = nuova
+            self.chiaveBase = chiave
+            self.chiaveInPreparazione = nil
+            self.compitoBase = nil
+            if let s = self.scenarioInAttesa {
+                self.scenarioInAttesa = nil
+                self.ricalcola(s)
+            } else {
+                self.inCorso = false
+            }
+        }
     }
 
-    /// Lancia il calcolo dello scenario (annulla quello in corso). Senza base non fa niente.
+    /// Lancia il calcolo dello scenario (annulla quello in corso). Con la base in preparazione lo scenario aspetta
+    /// la base; senza base non fa niente.
     func ricalcola(_ s: ScenarioFuoco) {
+        if compitoBase != nil {
+            scenarioInAttesa = s
+            inCorso = true
+            return
+        }
         guard let base else { return }
         compito?.cancel()
         let numero = sequenza.nuovo()
@@ -46,10 +89,14 @@ final class CalcoloProvaFuoco: ObservableObject {
         compito = nil
     }
 
-    /// La vista si chiude: niente calcoli a metà.
+    /// La vista si chiude: niente calcoli a metà (neppure la base: la prossima apertura la riprepara).
     func ferma() {
         compito?.cancel()
         compito = nil
+        compitoBase?.cancel()
+        compitoBase = nil
+        chiaveInPreparazione = nil
+        scenarioInAttesa = nil
         _ = sequenza.nuovo()
         inCorso = false
     }

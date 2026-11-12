@@ -13,7 +13,9 @@ import SwiftUI
 @MainActor
 struct MessaggiTelefono: View {
     @Environment(StatoShell.self) var stato
-    @StateObject private var sessione = SessioneMessaggi()
+    /// La sessione (`@Observable`): qui si leggono solo l'occasione scelta e il messaggio riaperto dal dossier, così il
+    /// testo che arriva dal Mac o un tasto nel messaggio non rifanno tutta la schermata.
+    @State private var sessione = SessioneMessaggi()
     @Environment(\.prismaScatto) private var scatto
 
     private typealias T = Tema.Apple.Messaggi.Telefono
@@ -58,8 +60,8 @@ struct MessaggiTelefono: View {
     }
 
     private func compositore(_ o: OccasioneMessaggio, cliente c: Cliente, richiesta: RichiestaIstantaneaMessaggi?) -> some View {
-        let tono: Binding<TonoMessaggio> = richiesta.map { r in Binding.constant(r.tono) } ?? $sessione.tono
-        let canale: Binding<CanaleMessaggio> = richiesta.map { r in Binding.constant(r.canale) } ?? $sessione.canale
+        let tono: Binding<TonoMessaggio> = richiesta.map { r in Binding.constant(r.tono) } ?? Bindable(sessione).tono
+        let canale: Binding<CanaleMessaggio> = richiesta.map { r in Binding.constant(r.canale) } ?? Bindable(sessione).canale
         let fisso: TestoScrittoMessaggio? = scatto
             ? (richiesta?.scritto(o, cliente: c, stato: stato)
                ?? RichiestaIstantaneaMessaggi.testo(o, cliente: c, stato: stato, tono: sessione.tono, canale: sessione.canale,

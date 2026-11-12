@@ -422,15 +422,20 @@ struct TagliandoChatVista: View {
 
 // MARK: - L'esito in memoria, sempre aggiornato
 
-/// Rifà l'esito del tagliando (solo in memoria, il registro non si tocca) fuori dal body: un lavoro sul thread
-/// principale, rinviato e annullabile, così più schede in chat e la card della colonna fanno un solo controllo.
-/// Niente Timer. Non parte in modalità cliente, nelle istantanee né se l'esito è già quello dei dati di adesso.
+/// Rifà l'esito del tagliando (solo in memoria, il registro non si tocca) fuori dal body: un lavoro rinviato e
+/// annullabile, così più schede in chat e la card della colonna fanno un solo controllo. Niente Timer. Non parte in
+/// modalità cliente, nelle istantanee né se l'esito è già quello dei dati di adesso.
+/// Nell'app vera il controllo (tutte le coppie di clienti, ogni scheda) gira in sottofondo su una copia dei dati: con
+/// Vera aperta ogni modifica di un cliente lo rifà, e sul thread principale fermerebbe la finestra. Nelle prove resta
+/// sul thread principale, come prima.
 enum RinvioEsitoTagliando {
     /// L'attesa che raggruppa i cambi ravvicinati (più correzioni di fila, più viste che compaiono insieme).
     static let attesa: TimeInterval = 0.4
     private nonisolated(unsafe) static var lavoro: DispatchWorkItem?
     /// true se almeno una richiesta in attesa vuole rifare l'esito anche se c'è già.
     private nonisolated(unsafe) static var forza = false
+    /// La coda del controllo in sottofondo: uno alla volta.
+    private static let coda = DispatchQueue(label: "prisma.tagliando", qos: .userInitiated)
 
     /// `istantanea`: nelle istantanee si disegna lo stato preparato, niente lavori rinviati.
     static func rifai(_ stato: StatoShell, soloSeManca: Bool, istantanea: Bool = false) {
@@ -448,10 +453,45 @@ enum RinvioEsitoTagliando {
                 // «Controlla adesso», le azioni): se è già quella dei dati di adesso e di oggi non si rifà due volte
                 guard tutto, !stato.esitoTagliandoAttuale else { return }
             }
-            stato.aggiornaEsitoTagliando()
+            if stato.persistente {
+                controllaInSottofondo(stato)
+            } else {
+                stato.aggiornaEsitoTagliando()
+            }
         }
         lavoro = w
         DispatchQueue.main.asyncAfter(deadline: .now() + attesa, execute: w)
+    }
+
+    /// Lo stesso controllo di `aggiornaEsitoTagliando`, sui dati di adesso copiati qui (sul thread principale), fatto
+    /// sulla coda. L'esito si scrive sul thread principale solo se intanto i dati dei calcoli non sono cambiati (ci pensa
+    /// la richiesta nata dal cambio) e nessuna azione ha già rifatto l'elenco.
+    private static func controllaInSottofondo(_ stato: StatoShell) {
+        let versione = stato.versioneCalcoli
+        let clienti = stato.clientiDelTagliando
+        let posizioni = stato.dati.posizioni
+        let appuntamenti = stato.dati.appuntamenti
+        let incontri = stato.dati.incontri
+        let documenti = stato.dati.documenti
+        let regole = stato.dati.impostazioni.conformita
+        let ignorate = Set(stato.dati.tagliando.ignorate)
+        let adesso = Date()
+        coda.async { [weak stato] in
+            let esito = TagliandoVera.controlla(clienti: clienti, posizioni: posizioni, appuntamenti: appuntamenti,
+                                                incontri: incontri, documenti: documenti, regole: regole, oggi: adesso,
+                                                ignorate: ignorate)
+            DispatchQueue.main.async { [weak stato] in
+                guard let stato, !stato.inModoCliente, !stato.esitoTagliandoAttuale else { return }
+                guard stato.versioneCalcoli == versione else {
+                    // Dati cambiati durante il controllo: con un esito in memoria lo rifà la richiesta nata dal cambio
+                    // (onChange di versioneCalcoli); senza esito quelle richieste non partono, quindi si chiede di nuovo qui
+                    if stato.esitoTagliando == nil { RinvioEsitoTagliando.rifai(stato, soloSeManca: true) }
+                    return
+                }
+                stato.esitoTagliando = esito
+                stato.versioneEsitoTagliando = versione
+            }
+        }
     }
 }
 

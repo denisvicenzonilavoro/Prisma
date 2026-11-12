@@ -44,6 +44,8 @@ import CoreGraphics
     @ObservationIgnored private var caricata = false
     @ObservationIgnored private var pdfInMemoria: [String: Data] = [:]
     @ObservationIgnored private var immagini: [String: CGImage] = [:]
+    /// Le chiavi di `immagini` dalla meno recente alla più recente: esce per prima la pagina vista da più tempo.
+    @ObservationIgnored private var ordineImmagini: [String] = []
     /// I riquadri delle pagine già letti (il body della pagina non riapre il PDF a ogni ridisegno).
     @ObservationIgnored private var riquadri: [String: CGRect] = [:]
     private static let coda = DispatchQueue(label: "prisma.moduli", qos: .userInitiated)
@@ -59,6 +61,7 @@ import CoreGraphics
         caricata = false
         modelli = []
         immagini = [:]
+        ordineImmagini = []
         riquadri = [:]
         azzeraCompilazione()
         revisione = nil
@@ -101,15 +104,29 @@ import CoreGraphics
     /// La pagina disegnata (larga `larghezza` pixel), tenuta in memoria per le ultime pagine viste.
     func immagine(_ m: ModelloModulo, pagina: Int, larghezza: CGFloat) -> CGImage? {
         let chiave = "\(m.id)-\(pagina)-\(Int(larghezza))"
-        if let i = immagini[chiave] { return i }
+        if let i = immagini[chiave] {
+            if ordineImmagini.last != chiave {
+                ordineImmagini.removeAll { $0 == chiave }
+                ordineImmagini.append(chiave)
+            }
+            return i
+        }
         guard let d = pdf(m) else { return nil }
-        let i: CGImage? = autoreleasepool {
+        // Il PDF si apre e si chiude a ogni pagina nuova: tenuto aperto, conserverebbe in memoria le immagini già
+        // decodificate (le scansioni pesano)
+        let disegnata: CGImage? = autoreleasepool {
             guard let doc = PDFDocument(data: d), let p = doc.page(at: pagina) else { return nil }
             return Self.disegna(p, larghezza: larghezza)
         }
-        // Al più quattro pagine in memoria (Mac con 8 GB)
-        if immagini.count >= 4 { immagini.removeAll() }
+        guard let i = disegnata else { return nil }
+        // Al più quattro pagine in memoria (Mac con 8 GB): esce la meno recente, così un modulo di cinque o più
+        // pagine non ridisegna a ogni freccia quelle appena viste
+        while immagini.count >= 4, !ordineImmagini.isEmpty {
+            let vecchia = ordineImmagini.removeFirst()
+            immagini[vecchia] = nil
+        }
         immagini[chiave] = i
+        ordineImmagini.append(chiave)
         return i
     }
 
@@ -170,6 +187,7 @@ import CoreGraphics
         modelli.removeAll { $0.id == id }
         pdfInMemoria[id] = nil
         immagini = immagini.filter { !$0.key.hasPrefix(id) }
+        ordineImmagini.removeAll { $0.hasPrefix(id) }
         riquadri = riquadri.filter { !$0.key.hasPrefix(id) }
         if scelto == id { scelto = nil; azzeraCompilazione() }
         if persistente {
