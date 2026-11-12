@@ -183,7 +183,12 @@ struct CorpoShell: View {
                 raccogliURL(fornitori) { stato.importaFileTrascinati($0) }
                 return true
             }
-            .onAppear { aggiornaArea(geo.size) }
+            .onAppear {
+                aggiornaArea(geo.size)
+                // Le ombre delle finestre e del dettaglio si sfocano una volta fuori dal thread principale, prima della
+                // prima apertura (mai nelle istantanee e nelle prove: lì si disegnano dove servono, come sempre)
+                if !modoIstantanea { OmbraPrecalcolata.preparaShell() }
+            }
             // La dimensione nuova, non l'area calcolata nel disegno precedente (durante la presentazione, quella congelata)
             .onChange(of: geo.size) { aggiornaArea(misuraCongelata ?? $0) }
             .onChange(of: dockNascosto) { nascosto in

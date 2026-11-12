@@ -38,10 +38,36 @@ private enum FiltroPratiche: Hashable {
     case ferme, concluse
 }
 
+/// Ciò da cui dipendono gli stati delle pratiche: i dati dei calcoli (versione, giorno, modalità cliente, come
+/// `datiDeiCalcoli`) e le pratiche, le schede e le impostazioni lette vive. Gli array si confrontano subito quando
+/// sono gli stessi dell'archivio (stesso buffer).
+private struct IngressiStatiPratiche: Equatable {
+    let versione: Int
+    let giorno: Date
+    let modo: String?
+    let pratiche: [Pratica]
+    let schede: [SchedaAdeguatezza]
+    let impostazioni: Impostazioni
+}
+
+/// Gli stati delle pratiche dell'ultima rivalutazione: il dettaglio che si apre o si chiude ridisegna la scheda più
+/// volte per animazione, e MotorePratiche (indici su posizioni, clienti e documenti) si rifà solo se cambia un ingresso.
+private final class CacheStatiPratiche {
+    private var ultimo: (ingressi: IngressiStatiPratiche, stati: [StatoPratica])?
+
+    func stati(_ ingressi: IngressiStatiPratiche, calcola: () -> [StatoPratica]) -> [StatoPratica] {
+        if let u = ultimo, u.ingressi == ingressi { return u.stati }
+        let v = calcola()
+        ultimo = (ingressi, v)
+        return v
+    }
+}
+
 private struct CorpoPraticheDopo: View {
     let stato: StatoShell
     @StateObject private var dettaglio: StatoDettaglio
     @State private var filtro: FiltroPratiche?
+    @State private var cache = CacheStatiPratiche()
 
     private typealias P = Tema.Apple.PraticheDopo
     private typealias D = Tema.Apple.PraticheDopo.Dettaglio
@@ -54,7 +80,13 @@ private struct CorpoPraticheDopo: View {
 
     var body: some View {
         let oggi = Date()
-        let stati = stato.statiPratiche(oggi: oggi)
+        // Gli stessi ingressi che legge `statiPratiche` (la vista resta iscritta a tutti anche con la cache piena,
+        // all'ora e al giorno compresi: `derivatiValidi`)
+        _ = stato.derivatiValidi()
+        let ingressi = IngressiStatiPratiche(versione: stato.versioneCalcoli, giorno: Calendar.current.startOfDay(for: oggi),
+                                             modo: stato.modoCliente, pratiche: stato.dati.pratiche,
+                                             schede: stato.dati.schedeAdeguatezza, impostazioni: stato.dati.impostazioni)
+        let stati = cache.stati(ingressi) { stato.statiPratiche(oggi: oggi) }
         let soglia = stato.dati.impostazioni.pratiche.giorniFerma
         let r = MotorePratiche.riepilogo(stati, soglia: soglia, oggi: oggi)
         let d = dettaglio

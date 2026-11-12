@@ -553,25 +553,29 @@ private struct BaseMappa: View {
 // MARK: - Anello che pulsa
 
 /// Un anello arancio che pulsa (1,8 s, scala 1,35, opacità 0,35) con l'animazione di SwiftUI ripetuta; fermo a scala 1
-/// con calmo e nelle istantanee.
+/// con calmo e nelle istantanee. Con Prisma non in vista (finestra coperta o ridotta, Mac a riposo) la pulsazione si
+/// ferma, come le tele animate: nessuno la vede, e riparte quando Prisma torna in vista.
 struct AnelloPulsanteTerritorio: View {
     let raggio: CGFloat
     let colore: Color
     let spessore: CGFloat
 
     @Environment(\.prismaStatoFinale) private var fermo
+    @ObservedObject private var visibilita = VisibilitaPrisma.condivisa
     @State private var acceso = false
 
     private typealias Mo = Tema.Apple.Territorio.Moto
 
     var body: some View {
-        let pulsa = acceso && !fermo
+        let inVista = visibilita.visibile
+        let pulsa = acceso && !fermo && inVista
         Circle()
             .stroke(colore, lineWidth: spessore)
             .frame(width: 2 * raggio, height: 2 * raggio)
             .scaleEffect(pulsa ? Mo.scalaPulsazione : 1)
             .opacity(pulsa ? Mo.opacitaPulsazione : 1)
-            .animation(fermo ? nil : Mo.animazionePulsazione, value: pulsa)
+            // Senza animazione (fermo, o Prisma non in vista) il valore nuovo toglie la pulsazione ripetuta in corso
+            .animation(fermo || !inVista ? nil : Mo.animazionePulsazione, value: pulsa)
             .onAppear { if !fermo { acceso = true } }
     }
 }

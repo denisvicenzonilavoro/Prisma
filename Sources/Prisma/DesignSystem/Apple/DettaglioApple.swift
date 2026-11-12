@@ -419,11 +419,13 @@ private struct CorniceDettaglioApple<Interno: View>: View, Animatable {
     }
 
     /// Ombra esatta `dettaglio` col raggio finale fisso: la bitmap pronta non cambia durante l'animazione.
+    /// Uguale a sé stessa a ogni fotogramma (`equatable`): il suo body non si rifà mentre il contenitore cresce.
     @ViewBuilder private var ombra: some View {
         if presente {
             OmbraVetroPronta(raggio: Tema.Apple.Moto.DettaglioApre.raggioFinale,
                              strati: Tema.Apple.Ombra.dettaglio.strati(scuro: scuro),
                              misuraEsatta: false)
+                .equatable()
         }
     }
 }
