@@ -74,6 +74,14 @@ import SwiftUI
     /// Il blocco a transizione finita: l'acqua non riparte né si ferma a metà dell'animazione, e la scrivania
     /// nascosta si prepara all'entrata dello sblocco.
     var bloccatoStabile = false { didSet { avvisi &+= 1 } }
+
+    /// La finestra interna di `app` si vede: non coperta da una ingrandita, non nascosta dietro la sua istantanea, non
+    /// ridotta nel dock a genio finito e non sotto la schermata di blocco a transizione finita. Lo chiedono la sfera e i
+    /// puntini di Vera dentro la finestra (`\.prismaFinestra`, che resta lo stesso): coprire o scoprire una finestra
+    /// ridisegna solo loro, non tutto il contenuto dell'app come farebbe un valore d'ambiente che cambia.
+    func finestraInVista(_ app: AppPrisma) -> Bool {
+        !(coperte.contains(app) || nascoste.contains(app) || spente.contains(app) || (bloccato && bloccatoStabile))
+    }
     /// Misura della shell (non pubblicata): serve a sapere dov'è l'icona di un'app nel dock.
     @ObservationIgnored var misura: CGSize = .zero
     // Contatori delle transizioni (non pubblicati): un lavoro rimandato vale solo se nel frattempo non ne è partita un'altra

@@ -487,9 +487,9 @@ struct CorpoShell: View {
         // Le finestre ridotte tengono la cornice che avevano (con il dock nascosto): ridurre l'ultima non le reimpagina
         let areaRidotte = ShellView.area(per: misura, dockNascosto: true)
         let calmo = !modoIstantanea && Movimenti.calmo
-        // Tutte le finestre fuori vista a transizione finita: sotto il blocco (come la scrivania in PagineScrivania)
-        // o sotto la sala della presentazione
-        let sotto = (sistema.bloccato && sistema.bloccatoStabile) || sottoSala
+        // Tutte le finestre fuori vista sotto la sala della presentazione (cambia di rado: un valore d'ambiente va bene);
+        // coperte, nascoste, ridotte e sotto il blocco lo dice StatoFinestre.finestraInVista a chi lo chiede
+        let sotto = sottoSala
         return ZStack(alignment: .topLeading) {
             ForEach(CorpoShell.inOrdineFisso(elenco)) { f in
                 finestra(f, z: elenco.firstIndex(where: { $0.app == f.app }) ?? 0, attiva: f.app == attiva,
@@ -505,7 +505,7 @@ struct CorpoShell: View {
     /// FLIP (ingrandisci, affianca, spazi) e il volo dall'icona del dock e verso di lei (apertura, chiusura,
     /// riduzione, ripristino: VoloDallIcona, Shell/VoloFinestra.swift). Con «Riduci movimento» il volo è una
     /// dissolvenza breve. Il contenuto dell'app non si rifà durante i movimenti: cambiano solo i valori dei modificatori.
-    /// `sotto`: tutte le finestre sono fuori vista (sotto il blocco o la sala, a transizione finita).
+    /// `sotto`: tutte le finestre sono fuori vista (sotto la sala della presentazione, a dissolvenza finita).
     private func finestra(_ f: StatoShell.Finestra, z: Int, attiva: Bool, area: CGRect, calmo: Bool, sotto: Bool) -> some View {
         let c = stato.cornice(di: f, in: area)
         let w = max(c.width, 1)
@@ -515,9 +515,6 @@ struct CorpoShell: View {
         let nascosta = sistema.nascoste.contains(f.app)
         // Ridotta nel dock a genio finito (`spente`; nelle istantanee subito)
         let spenta = f.ridotta && (modoIstantanea || sistema.spente.contains(f.app))
-        // Fuori vista le animazioni continue del contenuto (la sfera e i puntini di Vera, `\.prismaInVista`) restano
-        // sull'ultimo fotogramma e ripartono quando la finestra torna davanti: niente trenta fotogrammi a opacità 0
-        let inVista = !(coperta || nascosta || spenta || sotto)
         let flip = sistema.flip[f.app]
         // Al suo posto se non sta uscendo dall'icona, se non è ridotta e se non vi sta rientrando (chiusa)
         let alSuoPosto = !arrivo && !f.ridotta && !sistema.rientrano.contains(f.app)
@@ -530,8 +527,13 @@ struct CorpoShell: View {
         // Chiusa dopo il volo nell'icona (o dal motore): la finestra se ne va senza transizione
         let uscita: AnyTransition = modoIstantanea || nascosta ? AnyTransition.identity
             : AnyTransition.chiusuraFinestra(ancora: centro)
+        // Fuori vista le animazioni continue del contenuto (la sfera e i puntini di Vera) restano sull'ultimo fotogramma
+        // e ripartono quando la finestra torna davanti: niente trenta fotogrammi a opacità 0. La finestra dice solo chi è
+        // (un valore che non cambia): se si vede lo chiede la sfera a StatoFinestre, così coprire, scoprire, ridurre o
+        // bloccare non propaga un valore nuovo in tutto il contenuto dell'app
         return FinestraInterna(finestra: f, attiva: attiva, area: area)
-            .environment(\.prismaInVista, inVista)
+            .environment(\.prismaFinestra, f.app)
+            .environment(\.prismaInVista, !sotto)
             .frame(width: c.width, height: c.height, alignment: .topLeading)
             .modifier(EffettoCornice(progresso: flip?.progresso ?? 1, da: flip?.da ?? c, a: c))
             .modifier(VoloDallIcona(alSuoPosto: alSuoPosto, icona: icona, misura: c.size, calmo: calmo))

@@ -28,6 +28,9 @@ struct SferaVera: View {
     @Environment(\.prismaStatoFinale) private var fermo
     /// Chi la contiene sa che non si vede (`\.prismaInVista`): la scrivania sotto una finestra o dietro Vera.
     @Environment(\.prismaInVista) private var inVista
+    /// La finestra interna che la contiene (nil fuori dalle finestre): se si vede lo dice StatoFinestre.
+    @Environment(\.prismaFinestra) private var finestra
+    @Environment(StatoShell.self) private var stato: StatoShell?
     /// Prisma non si vede (finestra nascosta, ridotta o coperta, Mac a riposo), come per la tela animata.
     @ObservedObject private var visibilita = VisibilitaPrisma.condivisa
     @State private var visibile = false
@@ -43,7 +46,8 @@ struct SferaVera: View {
         let muove = !fermo && visibile && (viva || pensa)
         // Fuori vista la sfera resta sull'ultimo fotogramma (niente salto a riposo) e riparte quando torna davanti:
         // trenta fotogrammi al secondo che nessuno vede sono lavoro tolto alle finestre e all'acqua
-        let sospesa = !inVista || !visibilita.visibile
+        // La finestra si chiede solo quando la sfera si muove: una sfera ferma non segue StatoFinestre
+        let sospesa = !inVista || !visibilita.visibile || (muove && !VisibilitaFinestra.inVista(finestra, stato))
         TimelineView(.animation(minimumInterval: 1 / Tema.Apple.Vera.Sfera.fotogrammi, paused: !muove || sospesa)) { contesto in
             corpo(muove ? Self.fase(al: contesto.date, viva: viva, pensa: pensa, inizioPensa: inizioPensa) : .riposo)
         }
@@ -130,14 +134,17 @@ struct SferaVera: View {
 /// di 5 con opacità 1, per il resto del ciclo resta a 0,4. Con calma e nelle istantanee fermi a 0,4.
 struct PuntiniScrittura: View {
     @Environment(\.prismaStatoFinale) private var fermo
-    /// Fuori vista (`\.prismaInVista`, Prisma che non si vede) i puntini restano dove sono, come la sfera.
+    /// Fuori vista (`\.prismaInVista`, la finestra che li contiene, Prisma che non si vede) i puntini restano dove sono,
+    /// come la sfera.
     @Environment(\.prismaInVista) private var inVista
+    @Environment(\.prismaFinestra) private var finestra
+    @Environment(StatoShell.self) private var stato: StatoShell?
     @ObservedObject private var visibilita = VisibilitaPrisma.condivisa
 
     var body: some View {
         let e = Tema.Apple.Vera.Puntini.self
         let m = Tema.Apple.Moto.Puntini.self
-        let sospesi = !inVista || !visibilita.visibile
+        let sospesi = !inVista || !visibilita.visibile || !VisibilitaFinestra.inVista(finestra, stato)
         TimelineView(.animation(minimumInterval: 1 / e.fotogrammi, paused: fermo || sospesi)) { contesto in
             let t = contesto.date.timeIntervalSinceReferenceDate
             HStack(spacing: e.spazio) {
@@ -320,7 +327,28 @@ private struct ChiavePrismaInVista: EnvironmentKey {
     static let defaultValue = true
 }
 
+private struct ChiavePrismaFinestra: EnvironmentKey {
+    static let defaultValue: AppPrisma? = nil
+}
+
+/// Se la finestra interna che contiene una vista si vede (StatoFinestre.finestraInVista). Fuori dalle finestre, senza lo
+/// stato della shell (vetrina, prove) o su iPhone e iPad vale sempre «in vista».
+enum VisibilitaFinestra {
+    @MainActor static func inVista(_ finestra: AppPrisma?, _ stato: StatoShell?) -> Bool {
+        guard let finestra, let stato else { return true }
+        return stato.sistema.finestraInVista(finestra)
+    }
+}
+
 extension EnvironmentValues {
+    /// La finestra interna che contiene la vista (nil fuori dalle finestre): un valore che non cambia mai per la stessa
+    /// finestra. La sfera e i puntini di Vera chiedono a StatoFinestre se si vede (VisibilitaFinestra), così coprire o
+    /// scoprire una finestra non ridisegna tutto il suo contenuto.
+    var prismaFinestra: AppPrisma? {
+        get { self[ChiavePrismaFinestra.self] }
+        set { self[ChiavePrismaFinestra.self] = newValue }
+    }
+
     /// false quando chi contiene la vista sa che non si vede, a transizione finita: la scrivania sotto una finestra
     /// ingrandita, dietro la pagina di Vera o sotto la schermata di blocco (PagineScrivania). La sfera e i puntini di
     /// Vera si fermano dove sono e ripartono quando la vista torna davanti; l'aspetto non cambia.
