@@ -353,6 +353,8 @@ extension Tema.Apple {
             static let aumento: CGFloat = 0.36
             static let portata: CGFloat = 130
             static var animazione: Animation { Curva.ease.animazione(durata) }
+            /// Con il puntatore già sul dock le icone lo seguono con una molla brevissima, senza rimbalzo.
+            static let segui = Animation.interactiveSpring(response: 0.09, dampingFraction: 1)
             static func scala(distanza: CGFloat) -> CGFloat { 1 + aumento * max(0, 1 - distanza / portata) }
         }
 

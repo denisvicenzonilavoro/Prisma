@@ -2,7 +2,8 @@ import SwiftUI
 
 /// Dock delle applicazioni: capsula di vetro sottile con la Scrivania, il divisore e le app.
 /// Sul Mac le icone (50 pt) si ingrandiscono al passaggio del puntatore come nel Dock di macOS
-/// (template-apple-specifica.md §3.4: s = 1 + 0,36 · max(0, 1 − d/130), in 0,14 s, il dock cresce verso l'alto),
+/// (template-apple-specifica.md §3.4: s = 1 + 0,36 · max(0, 1 − d/130), in 0,14 s; dal 12 novembre 2026 la capsula
+/// non si alza più con le icone, che escono sopra di lei come nel Dock del Mac),
 /// rimbalzano al clic e sopra l'icona compare il fumetto con il nome. Con «Riduci movimento», nelle istantanee
 /// e su iPhone e iPad niente ingrandimento né rimbalzo.
 /// Il Dock legge lo stato condiviso (app consentite, attiva, aperte); il passaggio vive in `FilaDock`,
@@ -151,8 +152,15 @@ private struct FilaDock: View, Equatable {
             let aumenti = ingrandimenti(puntatore).reduce(CGFloat(0)) { somma, s in somma + (s - 1) }
             let crescita = aumenti * Tema.Misura.dockIcona
             let x = p.x - crescita / 2
-            if let vecchia = puntatore, abs(vecchia - x) < Tema.Misura.filo { return }
-            withAnimation(Tema.Apple.Moto.IngrandimentoDock.animazione) { puntatore = x }
+            guard let vecchia = puntatore else {
+                // Entrando le icone crescono con la curva del tema
+                withAnimation(Tema.Apple.Moto.IngrandimentoDock.animazione) { puntatore = x }
+                return
+            }
+            guard abs(vecchia - x) >= Tema.Misura.filo else { return }
+            // Poi seguono il puntatore quasi senza ritardo, come il Dock del Mac: una molla brevissima che si
+            // riaggancia a ogni movimento (una curva a tempo fisso le farebbe inseguire il puntatore)
+            withAnimation(Tema.Apple.Moto.IngrandimentoDock.segui) { puntatore = x }
         case .ended:
             guard puntatore != nil else { return }
             withAnimation(Tema.Apple.Moto.IngrandimentoDock.animazione) { puntatore = nil }
@@ -274,9 +282,10 @@ struct ElementoDock<Icona: View>: View {
             VStack(spacing: 0) {
                 icona()
                     .frame(width: lato, height: lato)
-                    // Una scala (l'immagine resta nitida: le icone sono PNG da 512 px), poi la cella della misura nuova
+                    // Una scala (l'immagine resta nitida: le icone sono PNG da 512 px). La cella si allarga (le vicine
+                    // fanno posto) ma non si alza: l'icona esce sopra la capsula e il dock resta dov'è, come sul Mac
                     .scaleEffect(ingrandimento, anchor: .bottom)
-                    .frame(width: lato * ingrandimento, height: lato * ingrandimento, alignment: .bottom)
+                    .frame(width: lato * ingrandimento, height: lato, alignment: .bottom)
                     .corniceIconaDock(app)
                     .modifier(RimbalzoIconaDock(fase: CGFloat(rimbalzo)))
                 Text(etichetta)
@@ -310,6 +319,8 @@ struct ElementoDock<Icona: View>: View {
                     .alignmentGuide(VerticalAlignment.top) { d in
                         d[VerticalAlignment.bottom] + m.suggerimentoDistanza
                     }
+                    // Sopra l'icona ingrandita, che esce dalla cella
+                    .offset(y: -(ingrandimento - 1) * lato)
                     .transition(.opacity)
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)

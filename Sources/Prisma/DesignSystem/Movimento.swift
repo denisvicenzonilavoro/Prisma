@@ -207,8 +207,10 @@ extension Tema.Moto {
     }
 
     enum Dock {
-        static let mostra = Tema.Moto.uscita(0.2)
-        static let nascondi = Animation.easeIn(duration: 0.16)
+        static let mostra = Tema.Moto.uscita(durataMostra)
+        static let durataMostra: Double = 0.2
+        static let nascondi = Animation.easeIn(duration: durataNascondi)
+        static let durataNascondi: Double = 0.16
         static let ritardoNascondi: Double = 0.35
         /// Il fumetto con il nome sopra l'icona: compare e scompare subito, con una dissolvenza brevissima.
         static let suggerimento = Animation.easeOut(duration: 0.08)

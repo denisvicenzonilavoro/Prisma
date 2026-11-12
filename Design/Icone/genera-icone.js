@@ -20,6 +20,8 @@
  *     (--uscita scrive tutto in un'altra cartella, senza toccare il repository)
  *   NODE_PATH=$(npm root -g) node Design/Icone/genera-icone.js --solo-nuove
  *     (rigenera solo le icone di ICONE_NUOVE e la tavola di controllo: le altre PNG non si toccano)
+ *   NODE_PATH=$(npm root -g) node Design/Icone/genera-icone.js --solo-vera
+ *     (rigenera solo l'icona di Vera, ridisegnata il 12 novembre 2026 (VERA qui sotto), e la tavola di controllo)
  *
  * Geometria (uguale alle icone precedenti, così l'app non cambia codice):
  *   tela 512×512, piastrella 480×480 in (16, 12), raggio 23,5% come `.ic` del tema.
@@ -48,7 +50,8 @@ const USCITA = arg > 0 ? path.resolve(process.argv[arg + 1]) : null;
 const DIR_SVG = USCITA ? path.join(USCITA, 'svg') : path.join(RADICE, 'Design', 'Icone');
 const DIR_PNG = USCITA ? path.join(USCITA, 'png') : path.join(RADICE, 'Sources', 'Prisma', 'Risorse', 'Icone');
 const DIR_APP = USCITA ? USCITA : path.join(RADICE, 'Design', 'Icone');
-const SOLO_NUOVE = process.argv.includes('--solo-nuove');
+const SOLO_VERA = process.argv.includes('--solo-vera');
+const SOLO_NUOVE = process.argv.includes('--solo-nuove') || SOLO_VERA;
 
 // Nome del file nell'app → id nel tema (mappa di AppPrisma.icona)
 const ICONE = [
@@ -67,6 +70,35 @@ const SORGENTI_NUOVE = [
   [LUCE, ['Sala', 'Territorio', 'Pratiche', 'Biblioteca']]
 ];
 const ICONE_NUOVE = SORGENTI_NUOVE.flatMap(([, nomi]) => nomi);
+
+// Vera ridisegnata (12 novembre 2026, scelta lasciata a Claude dall'utente): non più il glifo del tema ma la sua
+// sfera luminosa, più grande e viva. Un alone morbido, la sfera di vetro con dentro una luce d'aurora (rosa e
+// azzurro sul viola), l'orlo chiaro, il riflesso in alto a sinistra, la luce che rimbalza in basso e una
+// stellina accanto. Riquadro 64 come gli altri glifi; gli id hanno il prefisso «v» (unici nella tela).
+const VERA = {
+  c1: '#9C84FA', c2: '#3B2FA6',
+  glifo: `<defs>
+      <radialGradient id="vAlone" cx="50%" cy="50%" r="50%"><stop offset=".6" stop-color="#E9DDFF" stop-opacity=".3"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+      <radialGradient id="vSfera" cx="36%" cy="30%" r="78%"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".12" stop-color="#F1E4FF"/><stop offset=".38" stop-color="#B892FF"/><stop offset=".7" stop-color="#6650E4"/><stop offset="1" stop-color="#2A2288"/></radialGradient>
+      <radialGradient id="vRosa" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#FF86CC" stop-opacity="1"/><stop offset="1" stop-color="#FF8FD0" stop-opacity="0"/></radialGradient>
+      <radialGradient id="vAzzurro" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#72DCFF" stop-opacity=".95"/><stop offset="1" stop-color="#7FE0FF" stop-opacity="0"/></radialGradient>
+      <linearGradient id="vOrlo" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset=".5" stop-color="#fff" stop-opacity=".25"/><stop offset="1" stop-color="#fff" stop-opacity=".6"/></linearGradient>
+      <clipPath id="vDentro"><circle cx="32" cy="33" r="19"/></clipPath>
+      <filter id="vSfoca" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.6"/></filter>
+      <filter id="vSfocaPoco" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation=".7"/></filter>
+    </defs>
+    <circle cx="32" cy="33" r="27" fill="url(#vAlone)"/>
+    <circle cx="32" cy="33" r="19" fill="url(#vSfera)"/>
+    <g clip-path="url(#vDentro)">
+      <ellipse cx="41" cy="41" rx="12" ry="8" transform="rotate(-28 41 41)" fill="url(#vRosa)" filter="url(#vSfoca)"/>
+      <ellipse cx="24" cy="44" rx="11" ry="6.5" transform="rotate(18 24 44)" fill="url(#vAzzurro)" filter="url(#vSfoca)"/>
+      <path d="M17 46c6 4 24 5 31-3" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="1.6" stroke-linecap="round" filter="url(#vSfocaPoco)"/>
+    </g>
+    <circle cx="32" cy="33" r="18.6" fill="none" stroke="url(#vOrlo)" stroke-width=".9"/>
+    <ellipse cx="25.5" cy="24.5" rx="6.2" ry="3.6" transform="rotate(-32 25.5 24.5)" fill="#fff" fill-opacity=".8" filter="url(#vSfocaPoco)"/>
+    <path d="m48 10.5 1.3 4 4 1.3-4 1.3-1.3 4-1.3-4-4-1.3 4-1.3Z" fill="#fff"/>
+    <circle cx="54" cy="23" r="1.1" fill="#fff" fill-opacity=".8"/>`
+};
 
 // Geometria
 const LATO = 512, P = 480, X0 = 16, Y0 = 12;
@@ -316,7 +348,8 @@ function svgTavola(voci) {
   // 2. Icone delle app (con --solo-nuove si saltano: restano le PNG che ci sono)
   const nomi = [];
   for (const [nome, id] of ICONE) {
-    if (SOLO_NUOVE) { nomi.push(nome); continue; }
+    // Vera non viene più dal tema: la disegna il passo 2a (VERA)
+    if (SOLO_NUOVE || id === 'vera') { nomi.push(nome); continue; }
     const a = dati(id);
     // Scrivania: il simbolo di Prisma al posto del prisma del tema
     const glifo = id === 'home' ? logoIn(tracciati, 32, 32.6, 38) : tema.glifi[id];
@@ -326,8 +359,16 @@ function svgTavola(voci) {
     nomi.push(nome);
   }
 
+  // 2a. Vera ridisegnata: sempre questa, anche con --solo-nuove e --solo-vera
+  {
+    const svg = svgIcona({ titolo: 'Vera', c1: VERA.c1, c2: VERA.c2, acc: null, chiara: false, glifo: VERA.glifo });
+    fs.writeFileSync(path.join(DIR_SVG, 'Vera.svg'), svg);
+    await rasterizza(pagina, svg, LATO, path.join(DIR_PNG, 'Vera.png'));
+  }
+
   // 2b. Icone nuove di «Orizzonte» e di «Luce», dai rispettivi template
   for (const [file, nomiIcone] of SORGENTI_NUOVE) for (const n of leggiNovita(file, nomiIcone)) {
+    if (SOLO_VERA) { nomi.push(n.nome); continue; }
     const svg = svgIcona({ titolo: n.nome, c1: n.c1, c2: n.c2, acc: null, chiara: false, glifo: n.glifo });
     fs.writeFileSync(path.join(DIR_SVG, n.nome + '.svg'), svg);
     await rasterizza(pagina, svg, LATO, path.join(DIR_PNG, n.nome + '.png'));

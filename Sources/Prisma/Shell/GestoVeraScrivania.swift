@@ -123,6 +123,8 @@ final class MonitorGestoVera {
                 fase = .segue
                 let g = s.sistema.gestoVera
                 g.partenza = partenza
+                // La pagina parte da qui: lo spazio per decidere la direzione non diventa uno scatto
+                g.avvio = dito
                 g.attivo = true
                 campiona(e.timestamp)
                 g.segui(dito: dito, larghezza: larghezza)
