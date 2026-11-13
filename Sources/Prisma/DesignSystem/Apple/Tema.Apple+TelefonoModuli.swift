@@ -22,4 +22,19 @@ extension Tema.Apple.Telefono {
         static let spazioAzioni: CGFloat = 10
         static let altezzaAzione: CGFloat = 44
     }
+
+    /// Il simulatore dell'iPhone (iOS/SimulatoreTelefono.swift): le ipotesi di partenza, l'altezza del grafico.
+    enum Simulatore {
+        static let capitale: Double = 10_000
+        static let mensile: Double = 100
+        static let anni = 10
+        static let anniMassimi = 50
+        static let altezzaGrafico: CGFloat = 200
+        static let passoPercento: Double = 0.1
+        static let spazio: CGFloat = 12
+        static let colonnaCifra: CGFloat = 120
+        static let coloreAtteso = Colori.Analisi.linea
+        static let colorePrudente = Colori.Analisi.prudente
+        static let coloreFavorevole = Colori.Analisi.favorevole
+    }
 }

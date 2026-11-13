@@ -173,6 +173,8 @@ struct AppTelefono: View {
         case .incontri: IncontriTelefono().navigationTitle(app.titolo)
         // Pratiche sull'iPhone («Luce» §7.3.4): «Dopo la firma» in sola lettura più «segna il passo» (PraticheTelefono.swift)
         case .pratiche: PraticheTelefono()
+        // Simulazioni sull'iPhone (13 novembre 2026, giro 5): il simulatore con i tre scenari (SimulatoreTelefono.swift)
+        case .simulazioni: SimulatoreTelefono()
         default:
             InArrivoMobile(app: app, titolo: "\(app.titolo) è sul Mac", testo: StatoShell.soloSulMacPerOra)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -1188,6 +1190,20 @@ private struct DettaglioPosizioneTelefono: View {
                 .schedaTelefono()
                 .entrataCascata(4)
 
+                // «Simula» (13 novembre 2026): la proiezione della posizione con i tre scenari (quelli del KID se ci sono)
+                if p.area.proiettabile {
+                    NavigationLink { SimulatoreTelefono(posizioneId: p.id) } label: {
+                        HStack {
+                            Label("Simula", systemImage: "chart.line.uptrend.xyaxis")
+                                .carattereApple(E.nome)
+                                .foregroundColor(Tema.Apple.Colore.accento)
+                            Spacer(minLength: 0)
+                            ChevronTelefono()
+                        }
+                        .schedaTelefono(premibile: true)
+                    }
+                    .buttonStyle(.plain)
+                }
                 if p.rendimentoAtteso != nil || p.costoIngresso != nil || p.costoAnnuo != nil || p.sri != nil {
                     SezioneTelefono(titolo: "Ipotesi e costi")
                     VStack(alignment: .leading, spacing: E.spazioRiga) {
