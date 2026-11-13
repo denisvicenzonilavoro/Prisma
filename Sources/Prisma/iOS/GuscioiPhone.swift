@@ -349,7 +349,7 @@ struct BloccoDataTelefono: View {
 }
 
 /// Il cerchietto di un'attività da fare (come «Da fare oggi» sul Mac): pieno di verde con la spunta se è fatta.
-/// Sull'iPhone è fermo: le attività si spuntano sul Mac.
+/// Da solo è fermo; per spuntare c'è `SpuntaAttivitaTelefono` (ModuliTelefono.swift).
 struct CerchioAttivitaTelefono: View {
     let fatta: Bool
 
@@ -1191,6 +1191,8 @@ private struct AgendaTelefono: View {
     @Environment(StatoShell.self) var stato
     @State private var mese = Calendar.current.dateInterval(of: .month, for: Date())?.start ?? Date()
     @State private var giorno = Calendar.current.startOfDay(for: Date())
+    /// Il foglio di un appuntamento nuovo (13 novembre 2026: l'agenda si scrive anche dall'iPhone).
+    @State private var nuovo: Appuntamento?
 
     var body: some View {
         let _ = ContaCorpi.segna()
@@ -1218,7 +1220,7 @@ private struct AgendaTelefono: View {
                 SezioneTelefono(titolo: "Da fare")
                 ForEach(daFare) { a in
                     HStack(spacing: E.spazioRiga) {
-                        CerchioAttivitaTelefono(fatta: a.completata)
+                        SpuntaAttivitaTelefono(attivita: a)
                         VStack(alignment: .leading, spacing: E.spazioTesto) {
                             Text(a.titolo)
                                 .carattereApple(E.nome)
@@ -1237,6 +1239,23 @@ private struct AgendaTelefono: View {
             }
         }
         .navigationTitle("Agenda")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                PulsanteNuovoTelefono(aiuto: "Nuovo appuntamento") {
+                    let cliente = stato.clienteAttivoId.isEmpty ? (stato.clienti.first?.id ?? "") : stato.clienteAttivoId
+                    nuovo = ModuloAppuntamentoTelefono.nuovo(giorno: giorno, clienteId: cliente)
+                }
+                .disabled(stato.solaLettura)
+            }
+        }
+        .sheet(item: $nuovo) { a in
+            ModuloAppuntamentoTelefono(bozza: a, nuovo: true).environment(stato)
+        }
+        // L'appuntamento aggiunto in un altro giorno: il mese e il giorno lo seguono
+        .onChange(of: stato.giornoAgenda) { _, g in
+            giorno = cal.startOfDay(for: g)
+            mese = cal.dateInterval(of: .month, for: g)?.start ?? mese
+        }
     }
 }
 
@@ -1461,6 +1480,9 @@ private struct DettaglioAppuntamentoTelefono: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .schedaTelefono()
                 }
+                // Modifica, concluso, elimina (13 novembre 2026: l'agenda si scrive anche dall'iPhone)
+                AzioniAppuntamentoTelefono(appuntamento: a)
+                    .entrataCascata(2)
             } else {
                 VuotoTelefono(testo: "Questo appuntamento non c'è più nell'archivio.")
             }
