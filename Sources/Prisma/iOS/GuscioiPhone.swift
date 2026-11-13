@@ -11,6 +11,8 @@ struct GuscioiPhone: View {
     /// Sotto una finestra, a movimento d'apertura finito, la scrivania esce dalla gerarchia (memoria, vetri).
     @State private var scrivaniaTolta = false
     @State private var giroMovimento = 0
+    /// La tastiera: con lei aperta la finestra si accorcia fin sopra e il dock si nasconde (TastieraMobile.swift).
+    @StateObject private var tastiera = TastieraMobile()
 
     private typealias D = Tema.Misura.Mobile.Dock
 
@@ -24,7 +26,10 @@ struct GuscioiPhone: View {
             let sottoBarra = sicuro.top + Tema.Misura.Mobile.Barra.altezza
             let voci = DisposizioneDockMobile.app(.telefono, consentita: { stato.appConsentita($0) }).count + 2
             let lato = DisposizioneDockMobile.lato(elementi: voci, larghezza: misura.width, massimo: D.massimoTelefono)
-            let sopraDock = D.dalBassoTelefono + DisposizioneDockMobile.altezza(lato: lato, stile: .telefono)
+            // Il dock sopra la zona dell'indicatore di iOS (i tocchi lì li prende il gesto per tornare alla Home)
+            let dalBasso = max(D.dalBassoTelefono, sicuro.bottom - D.rientroIndicatore)
+            let sopraDock = dalBasso + DisposizioneDockMobile.altezza(lato: lato, stile: .telefono)
+            let conTastiera = tastiera.altezza > 0 && mobile.appAperta != nil
             ZStack(alignment: .topLeading) {
                 // Sotto una finestra, a movimento finito, la scrivania esce dalla gerarchia: niente vetri da ricampionare.
                 // Nelle istantanee (niente movimento) non c'è già più
@@ -37,11 +42,15 @@ struct GuscioiPhone: View {
                 }
 
                 if let app = mobile.appAperta {
-                    FinestraMobile(app: app,
-                                   cornice: Self.cornice(misura: misura, sottoBarra: sottoBarra, sopraDock: sopraDock),
+                    let cornice = Self.cornice(misura: misura, sottoBarra: sottoBarra, sicuroBasso: sicuro.bottom,
+                                               tastiera: conTastiera ? tastiera.altezza : 0)
+                    FinestraMobile(app: app, cornice: cornice,
                                    spazio: misura, raggio: Tema.Raggio.Mobile.finestraTelefono,
                                    origine: mobile.origineApertura, animata: mobile.persistente) {
                         AppTelefono(app: app)
+                            // Il contenuto scorre sotto il dock ma finisce sopra di lui (con la tastiera: niente dock)
+                            .safeAreaPadding(.bottom, conTastiera ? 0
+                                             : Self.sottoIlDock(cornice: cornice, altezza: misura.height, sopraDock: sopraDock))
                     }
                     .id(app)
                 }
@@ -49,8 +58,12 @@ struct GuscioiPhone: View {
                 BarraMobile(compatta: true, alto: sicuro.top)
 
                 DockMobile(stile: .telefono, larghezza: misura.width)
-                    .padding(.bottom, D.dalBassoTelefono)
+                    .padding(.bottom, dalBasso)
                     .frame(width: misura.width, height: misura.height, alignment: .bottom)
+                    // Con la tastiera aperta in una finestra il dock si fa da parte (tornerebbe sopra la tastiera)
+                    .opacity(conTastiera ? 0 : 1)
+                    .allowsHitTesting(!conTastiera)
+                    .animation(Movimenti.curva(Tema.Moto.Dock.mostra), value: conTastiera)
 
                 PannelliMobile(sistema: stato.sistema, sottoBarra: sottoBarra, misura: misura)
             }
@@ -58,20 +71,37 @@ struct GuscioiPhone: View {
             // Una volta, qui, sulla vista che ignora la safe area: le origini dei widget e del dock sono nel suo spazio
             .coordinateSpace(name: ShellView.spazioShell)
         }
-        .ignoresSafeArea(.container)
+        // Anche la tastiera: il guscio non si rimpicciolisce sotto di lei (il dock non salta su), la finestra si
+        // accorcia da sé con `tastiera.altezza`
+        .ignoresSafeArea([.container, .keyboard])
         }
         .onChange(of: mobile.appAperta) { nuova in aggiornaScrivania(nuova) }
         .modifier(SceltaFileiPad())
         .modifier(EsportaBackupiPad())
     }
 
-    /// La finestra fra la barra e il dock (deskRect del tema: x 8, y barra + 6, larghezza w − 16).
+    /// La finestra sotto la barra, fino in fondo allo schermo (13 novembre 2026, «stesse finestre, più spazio»): il dock
+    /// le sta sopra e il contenuto finisce sopra di lui (`sottoIlDock`). Con la tastiera aperta finisce sopra la tastiera.
+    static func cornice(misura: CGSize, sottoBarra: CGFloat, sicuroBasso: CGFloat, tastiera: CGFloat = 0) -> CGRect {
+        let f = Tema.Misura.Mobile.Finestra.self
+        let y = sottoBarra + f.sopra
+        let basso = tastiera > 0 ? misura.height - tastiera - f.sopraTastiera
+                                 : misura.height - max(f.dalBasso, sicuroBasso / 2)
+        return CGRect(x: f.margine, y: y, width: max(0, misura.width - 2 * f.margine), height: max(0, basso - y))
+    }
+
+    /// iPad: la finestra fra la barra e il dock, come prima (deskRect del tema).
     static func cornice(misura: CGSize, sottoBarra: CGFloat, sopraDock: CGFloat) -> CGRect {
-        let y = sottoBarra + Tema.Misura.Mobile.Finestra.sopra
-        let basso = misura.height - sopraDock - Tema.Misura.Mobile.Finestra.sopraDock
-        return CGRect(x: Tema.Misura.Mobile.Finestra.margine, y: y,
-                      width: max(0, misura.width - 2 * Tema.Misura.Mobile.Finestra.margine),
-                      height: max(0, basso - y))
+        let f = Tema.Misura.Mobile.Finestra.self
+        let y = sottoBarra + f.sopra
+        let basso = misura.height - sopraDock - f.sopraDock
+        return CGRect(x: f.margine, y: y, width: max(0, misura.width - 2 * f.margine), height: max(0, basso - y))
+    }
+
+    /// Lo spazio in fondo alla finestra coperto dal dock, più il margine: il contenuto (elenchi, campi, ricerca) finisce
+    /// sopra il dock.
+    static func sottoIlDock(cornice: CGRect, altezza: CGFloat, sopraDock: CGFloat) -> CGFloat {
+        max(0, cornice.maxY - (altezza - sopraDock) + Tema.Misura.Mobile.Finestra.sopraDock)
     }
 
     /// La scrivania resta sotto la finestra che entra per la durata del movimento, poi si toglie; torna subito con

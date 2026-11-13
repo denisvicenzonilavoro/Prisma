@@ -303,6 +303,9 @@ extension Tema.Misura.Mobile {
         static let passoPerNomi: CGFloat = 56
         /// Dal bordo fisico dello schermo: sopra l'indicatore di iOS sull'iPhone, .dock bottom 10 sull'iPad.
         static let dalBassoTelefono: CGFloat = 14
+        /// Sull'iPhone con l'indicatore di iOS il dock sta sopra la sua zona di tocco (la safe area in basso, 34),
+        /// rientrando di tanto: i tocchi vicino al bordo li prende il gesto di sistema per tornare alla Home.
+        static let rientroIndicatore: CGFloat = 10
         static let dalBassoiPad: CGFloat = 10
         /// Area di tocco minima di un'icona.
         static let tocco: CGFloat = 44
@@ -315,9 +318,15 @@ extension Tema.Misura.Mobile {
 
     /// La finestra di vetro di un'app (deskRect del tema: x 8, y bar + 6, larghezza w − 16, fino al dock).
     enum Finestra {
-        static let margine: CGFloat = 8
-        static let sopra: CGFloat = 6
+        /// iPhone (13 novembre 2026, «stesse finestre, più spazio»): la finestra arriva fino in fondo, il dock le sta
+        /// sopra e il contenuto scorre sotto di lui ma finisce sopra (`sopraDock` di margine). Margini più stretti.
+        static let margine: CGFloat = 6
+        static let sopra: CGFloat = 4
         static let sopraDock: CGFloat = 10
+        /// Dal bordo in basso dello schermo (dentro la safe area dell'indicatore).
+        static let dalBasso: CGFloat = 6
+        /// Con la tastiera aperta la finestra finisce tanto sopra di lei (il dock si nasconde).
+        static let sopraTastiera: CGFloat = 6
         /// La barra del titolo sull'iPad: .tbar 52 (36 sul Mac) → 44 per il dito.
         static let barraTitolo: CGFloat = 44
         /// La ✕ (il semaforo rosso del tema, grande per il dito) e la sua area di tocco.

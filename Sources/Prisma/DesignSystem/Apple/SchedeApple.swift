@@ -149,15 +149,11 @@ struct SchedaInclinabileApple: ViewModifier {
 
     #else
 
+    /// Sul touch nessun gesto sulla scheda (13 novembre 2026): una pressione lunga simultanea dentro gli elenchi che
+    /// scorrono tratteneva il dito, e su iOS a volte i pulsanti e i collegamenti dentro la scheda non rispondevano o lo
+    /// scorrimento partiva in ritardo. La pressione la mostrano gli stili dei pulsanti (`StileSemplice`).
     private func corpoTocco(_ content: Content) -> some View {
-        let giu = premuto && abilitata
-        let pressione = LongPressGesture(minimumDuration: Tema.Apple.Moto.Inclinazione.durataPressione,
-                                         maximumDistance: Tema.Apple.Moto.Inclinazione.distanzaPressione)
-            .updating($premuto) { attuale, stato, _ in stato = attuale }
-        return content
-            .scaleEffect(giu ? Tema.Apple.Moto.Inclinazione.scalaPressione : 1)
-            .animation(Tema.Apple.Moto.Inclinazione.ripiego.animazione, value: giu)
-            .simultaneousGesture(pressione)
+        content
     }
 
     #endif
