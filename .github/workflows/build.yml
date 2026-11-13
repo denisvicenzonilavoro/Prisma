@@ -408,8 +408,8 @@ jobs:
       contents: read
     # Non usare macos-latest: le code dei runner Apple Silicon gratuiti vanno in timeout.
     runs-on: macos-15-intel
-    # Compilazione (fino a 40 min sui runner Intel lenti) più prove e istantanee di iPhone e iPad, che crescono a ogni giro
-    timeout-minutes: 180
+    # Compilazione (fino a 90 min sui runner Intel lenti) più prove e istantanee di iPhone e iPad, che crescono a ogni giro
+    timeout-minutes: 240
     env:
       BID: local.prisma
     steps:
@@ -531,6 +531,17 @@ jobs:
       - name: iPhone · spegni
         if: always() && env.PHONE != ''
         run: xcrun simctl shutdown "$PHONE" || true
+
+      # Le istantanee dell'iPhone si caricano subito (anche lanciando il workflow a mano): non si perdono se l'iPad
+      # supera il tempo del job
+      - name: Carica le istantanee dell'iPhone
+        if: always() && steps.avvio-iphone.outcome == 'success'
+        uses: actions/upload-artifact@v6
+        with:
+          name: anteprime-iphone
+          path: anteprime-ios/iphone/
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: iPad · avvio e installazione
         id: avvio-ipad
