@@ -783,6 +783,8 @@ private struct SchedaClienteTelefono: View {
 private struct PosizioniTelefono: View {
     @Environment(StatoShell.self) var stato
     @State private var filtro = FiltroPosizioniTelefono.tutte
+    /// «Dal catalogo» (13 novembre 2026: le posizioni si scrivono anche dall'iPhone).
+    @State private var dalCatalogo = false
 
     /// Le aree con le loro posizioni: le attività dalla più grande, i debiti in fondo.
     private static func aree(_ elenco: [Posizione]) -> [(AreaPosizione, [Posizione])] {
@@ -842,6 +844,14 @@ private struct PosizioniTelefono: View {
             ToolbarItem(placement: .topBarTrailing) {
                 PulsanteInquadraTelefono()
             }
+            ToolbarItem(placement: .topBarTrailing) {
+                PulsanteNuovoTelefono(aiuto: "Un prodotto del catalogo sul cliente") { dalCatalogo = true }
+                    .disabled(stato.solaLettura)
+            }
+        }
+        .sheet(isPresented: $dalCatalogo) {
+            ProdottoSulClienteTelefono(clienteId: stato.clienteAttivoId.isEmpty ? (stato.clienti.first?.id ?? "") : stato.clienteAttivoId)
+                .environment(stato)
         }
         .inquadraTelefono(stato)
     }
@@ -1120,6 +1130,8 @@ private struct RigaPosizioneTelefono: View {
 private struct DettaglioPosizioneTelefono: View {
     @Environment(StatoShell.self) var stato
     let posizioneId: String
+    /// «Aggiorna»: valore di oggi, versato, premio, esito (13 novembre 2026).
+    @State private var aggiorna: Posizione?
 
     var body: some View {
         let _ = ContaCorpi.segna()
@@ -1192,6 +1204,13 @@ private struct DettaglioPosizioneTelefono: View {
         }
         .navigationTitle(posizione?.nome ?? "Posizione")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Aggiorna") { aggiorna = posizione }
+                    .disabled(posizione == nil || stato.solaLettura)
+            }
+        }
+        .sheet(item: $aggiorna) { p in ModuloValorePosizioneTelefono(bozza: p).environment(stato) }
     }
 }
 

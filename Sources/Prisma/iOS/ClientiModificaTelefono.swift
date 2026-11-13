@@ -138,6 +138,7 @@ struct AzioniClienteTelefono: View {
     @State private var nota: Nota?
     @State private var attivita: Attivita?
     @State private var appuntamento: Appuntamento?
+    @State private var dalCatalogo = false
 
     var body: some View {
         HStack(spacing: M.spazioAzioni) {
@@ -156,6 +157,7 @@ struct AzioniClienteTelefono: View {
                 Button {
                     appuntamento = ModuloAppuntamentoTelefono.nuovo(giorno: Calendar.current.startOfDay(for: Date()), clienteId: cliente.id)
                 } label: { Label("Nuovo appuntamento", systemImage: "calendar.badge.plus") }
+                Button { dalCatalogo = true } label: { Label("Prodotto dal catalogo", systemImage: "square.grid.2x2") }
             } label: {
                 etichetta("Aggiungi", "plus")
             }
@@ -164,6 +166,7 @@ struct AzioniClienteTelefono: View {
         .sheet(item: $nota) { n in ModuloNotaTelefono(bozza: n, nuova: true).environment(stato) }
         .sheet(item: $attivita) { a in ModuloAttivitaTelefono(bozza: a, nuova: true).environment(stato) }
         .sheet(item: $appuntamento) { a in ModuloAppuntamentoTelefono(bozza: a, nuovo: true).environment(stato) }
+        .sheet(isPresented: $dalCatalogo) { ProdottoSulClienteTelefono(clienteId: cliente.id).environment(stato) }
     }
 
     private func azione(_ titolo: String, _ simbolo: String, _ fai: @escaping () -> Void) -> some View {
