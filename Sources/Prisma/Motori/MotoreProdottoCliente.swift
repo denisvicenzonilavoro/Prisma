@@ -120,6 +120,8 @@ enum MotoreProdottoCliente {
     /// In essere: niente esito, il valore di oggi e il totale versato se si sa; proposta: in bozza.
     static func posizione(da p: Prodotto, clienteId: String, valori v: Valori) -> Posizione {
         var pos = p.proposta(per: clienteId)
+        // Al secondo, come l'archivio e «Prisma ovunque»: la posizione arriva sul Mac identica
+        pos.creataIl = Posizione.oggiArrotondato
         pos.stato = v.stato
         pos.esito = v.stato == .proposta ? .bozza : nil
         // Il premio periodico conta solo con una frequenza; con «unica» il periodico è zero

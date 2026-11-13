@@ -437,6 +437,8 @@ enum ProvaOvunque {
         dispositivo.posizioni[ip].controvalore = 12_345
         var nuova = Posizione(clienteId: cid, canale: .indipendente, stato: .proposta, area: .investimento, nome: "Proposta dall'iPhone")
         nuova.id = "pos-telefono-1"
+        // Le date dello spazio e dell'archivio sono al secondo: come nasce una posizione sull'iPhone
+        nuova.creataIl = Posizione.oggiArrotondato
         nuova.versamentoIniziale = 10_000
         dispositivo.posizioni.append(nuova)
         var orfana = Posizione(clienteId: "cliente-che-non-c-e", canale: .alleanza, stato: .proposta, area: .risparmio, nome: "Orfana")
