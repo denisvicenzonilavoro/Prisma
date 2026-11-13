@@ -432,7 +432,7 @@ enum ProvaOvunque {
         try controlla(dispositivo.clienti[ic].iban == nil, "l'IBAN non deve arrivare al dispositivo")
         let base = dispositivo
         dispositivo.clienti[ic].telefono = "333 000 1111"
-        dispositivo.clienti[ic].professione = "Architetta"
+        dispositivo.clienti[ic].professione = "Professione scritta sull'iPhone"
         dispositivo.clienti[ic].profilo = ProfiloInvestitore()
         dispositivo.posizioni[ip].controvalore = 12_345
         var nuova = Posizione(clienteId: cid, canale: .indipendente, stato: .proposta, area: .investimento, nome: "Proposta dall'iPhone")
@@ -456,7 +456,7 @@ enum ProvaOvunque {
                                        entita: d.entita, entitaId: d.entitaId, tipo: d.tipo, campo: d.campo, prima: d.prima, dopo: d.dopo)
             if case .conflitto = MotoreUnioneOvunque.applica(op, a: &mac) { conflitti += 1 }
         }
-        try controlla(mac.clienti[ic].telefono == "333 000 1111" && mac.clienti[ic].professione == "Architetta",
+        try controlla(mac.clienti[ic].telefono == "333 000 1111" && mac.clienti[ic].professione == "Professione scritta sull'iPhone",
                       "l'anagrafica cambiata sull'iPhone non arriva sul Mac")
         try controlla(mac.clienti[ic].iban == "IT60X0542811101000000123456", "l'anagrafica dall'iPhone ha toccato l'IBAN del Mac")
         try controlla(mac.posizioni.first { $0.id == nuova.id } == nuova, "la posizione nuova dell'iPhone non arriva uguale sul Mac")
