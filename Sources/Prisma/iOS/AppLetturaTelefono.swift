@@ -127,16 +127,18 @@ private struct RigaAttivitaTelefono: View {
 
 // MARK: - Note
 
-/// Le note del taccuino, le fissate in cima e poi dalla più recente; un tocco apre il testo intero.
+/// Le note del taccuino, le fissate in cima e poi dalla più recente; un tocco apre il testo intero. Dal 13 novembre
+/// 2026 si scrivono anche dall'iPhone: «＋» per una nuova, «Modifica» nel dettaglio (ModuloNotaTelefono).
 struct NoteTelefono: View {
     @Environment(StatoShell.self) var stato
+    @State private var nuova: Nota?
 
     var body: some View {
         let _ = ContaCorpi.segna()
         let note = stato.dati.note.filter { !$0.vuota }.sorted(by: Nota.ordina)
         FondoTelefono {
             if note.isEmpty {
-                VuotoTelefono(testo: "Nessuna nota: le note si scrivono in Prisma sul Mac.")
+                VuotoTelefono(testo: "Nessuna nota: scrivine una con «＋».")
             }
             ForEach(note) { nota in
                 NavigationLink {
@@ -148,6 +150,16 @@ struct NoteTelefono: View {
             }
         }
         .navigationTitle("Note")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                PulsanteNuovoTelefono(aiuto: "Nuova nota") {
+                    let cliente = stato.clienteAttivoId.isEmpty ? (stato.clienti.first?.id ?? "") : stato.clienteAttivoId
+                    nuova = Nota(clienteId: cliente, titolo: "", testo: "")
+                }
+                .disabled(stato.solaLettura)
+            }
+        }
+        .sheet(item: $nuova) { n in ModuloNotaTelefono(bozza: n, nuova: true).environment(stato) }
     }
 }
 
@@ -190,6 +202,7 @@ private struct RigaNotaTelefono: View {
 private struct DettaglioNotaTelefono: View {
     @Environment(StatoShell.self) var stato
     let notaId: String
+    @State private var modifica: Nota?
 
     var body: some View {
         let _ = ContaCorpi.segna()
@@ -220,6 +233,13 @@ private struct DettaglioNotaTelefono: View {
         }
         .navigationTitle(nota?.titoloMostrato ?? "Nota")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Modifica") { modifica = nota }
+                    .disabled(nota == nil || stato.solaLettura)
+            }
+        }
+        .sheet(item: $modifica) { n in ModuloNotaTelefono(bozza: n, nuova: false).environment(stato) }
     }
 }
 

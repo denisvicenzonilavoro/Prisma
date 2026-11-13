@@ -198,7 +198,8 @@ extension StatoShell {
         case .pratica:
             let posizione = dati.pratiche.first { $0.id == id }?.posizioneId
             return posizione.flatMap { pid in dati.posizioni.first { $0.id == pid }?.clienteId }
-        case .bisogni: return dati.clienti.first { $0.id == id }?.id
+        case .bisogni, .anagrafica: return dati.clienti.first { $0.id == id }?.id
+        case .posizione: return dati.posizioni.first { $0.id == id }?.clienteId
         }
     }
 

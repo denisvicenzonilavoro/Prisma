@@ -122,6 +122,7 @@ enum ProvaOvunque {
             try provaSpese()
             try provaTerritorio()
             try provaPraticheOvunque()
+            try provaClientiPosizioniOvunque()
             try provaModuliIban()
             try provaLuceClienti()
             try provaNoteInArrivo()
@@ -414,6 +415,57 @@ enum ProvaOvunque {
         }
         try controlla(mac.pratiche[i].segno(passo)?.fatto == true, "il passo segnato sul dispositivo non arriva sul Mac")
         try controlla(mac.pratiche[i].note == originale.pratiche[i].note, "le note della pratica non devono arrivare dal giornale")
+    }
+
+    /// Clienti e posizioni scritti dall'iPhone (13 novembre 2026): una modifica all'anagrafica diventa operazioni sui soli
+    /// campi dell'anagrafica e il Mac le unisce senza toccare il resto del cliente (l'IBAN, che non viaggia, resta); una
+    /// posizione nuova arriva sul Mac uguale, una modificata sul valore di oggi pure; una posizione di un cliente che sul
+    /// Mac non c'è finisce in «Da decidere»; dall'iPhone non si eliminano né clienti né posizioni.
+    private static func provaClientiPosizioniOvunque() throws {
+        var mac = DatiPrisma.demo()
+        guard let ic = mac.clienti.indices.first, let ip = mac.posizioni.indices.first else {
+            throw Fallita(motivo: "nessun cliente o posizione nei dati di prova")
+        }
+        mac.clienti[ic].iban = "IT60X0542811101000000123456"
+        let cid = mac.clienti[ic].id
+        var dispositivo = SpazioOvunque.datiIstantanea(mac)
+        try controlla(dispositivo.clienti[ic].iban == nil, "l'IBAN non deve arrivare al dispositivo")
+        let base = dispositivo
+        dispositivo.clienti[ic].telefono = "333 000 1111"
+        dispositivo.clienti[ic].professione = "Architetta"
+        dispositivo.clienti[ic].profilo = ProfiloInvestitore()
+        dispositivo.posizioni[ip].controvalore = 12_345
+        var nuova = Posizione(clienteId: cid, canale: .indipendente, stato: .proposta, area: .investimento, nome: "Proposta dall'iPhone")
+        nuova.id = "pos-telefono-1"
+        nuova.versamentoIniziale = 10_000
+        dispositivo.posizioni.append(nuova)
+        var orfana = Posizione(clienteId: "cliente-che-non-c-e", canale: .alleanza, stato: .proposta, area: .risparmio, nome: "Orfana")
+        orfana.id = "pos-telefono-orfana"
+        dispositivo.posizioni.append(orfana)
+        let differenze = RegistroOvunque.differenze(da: base, a: dispositivo)
+        try controlla(differenze.contains { $0.entita == .anagrafica && $0.campo == "telefono" }
+                        && differenze.contains { $0.entita == .anagrafica && $0.campo == "professione" }
+                        && !differenze.contains { $0.entita == .anagrafica && !CampiOvunque.campiAnagrafica.contains($0.campo ?? "") },
+                      "la modifica dell'anagrafica non diventa operazioni sui soli campi dell'anagrafica")
+        try controlla(differenze.contains { $0.entita == .posizione && $0.tipo == .crea && $0.entitaId == nuova.id }
+                        && differenze.contains { $0.entita == .posizione && $0.campo == "controvalore" },
+                      "la posizione nuova o il valore di oggi non entrano nel giornale")
+        var conflitti = 0
+        for (k, d) in differenze.enumerated() {
+            let op = OperazioneOvunque(id: "op-cp-\(k)", dispositivo: idTelefono, lamport: k + 1, seq: k + 1, data: ora(3), base: 1,
+                                       entita: d.entita, entitaId: d.entitaId, tipo: d.tipo, campo: d.campo, prima: d.prima, dopo: d.dopo)
+            if case .conflitto = MotoreUnioneOvunque.applica(op, a: &mac) { conflitti += 1 }
+        }
+        try controlla(mac.clienti[ic].telefono == "333 000 1111" && mac.clienti[ic].professione == "Architetta",
+                      "l'anagrafica cambiata sull'iPhone non arriva sul Mac")
+        try controlla(mac.clienti[ic].iban == "IT60X0542811101000000123456", "l'anagrafica dall'iPhone ha toccato l'IBAN del Mac")
+        try controlla(mac.posizioni.first { $0.id == nuova.id } == nuova, "la posizione nuova dell'iPhone non arriva uguale sul Mac")
+        try controlla(mac.posizioni[ip].controvalore == 12_345, "il valore di oggi cambiato sull'iPhone non arriva sul Mac")
+        try controlla(conflitti == 1 && !mac.posizioni.contains { $0.id == orfana.id },
+                      "una posizione di un cliente che sul Mac non c'è deve andare in «Da decidere»")
+        try controlla(!CampiOvunque.regole(.anagrafica).creabile && !CampiOvunque.regole(.anagrafica).eliminabile
+                        && !CampiOvunque.regole(.posizione).eliminabile,
+                      "dall'iPhone clienti e posizioni non si devono eliminare")
     }
 
     /// «Compila da solo» («Luce» giro 10, decisioni 40 e 44): l'IBAN dei clienti e i moduli compilati non entrano mai

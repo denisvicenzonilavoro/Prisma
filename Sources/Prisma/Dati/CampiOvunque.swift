@@ -108,8 +108,21 @@ enum CampiOvunque {
         case .pratica:
             // Solo i passi segnati (e la chiusura che ne segue): note, sollecito e nascita restano del Mac
             return Regole(campi: ["passi", "conclusaIl"], servizio: [], creabile: false, eliminabile: false, conCliente: false)
+        case .anagrafica:
+            // Solo questi campi del cliente: profilo, consensi, famiglia, conformità, IBAN e il resto restano del Mac
+            return Regole(campi: campiAnagrafica, servizio: [], creabile: false, eliminabile: false, conCliente: false)
+        case .posizione:
+            // Nuove e aggiornate dall'iPhone, mai eliminate da lì; la posizione nuova porta con sé la scheda prodotto
+            return Regole(campi: ["clienteId", "canale", "stato", "area", "nome", "tipologia", "emittente", "numeroContratto",
+                                  "decorrenza", "scadenza", "versamentoIniziale", "premio", "frequenza", "controvalore",
+                                  "dataValore", "totaleVersato", "capitaleAssicurato", "esito", "prodottoId", "note"],
+                          servizio: [], creabile: true, eliminabile: false, conCliente: true)
         }
     }
+
+    /// I campi dell'anagrafica che l'iPhone può cambiare (`EntitaOvunque.anagrafica`).
+    static let campiAnagrafica = ["nome", "iniziali", "email", "telefono", "indirizzo", "professione", "statoCivile",
+                                   "dataNascita", "preferito", "nota", "tema"]
 
     /// Solo i campi sincronizzati (senza quelli di servizio): l'oggetto «visto» da un'eliminazione.
     static func ristretto(_ oggetto: [String: Any], _ regole: Regole) -> [String: Any] {
@@ -131,6 +144,8 @@ enum CampiOvunque {
         case .sessioneCopilota: return dizionari(d.sessioniCopilota.map(senzaTrascrizione), c)
         case .inquadratura: return dizionari(d.inquadratureDaConfermare, c)
         case .pratica: return dizionari(d.pratiche, c)
+        case .posizione: return dizionari(d.posizioni, c)
+        case .anagrafica: return dizionari(d.clienti, c)
         case .bisogni:
             var r: [String: [String: Any]] = [:]
             for cliente in d.clienti {
@@ -152,6 +167,8 @@ enum CampiOvunque {
             return d.sessioniCopilota.first { $0.id == id }.map(senzaTrascrizione).flatMap { JSONOvunque.dizionario($0, con: c) }
         case .inquadratura: return d.inquadratureDaConfermare.first { $0.id == id }.flatMap { JSONOvunque.dizionario($0, con: c) }
         case .pratica: return d.pratiche.first { $0.id == id }.flatMap { JSONOvunque.dizionario($0, con: c) }
+        case .posizione: return d.posizioni.first { $0.id == id }.flatMap { JSONOvunque.dizionario($0, con: c) }
+        case .anagrafica: return d.clienti.first { $0.id == id }.flatMap { JSONOvunque.dizionario($0, con: c) }
         case .bisogni: return d.clienti.first { $0.id == id }.flatMap { JSONOvunque.dizionario($0.bisogni, con: c) }
         }
     }
@@ -166,6 +183,17 @@ enum CampiOvunque {
         case .eventoVita: return metti(json, id: id, in: &d.eventiVita)
         case .inquadratura: return metti(json, id: id, in: &d.inquadratureDaConfermare)
         case .pratica: return metti(json, id: id, in: &d.pratiche)
+        case .posizione: return metti(json, id: id, in: &d.posizioni)
+        case .anagrafica:
+            // Solo i campi dell'anagrafica sul cliente che c'è: il resto del cliente resta quello dell'archivio
+            guard let i = d.clienti.firstIndex(where: { $0.id == id }),
+                  var attuale = JSONOvunque.dizionario(d.clienti[i], con: JSONOvunque.codificatore()) else { return false }
+            for campo in campiAnagrafica {
+                if let v = json[campo], !(v is NSNull) { attuale[campo] = v } else { attuale.removeValue(forKey: campo) }
+            }
+            guard let cliente = JSONOvunque.decodifica(Cliente.self, da: attuale), cliente.id == id else { return false }
+            d.clienti[i] = cliente
+            return true
         case .bisogni:
             guard let i = d.clienti.firstIndex(where: { $0.id == id }),
                   let profilo = JSONOvunque.decodifica(ProfiloBisogni.self, da: json) else { return false }
@@ -209,7 +237,7 @@ enum CampiOvunque {
         case .eventoVita: return via(&d.eventiVita)
         case .sessioneCopilota: return via(&d.sessioniCopilota)
         case .inquadratura: return via(&d.inquadratureDaConfermare)
-        case .pratica, .bisogni: return false
+        case .pratica, .bisogni, .anagrafica, .posizione: return false
         }
     }
 

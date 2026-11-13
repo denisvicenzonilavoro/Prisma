@@ -497,6 +497,8 @@ private struct SchedaClienteTelefono: View {
     @Environment(StatoShell.self) var stato
     let clienteId: String
     @State private var scheda = Scheda.sintesi
+    /// La scheda del cliente da modificare (13 novembre 2026: i clienti si scrivono anche dall'iPhone).
+    @State private var modifica: Cliente?
 
     private typealias C = Tema.Apple.Telefono.Cliente
 
@@ -510,6 +512,9 @@ private struct SchedaClienteTelefono: View {
         FondoTelefono {
             if let cliente {
                 testata(cliente)
+                    .entrataCascata(0)
+                // Chiama, messaggio, e-mail, ＋ nota, attività o appuntamento (ClientiModificaTelefono.swift)
+                AzioniClienteTelefono(cliente: cliente)
                     .entrataCascata(0)
                 principale(cliente)
                     .entrataCascata(1)
@@ -531,6 +536,13 @@ private struct SchedaClienteTelefono: View {
         }
         .navigationTitle(cliente?.nome ?? "Cliente")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Modifica") { modifica = cliente }
+                    .disabled(cliente == nil || stato.solaLettura)
+            }
+        }
+        .sheet(item: $modifica) { c in ModuloClienteTelefono(bozza: c).environment(stato) }
     }
 
     /// Avatar 56, il nome 26 bold (mai tagliato: va a capo), età · professione · motto, i canali sotto.
@@ -673,7 +685,7 @@ private struct SchedaClienteTelefono: View {
             ForEach(attivita.prefix(5)) { a in
                 let indietro = a.scadenza < Calendar.current.startOfDay(for: Date())
                 HStack(spacing: E.spazioRiga) {
-                    CerchioAttivitaTelefono(fatta: a.completata)
+                    SpuntaAttivitaTelefono(attivita: a)
                     VStack(alignment: .leading, spacing: E.spazioTesto) {
                         Text(a.titolo)
                             .carattereApple(E.nome)
