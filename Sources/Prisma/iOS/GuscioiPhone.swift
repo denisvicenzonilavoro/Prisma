@@ -11,6 +11,8 @@ struct GuscioiPhone: View {
     /// Sotto una finestra, a movimento d'apertura finito, la scrivania esce dalla gerarchia (memoria, vetri).
     @State private var scrivaniaTolta = false
     @State private var giroMovimento = 0
+    /// La tastiera: con lei aperta la finestra si accorcia fin sopra e il dock si nasconde (TastieraMobile.swift).
+    @StateObject private var tastiera = TastieraMobile()
 
     private typealias D = Tema.Misura.Mobile.Dock
 
@@ -24,7 +26,10 @@ struct GuscioiPhone: View {
             let sottoBarra = sicuro.top + Tema.Misura.Mobile.Barra.altezza
             let voci = DisposizioneDockMobile.app(.telefono, consentita: { stato.appConsentita($0) }).count + 2
             let lato = DisposizioneDockMobile.lato(elementi: voci, larghezza: misura.width, massimo: D.massimoTelefono)
-            let sopraDock = D.dalBassoTelefono + DisposizioneDockMobile.altezza(lato: lato, stile: .telefono)
+            // Il dock sopra la zona dell'indicatore di iOS (i tocchi lì li prende il gesto per tornare alla Home)
+            let dalBasso = max(D.dalBassoTelefono, sicuro.bottom - D.rientroIndicatore)
+            let sopraDock = dalBasso + DisposizioneDockMobile.altezza(lato: lato, stile: .telefono)
+            let conTastiera = tastiera.altezza > 0 && mobile.appAperta != nil
             ZStack(alignment: .topLeading) {
                 // Sotto una finestra, a movimento finito, la scrivania esce dalla gerarchia: niente vetri da ricampionare.
                 // Nelle istantanee (niente movimento) non c'è già più
@@ -37,11 +42,15 @@ struct GuscioiPhone: View {
                 }
 
                 if let app = mobile.appAperta {
-                    FinestraMobile(app: app,
-                                   cornice: Self.cornice(misura: misura, sottoBarra: sottoBarra, sopraDock: sopraDock),
+                    let cornice = Self.cornice(misura: misura, sottoBarra: sottoBarra, sicuroBasso: sicuro.bottom,
+                                               tastiera: conTastiera ? tastiera.altezza : 0)
+                    FinestraMobile(app: app, cornice: cornice,
                                    spazio: misura, raggio: Tema.Raggio.Mobile.finestraTelefono,
                                    origine: mobile.origineApertura, animata: mobile.persistente) {
                         AppTelefono(app: app)
+                            // Il contenuto scorre sotto il dock ma finisce sopra di lui (con la tastiera: niente dock)
+                            .safeAreaPadding(.bottom, conTastiera ? 0
+                                             : Self.sottoIlDock(cornice: cornice, altezza: misura.height, sopraDock: sopraDock))
                     }
                     .id(app)
                 }
@@ -49,8 +58,12 @@ struct GuscioiPhone: View {
                 BarraMobile(compatta: true, alto: sicuro.top)
 
                 DockMobile(stile: .telefono, larghezza: misura.width)
-                    .padding(.bottom, D.dalBassoTelefono)
+                    .padding(.bottom, dalBasso)
                     .frame(width: misura.width, height: misura.height, alignment: .bottom)
+                    // Con la tastiera aperta in una finestra il dock si fa da parte (tornerebbe sopra la tastiera)
+                    .opacity(conTastiera ? 0 : 1)
+                    .allowsHitTesting(!conTastiera)
+                    .animation(Movimenti.curva(Tema.Moto.Dock.mostra), value: conTastiera)
 
                 PannelliMobile(sistema: stato.sistema, sottoBarra: sottoBarra, misura: misura)
             }
@@ -58,20 +71,37 @@ struct GuscioiPhone: View {
             // Una volta, qui, sulla vista che ignora la safe area: le origini dei widget e del dock sono nel suo spazio
             .coordinateSpace(name: ShellView.spazioShell)
         }
-        .ignoresSafeArea(.container)
+        // Anche la tastiera: il guscio non si rimpicciolisce sotto di lei (il dock non salta su), la finestra si
+        // accorcia da sé con `tastiera.altezza`
+        .ignoresSafeArea([.container, .keyboard])
         }
         .onChange(of: mobile.appAperta) { nuova in aggiornaScrivania(nuova) }
         .modifier(SceltaFileiPad())
         .modifier(EsportaBackupiPad())
     }
 
-    /// La finestra fra la barra e il dock (deskRect del tema: x 8, y barra + 6, larghezza w − 16).
+    /// La finestra sotto la barra, fino in fondo allo schermo (13 novembre 2026, «stesse finestre, più spazio»): il dock
+    /// le sta sopra e il contenuto finisce sopra di lui (`sottoIlDock`). Con la tastiera aperta finisce sopra la tastiera.
+    static func cornice(misura: CGSize, sottoBarra: CGFloat, sicuroBasso: CGFloat, tastiera: CGFloat = 0) -> CGRect {
+        let f = Tema.Misura.Mobile.Finestra.self
+        let y = sottoBarra + f.sopra
+        let basso = tastiera > 0 ? misura.height - tastiera - f.sopraTastiera
+                                 : misura.height - max(f.dalBasso, sicuroBasso / 2)
+        return CGRect(x: f.margine, y: y, width: max(0, misura.width - 2 * f.margine), height: max(0, basso - y))
+    }
+
+    /// iPad: la finestra fra la barra e il dock, come prima (deskRect del tema).
     static func cornice(misura: CGSize, sottoBarra: CGFloat, sopraDock: CGFloat) -> CGRect {
-        let y = sottoBarra + Tema.Misura.Mobile.Finestra.sopra
-        let basso = misura.height - sopraDock - Tema.Misura.Mobile.Finestra.sopraDock
-        return CGRect(x: Tema.Misura.Mobile.Finestra.margine, y: y,
-                      width: max(0, misura.width - 2 * Tema.Misura.Mobile.Finestra.margine),
-                      height: max(0, basso - y))
+        let f = Tema.Misura.Mobile.Finestra.self
+        let y = sottoBarra + f.sopra
+        let basso = misura.height - sopraDock - f.sopraDock
+        return CGRect(x: f.margine, y: y, width: max(0, misura.width - 2 * f.margine), height: max(0, basso - y))
+    }
+
+    /// Lo spazio in fondo alla finestra coperto dal dock, più il margine: il contenuto (elenchi, campi, ricerca) finisce
+    /// sopra il dock.
+    static func sottoIlDock(cornice: CGRect, altezza: CGFloat, sopraDock: CGFloat) -> CGFloat {
+        max(0, cornice.maxY - (altezza - sopraDock) + Tema.Misura.Mobile.Finestra.sopraDock)
     }
 
     /// La scrivania resta sotto la finestra che entra per la durata del movimento, poi si toglie; torna subito con
@@ -143,6 +173,8 @@ struct AppTelefono: View {
         case .incontri: IncontriTelefono().navigationTitle(app.titolo)
         // Pratiche sull'iPhone («Luce» §7.3.4): «Dopo la firma» in sola lettura più «segna il passo» (PraticheTelefono.swift)
         case .pratiche: PraticheTelefono()
+        // Simulazioni sull'iPhone (13 novembre 2026, giro 5): il simulatore con i tre scenari (SimulatoreTelefono.swift)
+        case .simulazioni: SimulatoreTelefono()
         default:
             InArrivoMobile(app: app, titolo: "\(app.titolo) è sul Mac", testo: StatoShell.soloSulMacPerOra)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -319,7 +351,7 @@ struct BloccoDataTelefono: View {
 }
 
 /// Il cerchietto di un'attività da fare (come «Da fare oggi» sul Mac): pieno di verde con la spunta se è fatta.
-/// Sull'iPhone è fermo: le attività si spuntano sul Mac.
+/// Da solo è fermo; per spuntare c'è `SpuntaAttivitaTelefono` (ModuliTelefono.swift).
 struct CerchioAttivitaTelefono: View {
     let fatta: Bool
 
@@ -467,6 +499,8 @@ private struct SchedaClienteTelefono: View {
     @Environment(StatoShell.self) var stato
     let clienteId: String
     @State private var scheda = Scheda.sintesi
+    /// La scheda del cliente da modificare (13 novembre 2026: i clienti si scrivono anche dall'iPhone).
+    @State private var modifica: Cliente?
 
     private typealias C = Tema.Apple.Telefono.Cliente
 
@@ -480,6 +514,9 @@ private struct SchedaClienteTelefono: View {
         FondoTelefono {
             if let cliente {
                 testata(cliente)
+                    .entrataCascata(0)
+                // Chiama, messaggio, e-mail, ＋ nota, attività o appuntamento (ClientiModificaTelefono.swift)
+                AzioniClienteTelefono(cliente: cliente)
                     .entrataCascata(0)
                 principale(cliente)
                     .entrataCascata(1)
@@ -501,6 +538,13 @@ private struct SchedaClienteTelefono: View {
         }
         .navigationTitle(cliente?.nome ?? "Cliente")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Modifica") { modifica = cliente }
+                    .disabled(cliente == nil || stato.solaLettura)
+            }
+        }
+        .sheet(item: $modifica) { c in ModuloClienteTelefono(bozza: c).environment(stato) }
     }
 
     /// Avatar 56, il nome 26 bold (mai tagliato: va a capo), età · professione · motto, i canali sotto.
@@ -643,7 +687,7 @@ private struct SchedaClienteTelefono: View {
             ForEach(attivita.prefix(5)) { a in
                 let indietro = a.scadenza < Calendar.current.startOfDay(for: Date())
                 HStack(spacing: E.spazioRiga) {
-                    CerchioAttivitaTelefono(fatta: a.completata)
+                    SpuntaAttivitaTelefono(attivita: a)
                     VStack(alignment: .leading, spacing: E.spazioTesto) {
                         Text(a.titolo)
                             .carattereApple(E.nome)
@@ -741,6 +785,8 @@ private struct SchedaClienteTelefono: View {
 private struct PosizioniTelefono: View {
     @Environment(StatoShell.self) var stato
     @State private var filtro = FiltroPosizioniTelefono.tutte
+    /// «Dal catalogo» (13 novembre 2026: le posizioni si scrivono anche dall'iPhone).
+    @State private var dalCatalogo = false
 
     /// Le aree con le loro posizioni: le attività dalla più grande, i debiti in fondo.
     private static func aree(_ elenco: [Posizione]) -> [(AreaPosizione, [Posizione])] {
@@ -800,6 +846,14 @@ private struct PosizioniTelefono: View {
             ToolbarItem(placement: .topBarTrailing) {
                 PulsanteInquadraTelefono()
             }
+            ToolbarItem(placement: .topBarTrailing) {
+                PulsanteNuovoTelefono(aiuto: "Un prodotto del catalogo sul cliente") { dalCatalogo = true }
+                    .disabled(stato.solaLettura)
+            }
+        }
+        .sheet(isPresented: $dalCatalogo) {
+            ProdottoSulClienteTelefono(clienteId: stato.clienteAttivoId.isEmpty ? (stato.clienti.first?.id ?? "") : stato.clienteAttivoId)
+                .environment(stato)
         }
         .inquadraTelefono(stato)
     }
@@ -1078,6 +1132,8 @@ private struct RigaPosizioneTelefono: View {
 private struct DettaglioPosizioneTelefono: View {
     @Environment(StatoShell.self) var stato
     let posizioneId: String
+    /// «Aggiorna»: valore di oggi, versato, premio, esito (13 novembre 2026).
+    @State private var aggiorna: Posizione?
 
     var body: some View {
         let _ = ContaCorpi.segna()
@@ -1134,6 +1190,20 @@ private struct DettaglioPosizioneTelefono: View {
                 .schedaTelefono()
                 .entrataCascata(4)
 
+                // «Simula» (13 novembre 2026): la proiezione della posizione con i tre scenari (quelli del KID se ci sono)
+                if p.area.proiettabile {
+                    NavigationLink { SimulatoreTelefono(posizioneId: p.id) } label: {
+                        HStack {
+                            Label("Simula", systemImage: "chart.line.uptrend.xyaxis")
+                                .carattereApple(E.nome)
+                                .foregroundColor(Tema.Apple.Colore.accento)
+                            Spacer(minLength: 0)
+                            ChevronTelefono()
+                        }
+                        .schedaTelefono(premibile: true)
+                    }
+                    .buttonStyle(.plain)
+                }
                 if p.rendimentoAtteso != nil || p.costoIngresso != nil || p.costoAnnuo != nil || p.sri != nil {
                     SezioneTelefono(titolo: "Ipotesi e costi")
                     VStack(alignment: .leading, spacing: E.spazioRiga) {
@@ -1150,6 +1220,13 @@ private struct DettaglioPosizioneTelefono: View {
         }
         .navigationTitle(posizione?.nome ?? "Posizione")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Aggiorna") { aggiorna = posizione }
+                    .disabled(posizione == nil || stato.solaLettura)
+            }
+        }
+        .sheet(item: $aggiorna) { p in ModuloValorePosizioneTelefono(bozza: p).environment(stato) }
     }
 }
 
@@ -1161,6 +1238,8 @@ private struct AgendaTelefono: View {
     @Environment(StatoShell.self) var stato
     @State private var mese = Calendar.current.dateInterval(of: .month, for: Date())?.start ?? Date()
     @State private var giorno = Calendar.current.startOfDay(for: Date())
+    /// Il foglio di un appuntamento nuovo (13 novembre 2026: l'agenda si scrive anche dall'iPhone).
+    @State private var nuovo: Appuntamento?
 
     var body: some View {
         let _ = ContaCorpi.segna()
@@ -1188,7 +1267,7 @@ private struct AgendaTelefono: View {
                 SezioneTelefono(titolo: "Da fare")
                 ForEach(daFare) { a in
                     HStack(spacing: E.spazioRiga) {
-                        CerchioAttivitaTelefono(fatta: a.completata)
+                        SpuntaAttivitaTelefono(attivita: a)
                         VStack(alignment: .leading, spacing: E.spazioTesto) {
                             Text(a.titolo)
                                 .carattereApple(E.nome)
@@ -1207,6 +1286,23 @@ private struct AgendaTelefono: View {
             }
         }
         .navigationTitle("Agenda")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                PulsanteNuovoTelefono(aiuto: "Nuovo appuntamento") {
+                    let cliente = stato.clienteAttivoId.isEmpty ? (stato.clienti.first?.id ?? "") : stato.clienteAttivoId
+                    nuovo = ModuloAppuntamentoTelefono.nuovo(giorno: giorno, clienteId: cliente)
+                }
+                .disabled(stato.solaLettura)
+            }
+        }
+        .sheet(item: $nuovo) { a in
+            ModuloAppuntamentoTelefono(bozza: a, nuovo: true).environment(stato)
+        }
+        // L'appuntamento aggiunto in un altro giorno: il mese e il giorno lo seguono
+        .onChange(of: stato.giornoAgenda) { _, g in
+            giorno = cal.startOfDay(for: g)
+            mese = cal.dateInterval(of: .month, for: g)?.start ?? mese
+        }
     }
 }
 
@@ -1431,6 +1527,9 @@ private struct DettaglioAppuntamentoTelefono: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .schedaTelefono()
                 }
+                // Modifica, concluso, elimina (13 novembre 2026: l'agenda si scrive anche dall'iPhone)
+                AzioniAppuntamentoTelefono(appuntamento: a)
+                    .entrataCascata(2)
             } else {
                 VuotoTelefono(testo: "Questo appuntamento non c'è più nell'archivio.")
             }

@@ -8,9 +8,18 @@ private typealias E = Tema.Apple.Telefono.Elenco
 
 // MARK: - Attività
 
-/// Le attività aperte, per scadenza: scadute, oggi, domani, più avanti. La casella è ferma (si spunta sul Mac).
+/// Le attività aperte, per scadenza: scadute, oggi, domani, più avanti. Dal 13 novembre 2026 si scrivono anche
+/// dall'iPhone: la spunta, «＋» per una nuova, un tocco sulla riga per modificarla (ModuliTelefono.swift).
 struct AttivitaTelefono: View {
     @Environment(StatoShell.self) var stato
+    @State private var modulo: ModuloAttivita?
+
+    /// L'attività da aprire nel foglio (nuova o da modificare).
+    struct ModuloAttivita: Identifiable {
+        var attivita: Attivita
+        var nuova: Bool
+        var id: String { attivita.id }
+    }
 
     private enum Gruppo: Int, CaseIterable, Identifiable {
         case scadute, oggi, domani, avanti
@@ -36,12 +45,26 @@ struct AttivitaTelefono: View {
                 if !delGruppo.isEmpty {
                     SezioneTelefono(titolo: gruppo.titolo)
                     ForEach(delGruppo) { attivita in
-                        RigaAttivitaTelefono(attivita: attivita, scaduta: gruppo == .scadute)
+                        RigaAttivitaTelefono(attivita: attivita, scaduta: gruppo == .scadute) {
+                            modulo = ModuloAttivita(attivita: attivita, nuova: false)
+                        }
                     }
                 }
             }
         }
         .navigationTitle("Attività")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                PulsanteNuovoTelefono(aiuto: "Nuova attività") {
+                    let cliente = stato.clienteAttivoId.isEmpty ? (stato.clienti.first?.id ?? "") : stato.clienteAttivoId
+                    modulo = ModuloAttivita(attivita: .nuova(clienteId: cliente), nuova: true)
+                }
+                .disabled(stato.solaLettura)
+            }
+        }
+        .sheet(item: $modulo) { m in
+            ModuloAttivitaTelefono(bozza: m.attivita, nuova: m.nuova).environment(stato)
+        }
     }
 
     private static func gruppo(di a: Attivita) -> Gruppo {
@@ -57,12 +80,22 @@ private struct RigaAttivitaTelefono: View {
     @Environment(StatoShell.self) var stato
     let attivita: Attivita
     let scaduta: Bool
+    /// Un tocco sulla riga (fuori dalla spunta): il foglio per modificarla.
+    var apri: (() -> Void)? = nil
 
     var body: some View {
         let _ = ContaCorpi.segna()
         HStack(alignment: .top, spacing: E.spazioRiga) {
-            CerchioAttivitaTelefono(fatta: attivita.completata)
-                .padding(.top, E.spazioTesto * 2)
+            SpuntaAttivitaTelefono(attivita: attivita)
+            Button { apri?() } label: { testo }
+                .buttonStyle(StileSemplice())
+        }
+        .schedaTelefono()
+        .accessibilityElement(children: .contain)
+    }
+
+    private var testo: some View {
+        HStack(alignment: .top, spacing: E.spazioRiga) {
             VStack(alignment: .leading, spacing: E.spazioTesto) {
                 Text(attivita.titolo)
                     .carattereApple(E.nome)
@@ -80,7 +113,8 @@ private struct RigaAttivitaTelefono: View {
             }
             Spacer(minLength: 0)
         }
-        .schedaTelefono()
+        .padding(.top, E.spazioTesto * 2)
+        .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
     }
 
@@ -93,16 +127,18 @@ private struct RigaAttivitaTelefono: View {
 
 // MARK: - Note
 
-/// Le note del taccuino, le fissate in cima e poi dalla più recente; un tocco apre il testo intero.
+/// Le note del taccuino, le fissate in cima e poi dalla più recente; un tocco apre il testo intero. Dal 13 novembre
+/// 2026 si scrivono anche dall'iPhone: «＋» per una nuova, «Modifica» nel dettaglio (ModuloNotaTelefono).
 struct NoteTelefono: View {
     @Environment(StatoShell.self) var stato
+    @State private var nuova: Nota?
 
     var body: some View {
         let _ = ContaCorpi.segna()
         let note = stato.dati.note.filter { !$0.vuota }.sorted(by: Nota.ordina)
         FondoTelefono {
             if note.isEmpty {
-                VuotoTelefono(testo: "Nessuna nota: le note si scrivono in Prisma sul Mac.")
+                VuotoTelefono(testo: "Nessuna nota: scrivine una con «＋».")
             }
             ForEach(note) { nota in
                 NavigationLink {
@@ -114,6 +150,16 @@ struct NoteTelefono: View {
             }
         }
         .navigationTitle("Note")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                PulsanteNuovoTelefono(aiuto: "Nuova nota") {
+                    let cliente = stato.clienteAttivoId.isEmpty ? (stato.clienti.first?.id ?? "") : stato.clienteAttivoId
+                    nuova = Nota(clienteId: cliente, titolo: "", testo: "")
+                }
+                .disabled(stato.solaLettura)
+            }
+        }
+        .sheet(item: $nuova) { n in ModuloNotaTelefono(bozza: n, nuova: true).environment(stato) }
     }
 }
 
@@ -156,6 +202,7 @@ private struct RigaNotaTelefono: View {
 private struct DettaglioNotaTelefono: View {
     @Environment(StatoShell.self) var stato
     let notaId: String
+    @State private var modifica: Nota?
 
     var body: some View {
         let _ = ContaCorpi.segna()
@@ -186,6 +233,13 @@ private struct DettaglioNotaTelefono: View {
         }
         .navigationTitle(nota?.titoloMostrato ?? "Nota")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Modifica") { modifica = nota }
+                    .disabled(nota == nil || stato.solaLettura)
+            }
+        }
+        .sheet(item: $modifica) { n in ModuloNotaTelefono(bozza: n, nuova: false).environment(stato) }
     }
 }
 

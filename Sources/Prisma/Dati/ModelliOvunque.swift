@@ -120,6 +120,12 @@ enum EntitaOvunque: String, Codable, CaseIterable {
     /// I passi segnati dall'iPhone sulle pratiche dopo la firma (`DatiPrisma.pratiche`, solo `passi` e `conclusaIl`;
     /// «Luce» §7.3.4): la pratica nasce e si chiude sul Mac.
     case pratica
+    /// L'anagrafica del cliente cambiata dall'iPhone (id = id del cliente; 13 novembre 2026): nome, recapiti, indirizzo,
+    /// professione, stato civile, data di nascita, preferito, note e motto. Il cliente nasce e si elimina sul Mac.
+    case anagrafica
+    /// Le posizioni scritte dall'iPhone (`DatiPrisma.posizioni`; 13 novembre 2026): nuove (anche dal catalogo) e
+    /// aggiornate (importi, date, valore di oggi, esito). Non si eliminano dall'iPhone.
+    case posizione
 
     /// Il nome per l'utente («una nota», «due attività»), al singolare.
     var nome: String {
@@ -132,6 +138,8 @@ enum EntitaOvunque: String, Codable, CaseIterable {
         case .sessioneCopilota: return "scheda del copilota"
         case .inquadratura: return "posizione inquadrata"
         case .pratica: return "pratica"
+        case .anagrafica: return "scheda del cliente"
+        case .posizione: return "posizione"
         }
     }
 }

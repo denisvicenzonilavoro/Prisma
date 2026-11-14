@@ -28,6 +28,8 @@ enum TestiOvunque {
             case .sessioneCopilota: return "una scheda del copilota"
             case .inquadratura: return "una posizione inquadrata"
             case .pratica: return "un passo di una pratica"
+            case .anagrafica: return "una scheda di un cliente"
+            case .posizione: return "una posizione"
             }
         }
         let numero = n >= 0 && n < numeri.count ? numeri[n] : "\(n)"
@@ -40,6 +42,8 @@ enum TestiOvunque {
         case .sessioneCopilota: return "\(numero) schede del copilota"
         case .inquadratura: return "\(numero) posizioni inquadrate"
         case .pratica: return "\(numero) passi delle pratiche"
+        case .anagrafica: return "\(numero) schede dei clienti"
+        case .posizione: return "\(numero) posizioni"
         }
     }
 
@@ -212,6 +216,8 @@ enum TestiOvunque {
         case .sessioneCopilota: return ("Scheda del copilota", true)
         case .inquadratura: return ("Posizione inquadrata", true)
         case .pratica: return ("Pratica", true)
+        case .anagrafica: return ("Scheda del cliente", true)
+        case .posizione: return ("Posizione", true)
         }
     }
 
@@ -238,6 +244,26 @@ enum TestiOvunque {
         case "schede": return "schede"
         case "passi": return "passi della pratica"
         case "conclusaIl": return "conclusione"
+        case "nome": return "nome"
+        case "iniziali": return "iniziali"
+        case "email": return "e-mail"
+        case "telefono": return "telefono"
+        case "indirizzo": return "indirizzo"
+        case "professione": return "professione"
+        case "statoCivile": return "stato civile"
+        case "dataNascita": return "data di nascita"
+        case "preferito": return "preferito"
+        case "tema": return "motto"
+        case "versamentoIniziale": return "premio unico"
+        case "premio": return "premio periodico"
+        case "frequenza": return "frequenza"
+        case "controvalore": return "valore di oggi"
+        case "dataValore": return "data del valore"
+        case "totaleVersato": return "totale versato"
+        case "capitaleAssicurato": return "capitale assicurato"
+        case "esito": return "esito della proposta"
+        case "decorrenza": return "decorrenza"
+        case "numeroContratto": return "numero di contratto"
         default: return campo
         }
     }
