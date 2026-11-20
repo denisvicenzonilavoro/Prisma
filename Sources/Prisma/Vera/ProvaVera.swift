@@ -1281,6 +1281,8 @@ enum ProvaVera {
         ProvaDueVelocitaVera.esegui(controlla)
         // Il cervello grande: non collegato, guardiano, etichetta del motore (ProvaCervelloGrandeVera.swift)
         ProvaCervelloGrandeVera.esegui(controlla)
+        // I motori Mistral: scelta per compito, ripiego sul Mac, stato dei modelli e memoria (ProvaMotoriMistral.swift)
+        ProvaMotoriMistral.esegui(controlla)
         #if os(macOS)
         // La mini finestra: ⌥ Spazio, i cinque stati, cifre e canali, «non pronta» (ProvaMiniVera.swift)
         ProvaMiniVera.esegui(controlla)

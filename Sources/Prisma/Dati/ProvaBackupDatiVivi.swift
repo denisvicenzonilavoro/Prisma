@@ -68,6 +68,7 @@ extension ProvaBackup {
             ("le impostazioni di Vera", { $0.impostazioni.vera.leggiTutto.toggle() }),
             ("le impostazioni di Vera su misura", { $0.impostazioni.vera.suMisura.modelloPrecedente = "qwen3.5:4b" }),
             ("il tipo di motore esterno", { $0.impostazioni.vera.motoreEsterno.tipo = .servizio }),
+            ("i motori Mistral di Vera", { $0.impostazioni.vera.motori.modo = .lampo }),
             ("il nome dell'utente", { $0.impostazioni.nomeUtente += " prova" }),
             ("la tolleranza del radar", { $0.impostazioni.tolleranzaRadar = 0.07 }),
             ("una posizione", { $0.posizioni[0].nome += " prova" }),

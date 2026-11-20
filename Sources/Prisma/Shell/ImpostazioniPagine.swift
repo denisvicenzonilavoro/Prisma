@@ -430,6 +430,43 @@ extension AppImpostazioni {
             }
             .id("imp-vera-come")
             .cascataImpostazioni(5)
+            #if os(macOS)
+            // I motori Mistral (tappe 1 e 2): come sceglie Vera e il computer dell'IA dello studio, con il ponte cifrato
+            GruppoImpostazioni(titolo: "Motori Mistral") {
+                RigaImpostazione(titolo: "Scelta del motore", sottotitolo: "Lampo, Quotidiano o Profondo secondo il compito.",
+                                 aiuto: "Automatico: domande e ⌘K al Lampo, documenti e KID al Quotidiano, lavori lunghi di notte al Profondo") {
+                    MenuTendina(selezione: Bindable(stato.dati).impostazioni.vera.motori.modo,
+                                opzioni: ModoSceltaMotore.allCases.map { ($0, $0.nome) }, larghezza: M.menuMedio)
+                }
+                RigaImpostazione(titolo: "Quotidiano", sottotitolo: "Il nome in Ollama di Mistral Small 4.") {
+                    TextField(CatalogoMistral.small4.nome, text: Bindable(stato.dati).impostazioni.vera.motori.modelloQuotidiano)
+                        .campoTesto()
+                        .frame(width: M.campoModello)
+                }
+                RigaImpostazione(titolo: "Profondo", sottotitolo: "Il nome in Ollama di Mistral Large 4.") {
+                    TextField(CatalogoMistral.large4.nome, text: Bindable(stato.dati).impostazioni.vera.motori.modelloProfondo)
+                        .campoTesto()
+                        .frame(width: M.campoModello)
+                }
+                RigaImpostazione(titolo: "Questo Mac è il computer dell'IA", sottotitolo: "Lavora per il Mac di lavoro, in rete locale cifrata.",
+                                 aiuto: "Accendi anche il collegamento in Impostazioni › iPhone e iPad: il Mac di lavoro usa lo stesso ascolto cifrato e lo stesso codice. Mai internet") {
+                    interruttore(Bindable(stato.dati).impostazioni.vera.computerIA.questoMac)
+                }
+                RigaImpostazione(titolo: "Usa il computer dell'IA", sottotitolo: vera.computerIA.attivo
+                                     ? (stato.motoreVera.computerIA.map { "Collegato: \($0.nome)" } ?? "Non trovato in rete: lavora questo Mac.")
+                                     : "Spento: lavora solo questo Mac.") {
+                    interruttore(Bindable(stato.dati).impostazioni.vera.computerIA.usa)
+                }
+                RigaImpostazione(titolo: "Codice del computer dell'IA", sottotitolo: "Sul computer dell'IA, in Impostazioni › iPhone e iPad.", ultima: true) {
+                    TextField("ABCD-EFGH-JKLM", text: Bindable(stato.dati).impostazioni.vera.computerIA.codice)
+                        .campoTesto()
+                        .frame(width: M.campoModello)
+                        .onSubmit { stato.verificaMotoreLocale() }
+                }
+            }
+            .id("imp-vera-motori")
+            .cascataImpostazioni(5)
+            #endif
             // Fase 2 del brief di Vera: memoria, lezioni, filo lungo e ricerca per significato
             GruppoImpostazioni(titolo: "Memoria") {
                 RigaImpostazione(titolo: "Vera ricorda", sottotitolo: "Propone i ricordi, li salva dopo il tuo sì.",

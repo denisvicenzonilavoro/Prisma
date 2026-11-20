@@ -168,6 +168,17 @@ struct StatoPonte: Codable, Equatable {
     var mac: String
     /// La versione del protocollo del Mac (nil = 1: un Mac di prima del giro 5, che non riceve copilota e inquadra).
     var versione: Int?
+    // Il computer dell'IA (motori Mistral, tappa 2): solo se il Mac lo è; nil per i Mac di prima e per gli altri Mac
+    /// true se il Mac è il computer dell'IA.
+    var computerIA: Bool?
+    /// La memoria fisica del Mac in GB.
+    var memoriaGB: Double?
+    /// La memoria usata da Prisma là, in GB.
+    var prismaGB: Double?
+    /// I modelli scaricati in Ollama là.
+    var installati: [String]?
+    /// I modelli caricati in memoria là, con i GB che occupano.
+    var inMemoria: [String: Double]?
 
     /// Il Mac riceve le schede del copilota e i testi inquadrati.
     var riceveMessaggiNuovi: Bool { (versione ?? 1) >= 2 }

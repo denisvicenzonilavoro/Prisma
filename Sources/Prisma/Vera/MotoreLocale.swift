@@ -2,13 +2,14 @@ import Foundation
 
 /// Il motore di Vera: il modello sul Mac, raggiunto con il fornitore scelto (Ollama o un server compatibile
 /// OpenAI), sempre a un indirizzo del Mac stesso: nessun dato dei clienti esce dal computer.
-/// Sul MacBook Pro M1 da 8 GB la taglia giusta è la 4B (circa 3,5 GB di memoria mentre lavora).
+/// Sul MacBook Pro M1 da 8 GB la taglia giusta è Ministral 3 da 3 miliardi (circa 3,5 GB di memoria mentre lavora):
+/// è il motore Lampo e, finché non c'è il computer dell'IA, fa anche il lavoro degli altri (MotoriMistral.swift).
 struct MotoreLocale: MotoreVera, MotoreGenerativo {
     static let indirizzoPredefinito = FornitoreOllama.indirizzoPredefinito
-    /// Qwen 3.5 da 4 miliardi di parametri (ollama.com/library/qwen3.5).
-    static let modelloPredefinito = "qwen3.5:4b"
-    /// Il modello predefinito delle versioni di prima: chi non l'aveva cambiato passa al nuovo.
-    static let modelloPrecedente = "qwen3:4b"
+    /// Ministral 3 da 3 miliardi di parametri (ollama.com/library/ministral-3), dal 20 novembre 2026.
+    static let modelloPredefinito = CatalogoMistral.ministral3B.nome
+    /// I modelli predefiniti delle versioni di prima (Qwen): chi non li aveva cambiati passa a Ministral 3.
+    static let modelliPrecedenti = ["qwen3:4b", "qwen3.5:4b"]
     /// Dopo l'ultima risposta il modello resta in memoria per un po', poi la RAM torna libera.
     static let restaInMemoria = "10m"
     /// Il ragionamento può tacere a lungo prima della prima parola.
@@ -17,6 +18,8 @@ struct MotoreLocale: MotoreVera, MotoreGenerativo {
     let fornitore: FornitoreModello
     let disponibilita: DisponibilitaVera
     let restaInMemoria: String
+    /// Il nome da mostrare quando non è il modello del Mac («Mistral Small 4 sul computer dell'IA»).
+    private var etichetta: String?
 
     init(_ vera: ImpostazioniVera, disponibilita: DisponibilitaVera, sessione: URLSession = .shared) {
         // Con la sessione di sempre il fornitore di questo dispositivo (su iPhone e iPad il ponte verso il Mac);
@@ -26,10 +29,18 @@ struct MotoreLocale: MotoreVera, MotoreGenerativo {
         restaInMemoria = vera.restaInMemoria
     }
 
+    /// Con un fornitore dato: il computer dell'IA, attraverso il ponte cifrato (ComputerIA.swift).
+    init(fornitore: FornitoreModello, disponibilita: DisponibilitaVera, restaInMemoria: String, nome: String? = nil) {
+        self.fornitore = fornitore
+        self.disponibilita = disponibilita
+        self.restaInMemoria = restaInMemoria
+        etichetta = nome
+    }
+
     var modello: String { fornitore.modello }
 
     /// «Qwen sul Mac», «Gemma sul Mac»…: il nome del modello, senza la taglia.
-    var nome: String { Self.nome(modello) }
+    var nome: String { etichetta ?? Self.nome(modello) }
 
     static func nome(_ modello: String) -> String {
         // «Vera su misura» (fase 5): il modello addestrato sui tuoi esempi

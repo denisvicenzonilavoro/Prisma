@@ -5,12 +5,13 @@ App macOS nativa (SwiftUI, Swift Package Manager, senza Xcode) per uso personale
 
 ## Scarica
 L'ultima versione di main, rifatta a ogni unione con la build verde:
-- Mac: https://github.com/dennisprisma/Prisma/releases/download/ultima/Prisma.zip
-- iPhone e iPad (AltStore / Sideloadly): https://github.com/dennisprisma/Prisma/releases/download/ultima/Prisma.ipa
+- Mac: https://github.com/denisvicenzonilavoro/Prisma/releases/download/ultima/Prisma.zip
+- iPhone e iPad (AltStore / Sideloadly): https://github.com/denisvicenzonilavoro/Prisma/releases/download/ultima/Prisma.ipa
 
 ## Build
-La build avviene solo su GitHub Actions (`.github/workflows/build.yml`, runner `macos-15-intel`) a ogni push e pull request.
-L'artifact scaricabile si chiama **Prisma** e contiene `Prisma.zip` con dentro `Prisma.app` (universale arm64 + x86_64, firma ad-hoc).
+Build e prove avvengono solo su GitHub Actions (`.github/workflows/build.yml`, runner `macos-15`, Apple Silicon) a ogni push.
+L'artifact scaricabile si chiama **Prisma** e contiene `Prisma.zip` con dentro `Prisma.app` (solo Apple Silicon, firma ad-hoc).
+Sul Mac si installa l'ultima versione di main con `bash Supporto/installa-ultima.sh`.
 
 ## Struttura
 - `Sources/Prisma/` — codice dell'app

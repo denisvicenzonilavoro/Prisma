@@ -621,6 +621,8 @@ enum VoceConfronto: Hashable {
     var disponibilitaLocale = DisponibilitaVera.nonDisponibile(StatoShell.veraNonVerificata)
     /// La risposta di Vera mentre arriva (osservata solo dalla bolla in arrivo).
     let flussoVera = FlussoVera()
+    /// I motori Mistral per l'interfaccia di Vera: il motore attivo, lo stato dei modelli e la memoria usata.
+    let motoreVera = StatoMotoreVera()
     /// La mini finestra di Vera (⌥ Spazio, sfera nella barra): osservata solo dal suo pannello e dalla sfera.
     let miniVera = StatoMiniVera()
     /// La risposta in corso: si interrompe con una nuova conversazione.
@@ -2679,10 +2681,12 @@ enum VoceConfronto: Hashable {
 
     /// Vera risponde con Qwen. Se l'ultima verifica non l'ha trovato pronto, prima chiede di nuovo a Ollama
     /// (magari è stato appena aperto); se ancora non c'è, Vera lo dice e non risponde.
-    func conQwen(cliente id: String, _ poi: @escaping ((MotoreVera & MotoreGenerativo)) -> Void) {
+    func conQwen(cliente id: String, compito: CompitoVera = .domanda, _ poi: @escaping ((MotoreVera & MotoreGenerativo)) -> Void) {
         // L'esame di Vera su misura usa il modello (un modello alla volta sul Mac da 8 GB): la chat aspetta
         if esameSuMisuraInCorso { return esameSuMisuraInPausa(cliente: id) }
-        if let m = generativo {
+        // I motori Mistral: Vera sceglie il motore in base al compito (sul MacBook da 8 GB resta il modello del Mac)
+        let scelta = motoreVera.scegli(compito, vera: dati.impostazioni.vera)
+        if let m = MotoriVera.generativo(scelta, vera: dati.impostazioni.vera, locale: disponibilitaLocale, computerIA: motoreVera.computerIA) {
             poi(m)
             return
         }
@@ -2715,6 +2719,8 @@ enum VoceConfronto: Hashable {
         Task {
             let d = await MotoreLocale.verificaDispositivo(vera)
             DispatchQueue.main.async { if self.disponibilitaLocale != d { self.disponibilitaLocale = d } }
+            // Lo stato dei motori Mistral per l'interfaccia (modelli scaricati e in memoria, memoria usata)
+            await self.motoreVera.aggiorna(vera: vera)
             #if os(iOS)
             // «Luce» giro 13: il ponte ha trovato il Mac (anche con Qwen non pronto): partono le note in partenza
             if vera.ponte.abbinato, d.motivo != PonteVera.macNonTrovato {
@@ -2735,6 +2741,7 @@ enum VoceConfronto: Hashable {
             Task.detached(priority: .utility) {
                 let d = await AvvioModello.prepara(vera)
                 await MainActor.run { if self.disponibilitaLocale != d { self.disponibilitaLocale = d } }
+                await self.motoreVera.aggiorna(vera: vera)
             }
         }
         #else

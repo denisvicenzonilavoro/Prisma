@@ -31,9 +31,9 @@ In alternativa al notebook: `python addestra.py <cartella-del-pacchetto>` su un 
 
 ## Valori da verificare alla prima prova vera
 
-- Il nome del modello di partenza per Unsloth (nel manifesto, `modelloUnsloth`): Prisma scrive `unsloth/Qwen3.5-4B`
-  per `qwen3.5:4b`, **da verificare** su Hugging Face.
+- Il nome del modello di partenza per Unsloth (nel manifesto, `modelloUnsloth`): Prisma scrive `unsloth/Ministral-3-3B-Instruct-2512` per `ministral-3:3b`
+  (dal 20 novembre 2026; `unsloth/Qwen3.5-4B` per le versioni partite da `qwen3.5:4b`), **da verificare** su Hugging Face.
 - La versione di Unsloth da fissare in `pip install`.
 - I valori di avvio: LoRA r 16, alpha 16, 2 epoche, learning rate 2e-4, batch 2 con accumulo 4.
-- I segni del modello di chat per `train_on_responses_only` (`<|im_start|>user` / `<|im_start|>assistant` per Qwen).
+- I segni del modello di chat per `train_on_responses_only` (`<|im_start|>user` / `<|im_start|>assistant` per Qwen; per Ministral 3 `[INST]` / `[/INST]`, da verificare).
 - Che Ollama accetti il template copiato dal modello di partenza (o un `renderer`/`parser` interno).

@@ -22,12 +22,15 @@ struct ManifestoSuMisura: Codable, Equatable {
 /// il manifesto, le istruzioni (LEGGIMI.txt) e il notebook con lo script presi dal pacchetto dell'app
 /// (Vera/Addestramento). Le domande dell'esame non ci sono mai. Prisma non lo invia: lo zip va dove sceglie l'utente.
 enum PacchettoSuMisura {
-    /// Il nome di Unsloth corrispondente a qwen3.5:4b: da verificare su Hugging Face al primo giro (domanda per l'utente).
-    static let modelloUnslothPredefinito = "unsloth/Qwen3.5-4B"
+    /// I nomi di Unsloth dei modelli di partenza conosciuti (Ministral 3 dal 20 novembre 2026, Qwen prima):
+    /// da verificare su Hugging Face al primo giro (domanda per l'utente).
+    static let modelliUnsloth = [CatalogoMistral.ministral3B.nome: "unsloth/Ministral-3-3B-Instruct-2512",
+                                 "qwen3.5:4b": "unsloth/Qwen3.5-4B"]
+    static let modelloUnslothPredefinito = modelliUnsloth[MotoreLocale.modelloPredefinito] ?? MotoreLocale.modelloPredefinito
     static let nomeLeggimi = "LEGGIMI.txt"
 
     static func modelloUnsloth(per partenza: String) -> String {
-        FornitoreOllama.stessoModello(partenza, MotoreLocale.modelloPredefinito) ? modelloUnslothPredefinito : partenza
+        modelliUnsloth.first { FornitoreOllama.stessoModello($0.key, partenza) }?.value ?? partenza
     }
 
     /// Una riga JSONL: {"messages":[…]} con le chiavi in ordine e senza barre protette.

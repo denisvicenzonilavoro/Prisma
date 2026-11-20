@@ -391,14 +391,14 @@ enum ProvaSuMisuraVera {
         controlla(!s.installaSuMisura(nome) && s.dati.impostazioni.vera.modelloLocale == MotoreLocale.modelloPredefinito,
                   "Su misura nell'app: esame non superato, il modello non cambia")
         s.dati.impostazioni.vera = con(.superata, superato: true)
-        controlla(s.installaSuMisura(nome) && s.dati.impostazioni.vera.modelloLocale == nome && s.dati.impostazioni.vera.suMisura.modelloPrecedente == "qwen3.5:4b",
+        controlla(s.installaSuMisura(nome) && s.dati.impostazioni.vera.modelloLocale == nome && s.dati.impostazioni.vera.suMisura.modelloPrecedente == MotoreLocale.modelloPredefinito,
                   "Su misura nell'app: esame superato, la Vera su misura è in uso")
         if case .inUso = s.faseSuMisura {
             controlla(true, "Su misura nell'app: la pagina mostra la Vera su misura in uso")
         } else {
             controlla(false, "Su misura nell'app: la pagina mostra la Vera su misura in uso")
         }
-        controlla(s.tornaAllaVeraDiPrima() && s.dati.impostazioni.vera.modelloLocale == "qwen3.5:4b"
+        controlla(s.tornaAllaVeraDiPrima() && s.dati.impostazioni.vera.modelloLocale == MotoreLocale.modelloPredefinito
                   && s.dati.impostazioni.vera.suMisura.versioni.first?.stato == .ritirata,
                   "Su misura nell'app: tornata alla Vera di prima")
         s.dati.impostazioni.vera.fornitore = .compatibileOpenAI

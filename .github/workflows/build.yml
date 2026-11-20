@@ -1,10 +1,11 @@
 name: Build Prisma
 
-# Dal 16 novembre 2026 (scelta dell'utente) Prisma si compila e si prova sul Mac dell'utente
-# (`bash Supporto/costruisci-mac.sh --prove`): GitHub tiene solo la copia del codice. Questa build non parte più a
-# ogni push: si lancia solo a mano (Actions › Build Prisma › Run workflow), per esempio per rifare la release
-# «ultima» con Prisma.zip e Prisma.ipa senza Xcode. Lanciata su main rifà anche anteprime e release.
+# Dal 20 novembre 2026 (scelta dell'utente) si lavora di nuovo su GitHub e nel cloud: la build e tutte le prove le fa
+# questo workflow su un Mac Apple Silicon (macos-15) a ogni push; sul Mac dell'utente si installa soltanto l'app
+# (Prisma.zip della release «ultima»). Una sola build per commit: il push sul branch basta anche per la pull request.
 on:
+  push:
+    branches: ['**', '!anteprime']
   workflow_dispatch:
 
 # Un nuovo push sullo stesso branch annulla la build ancora in corso del commit precedente (non su main,

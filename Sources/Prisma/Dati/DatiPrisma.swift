@@ -907,6 +907,10 @@ struct ImpostazioniVera: Codable, Equatable {
     var suMisura = ImpostazioniSuMisura()
     /// «Il cervello grande» (fase 5, funzione 25): solo il tipo di motore esterno scelto (resta non collegato).
     var motoreEsterno = ImpostazioniMotoreEsterno()
+    /// I motori Mistral (20 novembre 2026): il modo di scegliere e i modelli dei ruoli Quotidiano e Profondo.
+    var motori = ImpostazioniMotori()
+    /// Il computer dell'IA (motori Mistral, tappa 2): questo Mac lo è, oppure lo usa con il suo codice.
+    var computerIA = ImpostazioniComputerIA()
 
     /// Il modello del fornitore scelto.
     var modello: String {
@@ -928,6 +932,7 @@ struct ImpostazioniVera: Codable, Equatable {
         case memoriaAttiva, imparaDalleCorrezioni, finestra, modelloRicerca
         case sussurroNelDossier, passi
         case suMisura, motoreEsterno
+        case motori, computerIA
     }
 
     init(from decoder: Decoder) throws {
@@ -940,8 +945,8 @@ struct ImpostazioniVera: Codable, Equatable {
         conversazioneContinua = (try? c.decodeIfPresent(Bool.self, forKey: .conversazioneContinua)) ?? true
         indirizzoLocale = (try? c.decodeIfPresent(String.self, forKey: .indirizzoLocale)) ?? MotoreLocale.indirizzoPredefinito
         let modello = (try? c.decodeIfPresent(String.self, forKey: .modelloLocale)) ?? MotoreLocale.modelloPredefinito
-        // Chi aveva il modello predefinito di prima (qwen3:4b) passa al nuovo; un modello scelto a mano resta
-        modelloLocale = modello == MotoreLocale.modelloPrecedente ? MotoreLocale.modelloPredefinito : modello
+        // Chi aveva un modello predefinito di prima (qwen3:4b, qwen3.5:4b) passa a Ministral 3; un modello scelto a mano resta
+        modelloLocale = MotoreLocale.modelliPrecedenti.contains { FornitoreOllama.stessoModello($0, modello) } ? MotoreLocale.modelloPredefinito : modello
         fornitore = (try? c.decodeIfPresent(TipoFornitore.self, forKey: .fornitore)) ?? .ollama
         indirizzoCompatibile = (try? c.decodeIfPresent(String.self, forKey: .indirizzoCompatibile)) ?? FornitoreCompatibileOpenAI.indirizzoPredefinito
         modelloCompatibile = (try? c.decodeIfPresent(String.self, forKey: .modelloCompatibile)) ?? ""
@@ -964,6 +969,9 @@ struct ImpostazioniVera: Codable, Equatable {
         // Fase 5 (versione 27): su misura e motore esterno di base se mancano o sono illeggibili
         suMisura = ((try? c.decodeIfPresent(ImpostazioniSuMisura.self, forKey: .suMisura)) ?? nil) ?? ImpostazioniSuMisura()
         motoreEsterno = ((try? c.decodeIfPresent(ImpostazioniMotoreEsterno.self, forKey: .motoreEsterno)) ?? nil) ?? ImpostazioniMotoreEsterno()
+        // I motori Mistral: automatico e i modelli di base se mancano o sono illeggibili
+        motori = ((try? c.decodeIfPresent(ImpostazioniMotori.self, forKey: .motori)) ?? nil) ?? ImpostazioniMotori()
+        computerIA = ((try? c.decodeIfPresent(ImpostazioniComputerIA.self, forKey: .computerIA)) ?? nil) ?? ImpostazioniComputerIA()
     }
 }
 

@@ -3,9 +3,9 @@ import Foundation
 /// Confronto tra modelli: le stesse domande di prova a 2–3 modelli installati, con risposte e tempi affiancati.
 /// Usa i dati di prova di Prisma (clienti fittizi), mai quelli veri. Un modello alla volta, e dopo ogni modello
 /// la memoria si libera: sul Mac da 8 GB due modelli insieme non stanno.
-/// Da Impostazioni › Vera («Confronta») oppure dal Terminale: `Prisma --confronta-modelli qwen3.5:4b,qwen3:8b`.
+/// Da Impostazioni › Vera («Confronta») oppure dal Terminale: `Prisma --confronta-modelli ministral-3:3b,qwen3.5:4b`.
 enum ConfrontoModelli {
-    static let predefiniti = "qwen3.5:4b, qwen3:8b, gemma4:e4b"
+    static let predefiniti = "ministral-3:3b, qwen3.5:4b, ministral-3:8b"
     /// Il cliente di prova delle domande di lavoro.
     static let clienteProva = "giulia"
 

@@ -148,8 +148,16 @@ final class ServerPonteVera: @unchecked Sendable {
         switch busta.percorso {
         case BustaPonte.stato:
             let d: DisponibilitaVera = await fornitore.verifica()
-            let st = StatoPonte(pronto: d.pronto, motivo: d.motivo, fornitore: e.fornitore, modello: e.modello, mac: nomeMac,
+            var st = StatoPonte(pronto: d.pronto, motivo: d.motivo, fornitore: e.fornitore, modello: e.modello, mac: nomeMac,
                                 versione: PonteVera.versioneProtocollo)
+            // Il computer dell'IA dice anche memoria e modelli (nessun dato dei clienti: solo nomi dei modelli e GB)
+            if e.computerIA.questoMac {
+                st.computerIA = true
+                st.memoriaGB = MemoriaComputer.totaleGB
+                st.prismaGB = MemoriaComputer.prismaGB()
+                st.installati = (try? await fornitore.modelli()) ?? []
+                if let o = fornitore as? FornitoreOllama { st.inMemoria = await o.inMemoria() }
+            }
             guard let dati = try? PonteVera.sigilla(JSONEncoder().encode(st), k) else { return await rispondi(c, 500, "errore") }
             await scrivi(c, Self.testata(200) + dati)
         case BustaPonte.precarica:
@@ -169,18 +177,22 @@ final class ServerPonteVera: @unchecked Sendable {
             guard let dati = try? PonteVera.sigilla(JSONEncoder().encode(ricevuta), k) else { return await rispondi(c, 500, "errore") }
             await scrivi(c, Self.testata(200) + dati)
         case let p where PonteVera.percorsiAmmessi.contains(p):
-            await inoltra(c, p, busta.corpo, fornitore: fornitore, modello: e.modello, sessione: s, chiave: k)
+            // Il computer dell'IA usa il modello chiesto dal Mac di lavoro se l'ha già scaricato; gli altri Mac sempre il loro
+            var installati: [String] = []
+            if e.computerIA.questoMac { installati = (try? await fornitore.modelli()) ?? [] }
+            await inoltra(c, p, busta.corpo, fornitore: fornitore, modello: e.modello, ammessi: installati, sessione: s, chiave: k)
         default:
             await rispondi(c, 404, "percorso sconosciuto")
         }
     }
 
-    /// Passa la richiesta al modello sul Mac (sempre il modello scelto qui) e rimanda le righe cifrate.
+    /// Passa la richiesta al modello sul Mac e rimanda le righe cifrate. Il modello è quello scelto qui, salvo sul
+    /// computer dell'IA, dove vale quello chiesto se è tra gli `ammessi` (i modelli già scaricati).
     private func inoltra(_ c: NWConnection, _ percorso: String, _ corpo: Data?, fornitore: FornitoreModello,
-                         modello: String, sessione: URLSession, chiave k: SymmetricKey) async {
+                         modello: String, ammessi: [String] = [], sessione: URLSession, chiave k: SymmetricKey) async {
         guard let corpo, var j = (try? JSONSerialization.jsonObject(with: corpo)) as? [String: Any],
               let u = try? fornitore.url(percorso) else { return await rispondi(c, 400, "corpo non valido") }
-        j["model"] = modello
+        j["model"] = Self.modelloDaUsare(chiesto: j["model"] as? String, delMac: modello, ammessi: ammessi)
         var r = URLRequest(url: u, timeoutInterval: MotoreLocale.attesaMassima)
         r.httpMethod = "POST"
         r.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -206,6 +218,12 @@ final class ServerPonteVera: @unchecked Sendable {
         } catch {
             await rispondi(c, 502, "\(fornitore.nome) non ha risposto sul Mac")
         }
+    }
+
+    /// Il modello della richiesta: quello chiesto se è tra gli ammessi (computer dell'IA), altrimenti quello del Mac.
+    static func modelloDaUsare(chiesto: String?, delMac: String, ammessi: [String]) -> String {
+        guard let chiesto, ammessi.contains(where: { FornitoreOllama.stessoModello($0, chiesto) }) else { return delMac }
+        return chiesto
     }
 
     // MARK: - HTTP essenziale
