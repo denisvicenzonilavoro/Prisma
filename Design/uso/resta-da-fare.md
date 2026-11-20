@@ -371,8 +371,8 @@ ricordato nella voce del cliente di `CacheClienti`. Prova in `--prova-calcoli` (
 istantanea nuova `1023-uso-obiettivi-stato` (chiara e scura).
 
 Resta:
-- **Indice del dossier (miglioria 11)**: il numero arancio accanto a «Obiettivi» va messo in `ContiIndiceDossier` leggendo
-  `stato.obiettiviNonInTempo(id)` (non c'era ancora l'indice in questo giro).
+- ~~**Indice del dossier (miglioria 11)**: il numero arancio accanto a «Obiettivi»~~: fatto
+  (`conti.obiettivi = obiettiviNonInTempo(id)` in IndiceDossierApple.swift).
 - **Istantanee**: rigenerare sul Mac 432, 433, 282, 283, 98 e la nuova 1023 (chiara e scura) e aggiornare la pagina
   delle anteprime; nella 1023 controllare che l'anticipo casa risulti davvero «In ritardo» (il versamento lo ricava la
   scena dal 75% del necessario: se il conto collegato basta già, resta verde).
@@ -531,7 +531,7 @@ Resta:
   sulle righe di `PannelloCosti` e `PannelloSuccessione`) senza movimento; cambiando schermata, cliente o ancora si
   riparte dall'alto. Da provare sul Mac vero (non si vede nelle istantanee). «Quadro e posizioni» non è coperto: l'elenco
   scorre dentro la card ed è pigro.
-- **Gruppi 07 e 08**: chi vuole aprire una schermata delle posizioni (radar, smontaggio, «Apri le posizioni di …») scrive
+- ~~**Gruppi 07 e 08**~~ (regola, nessun lavoro; lo smontaggio si apre con l'ancora «smontaggio»): chi vuole aprire una schermata delle posizioni (radar, smontaggio, «Apri le posizioni di …») scrive
   l'ancora di oggi (`stato.ancoraPosizioni = "coerenza"`), non una proprietà nuova.
 - **Istantanee e prove sul Mac**: rigenerare 2, 9, 10, 71, 74, 76, 79, 95-97 e le nuove 1040-1043; misurare un cliente
   con 40 posizioni (l'elenco nella card) e `--prova-fluidita` con 200 clienti (il quadro non costruisce le analisi);

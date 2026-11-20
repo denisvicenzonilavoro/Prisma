@@ -1,6 +1,6 @@
 #!/bin/bash
-# Costruisce Prisma.app sul Mac, senza GitHub: stessi passi del workflow
-# (.github/workflows/build.yml), ma solo per Apple Silicon (più veloce sull'M1).
+# Costruisce Prisma.app sul Mac, solo per Apple Silicon. Dal 16 novembre 2026 il lavoro è solo in locale:
+# --prove fa anche i controlli che prima stavano nel workflow di GitHub (Supporto/controlli-locali.sh).
 # Uso, dalla cartella del progetto:
 #   bash Supporto/costruisci-mac.sh            → compila e crea Prisma.app
 #   bash Supporto/costruisci-mac.sh --prove    → in più esegue le prove principali
@@ -65,6 +65,7 @@ if [ "$PROVE" = 1 ]; then
   "$APP/Contents/MacOS/Prisma" --prova-vera
   "$APP/Contents/MacOS/Prisma" --prova-ovunque
   "$APP/Contents/MacOS/Prisma" --prova-film
+  bash Supporto/controlli-locali.sh
   echo "✓ Prove superate"
 fi
 

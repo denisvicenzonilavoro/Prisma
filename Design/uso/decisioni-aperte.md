@@ -57,7 +57,7 @@ Le decisioni sono dell'utente; i controlli si fanno sulle istantanee o sul Mac v
 - 15: per gli immobili si vede «Debiti residui» e «Al netto dei debiti», perché Posizione non distingue il mutuo. Per avere «Mutuo residuo» servirebbe un campo nuovo dell'archivio, con la prova del backup da aggiornare. Lo si vuole?
 - 15: la pillola «Scade tra {n} gg» e «Debito» al posto di «In essere» sono solo sul Mac. La specifica di gruppo le voleva anche su iPhone e iPad: portarle ora o con il loro giro?
 - 17: la scheda Bisogni usa ancora i caratteri di Rubrica (`Tipo` e `Colori.Rubrica`, circa 38 usi). Portarla nel tema Apple, riprendendo capsula e nota da `BisogniCliente.prioritaVista)`? È un lavoro da guardare sulle istantanee.
-- Già fatte, da togliere dal resta-da-fare: il numero arancio degli Obiettivi nell'indice (13 → 11: `conti.obiettivi = obiettiviNonInTempo(id)` in IndiceDossierApple.swift:63), «Aggiungi un'azienda…» e «Nuovo cliente» (11 → 12) e la regola dei gruppi 07 e 08 sulle ancore di Posizioni (14: lo smontaggio si apre con l'ancora «smontaggio», nessuna proprietà nuova). Va anche corretta la voce 15 su `fuocoModulo`: `CampoModulo` lo legge già; mancano la richiesta dal pulsante, la mappa dei nomi e lo scorrimento (lavoro 3).
+- ~~Già fatte, da togliere dal resta-da-fare~~: tolte il 15 novembre 2026 (numero degli Obiettivi nell'indice, «Aggiungi un'azienda…» e «Nuovo cliente», gruppi 07 e 08; la voce 15 su `fuocoModulo` era già corretta).
 
 ### Controlli a occhio
 - 13: rigenerare sul Mac le istantanee 432, 433, 282, 283, 98 e 1023 (chiare e scure). Nella 1023 l'anticipo casa deve risultare «In ritardo»: il versamento è il 75% del necessario, e se il conto collegato basta resta verde.
