@@ -1,9 +1,9 @@
 name: Build Prisma
 
-# Dal 26 novembre 2026 (scelta dell'utente: «GitHub è troppo lento») build, prove e release si fanno sul Mac dell'utente
-# (Supporto/costruisci-mac.sh --prove e Supporto/pubblica-ultima.sh); GitHub tiene solo il codice. Questo workflow
-# non parte più a ogni push: si lancia a mano (Actions › Build Prisma › Run workflow) quando serve, per esempio per
-# Lucy.ipa di iPhone e iPad o per le istantanee di iPhone e iPad. Su main, lanciato a mano, rifà anche la release.
+# Dal 28 novembre 2026 (scelta dell'utente: repository pubblico, minuti gratis) build e prove dell'app si fanno qui, non
+# sul Mac dell'utente, dove restano solo i controlli veloci. Il workflow si lancia a mano per ogni ramo
+# (gh workflow run build.yml --ref <ramo> -f completa=false, oppure Actions › Build Prisma › Run workflow) e un ramo
+# entra in main solo con la build verde. Su main, lanciato con il sì dell'utente, rifà anche Lucy.ipa e la release.
 on:
   workflow_dispatch:
     inputs:

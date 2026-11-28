@@ -4,6 +4,8 @@
 # Restano fuori le prove di iPhone e iPad (si lanciano a parte quando servono) e il controllo informativo di Mercato.
 # Uso, dalla cartella del progetto, dopo aver creato Prisma.app:
 #   bash Supporto/controlli-locali.sh
+# Dal 28 novembre 2026 build e prove si fanno su GitHub Actions; sul Mac solo i controlli veloci, senza Prisma.app:
+#   bash Supporto/controlli-locali.sh --statici
 set -euo pipefail
 cd "$(dirname "$0")/.."
 APP=Prisma.app
@@ -73,6 +75,11 @@ if grep -n 'NSPhotoLibraryAddUsageDescription\|NSPhotoLibraryUsageDescription' S
   errore "Prisma non chiede l'accesso al Rullino"
 fi
 echo "✓ Privacy: nessun uso vietato"
+
+if [ "${1:-}" = "--statici" ]; then
+  echo "✓ Controlli statici superati (senza Prisma.app)"
+  exit 0
+fi
 
 echo "▸ Prisma.app e risorse…"
 test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP/Contents/Info.plist")" = Prisma || errore "CFBundleExecutable"
